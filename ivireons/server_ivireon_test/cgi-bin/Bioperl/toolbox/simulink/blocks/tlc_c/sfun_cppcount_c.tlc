@@ -1,0 +1,33 @@
+%implements "sfun_cppcount_c" "C"
+
+%function BlockTypeSetup(block, system) void
+  %<SLibAddToCommonIncludes("<sfun_cppcount_cpp.h>")>
+  %openfile buffer
+  %<ExternorExternC()> double counterOutput(void *obj);
+  %closefile buffer
+  %<LibCacheFunctionPrototype(buffer)>
+%endfunction %% BlockTypeSetup
+
+
+%function Start(block, system) Output
+  %if NumDWork > 0
+    %<LibBlockPWork(0, "", "", 0)> = createCounter();
+  %endif
+%endfunction %% Start
+
+
+%function Outputs(block, system) Output
+  %assign u = LibBlockPWork(0, "", "", 0)
+  %assign y = LibBlockOutputSignal(0, "", "", 0)
+  %<y> = counterOutput(%<u>);
+%endfunction %% Outputs
+
+
+%function Terminate(block, system) Output
+  %switch SFunctionType
+    %case "TLC"
+      %assign u = LibBlockPWork(0, "", "", 0)
+      deleteCounter(%<u>);
+      %break
+  %endswitch
+%endfunction

@@ -1,0 +1,23 @@
+function eml_assert_valid_dim(dim)
+%Embedded MATLAB Private Function
+
+%   Checks that the argument DIM is a valid dimension argument.
+%   Calls ASSERT.
+
+%   Copyright 2006-2009 The MathWorks, Inc.
+%#eml
+
+eml_allow_enum_inputs;
+eml_prefer_const(dim);
+eml_assert(~eml.isenum(dim), ...
+    'Enumeration types are not supported for dimension arguments.');
+eml_assert(eml_is_const(size(dim)), ...
+    'Dimension must be a fixed-size scalar.');
+eml_assert(isa(dim,'numeric') && isscalar(dim) && isreal(dim), ...
+    'Dimension must be a real positive integer scalar.');
+eml_lib_assert(dim >= 1 && dim == eml_scalar_floor(dim), ...
+    'MATLAB:getdimarg:dimensionMustBePositiveInteger', ...
+    'Dimension must be a real positive integer scalar.');
+eml_lib_assert(dim <= intmax(eml_index_class), ...
+    'MATLAB:getdimarg:dimensionMustBePositiveInteger', ...
+    ['Dimension exceeds intmax(' eml_index_class ').']);

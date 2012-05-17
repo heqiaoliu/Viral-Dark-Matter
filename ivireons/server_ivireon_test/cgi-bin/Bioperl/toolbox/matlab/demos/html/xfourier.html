@@ -1,0 +1,88 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Square Wave from Sine Waves</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="xfourier.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit xfourier">Open xfourier.m in the Editor</a></div><div class="right"><a href="matlab:echodemo xfourier">Run in the Command Window</a></div></div><div class="content"><h1>Square Wave from Sine Waves</h1><!--introduction--><p>The Fourier series expansion for a square-wave is made up of a sum of odd harmonics.  We show this graphically using MATLAB&reg;.</p><!--/introduction--><p>We start by forming a time vector running from 0 to 10 in steps of 0.1, and take the sine of all the points.  Let's plot this fundamental frequency.</p><pre class="codeinput">t = 0:.1:10;
+y = sin(t);
+plot(t,y);
+</pre><img vspace="5" hspace="5" src="xfourier_01.png" alt=""> <p>Now add the third harmonic to the fundamental, and plot it.</p><pre class="codeinput">y = sin(t) + sin(3*t)/3;
+plot(t,y);
+</pre><img vspace="5" hspace="5" src="xfourier_02.png" alt=""> <p>Now use the first, third, fifth, seventh, and ninth harmonics.</p><pre class="codeinput">y = sin(t) + sin(3*t)/3 + sin(5*t)/5 + sin(7*t)/7 + sin(9*t)/9;
+plot(t,y);
+</pre><img vspace="5" hspace="5" src="xfourier_03.png" alt=""> <p>For a finale, we will go from the fundamental to the 19th harmonic, creating vectors of successively more harmonics, and saving all intermediate steps as the rows of a matrix.</p><p>These vectors are plotted on the same figure to show the evolution of the square wave.  Note that Gibbs' effect says that it will never really get there.</p><pre class="codeinput">t = 0:.02:3.14;
+y = zeros(10,length(t));
+x = zeros(size(t));
+<span class="keyword">for</span> k=1:2:19
+    x = x + sin(k*t)/k;
+    y((k+1)/2,:) = x;
+<span class="keyword">end</span>
+plot(y(1:2:9,:)')
+title(<span class="string">'The building of a square wave: Gibbs'' effect'</span>)
+</pre><img vspace="5" hspace="5" src="xfourier_04.png" alt=""> <p>Here is a 3-D surface representing the gradual transformation of a sine wave into a square wave.</p><pre class="codeinput">surf(y);
+shading <span class="string">interp</span>
+axis <span class="string">off</span> <span class="string">ij</span>
+</pre><img vspace="5" hspace="5" src="xfourier_05.png" alt=""> <p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Square Wave from Sine Waves
+% The Fourier series expansion for a square-wave is made up of a sum of odd
+% harmonics.  We show this graphically using MATLAB(R).
+%
+% Copyright 1984-2007 The MathWorks, Inc.
+% $Revision: 1.14.4.2 $  $Date: 2007/12/14 14:51:51 $
+
+%%
+% We start by forming a time vector running from 0 to 10 in steps of 0.1, and
+% take the sine of all the points.  Let's plot this fundamental frequency.
+
+t = 0:.1:10;
+y = sin(t);
+plot(t,y);
+
+%%
+% Now add the third harmonic to the fundamental, and plot it.
+
+y = sin(t) + sin(3*t)/3;
+plot(t,y);
+
+%%
+% Now use the first, third, fifth, seventh, and ninth harmonics.
+
+y = sin(t) + sin(3*t)/3 + sin(5*t)/5 + sin(7*t)/7 + sin(9*t)/9;
+plot(t,y);
+
+%%
+% For a finale, we will go from the fundamental to the 19th harmonic, creating
+% vectors of successively more harmonics, and saving all intermediate steps as
+% the rows of a matrix.
+%
+% These vectors are plotted on the same figure to show the evolution of the
+% square wave.  Note that Gibbs' effect says that it will never really get
+% there.
+
+t = 0:.02:3.14;
+y = zeros(10,length(t)); 
+x = zeros(size(t));
+for k=1:2:19
+    x = x + sin(k*t)/k;
+    y((k+1)/2,:) = x;
+end
+plot(y(1:2:9,:)')
+title('The building of a square wave: Gibbs'' effect')
+
+%%
+% Here is a 3-D surface representing the gradual transformation of a sine wave
+% into a square wave.
+
+surf(y);
+shading interp
+axis off ij
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

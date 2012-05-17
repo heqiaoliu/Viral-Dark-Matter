@@ -1,0 +1,293 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Matrix Exponentials</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="expmdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit expmdemo">Open expmdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo expmdemo">Run in the Command Window</a></div></div><div class="content"><h1>Matrix Exponentials</h1><!--introduction--><p>For background on the computation of matrix exponentials, see "Nineteen dubious ways to compute the exponential of a matrix, twenty-five years later," SIAM Review 45, 3-49, 2003.</p><p>The Pseudospectra Gateway is also highly recommended.  The web site is:</p><p><a href="http://web.comlab.ox.ac.uk/projects/pseudospectra/">http://web.comlab.ox.ac.uk/projects/pseudospectra/</a></p><p>Here are three of the 19 ways to compute the exponential of a matrix.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Start with the Matrix A</a></li><li><a href="#2">Scaling and Squaring</a></li><li><a href="#3">Matrix Exponential via Taylor Series</a></li><li><a href="#4">Matrix Exponential via Eigenvalues and Eigenvectors</a></li><li><a href="#5">Compare the Results</a></li><li><a href="#6">Taylor Series Fails</a></li><li><a href="#7">Eigenvalues and Vectors Fails</a></li></ul></div><h2>Start with the Matrix A<a name="1"></a></h2><pre class="codeinput">A = [0 1 2; 0.5 0 1; 2 1 0]
+Asave = A;
+</pre><pre class="codeoutput">
+A =
+
+         0    1.0000    2.0000
+    0.5000         0    1.0000
+    2.0000    1.0000         0
+
+</pre><h2>Scaling and Squaring<a name="2"></a></h2><p><tt>expmdemo1</tt> is an implementation of algorithm 11.3.1 in Golub and Van Loan, Matrix Computations, 3rd edition.</p><pre class="codeinput"><span class="comment">% Scale A by power of 2 so that its norm is &lt; 1/2 .</span>
+[f,e] = log2(norm(A,<span class="string">'inf'</span>));
+s = max(0,e+1);
+A = A/2^s;
+
+<span class="comment">% Pade approximation for exp(A)</span>
+X = A;
+c = 1/2;
+E = eye(size(A)) + c*A;
+D = eye(size(A)) - c*A;
+q = 6;
+p = 1;
+<span class="keyword">for</span> k = 2:q
+   c = c * (q-k+1) / (k*(2*q-k+1));
+   X = A*X;
+   cX = c*X;
+   E = E + cX;
+   <span class="keyword">if</span> p
+     D = D + cX;
+   <span class="keyword">else</span>
+     D = D - cX;
+   <span class="keyword">end</span>
+   p = ~p;
+<span class="keyword">end</span>
+E = D\E;
+
+<span class="comment">% Undo scaling by repeated squaring</span>
+<span class="keyword">for</span> k = 1:s
+    E = E*E;
+<span class="keyword">end</span>
+
+E1 = E
+</pre><pre class="codeoutput">
+E1 =
+
+    5.3091    4.0012    5.5778
+    2.8088    2.8845    3.1930
+    5.1737    4.0012    5.7132
+
+</pre><h2>Matrix Exponential via Taylor Series<a name="3"></a></h2><p><tt>expmdemo2</tt> uses the classic definition for the matrix exponential. As a practical numerical method, this is slow and inaccurate if <tt>norm(A)</tt> is too large.</p><pre class="codeinput">A = Asave;
+
+<span class="comment">% Taylor series for exp(A)</span>
+E = zeros(size(A));
+F = eye(size(A));
+k = 1;
+<span class="keyword">while</span> norm(E+F-E,1) &gt; 0
+   E = E + F;
+   F = A*F/k;
+   k = k+1;
+<span class="keyword">end</span>
+
+E2 = E
+</pre><pre class="codeoutput">
+E2 =
+
+    5.3091    4.0012    5.5778
+    2.8088    2.8845    3.1930
+    5.1737    4.0012    5.7132
+
+</pre><h2>Matrix Exponential via Eigenvalues and Eigenvectors<a name="4"></a></h2><p><tt>expmdemo3</tt> assumes that the matrix has a full set of eigenvectors. As a practical numerical method, the accuracy is determined by the condition of the eigenvector matrix.</p><pre class="codeinput">A = Asave;
+
+[V,D] = eig(A);
+E = V * diag(exp(diag(D))) / V;
+
+E3 = E
+</pre><pre class="codeoutput">
+E3 =
+
+    5.3091    4.0012    5.5778
+    2.8088    2.8845    3.1930
+    5.1737    4.0012    5.7132
+
+</pre><h2>Compare the Results<a name="5"></a></h2><p>For this matrix, they all do equally well</p><pre class="codeinput">E = expm(Asave);
+err1 = E - E1
+err2 = E - E2
+err3 = E - E3
+</pre><pre class="codeoutput">
+err1 =
+
+  1.0e-014 *
+
+    0.3553    0.1776         0
+    0.0444    0.0444   -0.0444
+   -0.0888   -0.0888   -0.3553
+
+
+err2 =
+
+  1.0e-014 *
+
+         0         0   -0.2665
+   -0.0888   -0.0888   -0.0888
+    0.0888   -0.0888         0
+
+
+err3 =
+
+  1.0e-013 *
+
+   -0.0711   -0.0444   -0.0888
+   -0.0799   -0.0666   -0.0844
+   -0.0622   -0.0533   -0.1155
+
+</pre><h2>Taylor Series Fails<a name="6"></a></h2><p>Here is a matrix where the terms in the Taylor series become very large before they go to zero.  Consequently, <tt>expmdemo2</tt> fails.</p><pre class="codeinput">A = [-147 72; -192 93];
+E1 = expmdemo1(A)
+E2 = expmdemo2(A)
+E3 = expmdemo3(A)
+</pre><pre class="codeoutput">
+E1 =
+
+   -0.0996    0.0747
+   -0.1991    0.1494
+
+
+E2 =
+
+  1.0e+006 *
+
+   -1.1985   -0.5908
+   -2.7438   -2.0442
+
+
+E3 =
+
+   -0.0996    0.0747
+   -0.1991    0.1494
+
+</pre><h2>Eigenvalues and Vectors Fails<a name="7"></a></h2><p>Here is a matrix that does not have a full set of eigenvectors. Consequently, <tt>expmdemo3</tt> fails.</p><pre class="codeinput">A = [-1 1; 0 -1];
+E1 = expmdemo1(A)
+E2 = expmdemo2(A)
+E3 = expmdemo3(A)
+</pre><pre class="codeoutput">
+E1 =
+
+    0.3679    0.3679
+         0    0.3679
+
+
+E2 =
+
+    0.3679    0.3679
+         0    0.3679
+
+
+E3 =
+
+    0.3679         0
+         0    0.3679
+
+</pre><p class="footer">Copyright 2004-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Matrix Exponentials
+% For background on the computation of matrix exponentials, see
+% "Nineteen dubious ways to compute the exponential of a matrix,
+% twenty-five years later," SIAM Review 45, 3-49, 2003.
+%
+% The Pseudospectra Gateway is also highly recommended.  The web site is:
+%
+% http://web.comlab.ox.ac.uk/projects/pseudospectra/
+%
+% Here are three of the 19 ways to compute the exponential of a matrix.
+
+% Copyright 2004-2010 The MathWorks, Inc.
+% $Revision: 1.1.4.7 $ $Date: 2010/05/13 17:38:27 $
+
+
+%% Start with the Matrix A
+A = [0 1 2; 0.5 0 1; 2 1 0]
+Asave = A;
+
+
+%% Scaling and Squaring
+% |expmdemo1| is an implementation of algorithm 11.3.1 in
+% Golub and Van Loan, Matrix Computations, 3rd edition.  
+
+% Scale A by power of 2 so that its norm is < 1/2 .
+[f,e] = log2(norm(A,'inf'));
+s = max(0,e+1);
+A = A/2^s;
+
+% Pade approximation for exp(A)
+X = A;
+c = 1/2;
+E = eye(size(A)) + c*A;
+D = eye(size(A)) - c*A;
+q = 6;
+p = 1;
+for k = 2:q
+   c = c * (q-k+1) / (k*(2*q-k+1));
+   X = A*X;
+   cX = c*X;
+   E = E + cX;
+   if p
+     D = D + cX;
+   else
+     D = D - cX;
+   end
+   p = ~p;
+end
+E = D\E;
+
+% Undo scaling by repeated squaring
+for k = 1:s
+    E = E*E;
+end
+
+E1 = E
+
+
+%% Matrix Exponential via Taylor Series
+% |expmdemo2| uses the classic definition for the matrix exponential. As a
+% practical numerical method, this is slow and inaccurate if |norm(A)| is
+% too large.
+
+A = Asave;
+
+% Taylor series for exp(A)
+E = zeros(size(A));
+F = eye(size(A));
+k = 1;
+while norm(E+F-E,1) > 0
+   E = E + F;
+   F = A*F/k;
+   k = k+1;
+end
+
+E2 = E
+
+
+%% Matrix Exponential via Eigenvalues and Eigenvectors
+% |expmdemo3| assumes that the matrix has a full set of eigenvectors. As a
+% practical numerical method, the accuracy is determined by the condition
+% of the eigenvector matrix.
+
+A = Asave;
+
+[V,D] = eig(A);
+E = V * diag(exp(diag(D))) / V;
+
+E3 = E
+
+
+%% Compare the Results
+% For this matrix, they all do equally well
+
+E = expm(Asave);
+err1 = E - E1
+err2 = E - E2
+err3 = E - E3
+
+
+%% Taylor Series Fails
+% Here is a matrix where the terms in the Taylor series become very large
+% before they go to zero.  Consequently, |expmdemo2| fails. 
+
+A = [-147 72; -192 93];
+E1 = expmdemo1(A)
+E2 = expmdemo2(A)
+E3 = expmdemo3(A)
+
+
+%% Eigenvalues and Vectors Fails
+% Here is a matrix that does not have a full set of eigenvectors.
+% Consequently, |expmdemo3| fails. 
+
+A = [-1 1; 0 -1];
+E1 = expmdemo1(A)
+E2 = expmdemo2(A)
+E3 = expmdemo3(A)
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

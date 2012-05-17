@@ -1,0 +1,31 @@
+%% File : msfcn_varsize_expand.tlc
+%% Abstract:
+%% A sample inlined TLC file for S-function msfcn_varsize_expand.c
+%% Copyright 2009 The MathWorks, Inc.
+
+%implements "msfcn_varsize_expand" "C"
+
+%% Function: Outputs ===========================================================
+%% Abstract:
+%% y = 1:input_value;
+%%
+%function Outputs(block, system) Output
+/* %<Type> Block: %<Name> */
+
+%assign input_value1 = LibBlockInputSignal(0, "", "", 0)
+
+%% Set output dimensions
+%assign outDim = SLibGetCurrentOutputPortDimensions(0, 0) 
+(&%<outDim>)[0] = 1;
+(&%<outDim>)[1] = %<input_value1>;
+
+%% Set output values
+%assign outSig = LibBlockOutputSignal(0, "", "", 0)
+{
+  int i;
+  for (i=1; i<=(%<input_value1>); i++) {
+    (&%<outSig>)[i-1] = i;
+  }
+}
+
+%endfunction

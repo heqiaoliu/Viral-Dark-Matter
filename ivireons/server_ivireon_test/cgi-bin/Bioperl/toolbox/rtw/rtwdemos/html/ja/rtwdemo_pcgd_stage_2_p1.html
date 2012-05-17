@@ -1,0 +1,267 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>データ インターフェイスの設定</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="rtwdemo_pcgd_stage_2_p1.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_pcgd_stage_2_p1">エディターで rtwdemo_pcgd_stage_2_p1.m を開く</a></div><div class="right"><a href="matlab:echodemo rtwdemo_pcgd_stage_2_p1">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>データ インターフェイスの設定</h1><!--introduction--><p><b>概要:</b>生成コード内で信号とパラメーターの指定を記述します。</p><p><b>所要時間: </b>45 分</p><p><b>目的</b></p><p>生成コード内で信号とパラメーターの次の属性について、制御方法を学習します。</p><div><ul><li>名前</li><li>データ型</li><li>データ ストレージ クラス</li></ul></div><p><a href="matlab:RTWDemos.pcgd_open_pcg_model(2,0);"><b>タスク: </b> モデルを開きます。</a></p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">背景データの宣言</a></li><li><a href="#2">Simulink と Stateflow でのデータ制御</a></li><li><a href="#3">新しいデータ オブジェクトの追加</a></li><li><a href="#4">データ オブジェクトの設定</a></li><li><a href="#5">パラメーター データのファイル配置の制御</a></li><li><a href="#6">生成コードでのデータ オブジェクトの有効化</a></li><li><a href="#7">データ型に対するシミュレーションの影響</a></li><li><a href="#8">生成コードのデータ オブジェクトの表示</a></li><li><a href="#9">データ管理</a></li><li><a href="#10">一歩進んだ学習トピック</a></li></ul></div><h2>背景:データの宣言<a name="1"></a></h2><p>ほとんどのプログラミング言語では、使用前にデータと関数を宣言する必要があります。<i></i>宣言により、以下の事項を指定します。</p><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "left">スコープ</td>
+            <td align = "left">データにアクセスできるプログラムの領域</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">持続時間</td>
+            <td align = "left">データがメモリ内に維持されている時間</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">データ型</td>
+            <td align = "left">データに割り当てられるメモリの量</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">初期化</td>
+            <td align = "left">値、メモリのポインター、または NULL</td>
+        </tr>
+    </table>
+</p><p>スコープと持続時間を組み合わせたものがストレージ クラスです。<i></i>初期値を指定しない場合、ほとんどのコンパイラはゼロ値または null ポインターを割り当てます。</p><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b>名前</b></td>
+            <td align = "center"><b>説明</b></td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><tt>double</tt></td>
+            <td align = "left">倍精度浮動小数点</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><tt>single</tt></td>
+            <td align = "left">単精度浮動小数点</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><tt>int8</tt></td>
+            <td align = "left">符号付き 8 ビット整数</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><tt>uint8</tt></td>
+            <td align = "left">符号なし 8 ビット整数</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><tt>int16</tt></td>
+            <td align = "left">符号付き 16 ビット整数</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><tt>uint16</tt></td>
+            <td align = "left">符号なし 16 ビット整数</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><tt>int32</tt></td>
+            <td align = "left">符号付き 32 ビット整数</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><tt>uint32</tt></td>
+            <td align = "left">符号なし 32 ビット整数</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">固定小数点</td>
+            <td align = "left">8 ビット、16 ビット、32 ビット語長</td>
+        </tr>
+        <CAPTION><b>サポートされているデータ型</b></CAPTION>
+    </table>
+    <p></p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b>名前</b></td>
+            <td align = "center"><b>説明</b></td>
+            <td align = "center"><b>サポートされている<br>パラメーター</b></td>
+            <td align = "center"><b>サポートされている<br>信号</b></td>
+            <td align = "center"><b>データ型</b></td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">Const</td>
+            <td align = "left">宣言で <tt>const</tt> 型修飾子を使用する</td>
+            <td align = "center">Y</td>
+            <td align = "center">N</td>
+            <td align = "center">すべて</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">ConstVolatile</td>
+            <td align = "left">宣言で <tt>const volatile</tt> 型修飾子を使用する</td>
+            <td align = "center">Y</td>
+            <td align = "center">N</td>
+            <td align = "center">すべて</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">Volatile</td>
+            <td align = "left">宣言で <tt>volatile</tt> 型修飾子を使用する</td>
+            <td align = "center">Y</td>
+            <td align = "center">Y</td>
+            <td align = "center">すべて</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">ExportToFile</td>
+            <td align = "left">グローバル変数宣言と定義を含む、ユーザー指定の名前を持つファイルを生成してインクルードする</td>
+            <td align = "center">Y</td>
+            <td align = "center">Y</td>
+            <td align = "center">すべて</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">ImportFromFile</td>
+            <td align = "left">グローバル変数宣言を含む、事前定義されたヘッダー ファイルをインクルードする</td>
+            <td align = "center">Y</td>
+            <td align = "center">Y</td>
+            <td align = "center">すべて</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">Exported Global</td>
+            <td align = "left">グローバル スコープの変数を宣言して定義する</td>
+            <td align = "center">Y</td>
+            <td align = "center">Y</td>
+            <td align = "center">すべて</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">Imported Extern</td>
+            <td align = "left">モデルのスコープ外で定義される変数をインポートする</td>
+            <td align = "center">Y</td>
+            <td align = "center">Y</td>
+            <td align = "center">すべて</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">BitField</td>
+            <td align = "left">名前付きのビット フィールドで boolean データを組み込む</td>
+            <td align = "center">Y</td>
+            <td align = "center">Y</td>
+            <td align = "center">boolean</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">Define</td>
+            <td align = "left"><tt>#define</tt> マクロでパラメーターを表す</td>
+            <td align = "center">Y</td>
+            <td align = "center">N</td>
+            <td align = "center">すべて</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">Struct</td>
+            <td align = "left">名前付きの構造体にデータを組み込み、データ セットをカプセル化する</td>
+            <td align = "center">Y</td>
+            <td align = "center">Y</td>
+            <td align = "center">すべて</td>
+        </tr>
+        <CAPTION><b>サポートされているストレージ クラス</b></CAPTION>
+    </table>
+</p><h2>Simulink と Stateflow でのデータ制御<a name="2"></a></h2><p>Simulink&reg; と Stateflow&reg; では、<i></i><i></i>データ オブジェクトと直接指定の 2 つの方法でデータを宣言できます。このデモではデータ オブジェクトの方法を使用します。いずれの方法でもデータ型とストレージ クラスを完全に制御することができます。また 1 つのモデル内で 2 つの方法を組み合わせることもできます。</p><p>MATLAB&reg; と Simulink の環境ではデータ オブジェクトをさまざまな方法で使用することができます。デモではデータ オブジェクトの 3 つのタイプに焦点を合わせて説明します。</p><div><ul><li>信号</li><li>パラメーター</li><li>バス</li></ul></div><p>コード ジェネレーターは MATLAB ベース ワークスペースからのデータ オブジェクトを使用します。MATLAB コマンド ウインドウでコマンドを入力するか、モデル エクスプローラーを使用してデータ オブジェクトを作成し、検査することができます。</p><p>次の例は、Simulink 信号オブジェクト <tt>pos_cmd_one</tt> の定義を示しています。</p><p><img vspace="5" hspace="5" src="../data_objects_MATLAB.jpg"></p><p>モデル エクスプローラーを開き、デモ モデルの指定したデータ オブジェクトの詳細を表示することができます。</p><p>次の表でそれぞれのオブジェクト名をクリックしてください。</p><p>
+    <table border = "1">
+        <tr valign = "bottom">
+            <td align = "center"> </td>
+            <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('pos_cmd_one','',2)"><tt>pos_cmd_one</tt></a></td>
+            <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('pos_rqst','',2)"><tt>pos_rqst</tt></a></td>
+            <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('P_InErrMap','',2)"><tt>P_InErrMap</tt></a></td>
+            <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('ThrotComm','',2)"><tt>ThrotComm</tt><sup>(1)</sup></a></td>
+            <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('ThrottleCommands','',2)"><tt>ThrottleCommands</tt><sup>(1)</sup></a></td>
+        </tr>
+        <tr valign = "top">
+            <td><b>説明</b></td>
+            <td align = "left">最上位出力</td>
+            <td align = "left">最上位入力</td>
+            <td align = "left">キャリブレーション パラメーター</td>
+            <td align = "left">最上位出力構造体</td>
+            <td align = "left">バス定義</td>
+        </tr>
+        <tr valign = "top">
+            <td><b>データ型</b></td>
+            <td align = "left">倍精度</td>
+            <td align = "left">倍精度</td>
+            <td align = "left">自動</td>
+            <td align = "left">自動</td>
+            <td align = "left">Struct</td>
+        </tr>
+        <tr valign = "top">
+            <td><b>ストレージ クラス</b></td>
+            <td align = "left">Exported Global</td>
+            <td align = "left">Imported Extern Pointer</td>
+            <td align = "left">定数</td>
+            <td align = "left">Exported Global</td>
+            <td align = "v">なし</td>
+        </tr>
+    </table>
+</p><p>(1) <tt>ThrottleCommands</tt> は Simulink バス オブジェクトを定義し、<tt>ThrotComm</tt> はバスのインスタンス化です。バスが非バーチャル バスの場合、信号は C コード内に構造体を生成します。</p><p>C コードの場合と同様に、バス定義 (<tt>ThrottleCommands</tt>) を使用して構造体の複数のインスタンスをインスタンス化できます。下記のモデル ダイアグラムでは、バス オブジェクトは中心に点線のある幅広線で表示されています。</p><p><img vspace="5" hspace="5" src="../BusObjectLine.jpg"></p><p>次の図は信号名 <tt>pos_rqst</tt> をクリックした場合の、モデル エクスプローラーの表示を示します。</p><p><img vspace="5" hspace="5" src="../show_storage_class_pos_rqst.jpg"></p><p>データ オブジェクトにはアクティブ フィールドと記述的フィールドが混在しています。<i></i><i></i>アクティブ フィールドはシミュレーションまたはコード生成に影響します。記述的フィールドはシミュレーションまたはコード生成に影響しませんが、データ ディクショナリやモデル チェック ツールと共に使用されます。</p><p><b>アクティブ フィールド</b></p><div><ul><li>データ型</li><li>ストレージ クラス</li><li>値 (パラメーター)</li><li>初期値 (信号)</li><li>エイリアス (生成コード内で別の名前を定義)</li><li>次元 (パラメーター用に継承)</li><li>複雑度 (パラメーター用に継承)</li></ul></div><p><b>記述的フィールド</b></p><div><ul><li>最小値</li><li>最大値</li><li>単位</li><li>説明</li></ul></div><h2>新しいデータ オブジェクトの追加<a name="3"></a></h2><p>名前付きの信号、ステート、パラメーター用にデータ オブジェクトを作成することができます。データ オブジェクトを構造と関連付けるには、構造に名前が付いていなければなりません。</p><p>データ オブジェクト ウィザードは目的とする構造を検索してそのデータ オブジェクトを作成するツールです。デモ モデルにはデータ オブジェクトと関連付けされていない 2 つの信号、<tt>fbk_1</tt> と <tt>pos_cmd_two</tt> が含まれています。</p><p>信号を検索し、信号用のデータ オブジェクトを作成するには:</p><p>1. <a href="matlab:dataobjectwizard('rtwdemo_PCG_Eval_P2')"><b>タスク: </b> データ オブジェクト ウィザードを開きます。</a></p><p><img vspace="5" hspace="5" src="../data_object_wiz.jpg"></p><p>2. <b></b>[検索] をクリックして構造の候補を検索します。</p><p>3. <b></b>[すべてチェック] をクリックしてすべての候補を選択します。</p><p>4. <b></b>[パッケージを適用] をクリックしてデータ オブジェクト用の Simulink パッケージを適用します。</p><p>5. <b></b>[作成] をクリックしてデータ オブジェクトを作成します。</p><h2>データ オブジェクトの設定<a name="4"></a></h2><p>次のステップではデータ型とストレージ クラスを設定します。</p><p>1. 次の表内の名前をクリックしてデータ オブジェクトを編集します。</p><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b>データ オブジェクト</b></td>
+            <td align = "center"><b>データ型</b></td>
+            <td align = "center"><b>ストレージ クラス</b></td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_open_dialog('fbk_1','',2)"><tt>Edit fbk_1</tt></a></td>
+            <td align = "left">倍精度</td>
+            <td align = "left">Imported Extern</td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_open_dialog('pos_cmd_two','',2)"><tt>Edit pos_cmd_two</tt></a></td>
+            <td align = "left">倍精度</td>
+            <td align = "left">Exported Global</td>
+        </tr>
+    </table>
+</p><p>名前をクリックするとモデル エクスプローラーが開き、ベース ワークスペースが表示されます。</p><p>2. 上の表にリストされた各オブジェクトについて、[コンテンツ] ペインの信号名をクリックします。<b></b></p><p>3. 表の設定と一致するよう [データ] ペインのフィールド設定を変更します。<b></b></p><p><b>メモ:</b>2 つの信号のいずれかでモデル エクスプローラーが開かない場合は、「新しいデータ オブジェクトの追加」<b></b>のステップを繰り返してください。</p><h2>パラメーター データのファイル配置の制御<a name="5"></a></h2><p>Real-Time Workshop&reg; Embedded Coder™ を使用して、パラメーターや定数が定義されているファイルを制御します。デモ モデルでは、すべてのパラメーターはファイル <tt>eval_data.c</tt> に記述されています。</p><p>パラメーターと定数の定義の配置を変更するには、モデル設定で適切なデータ配置オプションを設定します。モデル エクスプローラーで、<b></b>[設定]、[Real-Time Workshop]、[データ配置] を選択し、オプションを設定します。このデモでは、モデルは設定済みです。</p><p>1. <a href="matlab:RTWDemos.pcgd_open_dialog('RTW','DAT',2)"><b>タスク: </b>[コンフィギュレーション パラメーター] ダイアログの <b></b>[データ配置] ペインを開きます。</a></p><p>2. 次の図に示すように、<b></b>[データ配置] ペインにデータを入力します。</p><p><img vspace="5" hspace="5" src="../DataPlacmentDialog.jpg"></p><p><tt>eval_data.c</tt> 用に生成されたコードは次のとおりです。</p><p><img vspace="5" hspace="5" src="../eval_data_file.jpg"></p><h2>生成コードでのデータ オブジェクトの有効化<a name="6"></a></h2><p>次のステップでは、作成したデータ オブジェクトを生成コードで表示します。生成コードでパラメーターを有効にするには、モデル設定でインライン パラメーター オプション<b></b>を設定します。モデル エクスプローラーで、このオプションを次のように設定します。</p><p>
+<b>[設定]、[最適化]、[シミュレーションとコード生成]、[インライン パラメーター]</b>
+</p><p><img vspace="5" hspace="5" src="../Sim_And_Code_Gen_Optimizations.jpg"></p><p><a href="matlab:RTWDemos.pcgd_open_dialog('OPT','',2)"><b>タスク: </b><b></b>インライン パラメーター オプションを設定します。</a></p><p>生成コードで信号を有効にするには</p><p>1. 信号線を右クリックします。</p><p>2. コンテキスト メニューから<b></b> [信号プロパティ] を選択します。[信号プロパティ] ダイアログ ボックスが表示されます。</p><p>3. <b></b>[信号名を Simulink の信号オブジェクトに関連付ける] オプションが選択されていることを確認してください。</p><p><img vspace="5" hspace="5" src="../signal_object.jpg"></p><p>信号をデータ オブジェクトと個別に関連付けることも、MATLAB コマンド ウィンドウで <tt>disableimplicitsignalresolution</tt> と入力してすべての信号をモデル内で同時に有効にすることもできます。</p><p><a href="matlab:disableimplicitsignalresolution(pcgDemoData.Models{2})"><b>タスク: </b> データ オブジェクトと関連付けられたすべての信号を有効にします。</a></p><h2>データ型に対するシミュレーションの影響<a name="7"></a></h2><p>デモ モデルでは、すべてのデータ型は <tt>double</tt> に設定されています。Simulink は <tt>double</tt> データ型をシミュレーションに使用するため、生成コードを実行する場合にモデルの動作に変化はありません。これを検証するには、テスト ハーネス モデルを実行します。テスト ハーネス モデルは自動的に更新され、rtwdemo_PCG_Eval_P2 モデルがインクルードされます。これが、テスト ハーネスに生じる唯一の変化です。</p><p><a href="matlab:RTWDemos.pcgd_open_pcg_model(2,1);"><b>タスク: </b> テスト ハーネスを開きます。</a></p><p><a href="matlab:RTWDemos.pcgd_runTestHarn(1,2)"><b>タスク: </b> テスト ハーネスを実行します。</a></p><p>結果のプロット図は、モデルのゴールデン バージョンと計算バージョンの差がゼロであることを示しています。</p><p><img vspace="5" hspace="5" src="../FirstPassTest.jpg"></p><h2>生成コードのデータ オブジェクトの表示<a name="8"></a></h2><p>ファイル <tt>rtwdemo_PCG_Eval_P2.c</tt> を開き、データ オブジェクトの使用で生成コードがどのように変化したかを見てみましょう。</p><p><a href="matlab:RTWDemos.pcgd_buildDemo(2,0)"><b>タスク: </b> モデルのコードを生成します。</a></p><p>次の表内の名前をクリックして、生成コードを表示します。</p><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b>ファイル</td>
+            <td align = "center"><b>定義</b></td>
+            <td align = "center"><b>注意</b></td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_showSection(2,'func');"> <tt>rtwdemo_PCG_Eval_P2.c</tt></a></td>
+            <td align = "left">ステップと初期化関数を提供する</td>
+            <td align = "left">定義されたデータ オブジェクトを使用する</td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_showSection(2,'eval_data_c');"><tt>eval_data.c</tt></a></td>
+            <td align = "left">定義されたパラメーターに値を割り当てる</td>
+            <td align = "left">特別に定義されたファイル名を使用する</td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_showSection(2,'eval_data_h');"><tt>eval_data.h</tt></a></td>
+            <td align = "left">定義されたパラメーターに対して外部定義を提供する</td>
+            <td align = "left">特別に定義されたファイル名を使用する</td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_showSection(2,'ert_main');"><tt>ert_main.c</tt></a></td>
+            <td align = "left">スケジューリング機能を提供する</td>
+            <td align = "left">変更なし</td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_showSection(2,'data_def');"><tt>rtwdemo_PCG_Eval_P2.h</tt></a></td>
+            <td align = "left">データ構造を定義する</td>
+            <td align = "left">このファイルからいくつかのパラメーターを <tt>user_data.h</tt> にシフトしたデータ オブジェクトを使用する</td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_showSection(2,'private');"><tt>PCG_Eval_p2_private.h</tt></a></td>
+            <td align = "left">生成した関数用にプライベート (ローカル) データを定義する</td>
+            <td align = "left"><tt>eval_data</tt> で定義されたオブジェクトが削除された</td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_showSection(2,'func_types');"><tt>rtwdemo_PCG_Eval_P2_types.h</tt></a></td>
+            <td align = "left">モデル データ構造を定義する</td>
+            <td align = "left">変更なし</td>
+        </tr>
+        <tr valign = "top">
+            <td><a href="matlab:RTWDemos.pcgd_showSection(2,'rtwtypes');"><tt>rtwtypes.h</tt></a></td>
+            <td align = "left">Real-Time Workshop で定義されたデータ型へのマッピングを提供する</td>
+            <td align = "left">外部システムとの統合に使用される</td>
+        </tr>
+        <CAPTION><b>rtwdemo_PCG_Eval_P2 用に生成されたファイル</b></CAPTION>
+    </table>
+</p><p>次の図は、データ オブジェクトを使用する前に <tt>rtwdemo_PCG_Eval_P2.c</tt> で表示される、関数 <tt>rtwdemo_PCG_Eval_P2_step</tt> 用のコードを示します。</p><p><img vspace="5" hspace="5" src="../wo_data_objects.jpg"></p><p>下の図はデータ オブジェクトを使用した場合に <tt>rtwdemo_PCG_Eval_P2.c</tt> に表示されるコードを示しています。</p><p><img vspace="5" hspace="5" src="../WithDataObjects.jpg"></p><p>この図を見ると、大半の Real-Time Workshop データ構造がユーザー定義のデータ オブジェクトに置き換えられたことがわかります。ローカル変数 <tt>rtb_Sum2</tt> と状態変数 <tt>rtwdemo_PCG_Eval_P2_DWork.Discrete_Time_Integrator1_DSAT</tt> は Real-Time Workshop データ構造を使用しています。</p><h2>データ管理<a name="9"></a></h2><p>データ オブジェクトは MATLAB ベース ワークスペース内に存在します。それらはモデルから別のファイルに保存されています。データを手動で保存するには、MATLAB コマンド ウィンドウに <tt>save</tt> と入力します。</p><p>データをモデルと区別しておくと、多くの利点があります。</p><p>
+    <ul>
+        <li>1 つのモデル、複数のデータ セット
+        <ul>
+            <li>異なるデータ型を使用してターゲット ハードウェアを変更する (たとえば、浮動小数点と固定小数点ターゲット)
+            <li>異なるパラメーター値を使用して制御アルゴリズムの動作を変更する (たとえば、キャリブレーション値の異なる再使用可能なコンポーネント)
+        </ul>
+        <li>複数のモデル、1 つのデータ セット
+        <ul>
+            <li>システム内の Simulink モデル間でデータを共有する
+            <li>プロジェクト間でデータを共有する (たとえば、トランスミッション制御、エンジン制御、ホイール制御ですべて同じメッセージ データ セットを使用する可能性がある)
+        </ul>
+    </ul>
+</p><h2>一歩進んだ学習トピック<a name="10"></a></h2><div><ul><li><a href="matlab:helpview([docroot,'/toolbox/simulink/helptargets.map'],'sl_data');">固定小数点データ、データ オブジェクト、およびデータ クラスを含むデータ型</a></li><li><a href="matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'custom_storage_classes');">カスタム ストレージ クラス</a></li><li><a href="matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'data_placement');">データ定義と宣言のファイル配置管理</a></li></ul></div><p class="footer">Copyright 2007-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Configuring the Data Interface % *Overview:* Covers the specification of signals and parameters % in the generated code. % % *Time:* 45 minutes % % *Goals* % % Learn how to control the following attributes of signals and parameters  % in the generated code: % % * Name % * Data type % * Data storage class % % <matlab:RTWDemos.pcgd_open_pcg_model(2,0); *Task:* Open the model.>  %% Background: Declaration of Data % Most programming languages require that you _declare_ data and functions % before using them. The declaration specifies:  %  % <html> %     <table border = "1"> %         <tr valign = "top"> %             <td align = "left">Scope</td> %             <td align = "left">The region of the program that has access to the data</td> %         </tr>     %         <tr valign = "top"> %             <td align = "left">Duration</td> %             <td align = "left">The period during which the data is resident in memory</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">Data type</td> %             <td align = "left">The amount of memory allocated for the data</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">Initialization</td> %             <td align = "left">A value, a pointer to memory, or NULL</td> %         </tr> %     </table> % </html> % % The combination of scope and duration is the _storage class_.  If you do not % provide an initial value, most compilers assign a zero value or a null pointer. % % <html> %     <table border = "1"> %         <tr valign = "top"> %             <td align = "center"><b>Name</b></td> %             <td align = "center"><b>Description</b></td> %         </tr>     %         <tr valign = "top"> %             <td align = "left"><tt>double</tt></td> %             <td align = "left">Double-precision floating point</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><tt>single</tt></td> %             <td align = "left">Single-precision floating point</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><tt>int8</tt></td> %             <td align = "left">Signed 8-bit integer</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><tt>uint8</tt></td> %             <td align = "left">Unsigned 8-bit integer</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><tt>int16</tt></td> %             <td align = "left">Signed 16 bit integer</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><tt>uint16</tt></td> %             <td align = "left">Unsigned 16 bit integer</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><tt>int32</tt></td> %             <td align = "left">Signed 32 bit integer</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><tt>uint32</tt></td> %             <td align = "left">Unsigned 32 bit integer</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">Fixed Point</td> %             <td align = "left">8-, 16-, 32-bit word lengths</td> %         </tr> %         <CAPTION><b>Supported Data Types</b></CAPTION> %     </table> %     <p></p> %     <table border = "1"> %         <tr valign = "top"> %             <td align = "center"><b>Name</b></td> %             <td align = "center"><b>Description</b></td> %             <td align = "center"><b>Parameters<br>Supported</b></td> %             <td align = "center"><b>Signals<br>Supported</b></td> %             <td align = "center"><b>Data Types</b></td> %         </tr>     %         <tr valign = "top"> %             <td align = "left">Const</td> %             <td align = "left">Use <tt>const</tt> type qualifier in declaration</td> %             <td align = "center">Y</td> %             <td align = "center">N</td> %             <td align = "center">All</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">ConstVolatile</td> %             <td align = "left">Use <tt>const volatile</tt> type qualifier in declaration</td> %             <td align = "center">Y</td> %             <td align = "center">N</td> %             <td align = "center">All</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">Volatile</td> %             <td align = "left">Use <tt>volatile</tt> type qualifier in declaration</td> %             <td align = "center">Y</td> %             <td align = "center">Y</td> %             <td align = "center">All</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">ExportToFile</td> %             <td align = "left">Generate and include files, with user-specified name, containing global variable declarations and definitions</td> %             <td align = "center">Y</td> %             <td align = "center">Y</td> %             <td align = "center">All</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">ImportFromFile</td> %             <td align = "left">Include predefined header files containing global variable declarations</td> %             <td align = "center">Y</td> %             <td align = "center">Y</td> %             <td align = "center">All</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">Exported Global</td> %             <td align = "left">Declare and define variables of global scope</td> %             <td align = "center">Y</td> %             <td align = "center">Y</td> %             <td align = "center">All</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">Imported Extern</td> %             <td align = "left">Import a variable that is defined outside of the scope of the model</td> %             <td align = "center">Y</td> %             <td align = "center">Y</td> %             <td align = "center">All</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">BitField</td> %             <td align = "left">Embed boolean data in a named bit field</td> %             <td align = "center">Y</td> %             <td align = "center">Y</td> %             <td align = "center">Boolean</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">Define</td> %             <td align = "left">Represent parameters with a <tt>#define</tt> macro</td> %             <td align = "center">Y</td> %             <td align = "center">N</td> %             <td align = "center">All</td> %         </tr> %         <tr valign = "top"> %             <td align = "left">Struct</td> %             <td align = "left">Embed data in a named struct to encapsulate sets of data</td> %             <td align = "center">Y</td> %             <td align = "center">Y</td> %             <td align = "center">All</td> %         </tr> %         <CAPTION><b>Supported Storage Classes</b></CAPTION> %     </table> % </html> % %% Controlling Data in Simulink and Stateflow % Two methods are available for declaring data in Simulink(R) and Stateflow(R): _data % objects_ and _direct specification_.  This demo uses the data object % method.  Both methods allow full control over the data type and storage % class.  You can mix the two methods in a single model. % % You can use data objects in a variety of ways in the MATLAB(R) and Simulink % environment.  The demo focuses on three types of data objects. % % * Signal % * Parameter % * Bus % % The code generator uses data objects from the MATLAB base workspace.  You % can create and inspect them by entering commands in the MATLAB Command Window % or by using the Model Explorer.  % % The following example shows the definition of Simulink signal object % |pos_cmd_one|: % % <html><img vspace="5" hspace="5" src="../data_objects_MATLAB.jpg"></html> %  % You can open the Model Explorer and display details about a specific data % object in the demo model. % % Click each object name in the following table: % % <html> %     <table border = "1"> %         <tr valign = "bottom"> %             <td align = "center"> </td> %             <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('pos_cmd_one','',2)"><tt>pos_cmd_one</tt></a></td> %             <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('pos_rqst','',2)"><tt>pos_rqst</tt></a></td> %             <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('P_InErrMap','',2)"><tt>P_InErrMap</tt></a></td> %             <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('ThrotComm','',2)"><tt>ThrotComm</tt><sup>(1)</sup></a></td> %             <td align = "center"><a href="matlab:RTWDemos.pcgd_open_dialog('ThrottleCommands','',2)"><tt>ThrottleCommands</tt><sup>(1)</sup></a></td> %         </tr>     %         <tr valign = "top"> %             <td><b>Description</b></td> %             <td align = "left">Top-level output</td> %             <td align = "left">Top-level input</td> %             <td align = "left">Calibration parameter</td> %             <td align = "left">Top-level output structure</td> %             <td align = "left">Bus definition</td> %         </tr> %         <tr valign = "top"> %             <td><b>Data Type</b></td> %             <td align = "left">Double</td> %             <td align = "left">Double</td> %             <td align = "left">Auto</td> %             <td align = "left">Auto</td> %             <td align = "left">Struct</td> %         </tr> %         <tr valign = "top"> %             <td><b>Storage Class</b></td> %             <td align = "left">Exported Global</td> %             <td align = "left">Imported Extern Pointer</td> %             <td align = "left">Constant</td> %             <td align = "left">Exported Global</td> %             <td align = "v">None</td> %         </tr> %     </table> % </html> % % (1) |ThrottleCommands| defines a Simulink Bus object,  % |ThrotComm| is the instantiation of the bus.  If the bus is a nonvirtual  % bus, the signal will generate a structure in the C code.  %  % As in C, you can use a bus definition (|ThrottleCommands|) to instantiate  % multiple instances of the structure.  In a model diagram, a bus object  % appears as a wide line with central dashes, as shown below.  % % <html><img vspace="5" hspace="5" src="../BusObjectLine.jpg"></html> % % The following figure shows the Model Explorer display if you click the % signal name |pos_rqst|: % % <html><img vspace="5" hspace="5" src="../show_storage_class_pos_rqst.jpg"></html> % % A data object has a mixture of _active_ and _descriptive_ fields.  Active % fields affect simulation or code generation.  Descriptive fields do not % affect simulation or code generation, but are used with data % dictionaries and model-checking tools.   % % *Active Fields* % % * Data type  % * Storage class  % * Value (parameters) % * Initial value (signals) % * Alias (define a different name in the generated code) % * Dimension (inherited for parameters) % * Complexity (inherited for parameters) % % *Descriptive Fields* % % * Minimum % * Maximum % * Units % * Description % %% Adding New Data Objects % You can create data objects for named signals, states, and parameters. % To associate a data object with a construct, the construct must have a % name.  % % The Data Object Wizard is a tool that finds constructs for which you % can create data objects, then creates the objects for you.  The demo  % model includes two signals that are not associated with data objects: % |fbk_1| and |pos_cmd_two|. % % To find the signals and create data objects for them: % % 1. <matlab:dataobjectwizard('rtwdemo_PCG_Eval_P2') *Task:* Open the Data Object Wizard.>  % % <html><img vspace="5" hspace="5" src="../data_object_wiz.jpg"></html>  % % 2. Click *Find* to find candidate constructs.  % % 3. Click *Check All* to select all candidates. % % 4. Click *Apply Packages* to apply the Simulink package for the data % objects. % % 5. Click *Create* to create the data objects. % %% Configuring Data Objects % The next step is to set the data type and storage class. %  % 1.Click the names in the following table to edit the Data Objects: % % <html> %     <table border = "1"> %         <tr valign = "top"> %             <td align = "center"><b>Data Object</b></td> %             <td align = "center"><b>Data Type</b></td> %             <td align = "center"><b>Storage Class</b></td> %         </tr>     %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_open_dialog('fbk_1','',2)"><tt>Edit fbk_1</tt></a></td> %             <td align = "left">Double</td> %             <td align = "left">Imported Extern</td> %         </tr> %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_open_dialog('pos_cmd_two','',2)"><tt>Edit pos_cmd_two</tt></a></td> %             <td align = "left">Double</td> %             <td align = "left">Exported Global</td> %         </tr> %     </table> % </html> % % Clicking a name opens the Model Explorer to show the base workspace.  % % 2. For each object listed in the preceding table, click the signal name in % the *Contents* pane. % % 3. Change the field settings in the *Data* pane to match those in the table.  % % *Note:* If the Model Explorer does not open for either of the two signals, % repeat the steps in *Adding New Data Objects*. % %% Controlling File Placement of Parameter Data % Real-Time Workshop(R) Embedded Coder(TM) allows you to control the files in which the % parameters and constants are defined.  For the demo model, all parameters % were written to the file |eval_data.c|.   % % To change the placement of parameter and constant definitions, set the appropriate % data placement options for the model configuration. Within the  % Model Explorer, you set the options at *Configuration > Real-Time % Workshop > Data Placement*.  For the demo, the model has already been % configured. % % 1. <matlab:RTWDemos.pcgd_open_dialog('RTW','DAT',2) *Task:* Open the *Data Placement* pane of the Configuration Parameters dialog.> %  % 2. Enter data in the *Data Placement* pane as shown in the following figure: % % <html><img vspace="5" hspace="5" src="../DataPlacmentDialog.jpg"></html> % % The generated code that results for |eval_data.c| is shown below. % % <html><img vspace="5" hspace="5" src="../eval_data_file.jpg"></html> % %% Enabling Data Objects in Generated Code % The next step is to ensure that the data objects you have created appear  % in the generated code. To enable parameters in generated code, set the *Inline parameters*  % option for the model configuration.  In the Model Explorer, this option is:  % % <html> % <b>Configuration &#62 Optimizations &#62 Simulation and code generation % &#62 Inline parameters</b> % </html> % % <html><img vspace="5" hspace="5" src="../Sim_And_Code_Gen_Optimizations.jpg"></html> % % <matlab:RTWDemos.pcgd_open_dialog('OPT','',2) *Task:* Set the *Inline parameters* option.> % % To enable a signal in generated code:  %  % 1. Right-click the signal line. % % 2. From the context menu, select *Signal Properties*.  A Signal Properties dialog % box appears.  % % 3. Make sure the option *Signal name must resolve to a Simulink signal % object* is selected. % % <html><img vspace="5" hspace="5" src="../signal_object.jpg"></html> % % You can enable signals associated with data objects individually, or you  % can enable all such signals in a model at once by entering   % |disableimplicitsignalresolution| in the MATLAB Command Window. % % <matlab:disableimplicitsignalresolution(pcgDemoData.Models{2}) *Task:* Enable all signals with associated data objects.> % %% Effects of Simulation on Data Typing % For the demo model, all data types are set to |double|. Since Simulink uses  % the |double| data type for simulation, no changes are expected in the % model behavior when you run the generated code. To % verify this, run the test harness model.  The test harness model is % automatically updated to include the rtwdemo_PCG_Eval_P2 model. That is the only  % change made to the test harness. % % <matlab:RTWDemos.pcgd_open_pcg_model(2,1); *Task:* Open the test harness.>   % % <matlab:RTWDemos.pcgd_runTestHarn(1,2) *Task:* Run the test harness.> % % The resulting plot shows that the difference between the golden and simulated  % versions of the model remains zero. % % <html><img vspace="5" hspace="5" src="../FirstPassTest.jpg"></html> % %% Viewing Data Objects in Generated Code % Now view the file |rtwdemo_PCG_Eval_P2.c| to see how the use of data objects changed  % the generated code. % % <matlab:RTWDemos.pcgd_buildDemo(2,0) *Task:* Generate code for the model.> % % Click the file names in the following table to view generated codes: %  % <html> %     <table border = "1"> %         <tr valign = "top"> %             <td align = "center"><b>File</td> %             <td align = "center"><b>Definition</b></td> %             <td align = "center"><b>Notes</b></td> %         </tr>     %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_showSection(2,'func');"> <tt>rtwdemo_PCG_Eval_P2.c</tt></a></td> %             <td align = "left">Provides step and initialization function</td> %             <td align = "left">Uses the defined data objects</td> %         </tr> %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_showSection(2,'eval_data_c');"><tt>eval_data.c</tt></a></td> %             <td align = "left">Assigns values to the defined parameters</td> %             <td align = "left">Has the file name specifically defined</td> %         </tr> %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_showSection(2,'eval_data_h');"><tt>eval_data.h</tt></a></td> %             <td align = "left">Provides extern definitions to the defined parameters</td> %             <td align = "left">Has the file name specifically defined</td> %         </tr> %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_showSection(2,'ert_main');"><tt>ert_main.c</tt></a></td> %             <td align = "left">Provides scheduling functions</td> %             <td align = "left">No change</td> %         </tr> %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_showSection(2,'data_def');"><tt>rtwdemo_PCG_Eval_P2.h</tt></a></td> %             <td align = "left">Defines data structures</td> %             <td align = "left">Using data objects shifted some parameters out of this file into <tt>user_data.h</tt></td> %         </tr> %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_showSection(2,'private');"><tt>PCG_Eval_p2_private.h</tt></a></td> %             <td align = "left">Defines private (local) data for the generated functions</td> %             <td align = "left">Objects now defined in <tt>eval_data</tt> were removed</td> %         </tr> %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_showSection(2,'func_types');"><tt>rtwdemo_PCG_Eval_P2_types.h</tt></a></td> %             <td align = "left">Defines the model data structure</td> %             <td align = "left">No change</td> %         </tr> %         <tr valign = "top"> %             <td><a href="matlab:RTWDemos.pcgd_showSection(2,'rtwtypes');"><tt>rtwtypes.h</tt></a></td> %             <td align = "left">Provides mapping to data types defined by Real-Time Workshop</td> %             <td align = "left">Used for integration with external systems</td> %         </tr> %         <CAPTION><b>Files generated for rtwdemo_PCG_Eval_P2</b></CAPTION> %     </table> % </html> % % The following figure shows the code for function |rtwdemo_PCG_Eval_P2_step| as it appears % in |rtwdemo_PCG_Eval_P2.c| before the use of data objects: %  % <html><img vspace="5" hspace="5" src="../wo_data_objects.jpg"></html> % % The figure below shows the code as it appears in |rtwdemo_PCG_Eval_P2.c| with % data objects. % % <html><img vspace="5" hspace="5" src="../WithDataObjects.jpg"></html> % % This figure shows that most of the Real-Time Workshop data structures have been  % replaced with user-defined data objects.  The local variable |rtb_Sum2| and the  % state variable |rtwdemo_PCG_Eval_P2_DWork.Discrete_Time_Integrator1_DSAT| % still use the Real-Time Workshop data structures.   % %% Data Management % Data objects exist in the MATLAB base workspace. They are  % saved in a separate file from the model.   % To save the data manually, enter |save| in the MATLAB Command Window. % % The separation of data from the model provides many benefits.  % % <html> %     <ul> %         <li>One model, multiple data sets %         <ul> %             <li>Use of different data types to change the targeted   %                   hardware (for example, for floating-point and fixed-point targets) %             <li>Use of different parameter values to change  %                   the behavior of the control algorithm (for example, for reusable components %                   with different calibration values) %         </ul> %         <li>Multiple models, one data set %         <ul> %             <li>Sharing of data between Simulink models in a system %             <li>Sharing of data between projects (for example,  %                   transmission, engine, and wheel controllers might all use the same CAN %                   message data set) %         </ul> %     </ul> % </html> % %% Further Study Topics % % * <matlab:helpview([docroot,'/toolbox/simulink/helptargets.map'],'sl_data'); Data types, including fixed-point data, data objects, and data classes> % * <matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'custom_storage_classes'); Custom storage classes> % * <matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'data_placement'); Managing file placement of data definitions and declarations> % %   Copyright 2007-2008 The MathWorks, Inc.  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

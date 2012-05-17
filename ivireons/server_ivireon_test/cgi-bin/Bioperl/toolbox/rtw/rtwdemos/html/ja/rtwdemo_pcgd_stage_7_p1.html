@@ -1,0 +1,91 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>生成したコードの評価</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="rtwdemo_pcgd_stage_7_p1.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_pcgd_stage_7_p1">エディターで rtwdemo_pcgd_stage_7_p1.m を開く</a></div><div class="right"><a href="matlab:echodemo rtwdemo_pcgd_stage_7_p1">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>生成したコードの評価</h1><!--introduction--><p><b>概要:</b> 生成したコードのビルド特性を確認します。いくつかのモデル設定用に RAM/ROM データを提供します。</p><p><b>所要時間: </b>15 分</p><p><b>目的</b></p><p>理解する内容は次のとおりです。</p><div><ul><li>RAM/ROM メトリックに対する設定の影響の度合い</li></ul></div><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">コード評価に関する背景</a></li><li><a href="#2">コンパイラ情報</a></li><li><a href="#3">コード メトリックの表示</a></li><li><a href="#4">ビルド オプション設定</a></li><li><a href="#5">設定 1: 再利用可能な関数データ型「倍精度」</a></li><li><a href="#6">設定 2: 再利用可能な関数データ型「単精度」</a></li><li><a href="#7">設定 3: 再利用不可能な関数データ型「単精度」</a></li></ul></div><h2>コード評価に関する背景<a name="1"></a></h2><p>生成したコードは、<i></i> <i></i>実行速度とメモリ使用量という 2 つのメトリックに基づいて評価されます。常にではありませんが、しばしば実行速度とメモリ使用量の間にはトレードオフの関係が見られます。実行速度を上げようとすると多くのメモリを必要とするからです。メモリ使用量はさらに ROM (Read-only memory) と RAM (Random access memory) に分類されます。</p><p>RAM の使用と ROM の使用の間にもトレードオフがあります。</p><div><ul><li>RAM のデータへのアクセスは、ROM のデータへのアクセスよりも高速です。</li><li>実行可能ファイルとデータは ROM に格納しなければなりません。なぜなら、電源のオン/オフで RAM のデータは失われるからです。</li></ul></div><p>このモジュールでは、メモリ要件を関数とデータ コンポーネントに分けて説明します。実行速度の評価は行っていません。</p><h2>コンパイラ情報<a name="2"></a></h2><p>この評価には Freescale CodeWarrior を使用しました。コンパイラの詳細は次のとおりです。</p><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b>コンパイラ</b></td>
+            <td align = "center"><b>バージョン</b></td>
+            <td align = "center"><b>ターゲット プロセッサー</b></td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left">Freescale CodeWarrior </td>
+            <td align = "left">v5.5.1.1430</td>
+            <td align = "left">Power PC 565</td>
+        </tr>
+    </table>
+</p><h2>コード メトリックの表示<a name="3"></a></h2><p><b>「生成したコードを外部環境に統合」</b>と<b>「生成したコードのテスト」</b>で説明したように、生成したコードにはユーティリティ関数の使用が必要になります。ユーティリティ関数には固定オーバーヘッドがあるため、そのメモリ要件は 1 回だけのものです。このため、このモジュールのデータは以下の用途に関するメモリ使用量を表します。</p><div><ul><li>アルゴリズム: Simulink&reg; ブロック線図から生成された C コードとデータ定義関数</li><li>ユーティリティ: Real-Time Workshop&reg; ライブラリ ソースの一部である関数</li><li>完全: アルゴリズムとユーティリティの合計</li></ul></div><h2>ビルド オプション設定<a name="4"></a></h2><p>3 つの評価にはすべて同じ設定オプションを使用しています。Freescale CodeWarrior は、メモリ使用量を最小限に抑え、使用可能なすべての最適化を適用するように設定しました。</p><p><img vspace="5" hspace="5" src="../CodeWarrior_Small_Full_Opt.jpg"></p><h2>設定 1: 再利用可能な関数データ型「倍精度」<a name="5"></a></h2><div><ul><li><b>ソース ファイル:</b> <tt>PCG_Eval_File_1.zip</tt></li><li><b>データ型:</b> すべて倍精度</li><li><b>インクルードしたデータ:</b> ビルドに必要なすべてのデータをプロジェクトにインクルード (<tt>pos_rqst</tt>、<tt>fbk_1</tt>、<tt>fbk_2</tt> を <tt>extern</tt> で定義してインクルード)</li><li><b>メイン関数:</b> <b>「生成したコードを外部環境に統合」</b>モジュールの <tt>example_main</tt> を修正したバージョン</li><li><b>関数呼び出し方法:</b> PI コントローラー用の再利用可能な関数</li></ul></div><p><img vspace="5" hspace="5" src="../CodeWarrior_P4_Data_Details.jpg"></p><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b> </b></td>
+            <td align = "center"><b>関数</b></td>
+            <td align = "center"><b>データ</b></td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><b>完全</b></td>
+            <td align = "center">1764 バイト</td>
+            <td align = "center"> 589 バイト</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><b>アルゴリズム</b></td>
+            <td align = "center">1172 バイト</td>
+            <td align = "center"> 549 バイト</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><b>ユーティリティ</b></td>
+            <td align = "center">592 バイト</td>
+            <td align = "center">40 バイト</td>
+        </tr>
+        <CAPTION><b>メモリ使用量</b></CAPTION>
+    </table>
+</p><h2>設定 2: 再利用可能な関数データ型「単精度」<a name="6"></a></h2><p>この設定では、モデルのデータ型を既定の倍精度から単精度に変更しました。</p><p><b>モデル設定</b></p><div><ul><li><b>ソース ファイル:</b> <tt>PCG_Eval_File_2.zip</tt></li><li><b>データ型:</b> すべて単精度</li><li><b>インクルードしたデータ:</b> ビルドに必要なすべてのデータをプロジェクトにインクルード (<tt>pos_rqst</tt>、<tt>fbk_1</tt>、<tt>fbk_2</tt> を <tt>extern</tt> で定義してインクルード)</li><li><b>メイン関数:</b> <b>「生成したコードを外部環境に統合」</b>モジュールの example_main を修正したバージョン</li><li><b>関数呼び出し方法:</b> PI コントローラー用の再利用可能な関数</li></ul></div><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b> </b></td>
+            <td align = "center"><b>関数</b></td>
+            <td align = "center"><b>データ</b></td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><b>完全</b></td>
+            <td align = "center">1392 バイト</td>
+            <td align = "center"> 348 バイト</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><b>アルゴリズム</b></td>
+            <td align = "center">800 バイト</td>
+            <td align = "center">308 バイト</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><b>ユーティリティ</b></td>
+            <td align = "center">592 バイト</td>
+            <td align = "center"> 40 バイト</td>
+        </tr>
+        <CAPTION><b>メモリ使用量</b></CAPTION>
+    </table>
+</p><p>アルゴリズムで使用されるメモリを 1 番目の設定と 2 番目の設定で比較すると、データ メモリが 549 バイトから 308 バイトに、つまり 56% に大幅に減少したことがわかります。関数サイズも 1172 バイトから 800 バイトに、つまり 68% に減少しています。データ型を単精度に設定してシミュレーションを実行しても制御アルゴリズムの精度は落ちません。それゆえ、この設定は設計判断としては十分許容できます。</p><h2>設定 3: 再利用不可能な関数データ型「単精度」<a name="7"></a></h2><div><ul><li><b>ソース ファイル:</b> PCG_Eval_File_3.zip</li><li><b>データ型:</b> すべて単精度</li><li><b>インクルードしたデータ:</b> ビルドに必要なすべてのデータをプロジェクトにインクルード (<tt>pos_rqst</tt>、<tt>fbk_1</tt>、<tt>fbk_2</tt> を <tt>extern</tt> で定義してインクルード)</li><li><b>メイン関数:</b> <b>「生成したコードを外部環境に統合」</b>モジュールの <tt>example_main</tt> を修正したバージョン</li><li><b>関数呼び出し方法:</b> 関数インターフェイスは <tt>void void</tt>。データはグローバル パラメーターとして渡されます。</li></ul></div><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b> </b></td>
+            <td align = "center"><b>関数</b></td>
+            <td align = "center"><b>データ</b></td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><b>完全</b></td>
+            <td align = "center">1540 バイト</td>
+            <td align = "center"> 388 バイト</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><b>アルゴリズム</b></td>
+            <td align = "center">948 バイト</td>
+            <td align = "center">348 バイト</td>
+        </tr>
+        <tr valign = "top">
+            <td align = "left"><b>ユーティリティ</b></td>
+            <td align = "center">592 バイト</td>
+            <td align = "center"> 40 バイト</td>
+        </tr>
+        <CAPTION><b>メモリ使用量</b></CAPTION>
+    </table>
+</p><p>3 番目の設定でのメモリ要件は 2 番目の設定よりも大きくなっています。データ型を倍精度にしていたら、メモリ要件は 1 番目の設定の場合よりも大きくなったことでしょう。</p><p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Evaluating the Generated Code % *Overview:* Reviews the build characteristics of the  % generated code. Provides RAM/ROM data for several model % configurations. % % *Time*: 15 minutes % % *Goals* %  % Understand... % % * How different configurations affect the RAM/ROM metric % %% Background on Code Evaluation % Generated code is evaluated based on two primary metrics: _execution % speed_ and _memory usage_.  There is often, though not always, a tradeoff  % between execution speed and memory where faster execution requires more memory. % Memory usage can be further classified into ROM (Read-only memory) and  % RAM (Random access memory).   % % There are tradeoffs between using RAM and ROM.  % % * Accessing data from RAM is faster than accessing ROM. % * Executables and data must be stored on ROM, because RAM does not maintain data % between power cycles. % % This module shows memory requirements divided into % function and data components. Execution speed was not evaluated. % %% Compiler Information % The Freescale CodeWarrior was used in this evaluation. Details on % the compiler appear below. %  % <html> %     <table border = "1"> %         <tr valign = "top"> %             <td align = "center"><b>Compiler</b></td> %             <td align = "center"><b>Version</b></td> %             <td align = "center"><b>Target Processor</b></td> %         </tr> %         <tr valign = "top"> %             <td align = "left">Freescale CodeWarrior </td> %             <td align = "left">v5.5.1.1430</td> %             <td align = "left">Power PC 565</td> %         </tr> %     </table> % </html> %  %% Viewing the Code Metrics % As described in *Integrating the Generated Code into the External Environment* and % *Testing the Generated Code*, the generated code may require the use of % utility functions.  The utility functions have a fixed overhead; % their memory requirements is a one-time cost.  Because of this, the data in this module shows memory usage for: %  % * Algorithms: The C code generated from the Simulink(R) diagrams and the data % definition functions % * Utilities: Functions that are part of the Real-Time Workshop(R) library % source % * Full: The sum of both the Algorithm and Utilities % %% Build Options Configuration % The same configuration options are used in all three evaluations.   % Freescale CodeWarrior was configured to minimize memory usage and apply all allowed % optimizations. % % <html><img vspace="5" hspace="5" src="../CodeWarrior_Small_Full_Opt.jpg"></html> % %% Configuration 1: Reusable Functions Data Type Double % * *Source files:* |PCG_Eval_File_1.zip| % * *Data Type:* All doubles % * *Included Data:* All data required for the build is included in the % project (including data defined as |extern|: |pos_rqst|, |fbk_1|, and |fbk_2|) % * *Main Function:* A modified version of |example_main| from *Integrating % the Generated Code into the External Environment* % * *Function Call Method:* Reusable functions for the PI controllers %  % <html><img vspace="5" hspace="5" src="../CodeWarrior_P4_Data_Details.jpg"></html> % % <html> %     <table border = "1"> %         <tr valign = "top"> %             <td align = "center"><b> </b></td> %             <td align = "center"><b>Function</b></td> %             <td align = "center"><b>Data</b></td> %         </tr>     %         <tr valign = "top"> %             <td align = "left"><b>Full</b></td> %             <td align = "center">1764 bytes</td> %             <td align = "center"> 589 bytes</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><b>Algorithms</b></td> %             <td align = "center">1172 bytes</td> %             <td align = "center"> 549 bytes</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><b>Utilities</b></td> %             <td align = "center">592 bytes</td> %             <td align = "center">40 bytes</td> %         </tr> %         <CAPTION><b>Memory Usage</b></CAPTION> %     </table> % </html> % %% Configuration 2: Reusable Functions Data Type Single % In this configuration, the data types for the model where changed from the % default of double to single.   % % *Model Configuration* % % * *Source files:* |PCG_Eval_File_2.zip| % * *Data Type:* All singles % * *Included Data:* All data required for the build is included in the % project (including data defined as |extern|: |pos_rqst|, |fbk_1|, and |fbk_2|) % * *Main Function:* A modified version of example_main from *Integrating % the Generated Code into the External Environment* % * *Function Call Method:* Reusable functions for the PI controllers % % <html> %     <table border = "1"> %         <tr valign = "top"> %             <td align = "center"><b> </b></td> %             <td align = "center"><b>Function</b></td> %             <td align = "center"><b>Data</b></td> %         </tr>     %         <tr valign = "top"> %             <td align = "left"><b>Full</b></td> %             <td align = "center">1392 bytes</td> %             <td align = "center"> 348 bytes</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><b>Algorithms</b></td> %             <td align = "center">800 bytes</td> %             <td align = "center">308 bytes</td> %         </tr> %         <tr valign = "top">                       %             <td align = "left"><b>Utilities</b></td> %             <td align = "center">592 bytes</td> %             <td align = "center"> 40 bytes</td> %         </tr> %         <CAPTION><b>Memory Usage</b></CAPTION> %     </table> % </html> % % Comparing the memory used by the algorithms in the first configuration to % the current configuration we see a large drop in the data memory, % from 549 bytes to 308 bytes or 56 percent.  The function size also  % decreased from 1172 to 800 bytes, or 68 percent.  Running the simulation % with data type set to single does not reduce the accuracy of the control % algorithm, therefore this would be an acceptable design decision. % %% Configuration 3: Nonreusable Functions Data Type Single % * *Source files:* PCG_Eval_File_3.zip % * *Data Type:* All singles % * *Included Data:* All data required for the build is included in the % project (including data defined as |extern|: |pos_rqst|, |fbk_1|, and |fbk_2|) % * *Main Function:* A modified version of |example_main| from *Integrating % the Generated Code into the External Environment* % * *Function Call Method:* The function interface is |void void|.  Data % is passed by global parameters % % <html> %     <table border = "1"> %         <tr valign = "top"> %             <td align = "center"><b> </b></td> %             <td align = "center"><b>Function</b></td> %             <td align = "center"><b>Data</b></td> %         </tr>     %         <tr valign = "top"> %             <td align = "left"><b>Full</b></td> %             <td align = "center">1540 bytes</td> %             <td align = "center"> 388 bytes</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><b>Algorithms</b></td> %             <td align = "center">948 bytes</td> %             <td align = "center">348 bytes</td> %         </tr> %         <tr valign = "top"> %             <td align = "left"><b>Utilities</b></td> %             <td align = "center">592 bytes</td> %             <td align = "center"> 40 bytes</td> %         </tr> %         <CAPTION><b>Memory Usage</b></CAPTION> %     </table> % </html> % % The memory requirements for the third configuration are higher than the % second configuration.  Had the data type been double they would have been % higher than the first configuration as well.     %   Copyright 2007-2009 The MathWorks, Inc.  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

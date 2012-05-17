@@ -1,0 +1,11 @@
+function y = compatibleParent(this,parentClass) %#ok
+%compatibleParent Check for compatibility with proposed parent object.
+%   Returns FALSE if this object does not allow itself to be a child
+%   under the indicated parent object.
+
+% Copyright 2004-2006 The MathWorks, Inc.
+% $Revision: 1.1.6.1 $ $Date: 2006/06/11 17:30:05 $
+
+y = strcmpi(parentClass,'uimgr.uigroup');
+
+% [EOF]

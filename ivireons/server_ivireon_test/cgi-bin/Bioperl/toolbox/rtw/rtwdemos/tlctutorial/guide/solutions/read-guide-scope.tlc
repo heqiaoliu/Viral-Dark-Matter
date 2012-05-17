@@ -1,0 +1,75 @@
+%% File: read-guide-scope.tlc   (This line is a TLC Comment, and will not print)
+%% $Revision: 1.1.2.1 $
+%% To execute this file, type: tlc -v -r guide.rtw read-guide-scope.tlc
+%% Set format for displaying real values (default is "EXPONENTIAL")
+%realformat "CONCISE"
+
+Using TLC you can:
+* Directly access any field's value, e.g.
+%assign td = "%" + "<Top.Date>"
+  %<td> -- evaluates to:
+  "%<Top.Date>"
+%%
+%% -> Add a statement below to make "Top.Employee" the current scope:
+%%
+%with Top.Employee
+
+* Assign contents of a field to a variable, e.g.
+%%
+%% -> Modify identifiers below to account for the current %with scope:
+%%
+	%assign worker = FirstName
+      "%assign worker = FirstName"
+      worker expands to FirstName = %<worker>
+	
+	* Concatenate string values, e.g.
+	%assign worker = worker + " " + LastName
+      "%assign worker = worker + " " + LastName"
+      worker expands to worker + " " + LastName = "%<worker>"
+      
+	* Perform arithmetic operations, e.g.
+	%assign wageCost = PayRate * Overhead
+      "%assign wageCost = PayRate * Overhead"
+      wageCost expands to PayRate * Overhead ...
+     <- %<PayRate> * %<Overhead> = %<wageCost>
+      
+	%%
+	%% -> Beware of the next %assign statement!
+	%%
+	* Put variables into a field, e.g.
+	%assign Top.Employee.GrossRate = wageCost
+      "%assign Top.Employee.GrossRate = wageCost"
+      Top.Employee.GrossRate expands to wageCost = %<GrossRate>
+%%
+%% -> Add a statement below to restore global scope:
+%%
+%endwith
+%% -> Add a statement below to make "Top" the current scope:
+%%
+%with Top
+
+	* Index lists of values, e.g.
+	%assign projects = Project[0].Name + ", " + Project[1].Name...
+	+ ", " + Project[2].Name
+      "%assign projects = Project[0].Name + ", " + Project[1].Name..."
+      "+ ", " + Project[2].Name"
+      projects expands to Project[0].Name + ", " + Project[1].Name
+      + ", " + Project[2].Name = %<projects>
+	
+	* Traverse and manipulate list data via loops, e.g.
+	%assign diffSum = 0.0
+	%foreach i = NumProject
+      - At top of Loop, Project = %<Project[i].Name>; Difficulty =...
+     %<Project[i].Difficulty>
+      %assign diffSum = diffSum + Project[i].Difficulty
+      - Bottom of Loop, i = %<i>; diffSum = %<diffSum>
+	%endforeach
+	%assign avgDiff = diffSum / NumProject
+      Average Project Difficulty expands to diffSum / NumProject = %<diffSum> ...
+      / %<NumProject> = %<avgDiff>
+%%
+%% -> Add a statement below to restore global scope:
+%%
+%endwith
+
+%% End of read-guide-scope.tlc

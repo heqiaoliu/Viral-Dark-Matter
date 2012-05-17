@@ -1,0 +1,156 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Designing PID Controller in Simulink with Estimated Frequency Response</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdenginectrlpidpad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdenginectrlpidpad">Open scdenginectrlpidpad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdenginectrlpidpad">Run in the Command Window</a></div></div><div class="content"><h1>Designing PID Controller in Simulink with Estimated Frequency Response</h1><!--introduction--><p>This demo shows how to design a PI controller with frequency response estimated from a plant built in Simulink. This is an alternative PID design workflow when the linearized plant model is invalid for PID design (for example, when the plant model has zero gain).</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Opening the Model</a></li><li><a href="#4">PID Tuner Obtaining a Plant Model with Zero Gain From Linearization</a></li><li><a href="#8">Obtaining Estimated Frequency Response Data Using Sinestream Signals</a></li><li><a href="#10">Designing PI with the FRD System in PID Tuner</a></li><li><a href="#13">Simulating Closed-Loop Performance in Simulink Model</a></li></ul></div><h2>Opening the Model<a name="1"></a></h2><p>Take a few moments to explore the model.</p><p><a href="matlab:open_system('scdenginectrlpidblock')">Open the engine control model</a></p><pre class="codeinput">mdl = <span class="string">'scdenginectrlpidblock'</span>;
+open_system(mdl)
+</pre><img vspace="5" hspace="5" src="scdenginectrlpidpad_01.png" alt=""> <p>The PID loop includes a PI controller in parallel form that manipulates the throttle angle to control the engine speed. The PI controller has default gains that makes the closed loop system oscillate. We want to design the controller using the PID Tuner that is launched from the PID block dialog.</p><pre class="codeinput">open_system([mdl <span class="string">'/Engine Speed (rpm)'</span>])
+sim(mdl);
+</pre><img vspace="5" hspace="5" src="scdenginectrlpidpad_02.png" alt=""> <h2>PID Tuner Obtaining a Plant Model with Zero Gain From Linearization<a name="4"></a></h2><p>In this example, the plant seen by the PID block is from throttle angle to engine speed. Linearization input and output points are already defined at the PID block output and the engine speed measurement respectively. Linearization at the initial operating point gives a plant model with zero gain.</p><pre class="codeinput"><span class="comment">% Hide scope</span>
+close_system([mdl <span class="string">'/Engine Speed (rpm)'</span>])
+<span class="comment">% Obtain the linearization input and output points</span>
+io = getlinio(mdl);
+<span class="comment">% Linearize the plant at initial operating point</span>
+linsys = linearize(mdl,io)
+</pre><pre class="codeoutput"> 
+d = 
+                Throttle Ang
+   EngineSpeed             0
+ 
+Static gain.
+</pre><p>The reason for obtaining zero gain is that there is a triggered subsystem "Compression" in the linearization path and the analytical block-by-block linearization does not support events-based subsystems. Since the PID Tuner uses the same approach to obtain a linear plant model, the PID Tuner also obtains a plant model with zero gain and reject it during the launching process.</p><p>To launch the PID Tuner, open the PID block dialog and click Tune button. An information dialog shows up and indicates that the plant model linearized at initial operating point has zero gain and cannot be used to design a PID controller.</p><p><img vspace="5" hspace="5" src="../html_extra/scdenginectrlpidblock/pid_informationdialog.png" alt=""> </p><p>The alternative way to obtain a linear plant model is to directly estimate the frequency response data from the Simulink model, create an FRD system in MATLAB Workspace, and import it back to the PID Tuner to continue PID design.</p><h2>Obtaining Estimated Frequency Response Data Using Sinestream Signals<a name="8"></a></h2><p>Sinestream input signal is the most reliable input signal for estimating an accurate frequency response of a Simulink&reg; model using <b>frestimate</b> command. More information on how to use <b>frestimate</b> can be found in the demonstration <a href="scdenginepad.html">"Frequency Response Estimation Using Simulation-Based Techniques"</a> in Simulink Control Design demos.</p><p>In this example, we create a sine stream that sweeps frequency from 0.1 to 10 rad/sec. Its amplitude is set to be 1e-3. You can inspect the estimation results using the bode plot.</p><pre class="codeinput"><span class="comment">% Construct sine signal</span>
+in = frest.Sinestream(<span class="string">'Frequency'</span>,logspace(-1,1,50),<span class="string">'Amplitude'</span>,1e-3);
+<span class="comment">% Estimate frequency response</span>
+sys = frestimate(mdl,io,in); <span class="comment">% this command may take a few minutes to finish</span>
+<span class="comment">% Display Bode plot</span>
+figure;
+bode(sys);
+</pre><img vspace="5" hspace="5" src="scdenginectrlpidpad_03.png" alt=""> <h2>Designing PI with the FRD System in PID Tuner<a name="10"></a></h2><p>SYS is a FRD system that represents the plant frequency response at the initial operating point. To use it in the PID Tuner, we need to import it after the Tuner is launched. Open the PID block dialog and click Tune button again. When the information dialog shows up, click "Continue" to resume the launching process. After the PID Tuner is launched, an "Obtain Plant Model" dialog shows up and asks you to import a new plant model for PID design.</p><p><img vspace="5" hspace="5" src="../html_extra/scdenginectrlpidblock/pid_importdialog.png" alt=""> </p><p>Click the radio button in the middle, select "sys" from the list, and click "OK" to import the FRD system into the PID Tuner. The automated design returns a stabilizing controller. Select "Open-loop" as the response in the Bode plot and the plot shows reasonable gain and phase margin. Time domain response plots are not available for FRD plant models.</p><p><img vspace="5" hspace="5" src="../html_extra/scdenginectrlpidblock/pid_boderesponse.png" alt=""> </p><p>Click "OK" button in the PID Tuner. The PID Tuner writes the P and I gains to the PID block and closes.</p><h2>Simulating Closed-Loop Performance in Simulink Model<a name="13"></a></h2><p>Simulation in Simulink shows that the new PI controller provides good performance when controlling the nonlinear model.</p><p><img vspace="5" hspace="5" src="../html_extra/scdenginectrlpidblock/pid_stepresponse.png" alt=""> </p><p>Close the model.</p><pre class="codeinput">bdclose(mdl);
+</pre><p class="footer">Copyright 2009-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Designing PID Controller in Simulink with Estimated Frequency Response
+% This demo shows how to design a PI controller with frequency response
+% estimated from a plant built in Simulink. This is an alternative PID
+% design workflow when the linearized plant model is invalid for PID
+% design (for example, when the plant model has zero gain).
+
+%   Copyright 2009-2010 The MathWorks, Inc.
+%   $Revision: 1.1.8.1 $  $Date: 2010/05/10 17:56:30 $
+
+%% Opening the Model
+% Take a few moments to explore the model. 
+%%
+% <matlab:open_system('scdenginectrlpidblock') Open the engine control model>
+mdl = 'scdenginectrlpidblock';
+open_system(mdl)
+
+%%
+% The PID loop includes a PI controller in parallel form that manipulates
+% the throttle angle to control the engine speed. The PI controller has
+% default gains that makes the closed loop system oscillate. We want to
+% design the controller using the PID Tuner that is launched from the PID
+% block dialog.
+open_system([mdl '/Engine Speed (rpm)'])
+sim(mdl);
+
+%% PID Tuner Obtaining a Plant Model with Zero Gain From Linearization
+% In this example, the plant seen by the PID block is from throttle angle
+% to engine speed. Linearization input and output points are already
+% defined at the PID block output and the engine speed measurement
+% respectively. Linearization at the initial operating point gives a plant
+% model with zero gain.
+
+% Hide scope
+close_system([mdl '/Engine Speed (rpm)'])
+% Obtain the linearization input and output points 
+io = getlinio(mdl);
+% Linearize the plant at initial operating point
+linsys = linearize(mdl,io)
+
+%%
+% The reason for obtaining zero gain is that there is a triggered subsystem
+% "Compression" in the linearization path and the analytical block-by-block
+% linearization does not support events-based subsystems. Since the PID
+% Tuner uses the same approach to obtain a linear plant model, the PID
+% Tuner also obtains a plant model with zero gain and reject it during the
+% launching process.
+
+%%
+% To launch the PID Tuner, open the PID block dialog and click Tune button.
+% An information dialog shows up and indicates that the plant model
+% linearized at initial operating point has zero gain and cannot be used to
+% design a PID controller.
+%
+% <<../html_extra/scdenginectrlpidblock/pid_informationdialog.png>>
+
+%%
+% The alternative way to obtain a linear plant model is to directly
+% estimate the frequency response data from the Simulink model, create
+% an FRD system in MATLAB Workspace, and import it back to the PID Tuner
+% to continue PID design.
+
+%% Obtaining Estimated Frequency Response Data Using Sinestream Signals
+% Sinestream input signal is the most reliable input signal for estimating
+% an accurate frequency response of a Simulink® model using *frestimate*
+% command. More information on how to use *frestimate* can be found in the
+% demonstration <scdenginepad.html "Frequency Response Estimation Using
+% Simulation-Based Techniques"> in Simulink Control Design demos.
+
+%%
+% In this example, we create a sine stream that sweeps frequency from 0.1
+% to 10 rad/sec. Its amplitude is set to be 1e-3. You can inspect the
+% estimation results using the bode plot.
+
+% Construct sine signal
+in = frest.Sinestream('Frequency',logspace(-1,1,50),'Amplitude',1e-3);
+% Estimate frequency response
+sys = frestimate(mdl,io,in); % this command may take a few minutes to finish
+% Display Bode plot
+figure;
+bode(sys);
+
+%% Designing PI with the FRD System in PID Tuner
+% SYS is a FRD system that represents the plant frequency response at the
+% initial operating point. To use it in the PID Tuner, we need to import it
+% after the Tuner is launched. Open the PID block dialog and click Tune
+% button again. When the information dialog shows up, click "Continue" to
+% resume the launching process. After the PID Tuner is launched, an "Obtain
+% Plant Model" dialog shows up and asks you to import a new plant model for
+% PID design.
+%
+% <<../html_extra/scdenginectrlpidblock/pid_importdialog.png>>
+
+%%
+% Click the radio button in the middle, select "sys" from the list, and
+% click "OK" to import the FRD system into the PID Tuner. The automated
+% design returns a stabilizing controller. Select "Open-loop" as the
+% response in the Bode plot and the plot shows reasonable gain and phase
+% margin. Time domain response plots are not available for FRD plant
+% models.
+%
+% <<../html_extra/scdenginectrlpidblock/pid_boderesponse.png>>
+
+%%
+% Click "OK" button in the PID Tuner. The PID Tuner writes the P and I
+% gains to the PID block and closes.
+
+%% Simulating Closed-Loop Performance in Simulink Model
+% Simulation in Simulink shows that the new PI controller provides good
+% performance when controlling the nonlinear model.
+%
+% <<../html_extra/scdenginectrlpidblock/pid_stepresponse.png>>
+
+%%
+% Close the model.
+bdclose(mdl);
+displayEndOfDemoMessage(mfilename)
+
+
+
+##### SOURCE END #####
+--></body></html>

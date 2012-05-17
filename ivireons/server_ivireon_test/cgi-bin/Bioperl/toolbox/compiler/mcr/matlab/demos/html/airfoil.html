@@ -1,0 +1,109 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Graphical Representation of Sparse Matrices</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="airfoil.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit airfoil">Open airfoil.m in the Editor</a></div><div class="right"><a href="matlab:echodemo airfoil">Run in the Command Window</a></div></div><div class="content"><h1>Graphical Representation of Sparse Matrices</h1><!--introduction--><p>This demo shows the finite element mesh for a NASA airfoil, including two trailing flaps.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">The Finite Element Mesh</a></li><li><a href="#3">Visualizing the Sparsity Pattern</a></li><li><a href="#4">Symmetric Reordering - Reverse Cuthill-McKee</a></li><li><a href="#5">Symmetric Reordering - COLPERM</a></li><li><a href="#6">Symmetric Reordering - SYMAMD</a></li></ul></div><p>The data is stored in the file AIRFOIL.MAT.  It holds 4253 pairs of (x,y) coordinates of the mesh points.  It also holds an array of 12,289 pairs of indices, (i,j), specifying connections between the mesh points.</p><pre class="codeinput">load <span class="string">airfoil</span>
+</pre><h2>The Finite Element Mesh<a name="2"></a></h2><p>First, scale x and y by 2^(-32) to bring them into the range [0,1].  Then form the sparse adjacency matrix and make it positive definite.</p><pre class="codeinput"><span class="comment">% Scaling x and y</span>
+x = pow2(x,-32);
+y = pow2(y,-32);
+
+<span class="comment">% Forming the sparse adjacency matrix and making it positive definite</span>
+n = max(max(i),max(j));
+A = sparse(i,j,-1,n,n);
+A = A + A';
+d = abs(sum(A)) + 1;
+A = A + diag(sparse(d));
+
+<span class="comment">% Plotting the finite element mesh</span>
+gplot(A,[x y])
+</pre><img vspace="5" hspace="5" src="airfoil_01.png" alt=""> <h2>Visualizing the Sparsity Pattern<a name="3"></a></h2><p>SPY is used to visualize sparsity pattern.  SPY(A) plots the sparsity pattern of the matrix A.</p><pre class="codeinput">spy(A)
+title(<span class="string">'The adjacency matrix.'</span>)
+</pre><img vspace="5" hspace="5" src="airfoil_02.png" alt=""> <h2>Symmetric Reordering - Reverse Cuthill-McKee<a name="4"></a></h2><p>SYMRCM uses the Reverse Cuthill-McKee technique for reordering the adjacency matrix.  r = SYMRCM(A) returns a permutation vector r such that A(r,r) tends to have its diagonal elements closer to the diagonal than A.  This is a good preordering for LU or Cholesky factorization of matrices that come from "long, skinny" problems.  It works for both symmetric and asymmetric A.</p><pre class="codeinput">r = symrcm(A);
+spy(A(r,r))
+title(<span class="string">'Reverse Cuthill-McKee'</span>)
+</pre><img vspace="5" hspace="5" src="airfoil_03.png" alt=""> <h2>Symmetric Reordering - COLPERM<a name="5"></a></h2><p>Use j = COLPERM(A) to return a permutation vector that reorders the columns of the sparse matrix A in non-decreasing order of non-zero count.  This is sometimes useful as a preordering for LU factorization: lu(A(:,j)).</p><pre class="codeinput">j = colperm(A);
+spy(A(j,j))
+title(<span class="string">'Column count reordering'</span>)
+</pre><img vspace="5" hspace="5" src="airfoil_04.png" alt=""> <h2>Symmetric Reordering - SYMAMD<a name="6"></a></h2><p>SYMAMD gives a symmetric approximate minimum degree permutation. p = SYMAMD(S), for a symmetric positive definite matrix A, returns the permutation vector p such that S(p,p) tends to have a sparser Cholesky factor than S.  Sometimes SYMAMD works well for symmetric indefinite matrices too.</p><pre class="codeinput">m = symamd(A);
+spy(A(m,m))
+title(<span class="string">'Approximate minimum degree'</span>)
+</pre><img vspace="5" hspace="5" src="airfoil_05.png" alt=""> <p class="footer">Copyright 1984-2005 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Graphical Representation of Sparse Matrices
+% This demo shows the finite element mesh for a NASA airfoil, including two 
+% trailing flaps.
+%
+% Copyright 1984-2005 The MathWorks, Inc.
+% $Revision: 5.9.4.4 $ $Date: 2005/09/29 16:32:35 $
+
+%%
+% The data is stored in the file AIRFOIL.MAT.  It holds 4253 pairs of (x,y)
+% coordinates of the mesh points.  It also holds an array of 12,289 pairs of
+% indices, (i,j), specifying connections between the mesh points.
+
+load airfoil
+
+%% The Finite Element Mesh
+% First, scale x and y by 2^(-32) to bring them into the range [0,1].  Then
+% form the sparse adjacency matrix and make it positive definite.
+
+% Scaling x and y
+x = pow2(x,-32); 
+y = pow2(y,-32);
+
+% Forming the sparse adjacency matrix and making it positive definite
+n = max(max(i),max(j));
+A = sparse(i,j,-1,n,n);
+A = A + A';
+d = abs(sum(A)) + 1;
+A = A + diag(sparse(d));
+
+% Plotting the finite element mesh
+gplot(A,[x y])
+
+%% Visualizing the Sparsity Pattern
+% SPY is used to visualize sparsity pattern.  SPY(A) plots the sparsity pattern
+% of the matrix A.
+
+spy(A)
+title('The adjacency matrix.')
+
+%% Symmetric Reordering - Reverse Cuthill-McKee
+% SYMRCM uses the Reverse Cuthill-McKee technique for reordering the adjacency
+% matrix.  r = SYMRCM(A) returns a permutation vector r such that A(r,r) tends
+% to have its diagonal elements closer to the diagonal than A.  This is a good
+% preordering for LU or Cholesky factorization of matrices that come from "long,
+% skinny" problems.  It works for both symmetric and asymmetric A.
+
+r = symrcm(A);
+spy(A(r,r))
+title('Reverse Cuthill-McKee')
+
+%% Symmetric Reordering - COLPERM
+% Use j = COLPERM(A) to return a permutation vector that reorders the columns of
+% the sparse matrix A in non-decreasing order of non-zero count.  This is
+% sometimes useful as a preordering for LU factorization: lu(A(:,j)).
+    
+j = colperm(A);
+spy(A(j,j))
+title('Column count reordering')
+
+%% Symmetric Reordering - SYMAMD
+% SYMAMD gives a symmetric approximate minimum degree permutation.
+% p = SYMAMD(S), for a symmetric positive definite matrix A, returns the
+% permutation vector p such that S(p,p) tends to have a sparser Cholesky factor
+% than S.  Sometimes SYMAMD works well for symmetric indefinite matrices too.
+
+m = symamd(A);
+spy(A(m,m))
+title('Approximate minimum degree')
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

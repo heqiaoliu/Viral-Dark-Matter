@@ -1,0 +1,102 @@
+%% File: ccpmainlib.tlc
+%%
+%% Abstract:
+%%   Helper functions to add CCP functionality to target main functions
+%%
+%% $Revision: 1.1.8.1 $
+%% $Date: 2006/05/24 03:58:53 $
+%%
+%% Copyright 2001-2006 The MathWorks, Inc.
+
+%% Function: SLibCCPDaqListFire ================================================
+%% Abstract:
+%%   Fire DAQ List
+%function SLibCCPDaqListFire(i) Output
+  %if FcnCCPDaqListRequired()==TLC_TRUE
+    /* Fire DAQ list for rate %<i> */
+    c_fire_DAQs(%<i>);
+  %endif
+%endfunction
+
+%% Function: SLibCCPDaqListMultiRateSingleTaskSetTIDs ================================================
+%% Abstract:
+%%   Set DAQ List TIDs to fire for Multi Rate Single Tasking case
+%function SLibCCPDaqListMultiRateSingleTaskSetTIDs() Output
+  %if FcnCCPDaqListRequired()==TLC_TRUE
+    %if (NumContStates > 0)
+      %assign errMsg = "CCP DAQ lists are not supported with multi-rate "...
+        "single-tasking models. This model is multi-rate, single-"...
+        "tasking, has continous states and it has signals configured "...
+        "to use CCP DAQ lists. To fix this problem, you can change "...
+        "the solver mode to MultiTasking, remove the continuous states "...
+        "or remove the DAQ list signal logging."
+      %exit %<errMsg>
+    %endif
+    /* Work out which task DAQ lists need firing after the 
+    * stepping the model. This must be done before stepping 
+    * as that function updates the timing information */
+    for (i_dq=1; i_dq<TOTAL_NUM_TIDS; i_dq++) {
+      if ( %<LibIsSampleHit("i_dq")> ) {
+        /* Fire DAQ list for TID i after the model step */
+        tids_to_fire[i_dq-1] = 1;
+      }
+      else {
+        /* do not fire TID i after the model step */
+        tids_to_fire[i_dq-1] = 0;
+      }
+    }
+  %endif
+%endfunction
+
+%% Function: SLibCCPDaqListMultiRateSingleTaskFire ================================================
+%% Abstract:
+%%   Fire DAQ Lists for Multi Rate Single Tasking case
+%function SLibCCPDaqListMultiRateSingleTaskFire() Output
+  %if FcnCCPDaqListRequired()==TLC_TRUE
+    /* Always fire the base rate DAQ list*/
+    c_fire_DAQs(0);
+    
+    /* Now fire any other tids that are required */
+    for (i_dq=1; i_dq<TOTAL_NUM_TIDS; i_dq++) {
+      if (tids_to_fire[i_dq-1] == 1) {
+        c_fire_DAQs(i_dq);
+      }
+    }
+  %endif
+%endfunction
+
+%% Function: SLibCCPDaqListMultiRateSingleTaskDefinitions =================
+%% Abstract:
+%%   Local variable definitions for CCP DAQ Lists for the Multi Rate Single
+%%   Tasking case
+%function SLibCCPDaqListMultiRateSingleTaskDefinitions() Output
+  %if FcnCCPDaqListRequired()==TLC_TRUE
+    /* Local variable to store which DAQ list tids need to be fired 
+    * we always fire the base rate so we don't need to store any 
+    * information about it */
+    uint8_T tids_to_fire[TOTAL_NUM_TIDS - 1];
+    int_T i_dq;
+  %endif
+%endfunction
+
+%% Function: SLibCCPDaqListExterns  =================
+%% Abstract:
+%%   Extern declarations for CCP DAQ Lists
+%function SLibCCPDaqListExterns() Output
+  %if FcnCCPDaqListRequired()==TLC_TRUE
+    /* CAN Calibration Protocol: function to fire the DAQ lists */
+    extern void c_fire_DAQs(uint8_T); 
+  %endif
+%endfunction
+
+
+%% Function: FcnCCPDaqListRequired  =================
+%% Abstract:
+%%   Check if CCP Daq list are required for this model
+%function FcnCCPDaqListRequired() void
+  %if ( (EXISTS(CCPDaqListEnabled)==TLC_TRUE) && (CCPDaqListEnabled==TLC_TRUE) )
+    %return TLC_TRUE
+  %else
+    %return TLC_FALSE
+  %endif
+%endfunction

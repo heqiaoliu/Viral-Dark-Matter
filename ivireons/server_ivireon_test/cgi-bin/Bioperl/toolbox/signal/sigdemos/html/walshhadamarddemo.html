@@ -1,0 +1,385 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Discrete Walsh-Hadamard Transform</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="walshhadamarddemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit walshhadamarddemo">Open walshhadamarddemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo walshhadamarddemo">Run in the Command Window</a></div></div><div class="content"><h1>Discrete Walsh-Hadamard Transform</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#4">Walsh (or Hadamard) Functions</a></li><li><a href="#8">Discrete Walsh-Hadamard Transform</a></li><li><a href="#13">Walsh-Transform Applications</a></li><li><a href="#24">References</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>The Walsh-Hadamard transform (WHT) is a suboptimal, non-sinusoidal, orthogonal transformation that decomposes a signal into a set of orthogonal, rectangular waveforms called Walsh functions. The transformation has no multipliers and is real because the amplitude of Walsh (or Hadamard) functions has only two values, +1 or -1.</p><p>WHTs are used in many different applications, such as power spectrum analysis, filtering, processing speech and medical signals, multiplexing and coding in communications, characterizing non-linear signals, solving non-linear differential equations, and logical design and analysis.</p><p>This demo provides an overview of the Walsh-Hadamard transform and some of its properties by showcasing two applications, communications using spread spectrum and processing of ECG signals.</p><h2>Walsh (or Hadamard) Functions<a name="4"></a></h2><p>Walsh functions are rectangular or square waveforms with values of -1 or +1. An important characteristic of Walsh functions is sequency which is determined from the number of zero-crossings per unit time interval. Every Walsh function has a unique sequency value.</p><p>Walsh functions can be generated in many ways (see [1]). Here we use the <tt>hadamard</tt> function in MATLAB&reg; to generate Walsh functions. Length eight Walsh functions are generated as follows.</p><pre class="codeinput">N = 8;  <span class="comment">% Length of Walsh (Hadamard) functions</span>
+hadamardMatrix = hadamard(N)
+</pre><pre class="codeoutput">
+hadamardMatrix =
+
+     1     1     1     1     1     1     1     1
+     1    -1     1    -1     1    -1     1    -1
+     1     1    -1    -1     1     1    -1    -1
+     1    -1    -1     1     1    -1    -1     1
+     1     1     1     1    -1    -1    -1    -1
+     1    -1     1    -1    -1     1    -1     1
+     1     1    -1    -1    -1    -1     1     1
+     1    -1    -1     1    -1     1     1    -1
+
+</pre><p>The rows (or columns) of the symmetric <tt>hadamardMatrix</tt> contain the Walsh functions.  The Walsh functions in the matrix are not arranged in increasing order of their sequencies or number of zero-crossings (i.e. 'sequency order') but are arranged in 'Hadamard order'. The Walsh matrix, which contains the Walsh functions along the rows or columns in the increasing order of their sequencies is obtained by changing the index of the <tt>hadamardMatrix</tt> as follows.</p><pre class="codeinput">HadIdx = 0:N-1;                          <span class="comment">% Hadamard index</span>
+M = log2(N)+1;                           <span class="comment">% Number of bits to represent the index</span>
+</pre><p>Each column of the sequency index (in binary format) is given by the modulo-2 addition of columns of the bit-reversed Hadamard index (in binary format).</p><pre class="codeinput">binHadIdx = fliplr(dec2bin(HadIdx,M))-<span class="string">'0'</span>; <span class="comment">% Bit reversing of the binary index</span>
+binSeqIdx = zeros(N,M-1);                  <span class="comment">% Pre-allocate memory</span>
+<span class="keyword">for</span> k = M:-1:2
+    <span class="comment">% Binary sequency index</span>
+    binSeqIdx(:,k) = xor(binHadIdx(:,k),binHadIdx(:,k-1));
+<span class="keyword">end</span>
+SeqIdx = binSeqIdx*pow2((M-1:-1:0)');    <span class="comment">% Binary to integer sequency index</span>
+walshMatrix = hadamardMatrix(SeqIdx+1,:) <span class="comment">% 1-based indexing</span>
+</pre><pre class="codeoutput">
+walshMatrix =
+
+     1     1     1     1     1     1     1     1
+     1     1     1     1    -1    -1    -1    -1
+     1     1    -1    -1    -1    -1     1     1
+     1     1    -1    -1     1     1    -1    -1
+     1    -1    -1     1     1    -1    -1     1
+     1    -1    -1     1    -1     1     1    -1
+     1    -1     1    -1    -1     1    -1     1
+     1    -1     1    -1     1    -1     1    -1
+
+</pre><h2>Discrete Walsh-Hadamard Transform<a name="8"></a></h2><p>The forward and inverse Walsh transform pair for a signal x(t) of length N are</p><p><img src="walshhadamarddemo_eq60199.png" alt="$$y_n = \frac{1}{N}\sum_{i=0}^{N-1}x_i WAL(n,i),      n=1,2,\ldots,N-1$$"></p><p><img src="walshhadamarddemo_eq66394.png" alt="$$x_i = \sum_{n=0}^{N-1}y_n WAL(n,i),                 i=1,2,\ldots,N-1$$"></p><p>Fast algorithms, similar to the Cooley-Tukey algorithm, have been developed to implement the Walsh-Hadamard transform with complexity O(NlogN) (see [1] and [2]). Since the Walsh matrix is symmetric, both the forward and inverse transformations are identical operations except for the scaling factor of 1/N. The functions <tt>fwht</tt> and <tt>ifwht</tt> implement the forward and the inverse WHT respectively.</p><p><b>Example 1</b> Perform WHT on the Walsh matrix. The expected result is an identity matrix because the rows (or columns) of the symmetric Walsh matrix contain the Walsh functions.</p><pre class="codeinput">y1 = fwht(walshMatrix)                <span class="comment">% Fast Walsh-Hadamard transform</span>
+</pre><pre class="codeoutput">
+y1 =
+
+     1     0     0     0     0     0     0     0
+     0     1     0     0     0     0     0     0
+     0     0     1     0     0     0     0     0
+     0     0     0     1     0     0     0     0
+     0     0     0     0     1     0     0     0
+     0     0     0     0     0     1     0     0
+     0     0     0     0     0     0     1     0
+     0     0     0     0     0     0     0     1
+
+</pre><p><b>Example 2</b> Construct a discontinuous signal by scaling and adding arbitrary columns of the Hadamard matrix. This signal is formed using weighted Walsh functions, so the WHT should return non-zero values equal to the weights at the respective sequency indices. While evaluating the WHT, the <tt>ordering</tt> is specified as 'hadamard', because a Hadamard matrix (instead of the Walsh matrix) is used to obtain the Walsh functions.</p><pre class="codeinput">N = 8;
+H = hadamard(N);                      <span class="comment">% Hadamard matrix</span>
+<span class="comment">% Construct a signal by adding a few weighted Walsh functions</span>
+x = 8.*H(1,:) + 12.*H(3,:) + 18.*H(5,:) + 10.*H(8,:);
+y = fwht(x,N,<span class="string">'hadamard'</span>)
+</pre><pre class="codeoutput">
+y =
+
+     8     0    12     0    18     0     0    10
+
+</pre><p>WHT is a reversible transform and the original signal can be recovered perfectly using the inverse transform. The norm between the original signal and the signal obtained from inverse transformation equals zero, indicating perfect reconstruction.</p><pre class="codeinput">xHat = ifwht(y,N,<span class="string">'hadamard'</span>);
+norm(x-xHat)
+</pre><pre class="codeoutput">
+ans =
+
+     0
+
+</pre><p>The Walsh-Hadamard transform involves expansion using a set of rectangular waveforms, so it is useful in applications involving discontinuous signals that can be readily expressed in terms of Walsh functions. Below are two applications of Walsh-Hadamard transforms.</p><h2>Walsh-Transform Applications<a name="13"></a></h2><p><b>ECG signal processing</b>  Often, it is necessary to record electro-cardiogram (ECG) signals of  patients at different instants of time. This results in a large amount  of data, which needs to be stored for analysis, comparison, etc. at a  later time. Walsh-Hadamard transform is suitable for compression of ECG  signals because it offers advantages such as fast computation of  Walsh-Hadamard coefficients, less required storage space since it  suffices to store only those sequency coefficients with large  magnitudes, and fast signal reconstruction.</p><p>An ECG signal and its corresponding Walsh-Hadamard transform is evaluated and shown below.</p><pre class="codeinput">x1 = ecg(512);                    <span class="comment">% Single ecg wave</span>
+x = repmat(x1,1,8);
+x = x + 0.1.*randn(1,length(x));  <span class="comment">% Noisy ecg signal</span>
+y = fwht(x);                      <span class="comment">% Fast Walsh-Hadamard transform</span>
+figure(<span class="string">'color'</span>,<span class="string">'white'</span>);
+subplot(2,1,1);
+plot(x);
+xlabel(<span class="string">'Sample index'</span>);
+ylabel(<span class="string">'Amplitude'</span>);
+title(<span class="string">'ECG Signal'</span>);
+subplot(2,1,2);
+plot(abs(y))
+xlabel(<span class="string">'Sequency index'</span>);
+ylabel(<span class="string">'Magnitude'</span>);
+title(<span class="string">'WHT Coefficients'</span>);
+</pre><img vspace="5" hspace="5" src="walshhadamarddemo_01.png" alt=""> <p>As can be seen in the above plot, most of the signal energy is concentrated at lower sequency values. For investigation purposes, only the first 1024 coefficients are stored and used to reconstruct the original signal. Truncating the higher sequency coefficients also helps with noise suppression. The original and the reproduced signals are shown below.</p><pre class="codeinput">y(1025:length(x)) = 0;            <span class="comment">% Zeroing out the higher coefficients</span>
+xHat = ifwht(y);                  <span class="comment">% Signal reconstruction using inverse WHT</span>
+figure(<span class="string">'color'</span>,<span class="string">'white'</span>);
+plot(x);
+hold <span class="string">on</span>
+plot(xHat,<span class="string">'r'</span>);
+xlabel(<span class="string">'Sample index'</span>);
+ylabel(<span class="string">'ECG signal amplitude'</span>);
+legend(<span class="string">'Original Signal'</span>,<span class="string">'Reconstructed Signal'</span>);
+</pre><img vspace="5" hspace="5" src="walshhadamarddemo_02.png" alt=""> <p>The reproduced signal is very close to the original signal.</p><p>To reconstruct the original signal, we stored only the first 1024 coefficients and the ECG signal length. This represents a compression ratio of approximately 4:1.</p><pre class="codeinput">req = [length(x) y(1:1024)];
+whos <span class="string">x</span> <span class="string">req</span>
+</pre><pre class="codeoutput">  Name      Size              Bytes  Class     Attributes
+
+  req       1x1025             8200  double              
+  x         1x4096            32768  double              
+
+</pre><p><b>Communication using Spread Spectrum</b> Spread spectrum-based communication technologies, like CDMA, use Walsh codes (derived from Walsh functions) to spread message signals and WHT transforms to despread them. Since Walsh codes are orthogonal, any Walsh-encoded signal appears as random noise to a terminal unless that terminal uses the same code for encoding. Below we demonstrate the process of spreading, determining Walsh codes used for spreading, and despreading to recover the message signal.</p><p>Two CDMA terminals spread their respective message signals using two different Walsh codes (also known as Hadamard codes) of length 64. The spread message signals are corrupted by a additive white Gaussian noise of variance 0.1.</p><p>At the receiver (base station), signal processing is non-coherent and the received sequence of length N needs to be correlated with 2^N Walsh codewords to extract the Walsh codes used by the respective transmitters. This can be effectively done by transforming the received signals to sequency domain using the fast Walsh-Hadamard transform. Using the sequency location at a which a peak occurs, the corresponding Walsh-Hadamard code (or the Walsh function) used can be determined. The plot below shows that Walsh-Hadamard codes with sequency (with <tt>ordering</tt> = 'hadamard') 60 and 10 were used in the first and the second transmitter, respectively.</p><pre class="codeinput">load <span class="string">mess_rcvd_signals.mat</span>
+N = length(rcvdSig1);
+y1 = fwht(rcvdSig1,N,<span class="string">'hadamard'</span>);
+y2 = fwht(rcvdSig2,N,<span class="string">'hadamard'</span>);
+figure(<span class="string">'color'</span>,<span class="string">'white'</span>);
+plot(0:63,y1,0:63,y2,<span class="string">'r'</span>);
+xlabel(<span class="string">'Sequency index'</span>);
+ylabel(<span class="string">'WHT of the Received Signals'</span>);
+title(<span class="string">'Walsh-Hadamard Code Extraction'</span>);
+legend(<span class="string">'WHT of Tx - 1 signal'</span>,<span class="string">'WHT of Tx - 2 signal'</span>);
+</pre><img vspace="5" hspace="5" src="walshhadamarddemo_03.png" alt=""> <p>Despreading (or decoding) to extract the message signal can be carried out in a straightforward manner by multiplying the received signals by the respective Walsh-hadamard codes generated using the <tt>hadamard</tt> function. (Note that the indexing in MATLAB&reg; starts from 1, hence Walsh-Hadamard codes with sequency 60 and 10 are obatined from by selecting the columns (or rows) 61 and 11 in the Hadamard matrix.)</p><pre class="codeinput">N = 64;
+hadamardMatrix = hadamard(N);
+codeTx1 = hadamardMatrix(:,61);         <span class="comment">% Code used by transmitter 1</span>
+codeTx2 = hadamardMatrix(:,11);         <span class="comment">% Code used by transmitter 2</span>
+</pre><p>The decoding operation to recover the original message signal is</p><pre class="codeinput">xHat1 = codeTx1 .* rcvdSig1;            <span class="comment">% Decoded signal at receiver 1</span>
+xHat2 = codeTx2 .* rcvdSig2;            <span class="comment">% Decoded signal at receiver 2</span>
+</pre><p>The recovered message signals at the receiver side are shown below and superimposed with the original signals for comparison.</p><pre class="codeinput">subplot(2,1,1);
+plot(x1);
+hold <span class="string">on</span>
+plot(xHat1,<span class="string">'r'</span>);
+legend(<span class="string">'Original Message'</span>,<span class="string">'Reconstructed Message'</span>,<span class="string">'Location'</span>,<span class="string">'Best'</span>);
+xlabel(<span class="string">'Sample index'</span>);
+ylabel(<span class="string">'Message signal amplitude'</span>);
+subplot(2,1,2);
+plot(x2);
+hold <span class="string">on</span>
+plot(xHat2,<span class="string">'r'</span>);
+legend(<span class="string">'Original Message'</span>,<span class="string">'Reconstructed Message'</span>,<span class="string">'Location'</span>,<span class="string">'Best'</span>);
+xlabel(<span class="string">'Sample index'</span>);
+ylabel(<span class="string">'Message signal amplitude'</span>);
+</pre><img vspace="5" hspace="5" src="walshhadamarddemo_04.png" alt=""> <h2>References<a name="24"></a></h2><div><ol><li>K.G. Beauchamp, <i>Applications of Walsh and Related Functions - With an Introduction to  Sequency Theory</i>, Academic Press, 1984</li><li>T. Beer, <i>Walsh Transforms</i>, American Journal of Physics, Vol. 49, Issue 5, May 1981</li></ol></div><p class="footer">Copyright 2008-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Discrete Walsh-Hadamard Transform 
+
+%   Copyright 2008-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.6 $  $Date: 2009/09/23 14:04:50 $
+%% Introduction
+% The Walsh-Hadamard transform (WHT) is a suboptimal, non-sinusoidal, 
+% orthogonal transformation that decomposes a signal into a set of
+% orthogonal, rectangular waveforms called Walsh functions. The
+% transformation has no multipliers and is real because the amplitude of
+% Walsh (or Hadamard) functions has only two values, +1 or -1. 
+
+%%
+% WHTs are used in many different applications, such as power spectrum
+% analysis, filtering, processing speech and medical signals, multiplexing
+% and coding in communications, characterizing non-linear signals, solving
+% non-linear differential equations, and logical design and analysis.
+
+%%
+% This demo provides an overview of the Walsh-Hadamard transform and some
+% of its properties by showcasing two applications, communications using
+% spread spectrum and processing of ECG signals.
+ 
+%% Walsh (or Hadamard) Functions 
+% Walsh functions are rectangular or square waveforms with values of -1 or
+% +1. An important characteristic of Walsh functions is sequency which is
+% determined from the number of zero-crossings per unit time interval.
+% Every Walsh function has a unique sequency value.  
+
+%%
+% Walsh functions can be generated in many ways (see [1]). Here we use the
+% |hadamard| function in MATLAB(R) to generate Walsh functions. Length
+% eight Walsh functions are generated as follows.
+
+N = 8;  % Length of Walsh (Hadamard) functions
+hadamardMatrix = hadamard(N) 
+
+%%
+% The rows (or columns) of the symmetric |hadamardMatrix| contain the Walsh
+% functions.  The Walsh functions in the matrix are not arranged in
+% increasing order of their sequencies or number of zero-crossings (i.e.
+% 'sequency order') but are arranged in 'Hadamard order'. The Walsh matrix,
+% which contains the Walsh functions along the rows or columns in the
+% increasing order of their sequencies is obtained by changing the index of
+% the |hadamardMatrix| as follows.
+
+HadIdx = 0:N-1;                          % Hadamard index
+M = log2(N)+1;                           % Number of bits to represent the index        
+%%
+% Each column of the sequency index (in binary format) is given by the
+% modulo-2 addition of columns of the bit-reversed Hadamard index (in
+% binary format). 
+
+binHadIdx = fliplr(dec2bin(HadIdx,M))-'0'; % Bit reversing of the binary index
+binSeqIdx = zeros(N,M-1);                  % Pre-allocate memory
+for k = M:-1:2
+    % Binary sequency index 
+    binSeqIdx(:,k) = xor(binHadIdx(:,k),binHadIdx(:,k-1));
+end
+SeqIdx = binSeqIdx*pow2((M-1:-1:0)');    % Binary to integer sequency index
+walshMatrix = hadamardMatrix(SeqIdx+1,:) % 1-based indexing
+
+%% Discrete Walsh-Hadamard Transform
+% The forward and inverse Walsh transform pair for a signal x(t) of length N
+% are 
+%
+% $$y_n = \frac{1}{N}\sum_{i=0}^{N-1}x_i WAL(n,i),      n=1,2,\ldots,N-1$$
+%
+% $$x_i = \sum_{n=0}^{N-1}y_n WAL(n,i),                 i=1,2,\ldots,N-1$$
+%    
+% Fast algorithms, similar to the Cooley-Tukey algorithm, have been
+% developed to implement the Walsh-Hadamard transform with complexity
+% O(NlogN) (see [1] and [2]). Since the Walsh matrix is symmetric, both the
+% forward and inverse transformations are identical operations except for
+% the scaling factor of 1/N. The functions |fwht| and |ifwht| implement the
+% forward and the inverse WHT respectively.
+ 
+%%
+% *Example 1*  
+% Perform WHT on the Walsh matrix. The expected result is an identity
+% matrix because the rows (or columns) of the symmetric Walsh matrix
+% contain the Walsh functions. 
+y1 = fwht(walshMatrix)                % Fast Walsh-Hadamard transform    
+
+%%
+% *Example 2* 
+% Construct a discontinuous signal by scaling and adding arbitrary columns
+% of the Hadamard matrix. This signal is formed using weighted Walsh
+% functions, so the WHT should return non-zero values equal to the weights
+% at the respective sequency indices. While evaluating the WHT, the
+% |ordering| is specified as 'hadamard', because a Hadamard matrix (instead
+% of the Walsh matrix) is used to obtain the Walsh functions.
+N = 8;
+H = hadamard(N);                      % Hadamard matrix
+% Construct a signal by adding a few weighted Walsh functions
+x = 8.*H(1,:) + 12.*H(3,:) + 18.*H(5,:) + 10.*H(8,:);           
+y = fwht(x,N,'hadamard')      
+
+%% 
+% WHT is a reversible transform and the original signal can be recovered
+% perfectly using the inverse transform. The norm between the original
+% signal and the signal obtained from inverse transformation equals zero,
+% indicating perfect reconstruction.
+xHat = ifwht(y,N,'hadamard');
+norm(x-xHat)
+%%
+% The Walsh-Hadamard transform involves expansion using a set of
+% rectangular waveforms, so it is useful in applications involving
+% discontinuous signals that can be readily expressed in terms of Walsh
+% functions. Below are two applications of Walsh-Hadamard transforms.
+
+%% Walsh-Transform Applications
+% *ECG signal processing*
+%  Often, it is necessary to record electro-cardiogram (ECG) signals of
+%  patients at different instants of time. This results in a large amount
+%  of data, which needs to be stored for analysis, comparison, etc. at a
+%  later time. Walsh-Hadamard transform is suitable for compression of ECG
+%  signals because it offers advantages such as fast computation of
+%  Walsh-Hadamard coefficients, less required storage space since it
+%  suffices to store only those sequency coefficients with large
+%  magnitudes, and fast signal reconstruction. 
+
+%%
+% An ECG signal and its corresponding Walsh-Hadamard transform is evaluated
+% and shown below.
+x1 = ecg(512);                    % Single ecg wave
+x = repmat(x1,1,8);                 
+x = x + 0.1.*randn(1,length(x));  % Noisy ecg signal
+y = fwht(x);                      % Fast Walsh-Hadamard transform
+figure('color','white');
+subplot(2,1,1);
+plot(x);
+xlabel('Sample index');
+ylabel('Amplitude');
+title('ECG Signal');
+subplot(2,1,2);
+plot(abs(y))
+xlabel('Sequency index');
+ylabel('Magnitude');
+title('WHT Coefficients');
+
+%%
+% As can be seen in the above plot, most of the signal energy is
+% concentrated at lower sequency values. For investigation purposes, only
+% the first 1024 coefficients are stored and used to reconstruct the
+% original signal. Truncating the higher sequency coefficients also helps
+% with noise suppression. The original and the reproduced signals are shown
+% below. 
+y(1025:length(x)) = 0;            % Zeroing out the higher coefficients    
+xHat = ifwht(y);                  % Signal reconstruction using inverse WHT  
+figure('color','white');
+plot(x);
+hold on
+plot(xHat,'r');
+xlabel('Sample index');
+ylabel('ECG signal amplitude');
+legend('Original Signal','Reconstructed Signal');
+%%
+% The reproduced signal is very close to the original signal. 
+%%
+% To reconstruct the original signal, we stored only the
+% first 1024 coefficients and the ECG signal length. This represents a
+% compression ratio of approximately 4:1.
+req = [length(x) y(1:1024)];   
+whos x req
+%%
+% *Communication using Spread Spectrum*
+% Spread spectrum-based communication technologies, like CDMA, use Walsh
+% codes (derived from Walsh functions) to spread message signals and WHT
+% transforms to despread them. Since Walsh codes are orthogonal, any
+% Walsh-encoded signal appears as random noise to a terminal unless that
+% terminal uses the same code for encoding. Below we demonstrate the
+% process of spreading, determining Walsh codes used for spreading, and
+% despreading to recover the message signal.
+%%
+% Two CDMA terminals spread their respective message signals using two
+% different Walsh codes (also known as Hadamard codes) of length 64. The
+% spread message signals are corrupted by a additive white Gaussian noise
+% of variance 0.1. 
+%%
+% At the receiver (base station), signal processing is non-coherent and the
+% received sequence of length N needs to be correlated with 2^N Walsh
+% codewords to extract the Walsh codes used by the respective transmitters.
+% This can be effectively done by transforming the received signals to
+% sequency domain using the fast Walsh-Hadamard transform. Using the
+% sequency location at a which a peak occurs, the corresponding
+% Walsh-Hadamard code (or the Walsh function) used can be determined. The
+% plot below shows that Walsh-Hadamard codes with sequency (with |ordering|
+% = 'hadamard') 60 and 10 were used in the first and the second
+% transmitter, respectively.
+
+load mess_rcvd_signals.mat
+N = length(rcvdSig1);
+y1 = fwht(rcvdSig1,N,'hadamard');
+y2 = fwht(rcvdSig2,N,'hadamard');
+figure('color','white');
+plot(0:63,y1,0:63,y2,'r');
+xlabel('Sequency index');
+ylabel('WHT of the Received Signals');
+title('Walsh-Hadamard Code Extraction');
+legend('WHT of Tx - 1 signal','WHT of Tx - 2 signal');
+
+%%
+% Despreading (or decoding) to extract the message signal can be carried
+% out in a straightforward manner by multiplying the received signals by
+% the respective Walsh-hadamard codes generated using the |hadamard|
+% function. (Note that the indexing in MATLAB(R) starts from 1, hence
+% Walsh-Hadamard codes with sequency 60 and 10 are obatined from by
+% selecting the columns (or rows) 61 and 11 in the Hadamard matrix.)
+
+N = 64; 
+hadamardMatrix = hadamard(N);
+codeTx1 = hadamardMatrix(:,61);         % Code used by transmitter 1  
+codeTx2 = hadamardMatrix(:,11);         % Code used by transmitter 2    
+    
+%%
+% The decoding operation to recover the original message signal is 
+xHat1 = codeTx1 .* rcvdSig1;            % Decoded signal at receiver 1
+xHat2 = codeTx2 .* rcvdSig2;            % Decoded signal at receiver 2
+
+%% 
+% The recovered message signals at the receiver side are shown below and
+% superimposed with the original signals for comparison. 
+subplot(2,1,1);
+plot(x1);
+hold on
+plot(xHat1,'r');
+legend('Original Message','Reconstructed Message','Location','Best');
+xlabel('Sample index');
+ylabel('Message signal amplitude');
+subplot(2,1,2);
+plot(x2);
+hold on
+plot(xHat2,'r');
+legend('Original Message','Reconstructed Message','Location','Best');
+xlabel('Sample index');
+ylabel('Message signal amplitude');
+
+%% References
+% # K.G. Beauchamp, _Applications of Walsh and Related Functions - With
+% an Introduction to  Sequency Theory_, Academic Press, 1984
+% # T. Beer, _Walsh Transforms_, American Journal of Physics, Vol. 49, Issue 5, May 1981 
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

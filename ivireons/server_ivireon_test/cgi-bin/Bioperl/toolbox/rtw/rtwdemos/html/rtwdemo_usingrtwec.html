@@ -1,0 +1,104 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Generating Code Using the Real-Time Workshop Embedded Coder Product</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_usingrtwec.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_usingrtwec">Open rtwdemo_usingrtwec.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_usingrtwec">Run in the Command Window</a></div></div><div class="content"><h1>Generating Code Using the Real-Time Workshop Embedded Coder Product</h1><!--introduction--><p>This demonstration shows you how to generate C code for embedded systems requiring production code efficiency and quality.</p><p>You select a Real-Time Workshop Embedded Coder target for a model, quickly configure options based on your code generation objectives, generate code, and view the resulting files.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Open a Model</a></li><li><a href="#2">Selecting an Embedded Code Target</a></li><li><a href="#4">Configuring Code Generation Options Based on High-Level Objectives</a></li><li><a href="#5">Generating Code and Viewing the Artifacts</a></li></ul></div><h2>Open a Model<a name="1"></a></h2><p>Open a simple counter model by typing the following MATLAB commands:</p><pre class="codeinput">model=<span class="string">'rtwdemo_rtwecintro'</span>;
+open_system(model)
+</pre><img vspace="5" hspace="5" src="rtwdemo_usingrtwec_01.png" alt=""> <h2>Selecting an Embedded Code Target<a name="2"></a></h2><p>You can configure the Real-Time Workshop Embedded Coder software to generate code for one of a variety of targets using code generation options and parameters.  The options and parameters are consolidated in the configuration set of the model, which you can view in the standalone Configuration Parameters dialog box or in the Simulink Model Explorer.</p><p>Launch the stand-alone model Configuration Parameters dialog box from the model Simulation menu, or by typing the following MATLAB commands:</p><pre class="codeinput">cs = getActiveConfigSet(model);
+openDialog(cs);
+</pre><p><img vspace="5" hspace="5" src="rtw_main_page_ert.jpg" alt=""> </p><p>In the <b>Configuration Parameters &gt; Real-Time Workshop</b> pane, click <b>Browse</b> to view the list of available targets installed on your computer and select the <tt>ert.tlc</tt> target.</p><p><img vspace="5" hspace="5" src="rtw_browse_stf_button_ert.jpg" alt=""> </p><p><img vspace="5" hspace="5" src="rtw_target_selection_ert.jpg" alt=""> </p><h2>Configuring Code Generation Options Based on High-Level Objectives<a name="4"></a></h2><p>The Embedded Real-Time (ERT) target includes a utility to quickly specify and prioritize code generation settings based on your objectives, such as Execution efficiency, ROM efficiency, RAM efficiency, Traceability, Safety precaution, and Debugging. Once specified, you run the utility to establish settings and identify changes based on the objectives.  You can check whether the model meets your objectives by clicking <b>Check model</b>, or check the model during the code generation build process by setting <b>Check model before generating code</b> to <tt>On</tt>. The checks are provided within the Simulink Model Advisor.</p><p><img vspace="5" hspace="5" src="rtw_check_model_button_ert.jpg" alt=""> </p><p>For example, to obtain generated code that is traceable and executes efficiently, specify <tt>Execution efficiency</tt>, <tt>Traceability</tt>, and then click <b>OK</b>.</p><p><img vspace="5" hspace="5" src="rtw_objectives_selection_ert.jpg" alt=""> </p><p>In this example, <b>Check model before generating code</b> is set to <tt>On (proceed with warnings)</tt>, which means that the Real-Time Workshop Embedded Coder software reports the appropriate model settings and configuration to best achieve Execution efficiency and Traceability when you either click <b>Check model</b> or generate code.</p><h2>Generating Code and Viewing the Artifacts<a name="5"></a></h2><p>Click <b>Build</b> to generate code.  After code generation is complete, a detailed code generation report opens. The report includes links to the generated code and associated artifacts, including:</p><div><ol><li>Source code and header files</li><li>Code interface report (global data and functions)</li><li>Traceability report (accounting for all the objects in the model)</li><li>Validation report (result of the code generation objective checks)</li></ol></div><p><img vspace="5" hspace="5" src="rtw_report_ert.jpg" alt=""> </p><p>Consider this process to be a first-pass effort based on high-level objectives. See <a href="matlab:showdemo('rtwdemo_configuration_set')">rtwdemo_configuration_set</a> for a more detailed and programmatic approach to specifying and locking down your code generation settings for a production environment.</p><p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Generating Code Using the Real-Time Workshop Embedded Coder Product 
+% This demonstration shows you how to generate C code for embedded
+% systems requiring production code efficiency and quality.
+%
+% You select a Real-Time Workshop Embedded Coder target for a model,
+% quickly configure options based on your code generation objectives,
+% generate code, and view the resulting files.
+
+% Copyright 2007-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.6 $  $Date: 2009/11/19 16:40:56 $
+
+
+%% Open a Model
+% Open a simple counter model by typing the following MATLAB commands: 
+
+model='rtwdemo_rtwecintro';
+open_system(model)
+
+%% Selecting an Embedded Code Target
+% You can configure the Real-Time Workshop Embedded Coder software
+% to generate code for one of a variety of targets using code generation options
+% and parameters.  The options and parameters are consolidated in the
+% configuration set of the model, which you can view in the standalone 
+% Configuration Parameters dialog box or in the Simulink Model Explorer.  
+%
+% Launch the stand-alone model Configuration Parameters dialog box from the 
+% model Simulation menu, or by typing the following MATLAB commands:
+
+cs = getActiveConfigSet(model);
+openDialog(cs);
+
+%%
+% <<rtw_main_page_ert.jpg>>
+%
+% In the *Configuration Parameters > Real-Time Workshop* pane, click
+% *Browse* to view the list of available targets installed on your computer 
+% and select the |ert.tlc| target.
+%
+% <<rtw_browse_stf_button_ert.jpg>>
+%
+% <<rtw_target_selection_ert.jpg>>
+%
+
+%% Configuring Code Generation Options Based on High-Level Objectives
+% The Embedded Real-Time (ERT) target includes a utility to quickly specify
+% and prioritize code generation settings based on your objectives, such as
+% Execution efficiency, ROM efficiency, RAM efficiency, Traceability,
+% Safety precaution, and Debugging. Once specified, you
+% run the utility to establish settings and identify changes based on the
+% objectives.  You can check whether the model meets your objectives by 
+% clicking *Check model*, or check the model
+% during the code generation build process by setting *Check model
+% before generating code* to |On|. The checks are provided within the Simulink
+% Model Advisor.
+%
+% <<rtw_check_model_button_ert.jpg>>
+%
+% For example, to obtain generated code that is traceable and executes efficiently,
+% specify |Execution efficiency|, |Traceability|, and then click *OK*.
+%
+% <<rtw_objectives_selection_ert.jpg>>
+%
+% In this example, *Check model before generating code* is set to |On (proceed
+% with warnings)|, which means that the Real-Time Workshop Embedded Coder software
+% reports the appropriate model settings and configuration to best achieve Execution efficiency
+% and Traceability when you either click *Check model* or generate code.
+
+%% Generating Code and Viewing the Artifacts
+% Click *Build* to generate code.  After code generation is
+% complete, a detailed code generation report opens. The
+% report includes links to the generated code and associated artifacts,
+% including:
+%
+% # Source code and header files
+% # Code interface report (global data and functions)
+% # Traceability report (accounting for all the objects in the model)
+% # Validation report (result of the code generation objective checks)
+%
+% <<rtw_report_ert.jpg>>
+%
+% Consider this process to be a first-pass effort based on high-level objectives.
+% See <matlab:showdemo('rtwdemo_configuration_set') rtwdemo_configuration_set>
+% for a more detailed and programmatic approach to specifying and locking
+% down your code generation settings for a production environment.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

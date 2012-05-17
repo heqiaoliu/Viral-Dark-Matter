@@ -1,0 +1,288 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Analyzing Control Systems with Delays</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="MADelayResponse.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit MADelayResponse">Open MADelayResponse.m in the Editor</a></div><div class="right"><a href="matlab:echodemo MADelayResponse">Run in the Command Window</a></div></div><div class="content"><h1>Analyzing Control Systems with Delays</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Control of Processes with Delays</a></li><li><a href="#2">Example: PI Control Loop with Dead Time</a></li><li><a href="#8">Pade Approximation of Time Delays</a></li><li><a href="#11">Sensitivity Analysis</a></li><li><a href="#14">Discretization</a></li><li><a href="#17">Some Unique Features of Delay Systems</a></li></ul></div><h2>Control of Processes with Delays<a name="1"></a></h2><p>Many processes involve dead times, also referred to as transport delays or time lags. Controlling such processes is challenging because delays cause linear phase shifts that limit the control bandwidth and affect closed-loop stability.</p><p>Using the state-space representation, you can create accurate open- or closed-loop models of control systems with delays and analyze their stability and performance without approximation. The state-space (SS) object automatically keeps track of "internal" delays when combining models, see the "Specifying Time Delays" tutorial for more details.</p><p>This tutorial shows how to use Control System Toolbox&#8482; to analyze and design control systems with delays.</p><h2>Example: PI Control Loop with Dead Time<a name="2"></a></h2><p>Consider the standard setpoint tracking loop:</p><p><img vspace="5" hspace="5" src="../Figures/smith_01.png" alt=""> </p><p>where the process model <tt>P</tt> has a 2.6 second dead time and the compensator <tt>C</tt> is a PI controller:</p><p><img src="MADelayResponse_eq51828.png" alt="$$ P(s) = {e^{-2.6 s} (s+3) \over s^2+0.3 s+1} , \;\; C(s) = 0.06 (1 +&#xA;{1 \over s}) $$"></p><p>You can specify these two transfer functions as</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);
+P = exp(-2.6*s)*(s+3)/(s^2+0.3*s+1);
+C = 0.06 * (1 + 1/s);
+</pre><p>To analyze the closed-loop response, construct a model <tt>T</tt> of the closed-loop transfer from <tt>ysp</tt> to <tt>y</tt>. Because there is a delay in this feedback loop, you must convert <tt>P</tt> and <tt>C</tt> to state space and use the state-space representation for analysis:</p><pre class="codeinput">T = feedback(ss(P*C),1)
+</pre><pre class="codeoutput"> 
+a = 
+          x1     x2     x3
+   x1  -0.36  -1.24  -0.18
+   x2      1      0      0
+   x3      0      1      0
+ 
+b = 
+        u1
+   x1  0.5
+   x2    0
+   x3    0
+ 
+c = 
+         x1    x2    x3
+   y1  0.12  0.48  0.36
+ 
+d = 
+       u1
+   y1   0
+ 
+(values computed with all internal delays set to zero)
+
+Internal delays: 2.6 
+ 
+Continuous-time model.
+</pre><p>The result is a third-order model with an internal delay of 2.6 seconds. Internally, the state-space object <tt>T</tt> tracks how the delay is coupled with the remaining dynamics. This structural information is not visible to users, and the display above only gives the A,B,C,D values when the delay is set to zero.</p><p>Use the <tt>STEP</tt> command to plot the closed-loop step response from <tt>ysp</tt> to <tt>y</tt>:</p><pre class="codeinput">step(T)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_01.png" alt=""> <p>The closed-loop oscillations are due to a weak gain margin as seen from the open-loop response <tt>P*C</tt>:</p><pre class="codeinput">margin(P*C)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_02.png" alt=""> <p>There is also a resonance in the closed-loop frequency response:</p><pre class="codeinput">bode(T)
+grid, title(<span class="string">'Closed-loop frequency response'</span>)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_03.png" alt=""> <p>To improve the design, you can try to notch out the resonance near 1 rad/s:</p><pre class="codeinput">notch = tf([1 0.2 1],[1 .8 1]);
+C = 0.05 * (1 + 1/s);
+Tnotch = feedback(ss(P*C*notch),1);
+
+step(Tnotch), grid
+</pre><img vspace="5" hspace="5" src="MADelayResponse_04.png" alt=""> <h2>Pade Approximation of Time Delays<a name="8"></a></h2><p>Many control design algorithms cannot handle time delays directly. A common workaround consists of replacing delays by their Pade approximations (all-pass filters). Because this approximation is only valid at low frequencies, it is important to compare the true and approximate responses to choose the right approximation order and check the approximation validity.</p><p>Use the <tt>PADE</tt> command to compute Pade approximations of LTI models with delays. For the PI control example above, you can compare the exact closed-loop response <tt>T</tt> with the response obtained for a first-order Pade approximation of the delay:</p><pre class="codeinput">T1 = pade(T,1);
+step(T,<span class="string">'b'</span>,T1,<span class="string">'r'</span>,100)
+grid, legend(<span class="string">'Exact'</span>,<span class="string">'First-Order Pade'</span>)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_05.png" alt=""> <p>The approximation error is fairly large. To get a better approximation, try a second-order Pade approximation of the delay:</p><pre class="codeinput">T2 = pade(T,2);
+step(T,<span class="string">'b'</span>,T2,<span class="string">'r'</span>,100)
+grid, legend(<span class="string">'Exact'</span>,<span class="string">'Second-Order Pade'</span>)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_06.png" alt=""> <p>The responses now match closely except for the non-minimum phase artifact introduced by the Pade approximation.</p><h2>Sensitivity Analysis<a name="11"></a></h2><p>Delays are rarely known accurately, so it is often important to understand how sensitive a control system is to the delay value. Such sensitivity analysis is easily performed using LTI arrays and the InternalDelay property.</p><p>For example, to analyze the sensitivity of the notched PI control above, create 5 models with delay values ranging from 2.0 to 3.0:</p><pre class="codeinput">tau = linspace(2,3,5);                    <span class="comment">% 5 delay values</span>
+Tsens = repsys(Tnotch,[1 1 5]);           <span class="comment">% 5 copies of Tnotch</span>
+<span class="keyword">for</span> j=1:5
+  Tsens(:,:,j).InternalDelay = tau(j);    <span class="comment">% jth delay value -&gt; jth model</span>
+<span class="keyword">end</span>
+</pre><p>Then use <tt>STEP</tt> to create an envelope plot:</p><pre class="codeinput">step(Tsens)
+grid, title(<span class="string">'Closed-loop response for 5 delay values between 2.0 and 3.0'</span>)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_07.png" alt=""> <p>This plot shows that uncertainty on the delay value has little effect on closed-loop characteristics. Note that while you can change the values of internal delays, you cannot change how many there are because this is part of the model structure. To eliminate some internal delays, set their value to zero or use <tt>PADE</tt> with order zero:</p><pre class="codeinput">Tnotch0 = Tnotch;
+Tnotch0.InternalDelay = 0;
+bode(Tnotch,<span class="string">'b'</span>,Tnotch0,<span class="string">'r'</span>,{1e-2,3})
+grid, legend(<span class="string">'Delay = 2.6'</span>,<span class="string">'No delay'</span>,<span class="string">'Location'</span>,<span class="string">'SouthWest'</span>)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_08.png" alt=""> <h2>Discretization<a name="14"></a></h2><p>You can use <tt>C2D</tt> to discretize continuous-time delay systems. Available methods include zero-order hold (ZOH), first-order hold (FOH), and Tustin. For models with internal delays, the ZOH discretization is not always "exact," i.e., the continuous and discretized step responses may not match:</p><pre class="codeinput">Td = c2d(T,1);
+step(T,<span class="string">'b'</span>,Td,<span class="string">'r'</span>)
+grid, legend(<span class="string">'Continuous'</span>,<span class="string">'ZOH Discretization'</span>)
+</pre><pre class="codeoutput">Warning: Discretization is only approximate due to internal delays. Use
+faster sampling rate if discretization error is large. 
+</pre><img vspace="5" hspace="5" src="MADelayResponse_09.png" alt=""> <p>To correct such discretization gaps, reduce the sampling period until the continuous and discrete responses match closely:</p><pre class="codeinput">Td = c2d(T,0.05);
+step(T,<span class="string">'b'</span>,Td,<span class="string">'r'</span>)
+grid, legend(<span class="string">'Continuous'</span>,<span class="string">'ZOH Discretization'</span>)
+</pre><pre class="codeoutput">Warning: Discretization is only approximate due to internal delays. Use
+faster sampling rate if discretization error is large. 
+</pre><img vspace="5" hspace="5" src="MADelayResponse_10.png" alt=""> <p>Note that internal delays remain internal in the discretized model and do not inflate the model order:</p><pre class="codeinput">order(Td)
+Td.InternalDelay
+</pre><pre class="codeoutput">
+ans =
+
+     3
+
+
+ans =
+
+    52
+
+</pre><h2>Some Unique Features of Delay Systems<a name="17"></a></h2><p>The time and frequency responses of delay systems can look bizarre and suspicious to those only familiar with delay-free LTI analysis. Time responses can behave chaotically, Bode plots can exhibit gain oscillations, etc. These are not software quirks but real features of such systems. Below are a few illustrations of these phenomena</p><p>Gain ripples:</p><pre class="codeinput">G = exp(-5*s)/(s+1);
+T = feedback(ss(G),.5);
+bodemag(T)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_11.png" alt=""> <p>Gain oscillations:</p><pre class="codeinput">G = ss(1) + 0.5 * exp(-3*s);
+bodemag(G)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_12.png" alt=""> <p>Jagged step response (note the "echoes" of the initial step):</p><pre class="codeinput">G = exp(-s) * (0.8*s^2+s+2)/(s^2+s);
+T = feedback(ss(G),1);
+step(T)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_13.png" alt=""> <p>Chaotic response:</p><pre class="codeinput">G = ss(1/(s+1)) + exp(-4*s);
+T = feedback(1,G);
+
+step(T)
+</pre><img vspace="5" hspace="5" src="MADelayResponse_14.png" alt=""> <p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Analyzing Control Systems with Delays
+
+%   Copyright 1986-2009 The MathWorks, Inc.
+%   $Revision: 1.1.8.4 $  $Date: 2009/11/09 16:22:07 $
+
+ 
+%% Control of Processes with Delays
+% Many processes involve dead times, also referred to as transport delays
+% or time lags. Controlling such processes is challenging because delays
+% cause linear phase shifts that limit the control bandwidth
+% and affect closed-loop stability.
+%
+% Using the state-space representation, you can create accurate open- or closed-loop
+% models of control systems with delays and analyze their stability and
+% performance without approximation. The state-space (SS) object
+% automatically keeps track of "internal" delays when combining models, see
+% the "Specifying Time Delays" tutorial for more details.
+%
+% This tutorial shows how to use Control System Toolbox(TM) to analyze and
+% design control systems with delays. 
+
+%% Example: PI Control Loop with Dead Time
+% Consider the standard setpoint tracking loop:
+%
+% <<../Figures/smith_01.png>>
+%
+% where the process model |P| has a 2.6 second dead time and the compensator
+% |C| is a PI controller:
+%
+% $$ P(s) = {e^{-2.6 s} (s+3) \over s^2+0.3 s+1} , \;\; C(s) = 0.06 (1 +
+% {1 \over s}) $$
+%
+% You can specify these two transfer functions as
+s = tf('s');
+P = exp(-2.6*s)*(s+3)/(s^2+0.3*s+1);
+C = 0.06 * (1 + 1/s); 
+
+%% 
+% To analyze the closed-loop response, construct a model |T| of the 
+% closed-loop transfer from |ysp| to |y|. Because there is a delay
+% in this feedback loop, you must convert |P| and |C| to state space
+% and use the state-space representation for analysis:
+T = feedback(ss(P*C),1)
+
+%%
+% The result is a third-order model with an internal delay of 2.6 seconds.
+% Internally, the state-space object |T| tracks how the
+% delay is coupled with the remaining dynamics. This structural information
+% is not visible to users, and the display above only gives the A,B,C,D values
+% when the delay is set to zero.
+%
+% Use the |STEP| command to plot the closed-loop step response from |ysp| to |y|:
+step(T)
+
+%%
+% The closed-loop oscillations are due to a weak gain margin
+% as seen from the open-loop response |P*C|:
+margin(P*C)
+
+%%
+% There is also a resonance in the closed-loop frequency response:
+bode(T)
+grid, title('Closed-loop frequency response')
+
+%%
+% To improve the design, you can try to notch out the resonance near
+% 1 rad/s:
+notch = tf([1 0.2 1],[1 .8 1]);
+C = 0.05 * (1 + 1/s); 
+Tnotch = feedback(ss(P*C*notch),1);
+
+step(Tnotch), grid
+
+%% Pade Approximation of Time Delays
+% Many control design algorithms cannot handle time delays directly. 
+% A common workaround consists of replacing delays by their Pade 
+% approximations (all-pass filters). Because this approximation
+% is only valid at low frequencies, it is important
+% to compare the true and approximate responses to choose the right
+% approximation order and check the approximation validity.
+%
+% Use the |PADE| command to compute Pade approximations of LTI models
+% with delays. For the PI control example above, you can compare 
+% the exact closed-loop response |T| with the response
+% obtained for a first-order Pade approximation of the delay:
+T1 = pade(T,1);
+step(T,'b',T1,'r',100)
+grid, legend('Exact','First-Order Pade')
+
+%%
+% The approximation error is fairly large. To get a better approximation, 
+% try a second-order Pade approximation of the delay:
+T2 = pade(T,2);
+step(T,'b',T2,'r',100)
+grid, legend('Exact','Second-Order Pade')
+
+%%
+% The responses now match closely except for the non-minimum phase artifact
+% introduced by the Pade approximation.
+
+%% Sensitivity Analysis
+% Delays are rarely known accurately, so it is often important to understand 
+% how sensitive a control system is to the delay value. Such sensitivity
+% analysis is easily performed using LTI arrays and the InternalDelay
+% property. 
+%
+% For example, to analyze the sensitivity of the notched PI control above, 
+% create 5 models with delay values ranging from 2.0 to 3.0:
+tau = linspace(2,3,5);                    % 5 delay values
+Tsens = repsys(Tnotch,[1 1 5]);           % 5 copies of Tnotch
+for j=1:5
+  Tsens(:,:,j).InternalDelay = tau(j);    % jth delay value -> jth model
+end
+
+%%
+% Then use |STEP| to create an envelope plot:
+step(Tsens)
+grid, title('Closed-loop response for 5 delay values between 2.0 and 3.0')
+
+%%
+% This plot shows that uncertainty on the delay value has little effect on
+% closed-loop characteristics. Note that while you can change the values of
+% internal delays, you cannot change how many there are because this is
+% part of the model structure. To eliminate some internal delays, set their
+% value to zero or use |PADE| with order zero:
+Tnotch0 = Tnotch;
+Tnotch0.InternalDelay = 0;
+bode(Tnotch,'b',Tnotch0,'r',{1e-2,3})
+grid, legend('Delay = 2.6','No delay','Location','SouthWest')
+
+%% Discretization
+% You can use |C2D| to discretize continuous-time delay systems. Available
+% methods include zero-order hold (ZOH), first-order hold (FOH), and Tustin. 
+% For models with internal delays, the ZOH discretization is not always "exact,"
+% i.e., the continuous and discretized step responses may not match:
+Td = c2d(T,1);
+step(T,'b',Td,'r')
+grid, legend('Continuous','ZOH Discretization')
+
+%%
+% To correct such discretization gaps, reduce the sampling period until
+% the continuous and discrete responses match closely:
+Td = c2d(T,0.05);
+step(T,'b',Td,'r')
+grid, legend('Continuous','ZOH Discretization')
+
+%%
+% Note that internal delays remain internal in the discretized model and
+% do not inflate the model order:
+order(Td)
+Td.InternalDelay
+
+%% Some Unique Features of Delay Systems
+% The time and frequency responses of delay systems can look bizarre 
+% and suspicious to those only familiar with delay-free LTI analysis.
+% Time responses can behave chaotically, Bode plots can exhibit gain
+% oscillations, etc. These are not software quirks but real features of
+% such systems. Below are a few illustrations of these phenomena
+
+%%
+% Gain ripples:
+G = exp(-5*s)/(s+1); 
+T = feedback(ss(G),.5); 
+bodemag(T) 
+
+%%
+% Gain oscillations:
+G = ss(1) + 0.5 * exp(-3*s);
+bodemag(G)
+
+%%
+% Jagged step response (note the "echoes" of the initial step):
+G = exp(-s) * (0.8*s^2+s+2)/(s^2+s);
+T = feedback(ss(G),1); 
+step(T)
+
+%%
+% Chaotic response:
+G = ss(1/(s+1)) + exp(-4*s);
+T = feedback(1,G);
+
+step(T)
+
+displayEndOfDemoMessage(mfilename)
+ 
+##### SOURCE END #####
+--></body></html>

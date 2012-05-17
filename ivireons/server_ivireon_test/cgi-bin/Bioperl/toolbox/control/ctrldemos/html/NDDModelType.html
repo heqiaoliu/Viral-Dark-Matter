@@ -1,0 +1,200 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using the Right Model Representation</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="NDDModelType.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit NDDModelType">Open NDDModelType.m in the Editor</a></div><div class="right"><a href="matlab:echodemo NDDModelType">Run in the Command Window</a></div></div><div class="content"><h1>Using the Right Model Representation</h1><!--introduction--><p>This demo covers some best practices for working with LTI models.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Which Representation is Best Suited for Computations?</a></li><li><a href="#2">Pitfalls of High-Order Transfer Functions</a></li><li><a href="#7">Pitfalls of Back-and-Forth Conversions Between Representations</a></li></ul></div><h2>Which Representation is Best Suited for Computations?<a name="1"></a></h2><p>Using the Control System Toolbox&#8482; software, you can represent LTI systems in four different ways:</p><div><ul><li>Transfer function (TF)</li><li>Zero-pole-gain (ZPK)</li><li>State space (SS)</li><li>Frequency response data (FRD)</li></ul></div><p>While the TF and ZPK representations are compact and convenient for display purposes, they are not ideal for system manipulation and analysis for several reasons:</p><div><ul><li>Working with TF and ZPK models often results in high-order polynomials whose evaluation can be plagued by inaccuracies.</li><li>The TF and ZPK representations are inefficient for manipulating MIMO systems and tend to inflate the model order.</li></ul></div><p>Some of these limitations are illustrated below. Because of these limitations, you should use the SS or FRD representations for most computations involving LTI models.</p><h2>Pitfalls of High-Order Transfer Functions<a name="2"></a></h2><p>Computations involving high-order transfer functions can suffer from severe loss of accuracy and even overflow.  Even a simple product of two transfer functions can give surprising results, as shown below.</p><p>Load and plot two discrete-time transfer functions <tt>Pd</tt> and <tt>Cd</tt> of order 9 and 2, respectively:</p><pre class="codeinput"><span class="comment">% Load Pd,Cd models</span>
+load <span class="string">numdemo</span> <span class="string">Pd</span> <span class="string">Cd</span>
+
+<span class="comment">% Plot their frequency response</span>
+bode(Pd,<span class="string">'b'</span>,Cd,<span class="string">'r'</span>), grid
+legend(<span class="string">'Pd'</span>,<span class="string">'Cd'</span>)
+</pre><img vspace="5" hspace="5" src="NDDModelType_01.png" alt=""> <p>Next, compute the open-loop transfer function L = Pd*Cd using the TF, ZPK, SS, and FRD representations:</p><pre class="codeinput">Ltf = Pd * Cd;                    <span class="comment">% TF</span>
+Lzp = zpk(Pd) * Cd;               <span class="comment">% ZPK</span>
+Lss = ss(Pd) * Cd;                <span class="comment">% SS</span>
+w = logspace(-1,3,100);
+Lfrd = frd(Pd,w) * Cd;            <span class="comment">% FRD</span>
+</pre><p>Finally, compare the frequency response magnitude for the resulting four models:</p><pre class="codeinput">sigma(Ltf,<span class="string">'b--'</span>,Lzp,<span class="string">'g'</span>,Lss,<span class="string">'r:'</span>,Lfrd,<span class="string">'m--'</span>,{1e-1,1e3});
+legend(<span class="string">'TF'</span>,<span class="string">'ZPK'</span>,<span class="string">'SS'</span>,<span class="string">'FRD'</span>)
+</pre><img vspace="5" hspace="5" src="NDDModelType_02.png" alt=""> <p>The responses from the ZPK, SS, and FRD representations closely match, but the response from the TF representation is choppy and erratic below 100 rad/sec. To understand the loss of accuracy with the transfer function form, compare the pole/zero maps of Pd and Cd near z=1:</p><pre class="codeinput">pzplot(Pd,<span class="string">'b'</span>,Cd,<span class="string">'r'</span>);
+title(<span class="string">'Pole/zero maps of Pd (blue) and Cd (red)'</span>);
+axis([0.4 1.05 -1 1])
+</pre><img vspace="5" hspace="5" src="NDDModelType_03.png" alt=""> <p>Note that there are multiple roots near z=1.  Because the relative accuracy of polynomial values drops near roots, the relative error on the transfer function value near z=1 exceeds 100%.  The frequencies below 100 rad/s map to <tt>|z-1</tt>|&lt;1e-3, which explains the erratic results below 100 rad/s.</p><h2>Pitfalls of Back-and-Forth Conversions Between Representations<a name="7"></a></h2><p>You can easily convert any LTI model to transfer function, zero-pole-gain, or state-space form using the commands <tt>tf</tt>, <tt>zpk</tt>, and <tt>ss</tt>, respectively. For example, given a two-input, two-output random state-space model HSS1 created using</p><pre class="codeinput">HSS1 = rss(3,2,2);
+</pre><p>you can obtain its transfer function using</p><pre class="codeinput">HTF = tf(HSS1);
+</pre><p>and convert it back to state-space using</p><pre class="codeinput">HSS2 = ss(HTF);
+</pre><p>However, beware that such back-and-forth conversions are expensive, can incur some loss of accuracy, and artificially inflate the model order for MIMO systems. For example, the order of <tt>HSS2</tt> is double that of <tt>HSS1</tt> because 6 is the generic order of a 2x2 transfer matrix with denominators of degree 3:</p><pre class="codeinput">order(HSS1)
+</pre><pre class="codeoutput">
+ans =
+
+     3
+
+</pre><pre class="codeinput">order(HSS2)
+</pre><pre class="codeoutput">
+ans =
+
+     6
+
+</pre><p>To understand the difference in model order, compare the pole/zero maps of the two models:</p><pre class="codeinput">subplot(211)
+pzmap(HSS1,<span class="string">'b'</span>)
+title(<span class="string">'Poles and zeros of HSS1'</span>);
+subplot(212)
+pzmap(HSS2,<span class="string">'r'</span>)
+title(<span class="string">'Poles and zeros of HSS2'</span>);
+</pre><img vspace="5" hspace="5" src="NDDModelType_04.png" alt=""> <p>Notice the cancelling pole/zero pairs in HSS2 depicted by x's inside o's in the pole/zero map. You can use the command <tt>minreal</tt> to eliminate cancelling pole/zero pairs and recover a 3rd-order, minimal state-space model from HSS2:</p><pre class="codeinput">HSS2_min = minreal(HSS2);
+order(HSS2_min)
+</pre><pre class="codeoutput">3 states removed.
+
+ans =
+
+     3
+
+</pre><p>Check that <tt>HSS1</tt> and <tt>HSS2_min</tt> coincide by plotting the relative gap between these two models:</p><pre class="codeinput">clf
+Gap = HSS1-HSS2_min;
+sigma(HSS1,Gap), grid
+legend(<span class="string">'HSS1'</span>,<span class="string">'Gap HSS1 vs. minimal HSS2'</span>,<span class="string">'Location'</span>,<span class="string">'Best'</span>)
+</pre><img vspace="5" hspace="5" src="NDDModelType_05.png" alt=""> <p>The gap (green curve) is very small at all frequencies. Note that <tt>sigma</tt> warns that the <tt>Gap</tt> plot is "noisy" because the difference is so small that it essentially consists of rounding errors.</p><p>Because extracting minimal realizations is numerically tricky, you should avoid creating nonminimal models. See also <a href="NDDModelInterconnections.html">Preventing State Duplication in System Interconnections</a> for related insights.</p><p class="footer">Copyright 1986-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using the Right Model Representation
+% This demo covers some best practices for working with LTI models.
+
+%   Copyright 1986-2008 The MathWorks, Inc.
+%   $Revision: 1.1.8.4 $  $Date: 2008/12/04 22:21:46 $
+
+%% Which Representation is Best Suited for Computations?
+% Using the Control System Toolbox(TM) software, you can represent LTI
+% systems in four different ways:
+% 
+% * Transfer function (TF)
+% * Zero-pole-gain (ZPK)
+% * State space (SS)
+% * Frequency response data (FRD)
+%
+% While the TF and ZPK representations are compact and convenient
+% for display purposes, they are not ideal for system manipulation and
+% analysis for several reasons:
+%
+% * Working with TF and ZPK models often results in high-order
+% polynomials whose evaluation can be plagued by inaccuracies.
+% * The TF and ZPK representations are inefficient for manipulating
+% MIMO systems and tend to inflate the model order.
+%
+% Some of these limitations are illustrated below. Because of these
+% limitations, you should use the SS or FRD representations for
+% most computations involving LTI models.
+
+%% Pitfalls of High-Order Transfer Functions
+% Computations involving high-order transfer functions can suffer from
+% severe loss of accuracy and even overflow.  Even a simple
+% product of two transfer functions can give surprising results, as shown
+% below.
+%
+% Load and plot two discrete-time transfer functions |Pd| and |Cd| of order 9 and
+% 2, respectively:
+
+% Load Pd,Cd models
+load numdemo Pd Cd 
+
+% Plot their frequency response
+bode(Pd,'b',Cd,'r'), grid
+legend('Pd','Cd')
+
+%%
+% Next, compute the open-loop transfer function L = Pd*Cd using
+% the TF, ZPK, SS, and FRD representations:
+Ltf = Pd * Cd;                    % TF
+Lzp = zpk(Pd) * Cd;               % ZPK
+Lss = ss(Pd) * Cd;                % SS
+w = logspace(-1,3,100);
+Lfrd = frd(Pd,w) * Cd;            % FRD
+
+%%
+% Finally, compare the frequency response magnitude for the resulting four models:
+sigma(Ltf,'bREPLACE_WITH_DASH_DASH',Lzp,'g',Lss,'r:',Lfrd,'mREPLACE_WITH_DASH_DASH',{1e-1,1e3});
+legend('TF','ZPK','SS','FRD')
+
+%% 
+% The responses from the ZPK, SS, and FRD representations closely match, but
+% the response from the TF representation is choppy and erratic
+% below 100 rad/sec. To understand the loss of accuracy with the transfer function form,
+% compare the pole/zero maps of Pd and Cd near z=1:
+pzplot(Pd,'b',Cd,'r');
+title('Pole/zero maps of Pd (blue) and Cd (red)');
+axis([0.4 1.05 -1 1])
+
+
+%%
+% Note that there are multiple roots near z=1.  Because the relative accuracy of
+% polynomial values drops near roots, the relative error on the transfer
+% function value near z=1 exceeds 100%.  The frequencies below 100 rad/s map 
+% to ||z-1||<1e-3, which explains the erratic results below 100 rad/s.
+
+%% Pitfalls of Back-and-Forth Conversions Between Representations
+% You can easily convert any LTI model to transfer function, zero-pole-gain, or
+% state-space form using the commands |tf|, |zpk|, and |ss|, respectively.
+% For example, given a two-input, two-output random state-space model HSS1
+% created using
+HSS1 = rss(3,2,2);
+
+%%
+% you can obtain its transfer function using
+HTF = tf(HSS1);
+
+%%
+% and convert it back to state-space using
+HSS2 = ss(HTF);
+
+%% 
+% However, beware that such back-and-forth conversions are expensive, can 
+% incur some loss of accuracy, and artificially inflate the model order for 
+% MIMO systems. For example, the order of |HSS2| is double that of |HSS1|
+% because 6 is the generic order of a 2x2 transfer matrix with denominators 
+% of degree 3:
+order(HSS1)
+
+%%
+order(HSS2)
+
+%%
+% To understand the difference in model order, compare the pole/zero maps of the two models:
+subplot(211)
+pzmap(HSS1,'b')
+title('Poles and zeros of HSS1');
+subplot(212)
+pzmap(HSS2,'r')
+title('Poles and zeros of HSS2');
+
+%%
+% Notice the cancelling pole/zero pairs in HSS2 depicted by x's inside o's in the pole/zero
+% map. You can use the command |minreal| to eliminate cancelling pole/zero pairs
+% and recover a 3rd-order, minimal state-space model from HSS2:
+HSS2_min = minreal(HSS2);
+order(HSS2_min)
+
+%%
+% Check that |HSS1| and |HSS2_min| coincide by plotting the relative gap
+% between these two models:
+clf
+Gap = HSS1-HSS2_min;
+sigma(HSS1,Gap), grid
+legend('HSS1','Gap HSS1 vs. minimal HSS2','Location','Best')
+
+%%
+% The gap (green curve) is very small at all frequencies. Note that |sigma| 
+% warns that the |Gap| plot is "noisy" because the difference is so small
+% that it essentially consists of rounding errors.
+
+%%
+% Because extracting minimal realizations is numerically tricky, you should
+% avoid creating nonminimal models.
+% See also <NDDModelInterconnections.html Preventing State Duplication in System Interconnections> for
+% related insights.
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

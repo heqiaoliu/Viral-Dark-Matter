@@ -1,0 +1,92 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Tetris</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_tetris2.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_tetris2.mdl</div><div class="right"><a href="matlab:sf_tetris2">Open this model</a></div></div><div class="content"><h1>Tetris</h1><p>This is a re-visit of the classic tetris game which has been shipping with Stateflow&reg; to use some of the more modern programming paradigms and features. It demonstrates the use of the <tt>hasChanged</tt> functional operator to query changes in the value of inputs, Embedded MATLAB&#8482; to abstract algorithmic sub-components and some useful semantic abstractions such as hierarchical states, inner transitions etc.</p><img vspace="5" hspace="5" src="sf_tetris2_01.png" alt=""> <p>The Stateflow chart <tt>TetrisLogic</tt> implements the logic behind the game. The arena or the playing field is represented by a [21x12] array which represents the playing arena. The chart updates this array at each simulation step and only uses MATLAB&reg; to display the array as an image.</p><p>The tetris game flow is represented intuitively by the sub-state <tt>MainArea</tt> which represents the current state of the playing field. The game starts by getting a "new shape" (or tetronimo). The piece then keeps moving down (or sideways, etc.) depending on user input. When the piece touches something from below (the <tt>isTouching</tt> condition), then the piece stops moving. If the piece has stopped too high, then the game is over. Otherwise, we "freeze" the shape, if necessary move to the next level, get a new shape and continue.</p><p>Graphically abstracting the game logic at this level provides a good way to hide details at various levels. Each of the sub-states can hide its inner complexity.</p><img vspace="5" hspace="5" src="sf_tetris2_02.png" alt=""> <p>For example, the <tt>Moving</tt> sub-state is responsible for moving the tetronimo based on the user input. Once again, we can abstract the game flow by using states. A tetronimo is either moving slowly or when the user presses the "spacebar" (which makes <tt>hasChanged(drop)</tt> return true), the tetronimo falls down fast without regard to user input.</p><p>Notice the use of <tt>hasChanged</tt> to gather user input. Each time the user presses a key, the MATLAB GUI increments the input to the chart, which makes <tt>hasChanged</tt> return true during that time-step.</p><p>Parallel substates of <tt>MovingSlowly</tt> capture the fact that we want to process multiple user keystrokes per time step.</p><img vspace="5" hspace="5" src="sf_tetris2_03.png" alt=""> <p>Finally, the GUI is implemented using a simple MATLAB script which also captures keystrokes from the user.</p><p>Key Mappings:</p><div><ul><li>'j' or LEFT for moving left</li><li>'l' or RIGHT for moving right</li><li>'i' or UP for rotating clockwise</li><li>'k' or DOWN for rotating counter clockwise</li><li>SPACE for dropping very fast</li><li>'p' for play/pause</li><li>'q' for quit</li></ul></div><p>The smaller square axis on the right shows the next tetronimo.</p><img vspace="5" hspace="5" src="sf_tetris2_04.png" alt=""> <p class="footer">Copyright 2006-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Tetris
+%
+% This is a re-visit of the classic tetris game which has been shipping
+% with Stateflow(R) to use some of the more modern programming paradigms and
+% features. It demonstrates the use of the |hasChanged| functional operator
+% to query changes in the value of inputs, Embedded MATLAB(TM) to abstract
+% algorithmic sub-components and some useful semantic abstractions such as
+% hierarchical states, inner transitions etc.
+
+% Copyright 2006-2008 The MathWorks, Inc.
+
+mdl = 'sf_tetris2';
+open_system(mdl);
+
+root = sfroot;
+chart = find(root, '-isa', 'Stateflow.Chart', 'Name', 'TetrisLogic');
+chart.visible = 0;
+
+%%
+% The Stateflow chart |TetrisLogic| implements the logic behind the game.
+% The arena or the playing field is represented by a [21x12] array which
+% represents the playing arena. The chart updates this array at each
+% simulation step and only uses MATLAB(R) to display the array as an image.
+%
+% The tetris game flow is represented intuitively by the sub-state
+% |MainArea| which represents the current state of the playing field. The
+% game starts by getting a "new shape" (or tetronimo). The piece then keeps
+% moving down (or sideways, etc.) depending on user input. When the piece
+% touches something from below (the |isTouching| condition), then the piece
+% stops moving. If the piece has stopped too high, then the game is over.
+% Otherwise, we "freeze" the shape, if necessary move to the next level,
+% get a new shape and continue.
+%
+% Graphically abstracting the game logic at this level provides a good way
+% to hide details at various levels. Each of the sub-states can hide its
+% inner complexity.
+
+chart.visible = 1;
+main = chart.find('Name', 'MainArea');
+main.view;
+
+%% 
+% For example, the |Moving| sub-state is responsible for moving the
+% tetronimo based on the user input. Once again, we can abstract the game
+% flow by using states. A tetronimo is either moving slowly or when the
+% user presses the "spacebar" (which makes |hasChanged(drop)| return true),
+% the tetronimo falls down fast without regard to user input.
+%
+% Notice the use of |hasChanged| to gather user input. Each time the user
+% presses a key, the MATLAB GUI increments the input to the chart, which
+% makes |hasChanged| return true during that time-step.
+%
+% Parallel substates of |MovingSlowly| capture the fact that we want to
+% process multiple user keystrokes per time step.
+
+moving = chart.find('Name', 'Moving');
+moving.view;
+
+%% 
+%
+% Finally, the GUI is implemented using a simple MATLAB script which also
+% captures keystrokes from the user.
+%  
+% Key Mappings:
+%
+% * 'j' or LEFT for moving left
+% * 'l' or RIGHT for moving right
+% * 'i' or UP for rotating clockwise
+% * 'k' or DOWN for rotating counter clockwise
+% * SPACE for dropping very fast
+% * 'p' for play/pause
+% * 'q' for quit
+%
+% The smaller square axis on the right shows the next tetronimo.
+
+chart.visible = 0;
+set_param(mdl, 'StopTime', '300');
+evalc('sim(mdl)');
+
+##### SOURCE END #####
+--></body></html>

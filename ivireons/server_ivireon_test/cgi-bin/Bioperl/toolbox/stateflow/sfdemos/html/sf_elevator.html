@@ -1,0 +1,300 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling an Elevator System Using Atomic Subcharts</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_elevator.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_elevator.mdl</div><div class="right"><a href="matlab:sf_elevator">Open this model</a></div></div><div class="content"><h1>Modeling an Elevator System Using Atomic Subcharts</h1><!--introduction--><p>This demo shows how to model a two-car elevator system with some of the common features expected in modern elevators such as call queuing, fire alarm responses, hall calls etc.</p><p>The demo:</p><div><ol><li>Showcases the advantages of using atomic subcharts in such an application by comparing a model before and after introducing this construct.</li><li>Illustrates the workflow needed to modify the elevator system model to use atomic subcharts.</li></ol></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Elevator Model</a></li><li><a href="#4">Brief Overview of the Original Model</a></li><li><a href="#10">Modifications to the Original Model Using Atomic Subcharts</a></li><li><a href="#13">Benefits of Using Atomic Subcharts</a></li><li><a href="#14">Appendix: How to Incorporate Atomic Subcharts in the Original Model</a></li></ul></div><h2>Elevator Model<a name="1"></a></h2><img vspace="5" hspace="5" src="sf_elevator_01.png" alt=""> <p>Simulating the above model brings up the following graphical user interface (GUI):</p><p><img vspace="5" hspace="5" src="sf_elevator_gui_screenshot.png" alt=""> </p><p>This GUI allows users to click on buttons on each floor hallway, represented as empty squares under each floor number, or to click on buttons inside the individual elevator cars, represented as the numbered white buttons on a yellow background at the bottom of the GUI.</p><h2>Brief Overview of the Original Model<a name="4"></a></h2><p>The chart <a href="matlab:open_system('sf_elevator_old');open_system('sf_elevator_old/Elevator%20System');">Elevator System</a> consists of three main components as shown here:</p><img vspace="5" hspace="5" src="sf_elevator_02.png" alt=""> <p>The workhorses of this chart are the subcharts <b>Elevator_A</b> and <b>Elevator_B</b>: these subcharts represent the elevator cars in the model. The elevator cars are controlled by the <b>Elevator_Manager</b> subchart.</p><p>Each of these subcharts manages a queue of user requests:</p><div><ul><li>The <b>Elevator_Manager</b> manages the hall queue: this queue holds all the requests generated when pressing a button at any of the floors.</li><li>Each of the elevator cars has its own queue that represents all the user requests that it needs to process.</li></ul></div><p>The main purpose of the <b>Elevator_Manager</b> chart is to process and delegate all incoming user requests (represented as input events in the model) to either <b>Elevator_A</b> or <b>Elevator_B</b> depending on criteria such as proximity to the request and availability.</p><p><b>Elevator Cars (Elevator_A and Elevator_B subcharts)</b></p><p>Each elevator car iteratively processes requests in its queue and continually updates both its status (BUSY, IDLE, etc) and its position. The updated position is then used to drive the GUI representation of the elevator car: to move the car or open its doors.</p><img vspace="5" hspace="5" src="sf_elevator_03.png" alt=""> <p><br/></p><img vspace="5" hspace="5" src="sf_elevator_04.png" alt=""> <p><b>Click <a href="matlab:open_system('sf_elevator_old');">here</a> to open the original model.</b></p><h2>Modifications to the Original Model Using Atomic Subcharts<a name="10"></a></h2><p>Refer to the subcharts above. Note that the elevator car subcharts have almost identical code (states, functions, local variables, etc) to process their individual user request queues. Because the elevator cars respond the same way to different inputs, the subcharts used to represent their behavior are prime candidates for linked atomic subcharts.</p><p>You can replace the elevator car subcharts with two links to a library atomic subchart that represents an elevator car as shown below:</p><img vspace="5" hspace="5" src="sf_elevator_05.png" alt=""> <p>In the above example, <b>Elevator_A</b> and <b>Elevator_B</b> both refer to chart <b>Elevator</b> in the library model <a href="matlab:open_system('sf_elevator_lib');">sf_elevator_lib</a>. You can then tweak the library atomic subchart without having to modify the linked instances.</p><p>One other use of atomic subcharts in the new model is in the <b>GUI Controller</b> chart: since the logic for controlling each GUI elevator car is identical (click <a href="matlab:open_system('sf_elevator_old');open_system('sf_elevator_old/GUI%20Controller')">here</a> to open original chart) we can also make the GUI car controller a library atomic subchart and just link to it twice.  Click <a href="matlab:open_system('sf_elevator');open_system('sf_elevator/GUI%20Controller')">here</a> to open the <b>GUI Controller</b> chart with linked atomic subcharts.</p><p>To open up the final model that uses atomic subcharts as described above, click <a href="matlab:open_system('sf_elevator')">here</a>.</p><h2>Benefits of Using Atomic Subcharts<a name="13"></a></h2><p>All the logic specific to a elevator car is now housed inside a separate Stateflow chart. This design has several benefits:</p><div><ol><li>Team development is easier. Because the elevator logic and the elevator manager logic are now in different MDL files, different users can work on these different portions without merge conflicts at submission time.</li><li>Because Stateflow does simulation through code-generation, separating the chart into two speeds up the process of testing incremental changes during simulation.</li><li>Because the library elevator chart is now reused, changes to the logic can be made once instead of being duplicated in multiple places.</li><li>This reuse also assists Real-Time Workshop in generating reusable code for both elevators. In this case, the code for the elevator subsystem reduces by almost 500 lines of code: from about 1500 lines to about a 1000 lines.</li><li>Separating the logic for an elevator into a chart also allows users to control Real-Time Workshop file-packaging options for the elevator chart.</li></ol></div><h2>Appendix: How to Incorporate Atomic Subcharts in the Original Model<a name="14"></a></h2><p>To convert the elevator car subcharts to atomic subcharts, a few steps are needed. These steps reflect the rules that govern the use of atomic subcharts. For a description of these rules, click <a href="matlab:sfhelp('atomic_subchart_rules')">here</a> and <a href="matlab:sfhelp('atomic_subchart_conversion_restrictions')">here</a>.</p><p>The approach taken below is to make a library atomic subchart out of the <b>Elevator_A</b> subchart and then use linked instances of this library instead of the elevator car subcharts.</p><p> <font color="blue"><b>Step 1. Export Elevator_Manager functions to
+make them visible to atomic subcharts</b></font> </p><p>Because atomic subcharts cannot call functions defined in a container chart unless they are exported, we need to pull the functions in the <b>Elevator_Manager</b> which are called by <b>Elevator_A</b> and <b>Elevator_B</b> to the chart level: doing so will make these functions visible to the atomic subcharts.</p><p>To export the functions at the chart level, you need to set the <b>Elevator System</b> chart's <tt>Export Chart Level Graphical functions (Make Global)</tt> property to be true.</p><p>After that migrate all the functions used by the elevator car subcharts out of the <b>Elevator_Manager</b> chart and into the parent chart as shown below:</p><p><img vspace="5" hspace="5" src="sf_workflow_first_step.png" alt=""> </p><p>The migrated graphical functions need to be renamed to distinguish them from the functions inside the elevator car subcharts. For example, the function <tt>deregister</tt> can be renamed to <tt>Main_deregister</tt>. Now modify the <b>Elevator_A</b> to use these functions.</p><p><b>Note</b>: The elevator car subcharts directly access a local variable (<tt>hall_call_status</tt>) defined in the <b>Elevator_Manager</b> subchart. Because atomic subcharts can only access chart-level data the variable <tt>hall_call_status</tt> needs to be re-parented to the containing chart.</p><p>The <b>Elevator_A</b> subchart should then be modified to use the newly scoped variable.</p><p> <font color="blue"><b>Step 2. Remove dependencies on input
+events</b></font></p><p>The subchart <b>Elevator_A</b> has an input event <tt>CLOCK</tt> that provides a timer for keeping the elevator doors open when the elevator reaches its destination floor as shown below:</p><p><img vspace="5" hspace="5" src="sf_workflow_second_step.png" alt=""> </p><p>Because atomic subcharts do not support input events, you can replace the use of the input event <tt>CLOCK</tt> with absolute-time temporal logic. For example, you can use "sec" instead of the <tt>CLOCK</tt> event.</p><p> <font color="blue"><b>Step 3. Create a library atomic subchart to
+replace elevator car subcharts</b></font></p><p>Once you have satisfied all the requirements to make <b>Elevator_A</b> an atomic subchart, right-click on the subchart and select <tt>Make Contents -&gt; Atomic Subcharted</tt>. Subchart <b>Elevator_A</b> will now have the label <i>(Atomic)</i> as shown below:</p><p><img vspace="5" hspace="5" src="sf_workflow_third_step.png" alt=""> </p><p>For more information on how to convert a state to an atomic subchart, click <a href="matlab:sfhelp('convert_to_and_from_atomic_subcharts');">here</a>.</p><p>Next, create a library atomic subchart using <b>Elevator_A</b>. Once you have created the library atomic subchart (shown below), copy it and paste it twice inside the <b>Elevator System</b> chart to replace the subcharts <b>Elevator_A</b> and <b>Elevator_B</b>.</p><p>Click <a href="matlab:open_system('sf_elevator_lib');">here</a> to open up the library model.</p><img vspace="5" hspace="5" src="sf_elevator_06.png" alt=""> <p> <font color="blue"><b>Step 4. Map inputs/outputs/data for both linked
+atomic subcharts to those of parent chart</b></font></p><p>The chart <b>Elevator System</b> has 4 outputs, 2 outputs for each elevator car subchart: each elevator car subchart outputs the current position and the current status on whether the elevator door is open. These outputs need to be mapped appropriately to the individual elevator car subcharts.</p><p>One of the <b>Elevator System</b> inputs (<tt>fire_alarm</tt>) is fed directly to the elevator car subcharts so that also needs to be mapped.</p><p>Lastly, since the elevator cars need to know about the status of each hall floor button (stored in <b>Elevator System</b>'s <tt>hall_call_status variable</tt>), we need to map that to a data store memory in the atomic subchart.</p><p>Below is a screenshot of the dialog box used to perform the above mappings:</p><p><img vspace="5" hspace="5" src="sf_elevator_car_mappings_dialog.png" alt=""> </p><p class="footer">Copyright 2006-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling an Elevator System Using Atomic Subcharts
+% This demo shows how to model a two-car elevator system with some of the
+% common features expected in modern elevators such as call queuing, fire
+% alarm responses, hall calls etc.
+%
+% The demo:
+%
+% # Showcases the advantages of using atomic subcharts in such an
+% application by comparing a model before and after introducing this
+% construct.
+% # Illustrates the workflow needed to modify the elevator system model
+% to use atomic subcharts. 
+
+% Copyright 2006-2010 The MathWorks, Inc.
+
+%% Elevator Model
+
+close all;
+mdl_old ='sf_elevator_old';
+open_system(mdl_old);
+
+root = sfroot;
+machine_old = root.find('-isa', 'Stateflow.Machine', 'Name', mdl_old);
+chart_old = machine_old.find('-isa', 'Stateflow.Chart', 'Name', 'Elevator System');
+chart_old.Visible = 0;
+
+%% 
+% Simulating the above model brings up the following graphical user
+% interface (GUI):
+%%
+%
+% <<sf_elevator_gui_screenshot.png>>
+%
+% 
+% This GUI allows users to click on buttons on each floor hallway,
+% represented as empty squares under each floor number, or to click on
+% buttons inside the individual elevator cars, represented as the numbered
+% white buttons on a yellow background at the bottom of the GUI.
+
+%% Brief Overview of the Original Model
+% The chart
+% <matlab:open_system('sf_elevator_old');open_system('sf_elevator_old/Elevator%20System');
+% Elevator System> consists of three main components as shown here:
+
+chart_old.view;
+ed = chart_old.Editor;
+ed.WindowPosition(3) = ed.WindowPosition(3)/4;
+ed.WindowPosition(4) = ed.WindowPosition(4)/4;
+ed.ZoomFactor = ed.ZoomFactor*4;
+
+%%
+% The workhorses of this chart are the subcharts *Elevator_A* and
+% *Elevator_B*: these subcharts represent the elevator cars in the model.
+% The elevator cars are controlled by the *Elevator_Manager* subchart.
+%
+% Each of these subcharts manages a queue of user requests:
+%
+% * The *Elevator_Manager* manages the hall queue: this queue holds all the
+% requests generated when pressing a button at any of the floors.
+% * Each of the elevator cars has its own queue that represents all the
+% user requests that it needs to process.
+%
+% The main purpose of the *Elevator_Manager* chart is to process and
+% delegate all incoming user requests (represented as input events in the
+% model) to either *Elevator_A* or *Elevator_B* depending on criteria such
+% as proximity to the request and availability.
+
+
+%%
+% *Elevator Cars (Elevator_A and Elevator_B subcharts)*
+% 
+% Each elevator car iteratively processes requests in its queue and
+% continually updates both its status (BUSY, IDLE, etc) and its position.
+% The updated position is then used to drive the GUI representation of the
+% elevator car: to move the car or open its doors.
+
+ed.WindowPosition(3) = ed.WindowPosition(3)*4;
+ed.WindowPosition(4) = ed.WindowPosition(4)*4;
+ed.ZoomFactor = ed.ZoomFactor/4;
+
+Elevator_A = machine_old.find('-isa', 'Stateflow.State', 'Name', 'Elevator_A');
+Elevator_A.view;
+
+%%
+% <html><br/></html>
+
+Elevator_B = machine_old.find('-isa', 'Stateflow.State', 'Name', 'Elevator_B');
+Elevator_B.view;
+
+%%
+% 
+% *Click <matlab:open_system('sf_elevator_old'); here> to open the original
+% model.*
+
+
+%% 
+
+close_system(mdl_old);
+
+%% Modifications to the Original Model Using Atomic Subcharts
+% Refer to the subcharts above. Note that the elevator car subcharts
+% have almost identical code (states, functions, local variables, etc) to
+% process their individual user request queues. Because the elevator cars
+% respond the same way to different inputs, the subcharts used
+% to represent their behavior are prime candidates for linked atomic
+% subcharts.
+%
+% You can replace the elevator car subcharts with two links to a library
+% atomic subchart that represents an elevator car as shown below: 
+
+mdl_new ='sf_elevator';
+open_system(mdl_new);
+set_param(mdl_new, 'Open', 'off');
+
+root = sfroot;
+machine_new = root.find('-isa', 'Stateflow.Machine', 'Name', mdl_new);
+chart_new = machine_new.find('-isa', 'Stateflow.Chart', 'Name', 'Elevator System');
+chart_new.view;
+
+%%
+% In the above example, *Elevator_A* and *Elevator_B* both refer to chart
+% *Elevator* in the library model <matlab:open_system('sf_elevator_lib');
+% sf_elevator_lib>. You can then tweak the library atomic subchart without
+% having to modify the linked instances.
+
+chart_new.Visible = 0;
+
+%%
+% One other use of atomic subcharts in the new model is in the *GUI
+% Controller* chart: since the logic for controlling each GUI elevator car
+% is identical (click
+% <matlab:open_system('sf_elevator_old');open_system('sf_elevator_old/GUI%20Controller')
+% here> to open original chart) we can also make the GUI car controller a
+% library atomic subchart and just link to it twice.  Click
+% <matlab:open_system('sf_elevator');open_system('sf_elevator/GUI%20Controller')
+% here> to open the *GUI Controller* chart with linked atomic subcharts.
+%
+% To open up the final model that uses atomic subcharts as described above,
+% click <matlab:open_system('sf_elevator') here>.
+
+
+%% Benefits of Using Atomic Subcharts
+%
+% All the logic specific to a elevator car is now housed
+% inside a separate Stateflow chart. This design has several benefits:
+% 
+% # Team development is easier. Because the elevator logic and the elevator
+% manager logic are now in different MDL files, different users can work on
+% these different portions without merge conflicts at submission time.
+% # Because Stateflow does simulation through code-generation, separating
+% the chart into two speeds up the process of testing incremental changes
+% during simulation.
+% # Because the library elevator chart is now reused, changes to the logic
+% can be made once instead of being duplicated in multiple places.
+% # This reuse also assists Real-Time Workshop in generating reusable code
+% for both elevators. In this case, the code for the elevator subsystem
+% reduces by almost 500 lines of code: from about 1500 lines to about a
+% 1000 lines.
+% # Separating the logic for an elevator into a chart also allows users to
+% control Real-Time Workshop file-packaging options for the elevator chart.
+% 
+%% Appendix: How to Incorporate Atomic Subcharts in the Original Model
+% To convert the elevator car subcharts to atomic subcharts, a few steps
+% are needed. These steps reflect the rules that govern the use of atomic
+% subcharts. For a description of these rules, click
+% <matlab:sfhelp('atomic_subchart_rules') here> and
+% <matlab:sfhelp('atomic_subchart_conversion_restrictions') here>.
+% 
+% The approach taken below is to make a library atomic subchart out of the
+% *Elevator_A* subchart and then use linked instances of this library
+% instead of the elevator car subcharts.
+%
+%%
+% <html> <font color="blue"><b>Step 1. Export Elevator_Manager functions to
+% make them visible to atomic subcharts</b></font> </html>
+%
+%
+% Because atomic subcharts cannot call functions defined in a container
+% chart unless they are exported, we need to pull the functions in the
+% *Elevator_Manager* which are called by *Elevator_A* and *Elevator_B* to
+% the chart level: doing so will make these functions visible to the atomic
+% subcharts.
+%
+% To export the functions at the chart level, you need to set the *Elevator
+% System* chart's |Export Chart Level Graphical functions (Make Global)|
+% property to be true. 
+%
+% After that migrate all the functions used by the elevator car subcharts
+% out of the *Elevator_Manager* chart and into the parent chart as shown
+% below:
+%
+% <<sf_workflow_first_step.png>>
+%
+%
+% The migrated graphical functions need to be renamed to distinguish them from
+% the functions inside the elevator car subcharts. For example, the
+% function |deregister| can be renamed to |Main_deregister|. Now modify the
+% *Elevator_A* to use these functions.
+%
+% *Note*: The elevator car subcharts directly access a local variable
+% (|hall_call_status|) defined in the *Elevator_Manager* subchart. Because
+% atomic subcharts can only access chart-level data the variable
+% |hall_call_status| needs to be re-parented to the containing chart.
+% 
+% The *Elevator_A* subchart should then be modified to use the newly scoped
+% variable.
+%
+%
+%%
+%
+% <html> <font color="blue"><b>Step 2. Remove dependencies on input
+% events</b></font></html>
+%
+%
+% The subchart *Elevator_A* has an input event |CLOCK| that provides a
+% timer for keeping the elevator doors open when the elevator reaches its
+% destination floor as shown below:
+%
+% <<sf_workflow_second_step.png>>
+%
+%
+% Because atomic subcharts do not support input events, you can replace the
+% use of the input event |CLOCK| with absolute-time temporal logic. For
+% example, you can use "sec" instead of the |CLOCK| event.
+%
+%
+%%
+%
+% <html> <font color="blue"><b>Step 3. Create a library atomic subchart to
+% replace elevator car subcharts</b></font></html>
+%
+% Once you have satisfied all the requirements to make *Elevator_A* an
+% atomic subchart, right-click on the subchart and select |Make Contents
+% -> Atomic Subcharted|. Subchart *Elevator_A* will now have the label
+% _(Atomic)_ as shown below:
+%
+% <<sf_workflow_third_step.png>>
+%
+% For more information on how to convert a state to an atomic subchart,
+% click <matlab:sfhelp('convert_to_and_from_atomic_subcharts'); here>.
+%
+% Next, create a library atomic subchart using *Elevator_A*. Once you have
+% created the library atomic subchart (shown below), copy it and paste it
+% twice inside the *Elevator System* chart to replace the subcharts *Elevator_A*
+% and *Elevator_B*.
+
+open_system('sf_elevator_lib');
+
+%%%
+% Click <matlab:open_system('sf_elevator_lib'); here> to open up the
+% library model.
+%
+%
+%%
+%
+% <html> <font color="blue"><b>Step 4. Map inputs/outputs/data for both linked
+% atomic subcharts to those of parent chart</b></font></html>
+%
+%
+% The chart *Elevator System* has 4 outputs, 2 outputs for each elevator
+% car subchart: each elevator car subchart outputs the current position and
+% the current status on whether the elevator door is open. These outputs
+% need to be mapped appropriately to the individual elevator car subcharts.
+%
+% One of the *Elevator System* inputs (|fire_alarm|) is fed directly to the elevator
+% car subcharts so that also needs to be mapped.
+%
+% Lastly, since the elevator cars need to know about the status of each
+% hall floor button (stored in *Elevator System*'s |hall_call_status
+% variable|), we need to map that to a data store memory in the atomic
+% subchart.
+% 
+% Below is a screenshot of the dialog box used to perform the above
+% mappings:
+% 
+% <<sf_elevator_car_mappings_dialog.png>>
+%
+
+clear all;
+close all;
+bdclose all;
+% LocalWords:  workflow
+
+##### SOURCE END #####
+--></body></html>

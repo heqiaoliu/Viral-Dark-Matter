@@ -1,0 +1,279 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Visualizing Model Reference Architectures</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_mdlref_depgraph.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_mdlref_depgraph.mdl</div><div class="right"><a href="matlab:sldemo_mdlref_depgraph">Open this model</a></div></div><div class="content"><h1>Visualizing Model Reference Architectures</h1><!--introduction--><p>This demo explains how to view dependencies among referenced models.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Demo Requirements</a></li><li><a href="#2">Open The Demo Model</a></li><li><a href="#3">Find Referenced Models</a></li><li><a href="#6">Viewing a Model Reference Dependency Graph</a></li><li><a href="#7">Dependency Graph</a></li><li><a href="#9">Interacting with the Dependency Viewer</a></li><li><a href="#11">Viewing the Referenced Model Instances</a></li><li><a href="#16">Dependency Graph for Referenced Model Instances</a></li><li><a href="#17">Interacting with the Dependency Viewer in Instance View</a></li><li><a href="#25">Interacting with Models that are Referenced Multiple Times in Normal Mode</a></li></ul></div><h2>Demo Requirements<a name="1"></a></h2><p>During this demo, Simulink&reg; generates files in the current working directory. If you do not want to generate files in this directory, you should change the working directory to a suitable directory before starting this demo.</p><h2>Open The Demo Model<a name="2"></a></h2><p><a href="matlab:open_system('sldemo_mdlref_depgraph');">Open the demo model</a>. The model <tt>sldemo_mdlref_depgraph</tt> looks like this:</p><img vspace="5" hspace="5" src="sldemo_mdlref_depgraph_01.png" alt=""> <h2>Find Referenced Models<a name="3"></a></h2><p>Use the <tt>find_mdlrefs</tt> utility function to find all Model blocks and all models referenced by a model. Type <tt>help find_mdlrefs</tt> for more information about this function.</p><p><tt>[refMdls, modelBlks] = find_mdlrefs('sldemo_mdlref_depgraph');</tt></p><p><tt>find_mdlrefs</tt> returns two cell arrays, <tt>refMdls</tt> and <tt>modelBlks</tt>. <tt>refMdls</tt> contains the names of all models that are directly or indirectly referenced by <tt>sldemo_mdlref_depgraph</tt>. The last element in <tt>refMdls</tt> is always the name of the input model. <tt>modelBlks</tt> contains block paths for all Model blocks in the top model and all referenced models.</p><h2>Viewing a Model Reference Dependency Graph<a name="6"></a></h2><p>Double click on the blue box in the demo model to view its model reference dependency graph. In general, use the <tt>view_mdlrefs</tt> utility function or go to the <b>Tools</b> menu and select <b>Model Dependencies</b>, select <b>Model Dependency Viewer</b>, and finally select <b>.mdl Files Dependencies Excluding Libraries</b> to start the dependency viewer for a specific model.</p><h2>Dependency Graph<a name="7"></a></h2><p>The next figure shows the dependency graph of <tt>sldemo_mdlref_depgraph</tt>:</p><p><img vspace="5" hspace="5" src="../images/sldemo_depgraph1.png" alt=""> </p><p>In the dependency graph, the blue nodes represent Simulink models. The directed lines indicate dependencies. For example, in the demo model the link from <tt>sldemo_mdlref_depgraph</tt> to <tt>sldemo_mdlref_house</tt> indicates that <tt>sldemo_mdlref_depgraph</tt> references <tt>sldemo_mdlref_house</tt>. If the model had library links, you could go to the <b>View</b> menu and select <b>Include Libraries</b> to have the dependency viewer show libraries linked to by models in the hierarchy.  When <b>Include Libraries</b> is selected, yellow nodes are used to depict libraries.</p><h2>Interacting with the Dependency Viewer<a name="9"></a></h2><div><ul><li>Left-clicking on a node selects it.</li><li>Double-clicking on a node opens the associated model or library.</li><li>Pressing the left mouse button on an empty space and then dragging the   mouse creates a marquee to select multiple nodes.</li><li>Right-clicking on a node brings up a context menu.</li><li>Pressing the left mouse button on any selected node and dragging the   mouse moves the selected node(s).</li><li>The mouse wheel can be used to zoom into and out of the region currently   under the mouse pointer.</li><li>Pressing the space bar centers the dependency graph and adjusts the   zoom so that the dependency graph fits in the available space.</li><li>Holding down the space bar activates a navigational mode, where it is   possible to pan the view by dragging the mouse with the left button   held down.</li></ul></div><p>Please refer to the <a href="matlab:helpview([docroot,'/mapfiles/simulink.map'],'dependency_viewer');">documentation</a> for more information about all the features of the Dependency Viewer.</p><h2>Viewing the Referenced Model Instances<a name="11"></a></h2><p>In the previous dependency graph, only one node exists for each model in the graph and at most one link exists from one node to another node. Therefore, this dependency graph does not show if multiple references exist from one model to another model.  Furthermore, this view does not show which models are referenced in Normal mode and which models are referenced in Accelerator mode.</p><p>The dependency viewer can show referenced model instances, and this view can be accessed in one of two ways:</p><div><ul><li>From the model, go to the <b>Tools</b> menu, select <b>Model Dependencies</b>, then   <b>Model Dependency Viewer</b>, and finally select <b>Referenced Model Instances</b>.</li><li>From the model dependency viewer, go to the <b>View</b> menu, select   <b>Dependency Type</b>, and then select <b>Referenced Model Instances</b>.</li></ul></div><p>Note that in this view, which we refer to as Instance View, libraries are never shown.</p><p><img vspace="5" hspace="5" src="../images/sldemo_depgraph2.png" alt=""> </p><h2>Dependency Graph for Referenced Model Instances<a name="16"></a></h2><p>In Instance View, the blue nodes represent Simulink models. The directed lines indicate dependencies.  Note:  in this view two nodes are labeled <tt>sldemo_mdlref_F2C</tt> because this model is referenced twice, once by <tt>sldemo_mdlref_outdoor_temp</tt> and once by <tt>sldemo_mdlref_heater</tt>. Except for the top model, all nodes have corners that denote the simulation mode of the referenced model.  Hollow corners denote a Normal mode reference and filled corners denote an Accelerator mode reference. Thus, <tt>sldemo_mdlref_heater</tt> makes a Normal mode reference to <tt>sldemo_mdlref_F2C</tt> and an Accelerator mode reference to <tt>sldemo_mdlref_thermostat</tt>.</p><h2>Interacting with the Dependency Viewer in Instance View<a name="17"></a></h2><p>Currently, the reference <tt>sldemo_mdlref_outdoor_temp</tt> makes to <tt>sldemo_mdlref_F2C</tt> is an Accelerator mode reference. Hovering the mouse over the node <tt>sldemo_mdlref_F2C</tt> that <tt>sldemo_mdlref_outdoor_temp</tt> references displays a tooltip showing the path to the block making the reference to <tt>sldemo_mdlref_F2C</tt> in <tt>sldemo_mdlref_outdoor_temp</tt>. Suppose you want to change this to be a Normal mode reference:</p><div><ol><li>Right-click on the node <tt>sldemo_mdlref_F2C</tt> that   <tt>sldemo_mdlref_outdoor_temp</tt> points to.</li><li>Select <b>Highlight Block</b> from the context menu that appears; this   opens <tt>sldemo_mdlref_outdoor_temp</tt> and highlight the corresponding   Model block.</li><li>Right click on the highlighted block.</li><li>Select <b>ModelReference Parameters</b> from the menu that appears.</li><li>Change the Simulation mode to Normal, and click <b>OK</b>.</li><li>To see this change in the dependency viewer, go to the dependency   viewer and select <b>Refresh</b> from the <b>View</b> menu.</li></ol></div><p>The Instance View dependency graph now looks like this:</p><p><img vspace="5" hspace="5" src="../images/sldemo_depgraph3.png" alt=""> </p><p>The dependency viewer now shows the reference <tt>sldemo_mdlref_outdoor_temp</tt> makes to <tt>sldemo_mdlref_F2C</tt> as a Normal mode reference, but it has a yellow triangle on it.  This triangle denotes a warning.  Hovering the mouse over the node with the triangle displays a tooltip explaining the warning. This warning appears because <tt>sldemo_mdlref_F2C</tt> is configured to run in Normal mode but its parent, <tt>sldemo_mdlref_outdoor_temp</tt>, is configured to run in Accelerator mode. Normal mode references from models running in Accelerator mode are not supported, so <tt>sldemo_mdlref_F2C</tt> will run in Accelerator mode during simulation.</p><p>To make this model run in Normal mode, you must configure all of its ancestors to run in Normal mode.  To do this, right click on the node <tt>sldemo_mdlref_outdoor_temp</tt> and select <b>Highlight Block</b> from the context menu that appears; this opens <tt>sldemo_mdlref_depgraph</tt> and highlights the corresponding Model block.  Right click on the highlighted block, select <b>ModelReference Parameters</b>, change the Simulation mode to Normal, and click <b>OK</b>.  (If there were more Accelerator mode ancestors of <tt>sldemo_mdlref_F2C</tt>, these would also need to be changed to Normal mode references.)</p><p>To see this change in the dependency viewer, go to the dependency viewer and select <b>Refresh</b> from the <b>View</b> menu:</p><p><img vspace="5" hspace="5" src="../images/sldemo_depgraph4.png" alt=""> </p><h2>Interacting with Models that are Referenced Multiple Times in Normal Mode<a name="25"></a></h2><p>There are now two models that reference <tt>sldemo_mdlref_F2C</tt> in Normal mode.  After simulating this model, <tt>sl_demo_mdlref_heater</tt> look likes this:</p><img vspace="5" hspace="5" src="sldemo_mdlref_depgraph_02.png" alt=""> <p>And <tt>sldemo_mdlref_outdoor_temp</tt> looks like this:</p><img vspace="5" hspace="5" src="sldemo_mdlref_depgraph_03.png" alt=""> <p>The Model block that references <tt>sldemo_mdlref_F2C</tt> in <tt>sldemo_mdlref_heater</tt> has white corners, while the Model block that references <tt>sldemo_mdlref_F2C</tt> in <tt>sldemo_mdlref_outdoor_temp</tt> has gray corners.  This is because Model block Normal Mode Visibility is on for the Model block in <tt>sldemo_mdlref_heater</tt> but is not on for the Model block in <tt>sldemo_mdlref_outdoor_temp</tt>.  Note that only one Normal mode instance of each model will have white corners, the rest will have gray corners.  Display blocks (for example, Scopes) will show data for the instance referenced from the Model block with white corners, in this case from the model <tt>sldemo_mdlref_heater</tt>, but not for any other instance:</p><img vspace="5" hspace="5" src="sldemo_mdlref_depgraph_04.png" alt=""> <img vspace="5" hspace="5" src="sldemo_mdlref_depgraph_05.png" alt=""> <p>To open the Model Block Normal Mode Visibility dialog box, from the top model (<tt>sldemo_mdlref_depgraph</tt>) select <b>Edit</b> &gt; <b>Model Blocks</b> &gt; <b>Normal Mode Visibility</b>.  Select the instance of each model that is referenced more than once in Normal mode for which you want to have Normal Mode Visibility on.</p><p><img vspace="5" hspace="5" src="../images/sldemo_depgraph5.png" alt=""> </p><p>Right now, no Model blocks have been selected, which means that during the last simulation, Simulink selected one instance of <tt>sldemo_mdlref_F2C</tt> to have Normal Mode Visibility set to on, which was indicated by the Model block with white corners.  To select the instance referenced by <tt>sldemo_mdlref_outdoor_temp</tt>, check the box corresponding to that instance, then press <b>OK</b>:</p><p><img vspace="5" hspace="5" src="../images/sldemo_depgraph6.png" alt=""> </p><p>After changing the Normal Mode Visibility setting, simulate the model <tt>sldemo_mdlref_depgraph</tt> to make use of the new setting.</p><img vspace="5" hspace="5" src="sldemo_mdlref_depgraph_06.png" alt=""> <img vspace="5" hspace="5" src="sldemo_mdlref_depgraph_07.png" alt=""> <p class="footer">Copyright 1990-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Visualizing Model Reference Architectures 
+% This demo explains how to view dependencies among 
+% referenced models.
+
+% Copyright 1990-2010 The MathWorks, Inc.
+% $Revision: 1.1.6.9 $  $Date: 2010/05/20 03:16:31 $
+
+%% Demo Requirements
+% During this demo, Simulink(R) generates files in the current 
+% working directory. If you do not want to generate files in this 
+% directory, you should change the working directory to a suitable 
+% directory before starting this demo.
+
+%% Open The Demo Model
+% <matlab:open_system('sldemo_mdlref_depgraph'); Open the demo model>.  
+% The model |sldemo_mdlref_depgraph| looks like this:
+origdir = pwd;
+newdir  = tempname;
+c1 = onCleanup(@() sldemo_mdlref_util('sldemo_mdlref_depgraph', 'cleanup', origdir, newdir));
+
+addpath(origdir);
+mkdir(newdir);
+cd(newdir);
+
+open_system('sldemo_mdlref_depgraph')
+
+%% Find Referenced Models
+% Use the |find_mdlrefs| utility function to find all Model blocks and all
+% models referenced by a model. Type |help find_mdlrefs| for more
+% information about this function. 
+
+%%
+% |[refMdls, modelBlks] = find_mdlrefs('sldemo_mdlref_depgraph');|
+
+%%
+% |find_mdlrefs| returns two cell arrays, |refMdls| and 
+% |modelBlks|. |refMdls| contains the names of all models that are directly or
+% indirectly referenced by |sldemo_mdlref_depgraph|. The last element in
+% |refMdls| is always the name of the input model. |modelBlks| contains block
+% paths for all Model blocks in the top model and all referenced models. 
+
+
+%% Viewing a Model Reference Dependency Graph
+% Double click on the blue box in the demo model to view its model reference
+% dependency graph. In general, use the |view_mdlrefs| utility function or go to
+% the *Tools* menu and select *Model Dependencies*, select *Model Dependency
+% Viewer*, and finally select *.mdl Files Dependencies Excluding Libraries* to
+% start the dependency viewer for a specific model.
+
+%% Dependency Graph
+% The next figure shows the dependency graph of |sldemo_mdlref_depgraph|:
+%
+% <<../images/sldemo_depgraph1.png>> 
+%
+
+%%
+% In the dependency graph, the blue nodes represent Simulink models. The
+% directed lines indicate dependencies. For example, in the demo model the
+% link from |sldemo_mdlref_depgraph| to |sldemo_mdlref_house| indicates that
+% |sldemo_mdlref_depgraph| references |sldemo_mdlref_house|. If the model had
+% library links, you could go to the *View* menu and select *Include
+% Libraries* to have the dependency viewer show libraries linked to by
+% models in the hierarchy.  When *Include Libraries* is selected, yellow
+% nodes are used to depict libraries.
+
+%% Interacting with the Dependency Viewer
+% * Left-clicking on a node selects it. 
+% * Double-clicking on a node opens the associated model or library.
+% * Pressing the left mouse button on an empty space and then dragging the 
+%   mouse creates a marquee to select multiple nodes.
+% * Right-clicking on a node brings up a context menu.
+% * Pressing the left mouse button on any selected node and dragging the 
+%   mouse moves the selected node(s).
+% * The mouse wheel can be used to zoom into and out of the region currently 
+%   under the mouse pointer.
+% * Pressing the space bar centers the dependency graph and adjusts the 
+%   zoom so that the dependency graph fits in the available space.
+% * Holding down the space bar activates a navigational mode, where it is 
+%   possible to pan the view by dragging the mouse with the left button 
+%   held down. 
+
+%%
+% Please refer to the <matlab:helpview([docroot,'/mapfiles/simulink.map'],'dependency_viewer');
+% documentation> for more information about all the 
+% features of the Dependency Viewer. 
+
+%% Viewing the Referenced Model Instances
+% In the previous dependency graph, only one node exists for each model
+% in the graph and at most one link exists from one node to another node.
+% Therefore, this dependency graph does not show if multiple references
+% exist from one model to another model.  Furthermore, this view does not
+% show which models are referenced in Normal mode and which models are
+% referenced in Accelerator mode.
+
+%% 
+% The dependency viewer can show referenced model instances, and this view
+% can be accessed in one of two ways:
+
+%%
+% * From the model, go to the *Tools* menu, select *Model Dependencies*, then 
+%   *Model Dependency Viewer*, and finally select *Referenced Model Instances*.
+% * From the model dependency viewer, go to the *View* menu, select 
+%   *Dependency Type*, and then select *Referenced Model Instances*.
+
+%%
+% Note that in this view, which we refer to as Instance View, libraries 
+% are never shown.
+
+
+%%
+%
+% <<../images/sldemo_depgraph2.png>> 
+% 
+
+ 
+%% Dependency Graph for Referenced Model Instances
+% In Instance View, the blue nodes represent Simulink models. The directed
+% lines indicate dependencies.  Note:  in this view two nodes are labeled
+% |sldemo_mdlref_F2C| because this model is referenced twice, once by
+% |sldemo_mdlref_outdoor_temp| and once by |sldemo_mdlref_heater|. Except
+% for the top model, all nodes have corners that denote the simulation mode
+% of the referenced model.  Hollow corners denote a Normal mode reference
+% and filled corners denote an Accelerator mode reference. Thus,
+% |sldemo_mdlref_heater| makes a Normal mode reference to
+% |sldemo_mdlref_F2C| and an Accelerator mode reference to
+% |sldemo_mdlref_thermostat|.
+
+%% Interacting with the Dependency Viewer in Instance View
+% Currently, the reference |sldemo_mdlref_outdoor_temp| makes to
+% |sldemo_mdlref_F2C| is an Accelerator mode reference. Hovering the mouse
+% over the node |sldemo_mdlref_F2C| that |sldemo_mdlref_outdoor_temp|
+% references displays a tooltip showing the path to the block making the
+% reference to |sldemo_mdlref_F2C| in |sldemo_mdlref_outdoor_temp|.
+% Suppose you want to change this to be a Normal mode reference:
+
+%%
+% # Right-click on the node |sldemo_mdlref_F2C| that
+%   |sldemo_mdlref_outdoor_temp| points to.
+% # Select *Highlight Block* from the context menu that appears; this
+%   opens |sldemo_mdlref_outdoor_temp| and highlight the corresponding 
+%   Model block.
+% # Right click on the highlighted block.
+% # Select *ModelReference Parameters* from the menu that appears.
+% # Change the Simulation mode to Normal, and click *OK*.
+% # To see this change in the dependency viewer, go to the dependency 
+%   viewer and select *Refresh* from the *View* menu.
+
+%%
+% The Instance View dependency graph now looks like this:
+
+%%
+%
+% <<../images/sldemo_depgraph3.png>> 
+% 
+
+%% 
+% The dependency viewer now shows the reference
+% |sldemo_mdlref_outdoor_temp| makes to |sldemo_mdlref_F2C| as a Normal
+% mode reference, but it has a yellow triangle on it.  This triangle
+% denotes a warning.  Hovering the mouse over the node with the triangle
+% displays a tooltip explaining the warning. This warning appears because
+% |sldemo_mdlref_F2C| is configured to run in Normal mode but its parent,
+% |sldemo_mdlref_outdoor_temp|, is configured to run in Accelerator mode.
+% Normal mode references from models running in Accelerator mode are not
+% supported, so |sldemo_mdlref_F2C| will run in Accelerator mode during
+% simulation.
+
+%%
+% To make this model run in Normal mode, you must configure all of its
+% ancestors to run in Normal mode.  To do this, right click on the node
+% |sldemo_mdlref_outdoor_temp| and select *Highlight Block* from the
+% context menu that appears; this opens |sldemo_mdlref_depgraph| and
+% highlights the corresponding Model block.  Right click on the
+% highlighted block, select *ModelReference Parameters*, change the
+% Simulation mode to Normal, and click *OK*.  (If there were more
+% Accelerator mode ancestors of |sldemo_mdlref_F2C|, these would also need
+% to be changed to Normal mode references.)  
+
+%%
+% To see this change in the dependency viewer, go to the dependency viewer 
+% and select *Refresh* from the *View* menu:
+
+%%
+%
+% <<../images/sldemo_depgraph4.png>> 
+% 
+
+%% Interacting with Models that are Referenced Multiple Times in Normal Mode
+% There are now two models that reference |sldemo_mdlref_F2C| in Normal 
+% mode.  After simulating this model, |sl_demo_mdlref_heater| look
+% likes this:
+set_param('sldemo_mdlref_depgraph/outdoor temp', 'SimulationMode', 'Normal');
+load_system('sldemo_mdlref_outdoor_temp');
+set_param('sldemo_mdlref_outdoor_temp/Fahrenheit to Celsius', 'SimulationMode', 'Normal');
+
+cmd = 'sim(''sldemo_mdlref_depgraph'')';
+
+open_system('sldemo_mdlref_heater')
+evalc(cmd);
+
+%%
+% And |sldemo_mdlref_outdoor_temp| looks like this:
+open_system('sldemo_mdlref_outdoor_temp')
+evalc(cmd);
+
+%%
+%
+close_system('sldemo_mdlref_F2C');
+evalc(cmd);
+
+%%
+% The Model block that references |sldemo_mdlref_F2C| in |sldemo_mdlref_heater|
+% has white corners, while the Model block that references |sldemo_mdlref_F2C|
+% in |sldemo_mdlref_outdoor_temp| has gray corners.  This is because Model block
+% Normal Mode Visibility is on for the Model block in |sldemo_mdlref_heater| but
+% is not on for the Model block in |sldemo_mdlref_outdoor_temp|.  Note that only
+% one Normal mode instance of each model will have white corners, the rest will
+% have gray corners.  Display blocks (for example, Scopes) will show data for
+% the instance referenced from the Model block with white corners, in this case
+% from the model |sldemo_mdlref_heater|, but not for any other instance:
+open_system('sldemo_mdlref_F2C')
+
+%% 
+% To open the Model Block Normal Mode Visibility dialog box, from the top model
+% (|sldemo_mdlref_depgraph|) select *Edit* > *Model Blocks* > *Normal Mode
+% Visibility*.  Select the instance of each model that is referenced more than
+% once in Normal mode for which you want to have Normal Mode Visibility on.
+
+%%
+%
+% <<../images/sldemo_depgraph5.png>> 
+% 
+
+%%
+% Right now, no Model blocks have been selected, which means that during the
+% last simulation, Simulink selected one instance of |sldemo_mdlref_F2C| to have
+% Normal Mode Visibility set to on, which was indicated by the Model block with
+% white corners.  To select the instance referenced by
+% |sldemo_mdlref_outdoor_temp|, check the box corresponding to that instance,
+% then press *OK*:
+
+set_param('sldemo_mdlref_depgraph', 'ModelBlockNormalModeVisibility',...
+          {{'sldemo_mdlref_depgraph/outdoor temp', ...
+               'sldemo_mdlref_outdoor_temp/Fahrenheit to Celsius'}});
+
+%%
+%
+% <<../images/sldemo_depgraph6.png>> 
+% 
+
+%%
+%
+close_system('sldemo_mdlref_F2C');
+evalc(cmd);
+
+%%
+% After changing the Normal Mode Visibility setting, simulate the model
+% |sldemo_mdlref_depgraph| to make use of the new setting.
+open_system('sldemo_mdlref_F2C')
+
+%%
+%
+bdclose('all');
+close(gcf);
+clear('c1');
+
+##### SOURCE END #####
+--></body></html>

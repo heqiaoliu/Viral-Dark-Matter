@@ -1,0 +1,19 @@
+function Delay = utDelayStruct(ny,nu,InternalFlag)
+% Sizes and initializes delay structure for LTI data objects
+
+%   Copyright 1986-2008 The MathWorks, Inc.
+%	 $Revision: 1.1.8.1 $  $Date: 2009/11/09 16:29:02 $
+if InternalFlag
+   % Input + output + internal delays
+   Delay = struct(...
+      'Input',zeros(nu,1),...
+      'Output',zeros(ny,1),...
+      'Internal',zeros(0,1));
+else
+   % Input + output + I/O delays
+   Delay = struct(...
+      'Input',zeros(nu,1),...
+      'Output',zeros(ny,1),...
+      'IO',zeros(ny,nu));
+end
+  

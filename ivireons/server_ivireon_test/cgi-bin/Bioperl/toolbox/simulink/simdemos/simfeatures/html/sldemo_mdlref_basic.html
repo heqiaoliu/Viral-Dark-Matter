@@ -1,0 +1,166 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Component-Based Modeling with Model Reference</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_mdlref_basic.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_mdlref_basic.mdl</div><div class="right"><a href="matlab:sldemo_mdlref_basic">Open this model</a></div></div><div class="content"><h1>Component-Based Modeling with Model Reference</h1><!--introduction--><p>This demo introduces some basic Model Reference concepts. It walks you through simulation and Real-Time Workshop&reg; code generation of a model that references another model multiple times.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Demo Requirements</a></li><li><a href="#2">About Model Reference</a></li><li><a href="#3">Simulation Mode</a></li><li><a href="#7">Simulation Through Code Generation (Does not require Real-Time Workshop&reg;)</a></li><li><a href="#8">Code Generation for Standalone Applications (Requires Real-Time Workshop)</a></li><li><a href="#9">Incremental Loading Demo</a></li></ul></div><h2>Demo Requirements<a name="1"></a></h2><p>During this demo, Simulink&reg; and Real-Time Workshop generate code in a Simulink project directory created in the current working directory. If you do not want to (or cannot) generate files in this directory, you should change your working directory.</p><p>Real-Time Workshop is required to generate Model Reference Real-Time Workshop target to be deployed in standalone applications.</p><p>If you plan to alter the demo models:</p><p>1. Preserve the demo in its original state by copying the following files from your MATLAB&reg; installation directory, without changing their names, to a different directory:</p><pre>toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_basic.mdl
+toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter.mdl</pre><p>2. Change your current working directory to the directory to which you copied the files</p><p>3. Continue with the demo</p><h2>About Model Reference<a name="2"></a></h2><p>Open the demo model <a href="matlab:open_system('sldemo_mdlref_basic')"><tt>sldemo_mdlref_basic</tt></a>. This model contains three Model blocks: CounterA, CounterB and CounterC. These blocks reference the same model, <tt>sldemo_mdlref_counter</tt>, which is a separate model and not a subsystem of <tt>sldemo_mdlref_basic</tt>.</p><h2>Simulation Mode<a name="3"></a></h2><p>The Model block has a parameter named <b>SimulationMode</b> that controls how the referenced model is simulated.  If the parameter is set to <tt>Accelerator</tt>, the referenced model is simulated through code generation.  If the parameter is set to <tt>Normal</tt>, the referenced model is simulated in interpreted mode.  In this demo model, the Model blocks CounterA and CounterB reference <tt>sldemo_mdlref_counter</tt> in Normal mode, which is indicated by the hollow corners on the Model block icon.  The other instances, CounterC, references <tt>sldemo_mdlref_counter</tt> in Accelerator mode, which is indicated by the filled corners on the Model block icon.  To learn more about interacting with models that are referenced more than once in Normal mode, see the demo <tt>sldemo_mdlref_depgraph</tt>.</p><img vspace="5" hspace="5" src="sldemo_mdlref_basic_01.png" alt=""> <p><b>Figure 1:</b> The demo model, <tt>sldemo_mdlref_basic</tt></p><img vspace="5" hspace="5" src="sldemo_mdlref_basic_02.png" alt=""> <p><b>Figure 2:</b> The referenced model, <tt>sldemo_mdlref_counter</tt></p><p>Model Reference has several advantages over subsystems:</p><div><ul><li>You can develop the referenced model independently from the models in which it is used.</li><li>You can reference a model multiple times in another model without having to make redundant copies.</li><li>Multiple models can reference a single model.</li><li>The referenced model is not loaded until it is needed, a feature called <i>Incremental Loading</i>. Incremental loading speeds up model load times.</li><li>If a model is referenced in Accelerator mode, Simulink and Real-Time Workshop create special binaries to be used in simulations.  If the binaries are up-to-date, because the referenced model has not changed since the binaries were created, no code generation occurs when models that use these binaries are simulated or compiled. This is called <i>Incremental Code Generation</i>. The use of binaries increases simulation speed and modularity in code generation.</li><li>Generating Real-Time Workshop standalone applications for a model with Model blocks also takes advantage of incremental code generation.</li></ul></div><h2>Simulation Through Code Generation (Does not require Real-Time Workshop&reg;)<a name="7"></a></h2><p>Simulation of a model that references other models in Accelerator mode requires the generation of code and a binary file called the Simulation Target for each unique referenced model. This process does not require Real-Time Workshop. For this demo, a simulation target is built for the <tt>sldemo_mdlref_counter</tt> model. You can create the Simulation Target by any of the following actions:</p><div><ul><li>Updating <tt>sldemo_mdlref_basic</tt></li><li>Simulating <tt>sldemo_mdlref_basic</tt></li><li>Issuing the command:</li></ul></div><p><a href="matlab:slbuild('sldemo_mdlref_counter','ModelReferenceSimTarget')"><tt>slbuild('sldemo_mdlref_counter','ModelReferenceSimTarget')</tt></a></p><p>Remarks:</p><div><ul><li>If a model is referenced in Normal mode, the simulation target is not built for that referenced model.</li><li>Once the simulation target is built, subsequently simulating or updating the model does not trigger a rebuild of the referenced model's simulation target unless the referenced model has changed.</li><li>Turn on the sample time colors for <tt>sldemo_mdlref_basic</tt>. Note that the Model blocks have inherited different sample times. The Model Blocks inherit their sample times if the referenced model does not explicitly specify a sample time.</li></ul></div><h2>Code Generation for Standalone Applications (Requires Real-Time Workshop)<a name="8"></a></h2><p>When creating a standalone executable for <tt>sldemo_mdlref_basic</tt>, the code and binaries for the Real-Time Workshop Target of <tt>sldemo_mdlref_counter</tt> are first generated. The necessary Real-Time Workshop Targets are built if they are not up-to-date. You can build the Real-Time Workshop target for <tt>sldemo_mdlref_counter</tt> and the standalone executable for <tt>sldemo_mdlref_basic</tt> by any of the following actions:</p><div><ul><li>Building the standalone executable for <tt>sldemo_mdlref_basic</tt>.</li><li>Building the Model Reference target of <tt>sldemo_mdlref_counter</tt>, followed by building the standalone executable for <tt>sldemo_mdlref_basic</tt>.</li></ul></div><p>Remarks:</p><div><ul><li>Once the Real-Time Workshop target of <tt>sldemo_mdlref_counter</tt> is built, subsequent builds of <tt>sldemo_mdlref_basic</tt> do not trigger a rebuild of <tt>sldemo_mdlref_counter</tt> unless <tt>sldemo_mdlref_counter</tt> changes (Incremental Code Generation).</li><li>Note that the code generated for the referenced model <tt>sldemo_mdlref_counter</tt> is reused.</li><li>The HTML report of the generated code for <tt>sldemo_mdlref_basic</tt> has a link to the HTML report of the generated code for <tt>sldemo_mdlref_counter</tt> in the Referenced Model section.</li></ul></div><p><a href="matlab:slbuild('sldemo_mdlref_basic','StandaloneRTWTarget')">Build the Standalone Target and view the HTML report of the generated code</a></p><h2>Incremental Loading Demo<a name="9"></a></h2><p>Close <tt>sldemo_mdlref_counter</tt> and <tt>sldemo_mdlref_basic</tt> and then <a href="matlab:open_system('sldemo_mdlref_basic')">re-open <tt>sldemo_mdlref_basic</tt></a>. At the MATLAB prompt issue the command:</p><p><tt>find_system('type','block_diagram')</tt></p><p>The referenced model is not listed because it is not loaded. Right click on any Model block and select Open Model. At the MATLAB prompt, issue the command:</p><p><tt>find_system('type','block_diagram')</tt></p><p>The referenced model is now listed, illustrating how incremental loading works.</p><p class="footer">Copyright 1990-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Component-Based Modeling with Model Reference
+% This demo introduces some basic Model Reference concepts.
+% It walks you through simulation and Real-Time Workshop(R) code generation of
+% a model that references another model multiple times. 
+
+% Copyright 1990-2010 The MathWorks, Inc.
+% $Revision: 1.1.8.6 $  $Date: 2010/05/20 03:16:29 $
+
+%% Demo Requirements 
+% During this demo, Simulink(R) and Real-Time Workshop generate code
+% in a Simulink project directory created in the current working directory.
+% If you do not want to (or cannot) generate files in this
+% directory, you should change your working directory. 
+%
+% Real-Time Workshop is required to generate Model Reference Real-Time
+% Workshop target to be deployed in standalone applications.  
+% 
+% If you plan to alter the demo models:
+% 
+% 1. Preserve the demo in its original state by copying the following files
+% from your MATLAB(R) installation directory, without changing their names, to
+% a different directory:     
+%
+%  toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_basic.mdl
+%  toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter.mdl    
+%
+% 2. Change your current working directory to the directory to which you
+% copied the files
+%
+% 3. Continue with the demo
+
+%% About Model Reference 
+% Open the demo model <matlab:open_system('sldemo_mdlref_basic')
+% |sldemo_mdlref_basic|>. This model contains three Model blocks:
+% CounterA, CounterB and CounterC. These blocks reference the same model,
+% |sldemo_mdlref_counter|, which is a separate model and
+% not a subsystem of |sldemo_mdlref_basic|.  
+
+%% Simulation Mode
+% The Model block has a parameter named *SimulationMode* that controls how the
+% referenced model is simulated.  If the parameter is set to |Accelerator|, the
+% referenced model is simulated through code generation.  If the parameter is
+% set to |Normal|, the referenced model is simulated in interpreted mode.  In
+% this demo model, the Model blocks CounterA and CounterB reference
+% |sldemo_mdlref_counter| in Normal mode, which is indicated by the hollow
+% corners on the Model block icon.  The other instances, CounterC, references
+% |sldemo_mdlref_counter| in Accelerator mode, which is indicated by the filled
+% corners on the Model block icon.  To learn more about interacting with models
+% that are referenced more than once in Normal mode, see the demo
+% |sldemo_mdlref_depgraph|.
+open_system('sldemo_mdlref_basic')
+%%
+% *Figure 1:* The demo model, |sldemo_mdlref_basic|
+
+open_system('sldemo_mdlref_counter')
+%%
+% *Figure 2:* The referenced model, |sldemo_mdlref_counter|
+
+%%
+% Model Reference has several advantages over subsystems: 
+%
+% * You can develop the referenced model independently from the models in
+% which it is used.
+% * You can reference a model multiple times in another model without
+% having to make redundant copies.
+% * Multiple models can reference a single model.
+% * The referenced model is not loaded until it is needed, a feature called
+% _Incremental Loading_. Incremental loading speeds up model load times.
+% * If a model is referenced in Accelerator mode, Simulink and Real-Time 
+% Workshop create special binaries to be used in simulations.  If the 
+% binaries are up-to-date, because the referenced model has not changed 
+% since the binaries were created, no code generation occurs when models 
+% that use these binaries are simulated or compiled. This is called 
+% _Incremental Code Generation_. The use of binaries increases simulation 
+% speed and modularity in code generation.
+% * Generating Real-Time Workshop standalone applications for a model with
+% Model blocks also takes advantage of incremental code generation.
+
+%% Simulation Through Code Generation (Does not require Real-Time Workshop(R)) 
+% Simulation of a model that references other models in Accelerator mode
+% requires the generation of code and a binary file called the Simulation 
+% Target for each unique referenced model. This process does not require 
+% Real-Time Workshop. For this demo, a simulation target is built 
+% for the |sldemo_mdlref_counter| model. You can create the Simulation 
+% Target by any of the following actions:  
+%
+% * Updating |sldemo_mdlref_basic|
+% * Simulating |sldemo_mdlref_basic|
+% * Issuing the command:
+%
+% <matlab:slbuild('sldemo_mdlref_counter','ModelReferenceSimTarget')
+% |slbuild('sldemo_mdlref_counter','ModelReferenceSimTarget')|> 
+%
+% Remarks:
+%
+% * If a model is referenced in Normal mode, the simulation target is not 
+% built for that referenced model.
+% * Once the simulation target is built, subsequently simulating or
+% updating the model does not trigger a rebuild of the referenced model's
+% simulation target unless the referenced model has changed. 
+% * Turn on the sample time colors for |sldemo_mdlref_basic|. Note that the
+% Model blocks have inherited different sample times. The Model Blocks inherit
+% their sample times if the referenced model does not explicitly specify a
+% sample time.  
+
+%% Code Generation for Standalone Applications (Requires Real-Time Workshop) 
+% When creating a standalone executable for |sldemo_mdlref_basic|, the
+% code and binaries for the Real-Time Workshop Target of
+% |sldemo_mdlref_counter| are first generated. The necessary Real-Time
+% Workshop Targets are built if they are not up-to-date. You can build the
+% Real-Time Workshop target for |sldemo_mdlref_counter| and the standalone
+% executable for |sldemo_mdlref_basic| by any of the following actions:   
+%
+% * Building the standalone executable for |sldemo_mdlref_basic|.
+% * Building the Model Reference target of |sldemo_mdlref_counter|,
+% followed by building the standalone executable for |sldemo_mdlref_basic|.
+%
+% Remarks:
+%
+% * Once the Real-Time Workshop target of |sldemo_mdlref_counter| is built,
+% subsequent builds of |sldemo_mdlref_basic| do not trigger a rebuild of
+% |sldemo_mdlref_counter| unless |sldemo_mdlref_counter| changes
+% (Incremental Code Generation). 
+% * Note that the code generated for the referenced model
+% |sldemo_mdlref_counter| is reused.   
+% * The HTML report of the generated code for |sldemo_mdlref_basic| has a
+% link to the HTML report of the generated code for |sldemo_mdlref_counter|
+% in the Referenced Model section.
+%
+% <matlab:slbuild('sldemo_mdlref_basic','StandaloneRTWTarget') Build the
+% Standalone Target and view the HTML report of the generated code> 
+
+%% Incremental Loading Demo 
+% Close |sldemo_mdlref_counter| and |sldemo_mdlref_basic| and then 
+% <matlab:open_system('sldemo_mdlref_basic') re-open
+% |sldemo_mdlref_basic|>. At the MATLAB prompt issue the command: 
+%
+% |find_system('type','block_diagram')|
+%
+% The referenced model is not listed because it is not loaded. Right click on
+% any Model block and select Open Model.
+% At the MATLAB prompt, issue the command:
+%
+% |find_system('type','block_diagram')|
+%
+% The referenced model is now listed, illustrating how incremental loading
+% works.         
+
+bdclose all
+
+
+
+##### SOURCE END #####
+--></body></html>

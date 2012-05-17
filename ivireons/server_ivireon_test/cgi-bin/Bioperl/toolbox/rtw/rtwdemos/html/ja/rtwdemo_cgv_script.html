@@ -1,0 +1,112 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>コード生成検証の使用</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="rtwdemo_cgv_script.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_cgv_script">エディターで rtwdemo_cgv_script.m を開く</a></div><div class="right"><a href="matlab:echodemo rtwdemo_cgv_script">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>コード生成検証の使用</h1><!--introduction--><p>このデモでは、ノーマル モードおよびソフトウェアインザループ (SIL) モードのシミュレーションでモデルを設定、実行、および比較する方法を説明し、コード生成検証 (CGV) 機能を示します。プロセッサーインザループ (PIL) モードも使用できます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">デモ モデルについて</a></li><li><a href="#3">モデル設定の確認</a></li><li><a href="#5">CGV での実行</a></li><li><a href="#7">結果の比較</a></li><li><a href="#13">追加のプロット作成のサポート</a></li><li><a href="#15">詳細</a></li></ul></div><h2>デモ モデルについて<a name="1"></a></h2><p><a href="matlab:open_system('rtwdemo_cgv');"><tt>rtwdemo_cgv</tt></a> モデルでは、バス、スカラー、およびベクトル化されたデータを使用し、テスト実行の間で異なる結果が生じるようにエラーを挿入します。モデルを開くには、MATLAB コマンド ウィンドウで次のコマンドを入力します。</p><pre class="codeinput">cgvModel = <span class="string">'rtwdemo_cgv'</span>;
+close_system(cgvModel,0);
+open_system( cgvModel);
+</pre><img vspace="5" hspace="5" src="../rtwdemo_cgv_script_01.png" alt=""> <p>このモデルの最上位には階層状のバスがあり、3 つのバスが入れ子にされています。このバスの配列により、最初に記録された出力で複雑な階層状のデータが生成されます。このモデルでは、2 番目の出力で一定の間隔で信号にエラーが挿入されます。これらのエラーにより、2 回のテスト実行の間で確実に異なる結果が生成され、比較コードのデモがさらにわかりやすくなります。3 番目の出力では、信号はサンプルごとに 4 つの値からなるベクトルです。この主な目的は、比較のサポートを示すことです。</p><p>メモ:このデモでコードを実行する前に、書き込み可能なディレクトリに移動します。それには、次のようにコードを入力します。</p><pre class="codeinput">baseVars = who;  <span class="comment">% For future cleanup.</span>
+OriginalFolder = pwd;
+cd (tempdir);
+save_system( cgvModel, fullfile( pwd, cgvModel)); <span class="comment">% Save to the working directory</span>
+close_system( cgvModel, 0); <span class="comment">% Avoid having the saved model shadowed by the original</span>
+</pre><h2>モデル設定の確認<a name="3"></a></h2><p>CGV では、SIL または PIL 環境で ert ターゲットとして実行するために、モデルに適切な設定が指定されていることを確認するためのヘルパー クラスを提供しています。たとえば、rtwdemo_cgv モデルは 32 ビット プロセッサーのワード サイズで保存されます。したがって、64 ビット マシンでモデルを実行すると、cgv.Config では、64 ビット プロセッサーのワード サイズの設定が変更されます。モデルが変更された場合、'Savemodel' パラメーターはモデルを保存します。</p><pre class="codeinput">cgvCfg = cgv.Config( cgvModel, <span class="string">'Connectivity'</span>, <span class="string">'sil'</span>, <span class="string">'Savemodel'</span>, <span class="string">'on'</span>);
+cgvCfg.configModel();
+cgvCfg.displayReport();
+</pre><pre class="codeoutput">For model rtwdemo_cgv: configuration parameter 'ProdEqTarget', previous value 'on', current value 'off'.
+For model rtwdemo_cgv: configuration parameter 'TargetEndianess', previous value 'LittleEndian', current value 'LittleEndian'.
+For model rtwdemo_cgv: configuration parameter 'TargetHWDeviceType', previous value 'Specified', current value 'Generic-&gt;MATLAB Host Computer'.
+For model rtwdemo_cgv: configuration parameter 'TargetIntDivRoundTo', previous value 'Zero', current value 'Zero'.
+</pre><p>モデルが変更された場合、displayReport は変更内容を報告し、'Savemodel' は変更内容を保存します。このモデルを 32 ビットシステムで実行する場合、変更が不要になる可能性が高くなります。</p><h2>CGV での実行<a name="5"></a></h2><p>CGV では、モデルは ノーマル と SIL の 2 つのシミュレーション モードで実行されます。どちらの場合も、CGV オブジェクトが出力データを取得して、ファイルに書き込みます。詳細は、<a href="matlab:doc('cgv.CGV');"><tt>CGV のドキュメンテーション</tt></a>を参照してください。このモデルをノーマル モードと SIL シミュレーション モードで実行するには、次のように入力します。</p><pre class="codeinput">cgvSim = cgv.CGV( cgvModel, <span class="string">'Connectivity'</span>, <span class="string">'sim'</span>);
+cgvSim.addInputData(1, [cgvModel <span class="string">'_data'</span>]);
+<span class="comment">% This next CGV function, addPostLoadFiles(), allows you to specify MATLAB</span>
+<span class="comment">% programs to execute, or mat-files to load, before execution of the model.</span>
+cgvSim.addPostLoadFiles({[cgvModel <span class="string">'_init.m'</span>]});
+cgvSim.setOutputDir(<span class="string">'cgv_output'</span>);
+result1 = cgvSim.run();
+
+cgvSil = cgv.CGV( cgvModel, <span class="string">'Connectivity'</span>, <span class="string">'sil'</span>);
+cgvSil.addInputData(1, [cgvModel <span class="string">'_data'</span>]);
+cgvSil.addPostLoadFiles({[cgvModel <span class="string">'_init.m'</span>]});
+cgvSil.setOutputDir(<span class="string">'cgv_output'</span>);
+result2 = cgvSil.run();
+</pre><pre class="codeoutput">Applying PostLoad file:
+  rtwdemo_cgv_init.m
+Starting execution:
+  ComponentType: topmodel
+  Connectivity: sim
+  InputData:
+  rtwdemo_cgv_data.mat
+End CGV execution: status completed
+Applying PostLoad file:
+  rtwdemo_cgv_init.m
+Starting execution:
+  ComponentType: topmodel
+  Connectivity: sil
+  InputData:
+  rtwdemo_cgv_data.mat
+### Starting Real-Time Workshop build procedure for model: rtwdemo_cgv
+### Successful completion of Real-Time Workshop build procedure for model: rtwdemo_cgv
+### Preparing to start SIL simulation ...
+### Starting SIL simulation for component: rtwdemo_cgv
+### Stopping SIL simulation for component: rtwdemo_cgv
+End CGV execution: status completed
+</pre><p>関数の実行に成功すると、boolean 値 true が返されます。 データにアクセスする前に、ノーマル モードと SIL モードの両方のシミュレーションの結果を確認してください。 実行に失敗することはありませんが、正確を期すために、常に確認することをお勧めします。  エラーが発生した場合、CGV はそのエラーを報告します。</p><pre class="codeinput"><span class="keyword">if</span> ~result1 || ~result2
+    error(<span class="string">'Execution of model failed.'</span>);
+<span class="keyword">end</span>
+
+simData   = cgvSim.getOutputData(1);
+silData   = cgvSil.getOutputData(1);
+</pre><h2>結果の比較<a name="7"></a></h2><p>これで、両方のテスト実行が完了しました。結果を比較します。比較コードでは、フィルターを使用したプロットがサポートされています。それぞれのデータを示すプロットが表示されます。1 つのプロットを表示する場合は、差分データが表示されます。</p><p>CGV ヘルパー関数では、すべての信号名の表示 (コマンド ウィンドウで使用される) を挿入し、許容誤差情報を信号名に関連付けるファイルを作成します。</p><p><b>ノーマル モードのシミュレーションから取得された信号名の表示</b></p><p>保存されたデータから取得された信号名のリストを表示します。</p><pre class="codeinput">cgv.CGV.getSavedSignals( simData);
+</pre><pre class="codeoutput">simData.hi0.Data(:,1)                      
+simData.hi0.Data(:,2)                      
+simData.Vector.Data(:,1)                   
+simData.Vector.Data(:,2)                   
+simData.Vector.Data(:,3)                   
+simData.Vector.Data(:,4)                   
+simData.BusOutputs.hi0.Data(:,1)           
+simData.BusOutputs.hi0.Data(:,2)           
+simData.BusOutputs.hi1.mid0.lo0.Data(1,1,:)
+simData.BusOutputs.hi1.mid0.lo0.Data(2,1,:)
+simData.BusOutputs.hi1.mid0.lo0.Data(1,2,:)
+simData.BusOutputs.hi1.mid0.lo0.Data(2,2,:)
+simData.BusOutputs.hi1.mid0.lo1.Data       
+simData.BusOutputs.hi1.mid0.lo2.Data       
+simData.BusOutputs.hi1.mid1.Data(:,1)      
+simData.BusOutputs.hi1.mid1.Data(:,2)      
+simData.ErrorsInjected.Data                
+</pre><p>メモ:cgv.CGV.compare は、一方のモードのデータ セットにのみ現れる信号を無視します。たとえば、ノーマル モードのシミュレーションの出力に現れる記録された内部信号が、SIL モードのシミュレーションの出力に現れない場合、比較コードは無視します。したがって、simData.hi0.Data 信号は silData に現れないので、それ以上比較されません。</p><p><b>許容誤差ファイルの作成</b></p><p>関数 CGV createToleranceFile では、許容誤差情報を信号名に関連付けるファイルを作成します。許容誤差の設定に使用できるオプションについては、<a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_cgv_createToleranceFile')">cgv.CGV.createToleranceFile</a> を参照してください。既定の設定では、許容誤差はゼロです。したがって、信号は完全に一致しなければなりません。この例では、ErrorsInjected 信号に対してデルタ値 0.5 が許容されます。</p><pre class="codeinput">signalList = {<span class="string">'simData.ErrorsInjected.Data'</span> };
+toleranceList = { { <span class="string">'absolute'</span>, 0.5}};
+cgv.CGV.createToleranceFile( <span class="string">'localtol'</span>, signalList, toleranceList );
+</pre><p><b>すべての信号の比較</b></p><p>既定の設定では、関数 ｃgv.CGV.compare は両方の実行の間で共通する名前を持つすべての信号を調べます。 信号 simData.ErrorsInjected.Data での不一致に基づいてプロットが生成されます。</p><p>比較関数の 2 番目と 4 番目の戻りパラメーターは、一致した信号の数と一致しなかった信号の数を示します。 この例では戻り値を使用していないので、チルダ (~) はこれらのパラメーターを示します。</p><pre class="codeinput">[matchNames, ~, mismatchNames, ~] = <span class="keyword">...</span>
+    cgv.CGV.compare( simData, silData, <span class="string">'Plot'</span>, <span class="string">'mismatch'</span>, <span class="keyword">...</span>
+    <span class="string">'Tolerancefile'</span>, <span class="string">'localtol'</span>);
+fprintf( <span class="string">'%d Signals match, %d Signals mismatch\n'</span>, <span class="keyword">...</span>
+    length(matchNames), length(mismatchNames));
+disp( <span class="string">'Mismatched Signal Names:'</span>);
+disp(mismatchNames);
+</pre><pre class="codeoutput">14 Signals match, 1 Signals mismatch
+Mismatched Signal Names:
+    'simData.ErrorsInjected.Data'
+
+</pre><img vspace="5" hspace="5" src="../rtwdemo_cgv_script_02.png" alt=""> <p><b>個々の信号の比較</b></p><p>関数 cgv.CGV.compare では、指定した信号のみを比較し、残りの信号を無視することも可能です。  次の例では、この関数で 3 つの信号のみを比較しています。</p><pre class="codeinput">[matchNames, ~, mismatchNames, ~ ] = <span class="keyword">...</span>
+    cgv.CGV.compare( simData, silData, <span class="string">'Plot'</span>, <span class="string">'mismatch'</span>, <span class="keyword">...</span>
+    <span class="string">'Signals'</span>, {<span class="string">'simData.BusOutputs.hi1.mid0.lo1.Data'</span>, <span class="string">'simData.BusOutputs.hi1.mid0.lo2.Data'</span>, <span class="keyword">...</span>
+    <span class="string">'simData.Vector.Data(:,3)'</span>});
+fprintf( <span class="string">'%d Signals match, %d Signals mismatch\n'</span>, <span class="keyword">...</span>
+    length(matchNames), length(mismatchNames));
+<span class="keyword">if</span> ~isempty(mismatchNames)
+    disp( <span class="string">'Mismatched Signal Names:'</span>);
+    disp(mismatchNames);
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">3 Signals match, 0 Signals mismatch
+</pre><h2>追加のプロット作成のサポート<a name="13"></a></h2><p>比較関数によって出力されるプロットと同じ形式で信号の一覧のプロットを作成するには、cgv.CGV.plot を呼び出します。  以下に例を示します。</p><pre class="codeinput">[signalNames, signalFigures] = cgv.CGV.plot( simData, <span class="keyword">...</span>
+    <span class="string">'Signals'</span>, {<span class="string">'simData.Vector.Data(:,1)'</span>});
+</pre><img vspace="5" hspace="5" src="../rtwdemo_cgv_script_03.png" alt=""> <p><b>ワークスペースのクリア</b></p><p>このデモで作成した多くの変数をワークスペースからクリアするには、次のようにコードを入力します。</p><pre class="codeinput">cd (OriginalFolder);
+newBaseVars = who;
+addedVars = setdiff( newBaseVars, baseVars);
+clearCmd = [<span class="string">'clear '</span> sprintf( <span class="string">'%s '</span>, addedVars{:})];
+eval( clearCmd);
+clear <span class="string">newBaseVars</span> <span class="string">addedVars</span> <span class="string">clearCmd</span>
+</pre><h2>詳細情報<a name="15"></a></h2><p>SIL と PIL の詳細は、<a href="matlab:showdemo('rtwdemo_sil_pil');"><tt>rtwdemo_sil_pil</tt></a> を参照してください。</p><p class="footer">Copyright 2009-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Using Code Generation Verification % This demonstration explores how to configure, execute, and compare a model in % Normal and Software-in-the-Loop (SIL) simulations, showing the capabilities of code % generation verification (CGV). % Processor-in-the-Loop (PIL) modes are also available.  % Copyright 2009-2010 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:58 $   %% Reviewing the Demo Model % The <matlab:open_system('rtwdemo_cgv'); |rtwdemo_cgv|>  model uses buses, scalars, % and vectorized data, and includes error injection to create differences between % test executions.  To open the model, type the following commands in the MATLAB % Command Window. %  cgvModel = 'rtwdemo_cgv'; close_system(cgvModel,0); open_system( cgvModel);  %% % The model has a hierarchical bus across the top, with three nested buses. This % arrangement of buses produces complex hierarchical data at the first logged output. % The model injects errors in the signal at the second outport at fixed intervals. % These errors are guaranteed to produce different results between any two runs, % allowing for a better demonstration of the comparison code further down. % The signal at the third outport is a vector of four values per sample.  Again, this % is mainly to show the comparison support. % % NOTE: % Before executing the code in this demo, change to a writable directory. % The following code does this for you: baseVars = who;  % For future cleanup. OriginalFolder = pwd; cd (tempdir); save_system( cgvModel, fullfile( pwd, cgvModel)); % Save to the working directory close_system( cgvModel, 0); % Avoid having the saved model shadowed by the original  %% Verifying the Model Configuration % CGV provides a helper class to verify that models have the correct configuration in % order to run in the SIL or PIL environments as an ert target.   % For example, the rtwdemo_cgv model is saved with 32-bit processor word sizes, so if % you run the model on a 64-bit machine, then cgv.Config modifies the configuration % for the 64-bit processor word size.  The 'Savemodel' parameter saves the model, if % it changes. cgvCfg = cgv.Config( cgvModel, 'Connectivity', 'sil', 'Savemodel', 'on'); cgvCfg.configModel(); cgvCfg.displayReport();  %%  % When the model changes, displayReport reports the changes and 'Savemodel' saves the % changes.  If you run this model on 32-bit system, then it is likely that no changes % are needed.  %% Executing under CGV % The model executes in two modes under CGV: Normal and SIL simulations. % In each case, the CGV object captures the output data, and writes it to % a file.  % See <matlab:doc('cgv.CGV'); |CGV Documentation|> for more details. % To execute this model in Normal and SIL simulation modes, type the following:  cgvSim = cgv.CGV( cgvModel, 'Connectivity', 'sim'); cgvSim.addInputData(1, [cgvModel '_data']); % This next CGV function, addPostLoadFiles(), allows you to specify MATLAB % programs to execute, or mat-files to load, before execution of the model. cgvSim.addPostLoadFiles({[cgvModel '_init.m']}); cgvSim.setOutputDir('cgv_output'); result1 = cgvSim.run();  cgvSil = cgv.CGV( cgvModel, 'Connectivity', 'sil'); cgvSil.addInputData(1, [cgvModel '_data']); cgvSil.addPostLoadFiles({[cgvModel '_init.m']}); cgvSil.setOutputDir('cgv_output'); result2 = cgvSil.run();  %%  % The run function returns a Boolean value: true for successful execution. Check the % results of both the Normal and SIL simulation before accessing the data. Neither % execution should fail, but for correctness, it is always best to check.  If an % error occurs, CGV reports it. if ~result1 || ~result2     error('Execution of model failed.'); end  simData   = cgvSim.getOutputData(1); silData   = cgvSil.getOutputData(1);  %% Comparing Results %  % Both executions are now complete.  Compare the results. % Comparison code supports plot with filters.  Plots display both the data and, if % there is one, the difference. %  % CGV helper functions include the display of all signals names (as used in the % command window), and creating a file correlating tolerance information with signal % names. % %% % *Showing Signal Names from Normal Simulation* % % Display a list of signal names from the saved data: cgv.CGV.getSavedSignals( simData);  %%  %  % NOTE: cgv.CGV.compare ignores any signals that appear in only one data set or the % other. For example, a logged internal signal that appears in the output in a Normal % simulation does not appear in the output in SIL simulation, and is ignored by the % compare code.  Therefore, the simData.hi0.Data signals will not be in the % comparison, further below, because the signals do not appear in silData.  %% % *Creating a Tolerance File* %  % The CGV createToleranceFile function creates a file correlating tolerance % information with signal names.  See % <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_cgv_createToleranceFile') cgv.CGV.createToleranceFile> % for the options available to configure tolerances.  By default, tolerances are % zero, so signals must match exactly. This example allows a delta of 0.5 on the % ErrorsInjected signal. % signalList = {'simData.ErrorsInjected.Data' }; toleranceList = { { 'absolute', 0.5}}; cgv.CGV.createToleranceFile( 'localtol', signalList, toleranceList );  %%  % *Comparing All Signals* % % By default, the cgv.CGV.compare function looks at all signals that have a common % name between both executions. A plot results from the mismatch on signal % simData.ErrorsInjected.Data. % % The second and fourth return parameters of the compare function are for matched % figures and mismatched figures. Tildes (~) represent these parameters because this % example does not use the return values.  [matchNames, ~, mismatchNames, ~] = ...     cgv.CGV.compare( simData, silData, 'Plot', 'mismatch', ...     'Tolerancefile', 'localtol'); fprintf( '%d Signals match, %d Signals mismatch\n', ...     length(matchNames), length(mismatchNames)); disp( 'Mismatched Signal Names:'); disp(mismatchNames);  %%  % *Comparing Individual Signals* % % The cgv.CGV.compare function also compares only specified signals, ignoring the % rest.  Here, the function compares only three signals. % [matchNames, ~, mismatchNames, ~ ] = ...     cgv.CGV.compare( simData, silData, 'Plot', 'mismatch', ...     'Signals', {'simData.BusOutputs.hi1.mid0.lo1.Data', 'simData.BusOutputs.hi1.mid0.lo2.Data', ...     'simData.Vector.Data(:,3)'}); fprintf( '%d Signals match, %d Signals mismatch\n', ...     length(matchNames), length(mismatchNames)); if ~isempty(mismatchNames)     disp( 'Mismatched Signal Names:');     disp(mismatchNames); end  %% Getting Additional Plotting Support % To create a plot of a list of signals in a similar form to the plots that the % compare function provides, call cgv.CGV.plot.  For example: %  [signalNames, signalFigures] = cgv.CGV.plot( simData, ...     'Signals', {'simData.Vector.Data(:,1)'});  %%  % *Clearing Your Workspace* % % Clear from the workspace the many variables that this demo creates: %  cd (OriginalFolder); newBaseVars = who; addedVars = setdiff( newBaseVars, baseVars); clearCmd = ['clear ' sprintf( '%s ', addedVars{:})]; eval( clearCmd); clear newBaseVars addedVars clearCmd   %% For More Information  % For information about SIL and PIL, see <matlab:showdemo('rtwdemo_sil_pil'); % |rtwdemo_sil_pil|>. %  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

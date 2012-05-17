@@ -1,0 +1,114 @@
+#!/bin/sh -f
+
+# Special settings to run MuPAD without any local modifications
+
+# needed on Zaurus PDA
+if test ! \( -x /bin/dirname -o -x /usr/bin/dirname \) ; then
+  dirname()
+  {
+    echo ${1%/`basename $1`}
+  }
+fi
+
+SHARE_BIN=`dirname "$0"`
+
+if test `basename "$SHARE_BIN"` = bin ; then
+  SHARE=`dirname "$SHARE_BIN"`
+  if test `basename "$SHARE"` = share ; then
+    MuPAD_ROOT_PATH=`dirname "$SHARE"`
+  else
+    MuPAD_ROOT_PATH=..
+  fi
+else
+  MuPAD_ROOT_PATH=../..
+fi
+export MuPAD_ROOT_PATH
+
+SYSINFO=`$MuPAD_ROOT_PATH/share/bin/muparch`
+
+LD_LIBRARY_PATH="${MuPAD_ROOT_PATH}/${SYSINFO}/lib:${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH
+
+# This Bourne or Korn Shell script runs mmg with predefined paths.
+
+# These are the directories in which you installed MuPAD
+
+# MuPAD_ROOT_PATH is the root directory of the MuPAD-System
+# SYSINFO         is the path of the MuPAD script `muparch`
+# INCLUDE         is the path of the MuPAD include files
+# LIBRARY         is the path to the MuPAD library files
+# This ensures that mmg will find all needed files.
+
+SYS=`$MuPAD_ROOT_PATH/share/bin/muparch`
+LIB="$MuPAD_ROOT_PATH/$SYS/lib"
+MOP=-L"$LIB"
+MMG="$MuPAD_ROOT_PATH/$SYS/bin/mmg"
+COL=""
+
+# For some operating systems, the minor versions numbers differ and
+# thus additional information (compile flags) are needed (e.g. XDR)
+
+SYSMACH=
+if test "$SYS" = "solaris" ; then
+   if test "`uname -r | cut -c1-3`" = "5.5" ; then
+      SYSMACH=-DSOL25
+   fi
+fi
+
+#####################################################################
+## Funktion zum zeilenweisen Einfaerben einer Eingabe von stdin
+##
+## Attribute
+## ------------
+## 0 = default
+## 1 = bright
+## 4 = underline
+## 5 = blink
+##
+## Farbe    Vordergrund  Hintergrund
+## ---------------------------------
+## black     30           40
+## red       31           41
+## green     32           42
+## yellow    33           43
+## blue      34           44
+## purple    35           45
+## cyan      36           46
+## white     37           47
+#####################################################################
+color()
+{
+   while read line; do
+     echo "$line" | sed \
+         -e 's/\(Error[: ]\)/[1;4;31m\1[0m/'                         \
+         -e 's/\(error[: ]\)/[1;4;31m\1[0m/'                         \
+         -e 's/\(Warning[: ]\)/[4;35m\1[0m/'                         \
+         -e 's/\(warning[: ]\)/[4;35m\1[0m/'                         \
+         -e 's/\(Warn\.:\)/[4;35m\1[0m/'                             \
+         -e 's/\(Mesg\.:\)/[1;4m\1[0m/'                              \
+         -e 's/\(undeclared\)/[1;4;31m\1[0m/'                        \
+         -e 's/\(not declared\)/[1;4;31m\1[0m/'                      \
+                                                                         \
+         -e 's/^\(g++\)/[1;34m\1[0m/'                                \
+         -e 's/^\(CC\)/[1;34m\1[0m/'                                 \
+         -e 's/^\(xlC\)/[1;34m\1[0m/'                                \
+         -e 's/^\(cxx\)/[1;34m\1[0m/'                                \
+         -e 's/^\(ld\)/[1;34m\1[0m/'                                 \
+                                                                         \
+         -e 's/\(([_a-zA-Z0-9 	][_a-zA-Z0-9   ][^)]*)\)/[1m\1[0m/'  \
+         -e 's/[ 	]\([-+][_a-zA-Z0-9/\.][_a-zA-Z0-9/\.-]*\)/ [;34m\1[0m/g'
+     done
+}
+
+for option in "$@" ; do
+   if test "$option" = "-color" ; then
+      COL="YES";
+      break;
+   fi
+done
+
+if test -n "${COL}" ; then
+   "$MMG" "$@" "$MOP" "$SYSMACH" 2>&1 | color
+else
+   "$MMG" "$@" "$MOP" "$SYSMACH"
+fi

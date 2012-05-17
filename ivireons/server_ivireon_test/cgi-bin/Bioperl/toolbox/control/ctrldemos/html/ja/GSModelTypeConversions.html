@@ -1,0 +1,66 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>モデル表現の切り替え</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="GSModelTypeConversions.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit GSModelTypeConversions">エディターで GSModelTypeConversions.m を開く</a></div><div class="right"><a href="matlab:echodemo GSModelTypeConversions">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>モデル表現の切り替え</h1><!--introduction--><p>このデモでは、LTI システムの伝達関数 (TF)、零点-極-ゲイン (ZPK)、状態空間 (SS)、および周波数応答データ (FRD) のそれぞれの表現の間で切り替えを行う方法を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">モデル タイプ変換</a></li><li><a href="#7">暗示的タイプ キャスト</a></li><li><a href="#9">表現を切り替える場合の注意事項</a></li></ul></div><h2>モデル タイプ変換<a name="1"></a></h2><p>モデルは、LTI モデルの構築で使用するコマンドを使用して、異なる表現 (<tt>tf</tt>、<tt>zpk</tt>、<tt>ss</tt>、および <tt>frd</tt>) に変換できます。たとえば、状態空間モデル</p><pre class="codeinput">sys = ss(-2,1,1,3);
+</pre><p>を、零点-極-ゲイン モデルに変換するには、以下のように入力します。</p><pre class="codeinput">zpksys = zpk(sys)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+3 (s+2.333)
+-----------
+   (s+2)
+ 
+</pre><p>同様に、<tt>sys</tt> の伝達関数を計算するには、以下のように入力します。</p><pre class="codeinput">tf(sys)
+</pre><pre class="codeoutput"> 
+Transfer function:
+3 s + 7
+-------
+ s + 2
+ 
+</pre><p>FRD への変換には、周波数ベクトルが必要です。</p><pre class="codeinput">f = logspace(-2,2,10);
+frdsys = frd(sys,f)
+</pre><pre class="codeoutput"> 
+  Frequency(rad/s)        Response    
+  ----------------        --------    
+        0.0100        3.5000 - 0.0025i
+        0.0278        3.4999 - 0.0070i
+        0.0774        3.4993 - 0.0193i
+        0.2154        3.4943 - 0.0532i
+        0.5995        3.4588 - 0.1375i
+        1.6681        3.2949 - 0.2459i
+        4.6416        3.0783 - 0.1817i
+       12.9155        3.0117 - 0.0756i
+       35.9381        3.0015 - 0.0277i
+      100.0000        3.0002 - 0.0100i
+ 
+Continuous-time frequency response.
+</pre><p>FRD モデルは、TF、ZPK、または SS 表現に変換し直せないことに注意してください (この変換を行うには、System Identification にある周波数領域同定ツールが必要です)。</p><p>すべてのモデル タイプの変換パスは、次の図のとおりです。</p><p><img vspace="5" hspace="5" src="../../Figures/GSModelTypeConversions_Fig01.png" alt=""> </p><h2>陰的なタイプの変換<a name="7"></a></h2><p>コマンドの中には、特定のタイプの LTI モデルを要求するコマンドがあります。便宜上、このようなコマンドは、入力 LTI モデルを適切な表現に自動的に変換します。たとえば、次のサンプル コードでは、</p><pre class="codeinput">sys = ss(0,1,1,0);
+[num,den] = tfdata(sys,<span class="string">'v'</span>)
+</pre><pre class="codeoutput">
+num =
+
+     0     1
+
+
+den =
+
+     1     0
+
+</pre><p>関数 <tt>tfdata</tt> は、状態空間モデル <tt>sys</tt> を等価な伝達関数に自動的に変換して、その分子と分母のデータを抽出します。</p><h2>表現を切り替える場合の注意事項<a name="9"></a></h2><p>TF、ZPK、および SS 表現の間での変換には、数値計算が必要であり、乱用した場合には、正確性が失われる場合もあります。SS および FRD 表現は、数値計算に最も適しています。このため、すべてのモデルを SS または FRD に変換し、TF および ZPK 表現は、構築と表示目的のみに使用することをお勧めします。</p><p>たとえば、以下の ZPK モデルを</p><pre class="codeinput">G = zpk([],ones(10,1),1,0.1)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+   1
+--------
+(z-1)^10
+ 
+Sampling time: 0.1
+</pre><p>TF に変換してから ZPK に以下のように変換し直します。</p><pre class="codeinput">G1 = zpk(tf(G));
+</pre><p>ここで、<tt>G</tt> と <tt>G1</tt> の極の位置を以下のように比較します。</p><pre class="codeinput">G1 = zpk(tf(G));
+pzmap(G,<span class="string">'b'</span>,G1,<span class="string">'r'</span>)
+axis([0.5 1.5 -0.4 0.4])
+legend(<span class="string">'G'</span>,<span class="string">'G1'</span>)
+</pre><img vspace="5" hspace="5" src="../GSModelTypeConversions_01.png" alt=""> <p><tt>G</tt> の <tt>z=1</tt> での多重度 10 の極が、<tt>G1</tt> で極のクラスタで置換された様子を観察してください。これは、<tt>G1</tt> の極が、多項式の根として計算されたために発生します。</p><p><img src="../GSModelTypeConversions_eq62857.png" alt="$$ (z-1)^{10} = z^{10} - 10 z^9 + 45 z^8 - 120 z^7 + 210 z^6 - 252 z^5 + 210
+z^4 - 120 z^3 + 45 z^2 - 10 z + 1 $$"></p><p>また、この多項式の最後の係数の <tt>o(eps)</tt> 誤差は、根を以下のように移動します。</p><p><img src="../GSModelTypeConversions_eq30543.png" alt="$$ o( \epsilon ^{1/10}) = o(3 \times 10^{-2}) .$$"></p><p>つまり、伝達関数の表現には、z=1 付近でのシステムの動作を把握するために十分な正確性がありません。これは、以下の <tt>G</tt> 対 <tt>G1</tt> のボード プロットでもわかります。</p><pre class="codeinput">bode(G,<span class="string">'b'</span>,G1,<span class="string">'r--'</span>), grid
+legend(<span class="string">'G'</span>,<span class="string">'G1'</span>)
+</pre><img vspace="5" hspace="5" src="../GSModelTypeConversions_02.png" alt=""> <p>これらの例が、不要なモデル変換は回避する必要がある理由です。</p><p class="footer">Copyright 1986-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Switching Model Representation % This demo shows how to switch between the transfer function (TF), % zero-pole-gain (ZPK), state-space (SS), and frequency response data (FRD) % representations of LTI systems.  %   Copyright 1986-2007 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $  %% Model Type Conversions % You can convert models from one representation to another using the same % commands that you use for constructing LTI models (|tf|, |zpk|, |ss|, and % |frd|). For example, you can convert the state-space model: sys = ss(-2,1,1,3);  %%  % to a zero-pole-gain model by typing: zpksys = zpk(sys)  %%  % Similarly, you can calculate the transfer function of |sys| by typing: tf(sys)  %% % Conversions to FRD require a frequency vector: f = logspace(-2,2,10); frdsys = frd(sys,f)  %% % Note that FRD models cannot be % converted back to the TF, ZPK, or SS representations (such conversion  % requires the frequency-domain identification tools available in % System Identification).  %% % All model type conversion paths are summarized in the diagram below. % % <<../Figures/GSModelTypeConversions_Fig01.png>>  %% Implicit Type Casting % Some commands expect a specific type of LTI model.  For convenience, % such commands automatically convert incoming LTI models to the appropriate representation.   % For example, in the sample code: sys = ss(0,1,1,0); [num,den] = tfdata(sys,'v')  %% % the function |tfdata| automatically converts the state-space model |sys| to an % equivalent transfer function  to obtain its numerator and denominator data.  %% Caution About Switching Back and Forth Between Representations % Conversions between the TF, ZPK, and SS representations involve numerical % computations and can incur loss of accuracy when overused. Because the SS % and FRD representations are best suited for numerical computations, it is % good practice to convert all models to SS or FRD and only use  % the TF and ZPK representations for construction or display purposes. % % For example, convert the ZPK model G = zpk([],ones(10,1),1,0.1)  %% % to TF and then back to ZPK: G1 = zpk(tf(G));  %% % Now compare the pole locations for |G| and |G1|: G1 = zpk(tf(G)); pzmap(G,'b',G1,'r') axis([0.5 1.5 -0.4 0.4]) legend('G','G1')  %% % Observe how the pole of multiplicity 10 at |z=1| in |G| is replaced by a % cluster of poles in |G1|. This occurs because the poles of % |G1| are computed as the roots of the polynomial % % $$ (z-1)^{10} = z^{10} - 10 z^9 + 45 z^8 - 120 z^7 + 210 z^6 - 252 z^5 + 210 % z^4 - 120 z^3 + 45 z^2 - 10 z + 1 $$ % % and an |o(eps)| error on the last coefficient of this polynomial is % enough to move the roots by  % % $$ o( \epsilon ^{1/10}) = o(3 \times 10^{-2}) . $$ % % In other words, the transfer function representation is not accurate enough to capture the % system behavior near z=1, which is also visible in the Bode plot of |G| vs. |G1|: bode(G,'b',G1,'rREPLACE_WITH_DASH_DASH'), grid legend('G','G1')  %% % This illustrates why you should avoid unnecessary model conversions.  displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

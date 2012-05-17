@@ -1,0 +1,617 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Multipath Fading Channel</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="chandemo_multipathfading.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit chandemo_multipathfading">Open chandemo_multipathfading.m in the Editor</a></div><div class="right"><a href="matlab:echodemo chandemo_multipathfading">Run in the Command Window</a></div></div><div class="content"><h1>Multipath Fading Channel</h1><!--introduction--><p>Rayleigh and Rician fading channels are useful models of real-world phenomena in wireless communication. These phenomena include multipath scattering effects, time dispersion, and Doppler shifts that arise from relative motion between the transmitter and receiver.</p><p>This demo shows how to use the following in order to model a fading channel:</p><div><ol><li>Rayleigh and Rician multipath fading channel objects</li><li>Channel visualization tool</li></ol></div><p>Processing a signal using a fading channel involves the following steps:</p><div><ol><li>Create a channel object that describes the channel that you want to    use. A channel object is a type of MATLAB&reg; variable that contains    information about the channel, such as the maximum Doppler shift.</li><li>Adjust properties of the channel object, if necessary, to tailor it to    your needs. For example, you can change the path delays or average    path gains.</li><li>Apply the channel object to your signal using the filter function,    which has been overloaded to work with channel objects.</li></ol></div><p>The characteristics of a channel can be plotted using the channel visualization tool.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Initialization</a></li><li><a href="#3">Creating Channel Objects</a></li><li><a href="#4">Modulation and Channel Filtering</a></li><li><a href="#5">Visualization</a></li><li><a href="#6">Narrowband or Frequency-Flat Fading</a></li><li><a href="#12">Rician Fading</a></li><li><a href="#14">Wideband or Frequency Selective Channel</a></li></ul></div><h2>Initialization<a name="1"></a></h2><p>The following variables control both the Rayleigh and Rician channel objects.  By default, the channel is modeled as four fading paths, each representing a cluster of multipath components received at around the same delay.</p><pre class="codeinput">sampleTime = 1/500000; <span class="comment">% Sample time (s)</span>
+maxDopplerShift = 200; <span class="comment">% Maximum Doppler shift of diffuse components (Hz)</span>
+delayVector = 1.0e-004 * [0 0.0400 0.0800 0.1200];  <span class="comment">% Discrete delays of</span>
+                                                    <span class="comment">% four-path channel (s)</span>
+gainVector = [0 -3 -6 -9]; <span class="comment">% Average path gains (dB)</span>
+</pre><p>The maximum Doppler shift is computed as v*f/c, where v is the mobile speed, f is the carrier frequency, and c is the speed of light. For example, a maximum Doppler shift of 200 Hz (as above) corresponds to a mobile speed of 65 mph (30 m/s) and a carrier frequency of 2 GHz.</p><p>By convention, the delay of the first path is typically set to zero.  For subsequent paths, a 1 microsecond delay corresponds to a 300 m difference in path length.  In some outdoor multipath environments, reflected paths can be up to several kilometers longer than the shortest path. With the path delays specified above, the last path is 3.6 km longer than the shortest path, and thus arrives 12 microseconds later.</p><p>Together, the path delays and path gains specify the channel's average delay profile.  Typically, the average path gains decay exponentially with delay (i.e., the dB values decay linearly), but the specific delay profile depends on the propagation environment.  In the delay profile specified above, we assume a 3 dB decrease in average power for every 4 microseconds of path delay.</p><p>The following variables control the Rician channel object.  The Doppler shift of the specular component is typically smaller than the maximum Doppler shift (above) and depends on the mobile's direction of travel relative to the direction of the specular component.  The K-factor specifies the linear ratio of average received power from the specular component relative to that of the associated diffuse components.</p><pre class="codeinput">specDopplerShift = 100;  <span class="comment">% Doppler shift of specular component (Hz)</span>
+KFactor = 10;  <span class="comment">% Linear ratio of specular power to diffuse power</span>
+</pre><h2>Creating Channel Objects<a name="3"></a></h2><p>With the parameters specified above, we can now create the Rayleigh and Rician channel objects using the RAYLEIGHCHAN and RICIANCHAN functions.</p><pre class="codeinput"><span class="comment">% Create Rayleigh channel object</span>
+rayChanObj = rayleighchan(sampleTime, maxDopplerShift, delayVector,<span class="keyword">...</span>
+                          gainVector) ;
+rayChanObj.StoreHistory = 1; <span class="comment">% Store channel state information as signal is</span>
+                             <span class="comment">% processed for later visualization</span>
+<span class="comment">% Create Rician channel object</span>
+ricChanObj = ricianchan(sampleTime, maxDopplerShift, KFactor, <span class="keyword">...</span>
+                        delayVector, gainVector, specDopplerShift);
+ricChanObj.StoreHistory = 1; <span class="comment">% Store channel state information as signal is</span>
+                             <span class="comment">% processed for later visualization</span>
+</pre><h2>Modulation and Channel Filtering<a name="4"></a></h2><p>The MODEM.PSKMOD function can be used to create a PSK modulator object The modulation object can then be used to modulate the channel data, which has been generated using the RANDI function here. Note that in the code below a 'frame' refers to a vector of information bits.</p><pre class="codeinput"><span class="comment">% QPSK modulation with a phase offset of pi/4 is used for this demo</span>
+phaseOff = pi/4;
+modObj = modem.pskmod(4, phaseOff);
+modObj.InputType = <span class="string">'Bit'</span>;
+
+<span class="comment">% Number of bits transmitted per frame is set to be 1000. For QPSK</span>
+<span class="comment">% modulation, this corresponds to 500 symbols per frame.</span>
+bitsPerFrame = 1000;
+msg = randi([0 1],bitsPerFrame,1);
+
+<span class="comment">% Modulate data for transmission over channel</span>
+modSignal = modulate(modObj, msg);
+
+<span class="comment">% Apply channel object on the modulated data using the FILTER function</span>
+filter(rayChanObj,modSignal);
+filter(ricChanObj, modSignal);
+</pre><h2>Visualization<a name="5"></a></h2><p>The Communications Toolbox&#8482; provides a plotting function that helps you visualize the characteristics of a fading channel using a GUI. The channel visualization tool can be invoked using the PLOT or the CHANNEL_VIS function.</p><p>Using option 'IR' opens the visualization for the bandlimited impulse response (green curve). The visualization also shows the delays and magnitudes of the underlying fading path gains (red/magenta/blue stembars) clustered around the peak of the impulse response. Since the channel's delay span (12 microseconds) is much smaller than our QPSK symbol period (100 microseconds), these components cause minimal time dispersion.  The resultant bandlimited impulse response closely approximates a sinc pulse and thus has very small intersymbol interference (ISI) components (green circles).</p><p>Note: For path gains, red corresponds to the smallest path delay while blue corresponds to the largest.  Components with intermediate delay values are shades between red and blue, becoming more blue for larger delays.</p><pre class="codeinput">channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'ir'</span>); <span class="comment">% View Impulse Response</span>
+channel_vis(rayChanObj, <span class="string">'Animation'</span>, <span class="string">'medium'</span>); <span class="comment">% Set animation speed</span>
+channel_vis(rayChanObj, <span class="string">'SampleIndex'</span>, 1); <span class="comment">% Set animation start point</span>
+
+<span class="comment">% Note: In this plot, the gains do not equal the average path gains because</span>
+<span class="comment">% the Doppler effect causes the gains to fluctuate around their average</span>
+<span class="comment">% values over time</span>
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_01.png" alt=""> <h2>Narrowband or Frequency-Flat Fading<a name="6"></a></h2><p>If the bandwidth is too small for the signal to resolve the individual components, the frequency response is approximately flat because of the minimal time dispersion caused by the multipath channel. This kind of low-dispersion multipath fading is often referred to as narrowband fading, or frequency-flat fading.</p><pre class="codeinput">channel_vis(rayChanObj, <span class="string">'close'</span>); <span class="comment">% Close Channel Visualization Tool</span>
+sampleTime = 1/20000; <span class="comment">% 20 kb/s transmission</span>
+
+<span class="comment">% Set data characteristics</span>
+bitsPerFrame = 1000;
+numFrames = 20;
+
+<span class="comment">% Create a Rayleigh channel object</span>
+rayChanObj = rayleighchan(sampleTime, maxDopplerShift, delayVector,<span class="keyword">...</span>
+                          gainVector) ;
+rayChanObj.StoreHistory = 1;
+rayChanObj.ResetBeforeFiltering = 0; <span class="comment">% Retain channel states across</span>
+                                     <span class="comment">% multiple frames</span>
+
+<span class="comment">% Process multiple frames</span>
+<span class="keyword">for</span> i = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); <span class="comment">% Create data</span>
+    modSignal = modulate(modObj, msg); <span class="comment">% Modulate data</span>
+    filter(rayChanObj,modSignal); <span class="comment">% Apply channel filtering to the data</span>
+    channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'fr'</span>); <span class="comment">% Frequency response</span>
+    plot(rayChanObj);
+<span class="keyword">end</span>
+
+<span class="comment">% Visualize the channel frequency response</span>
+channel_vis(rayChanObj, <span class="string">'Animation'</span>, <span class="string">'medium'</span>);
+channel_vis(rayChanObj, <span class="string">'SampleIndex'</span>, 1);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_02.png" alt=""> <p>Note that all delayed components combine at a single delay (in this case, at zero). Using the "Multipath gain" visualization, you can validate this narrowband fading behavior. When the signal's fading envelope (blue dashed curve) closely approximates the "Narrowband" curve (magenta dots), you can regard the channel as exhibiting narrowband fading.</p><pre class="codeinput">channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'gain'</span>);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_03.png" alt=""> <p>To simplify and speed up modeling, narrowband fading channels are typically modeled as a single-path fading channel. (That is, a multiple-path fading model overspecifies a narrowband fading channel.) The following settings correspond to a narrowband fading channel. Notice that the shape of the bandlimited impulse response is also flat.</p><pre class="codeinput">delayVector = 0;  <span class="comment">% Single fading path with zero delay</span>
+gainVector = 0;  <span class="comment">% Average path gain of 1 (0 dB)</span>
+channel_vis(rayChanObj, <span class="string">'close'</span>);
+
+<span class="comment">% Set data characteristics</span>
+bitsPerFrame = 1000;
+numFrames = 100;
+
+<span class="comment">% Create a Rayleigh channel object</span>
+rayChanObj = rayleighchan(sampleTime, maxDopplerShift, delayVector,<span class="keyword">...</span>
+                          gainVector) ;
+rayChanObj.StoreHistory = 1;
+rayChanObj.ResetBeforeFiltering = 0;
+
+<span class="comment">% Process multiple frames</span>
+<span class="keyword">for</span> i = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); <span class="comment">% Create data</span>
+    modSignal = modulate(modObj, msg); <span class="comment">% Modulate data</span>
+    filter(rayChanObj,modSignal); <span class="comment">% Apply channel filtering to data</span>
+    channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'fr'</span>); <span class="comment">% Frequency response</span>
+    plot(rayChanObj);
+<span class="keyword">end</span>
+
+<span class="comment">% View channel frequency response</span>
+channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'fr'</span>);
+channel_vis(rayChanObj, <span class="string">'Animation'</span>, <span class="string">'medium'</span>);
+channel_vis(rayChanObj, <span class="string">'SampleIndex'</span>, 1);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_04.png" alt=""> <p>The single-path fading channel is modeled as a complex gain, which captures both the attenuation and phase shift of the channel. The "Phasor trajectory" visualization shows how this complex gain changes over a transmitted frame. The blue line is the phasor of the path, and the green line is its trajectory over time. The signal experiences a deep fade when this trajectory passes through or near zero.</p><pre class="codeinput">channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'phasor'</span>);
+channel_vis(rayChanObj, <span class="string">'Animation'</span>, <span class="string">'slow'</span>);
+channel_vis(rayChanObj, <span class="string">'SampleIndex'</span>, 1);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_05.png" alt=""> <p>The "Multipath gain" visualization shows the dB gain of the fading channel.  The magnitude fluctuates over a 30-40 dB range in the Rayleigh fading channel.</p><pre class="codeinput">channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'gain'</span>);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_06.png" alt=""> <p>The Doppler spectrum is a statistical characterization of the fading process. The channel visualization tool makes periodic measurements of the Doppler spectrum (blue dots). Over time, the average of this measurement better approximates the theoretical Doppler spectrum (red dashed curve). A close approximation indicates good statistical coverage by the Rayleigh fading process.</p><pre class="codeinput">channel_vis(rayChanObj, <span class="string">'close'</span>);
+
+<span class="comment">% View Doppler spectrum</span>
+channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'doppler'</span>);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_07.png" alt=""> <h2>Rician Fading<a name="12"></a></h2><p>The Rician fading channel object models line-of-sight propagation in addition to diffuse multipath scattering. This results in a smaller variation in the magnitude of the channel gain. Note that the magnitude fluctuates over approximately a 10 dB range (compared with 30-40 dB for the Rayleigh fading channel).  This variation would be further reduced by increasing the K-factor (currently set to 10).</p><pre class="codeinput"><span class="comment">% Rician channel object</span>
+ricChanObj = ricianchan(sampleTime, maxDopplerShift, KFactor, delayVector, <span class="keyword">...</span>
+                        gainVector, specDopplerShift);
+ricChanObj.StoreHistory = 1;
+
+<span class="comment">% Create data</span>
+bitsPerFrame = 1000;
+msg = randi([0 1],bitsPerFrame,1);
+modSignal = modulate(modObj, msg);
+channel_vis(rayChanObj, <span class="string">'close'</span>);
+
+<span class="comment">% Apply Rician channel object on the signal</span>
+ricFiltSig = filter(ricChanObj,modSignal);
+channel_vis(ricChanObj, <span class="string">'Visualization'</span>, <span class="string">'gain'</span>); <span class="comment">% Multipath components</span>
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_08.png" alt=""> <p>You can also see the impact of this reduced magnitude variation on the phasor trajectory.  Unlike Rayleigh fading, the trajectory is unlikely to pass through or near zero.</p><pre class="codeinput">channel_vis(ricChanObj, <span class="string">'Visualization'</span>, <span class="string">'phasor'</span>);
+channel_vis(ricChanObj, <span class="string">'Animation'</span>, <span class="string">'slow'</span>);
+channel_vis(ricChanObj, <span class="string">'SampleIndex'</span>, 1);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_09.png" alt=""> <h2>Wideband or Frequency Selective Channel<a name="14"></a></h2><p>We now return to our original four-path Rayleigh fading channel.  We saw earlier how narrowband fading causes signal attenuation and phase rotation.  A scatter plot shows the impact of narrowband fading on the signal constellation.  (To slow down the channel dynamics for visualization purposes, we've greatly reduced the maximum Doppler shift.) In addition to attenuation and rotation, you can see some signal distortion because of the small amount of ISI in the received signal.</p><pre class="codeinput">delayVector = (0:3)*(4e-6);
+gainVector = (0:3)*(-3);
+maxDopplerShift = 5;
+
+<span class="comment">% Close visualization tool and initialize scatter plot</span>
+channel_vis(ricChanObj, <span class="string">'close'</span>);
+h = scatterplot(0);
+title(<span class="string">'Received Signal After Rayleigh Fading'</span>);
+xlabel(<span class="string">'In-Phase Amplitude'</span>); <span class="comment">% Set axis labels</span>
+ylabel(<span class="string">'Quadrature Amplitude'</span>);
+xlim([-2 2]); <span class="comment">% Set axis limits</span>
+ylim([-2 2]);
+grid <span class="string">on</span>;
+
+<span class="comment">% Create a Rayleigh channel object</span>
+rayChanObj = rayleighchan(sampleTime, maxDopplerShift, delayVector,<span class="keyword">...</span>
+                          gainVector) ;
+rayChanObj.StoreHistory = 1;
+rayChanObj.ResetBeforeFiltering = 0;
+
+<span class="comment">% Apply channel in a loop, maintaining continuity</span>
+<span class="comment">% Plot only the current data in each iteration</span>
+numFrames = 100;
+bitsPerFrame = 200;
+
+<span class="comment">% Process multiple frames</span>
+<span class="keyword">for</span> n = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); <span class="comment">% Create data</span>
+    modSignal = modulate(modObj, msg); <span class="comment">% Modulate data</span>
+    rayFiltSig = filter(rayChanObj,modSignal); <span class="comment">% Apply channel filtering</span>
+
+    <span class="comment">% Plot the new data from this iteration</span>
+    set(get(get(h, <span class="string">'Children'</span>), <span class="string">'Children'</span>), <span class="string">'XData'</span>, <span class="keyword">...</span>
+        real(rayFiltSig(6:end)), <span class="string">'Ydata'</span>, imag(rayFiltSig(6:end)));
+    pause(0.05); <span class="comment">% Pause between re-draws</span>
+    drawnow; <span class="comment">% Refresh the image</span>
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_10.png" alt=""> <p>When we increase the signal bandwidth to 500 kb/s (250 ksym/s), we see much greater distortion in the signal constellation. This distortion is ISI that comes from time dispersion of the wideband signal. The channel's delay span (12 microseconds) is now larger than the QPSK symbol period (4 microseconds), so the resultant bandlimited impulse response is no longer well-approximated by a sinc pulse.</p><pre class="codeinput">close(h);
+reset(rayChanObj);
+rayChanObj.InputSamplePeriod =  1/500000;  <span class="comment">% 500 kb/s transmission.</span>
+
+<span class="comment">% Initialize scatter plot</span>
+h = scatterplot(0); <span class="comment">% Initialize scatter plot</span>
+title(<span class="string">'Received Signal After Rayleigh Fading'</span>);
+xlabel(<span class="string">'In-Phase Amplitude'</span>); <span class="comment">% Set axis labels</span>
+ylabel(<span class="string">'Quadrature Amplitude'</span>);
+xlim([-2 2]); <span class="comment">% Set axis limits</span>
+ylim([-2 2]);
+grid <span class="string">on</span>;
+
+<span class="comment">% Apply channel in a loop, maintaining continuity</span>
+<span class="comment">% Plot only the current data in each iteration</span>
+numFrames = 100;
+bitsPerFrame = 200;
+
+<span class="comment">% Process multiple frames</span>
+<span class="keyword">for</span> n = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); <span class="comment">% Create data</span>
+    modSignal = modulate(modObj, msg); <span class="comment">% Modulate data</span>
+    rayFiltSig = filter(rayChanObj,modSignal); <span class="comment">% Apply channel filtering</span>
+
+    <span class="comment">% Plot the new data from this iteration</span>
+    set(get(get(h, <span class="string">'Children'</span>), <span class="string">'Children'</span>), <span class="string">'XData'</span>, <span class="keyword">...</span>
+        real(rayFiltSig(6:end)), <span class="string">'Ydata'</span>, imag(rayFiltSig(6:end)));
+    pause(0.05); <span class="comment">% Pause between re-draws</span>
+    drawnow; <span class="comment">% Refresh the image</span>
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_11.png" alt=""> <p>By selecting the "IR Waterfall" visualization, you can see the evolution of the impulse response over a frame.  We've increased the frame length and restored the maximum Doppler shift to 200 Hz in this example.</p><pre class="codeinput">close(h);
+reset(rayChanObj);
+
+bitsPerFrame = 1000;
+rayChanObj.MaxDopplerShift = 200;
+numFrames = 13;
+
+<span class="comment">% Process multiple frames</span>
+<span class="keyword">for</span> i = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); <span class="comment">% Create data</span>
+    modSignal = modulate(modObj, msg); <span class="comment">% Modulate data</span>
+    filter(rayChanObj,modSignal); <span class="comment">% Apply channel filtering to the data</span>
+<span class="keyword">end</span>
+
+<span class="comment">% IR Waterfall visualization</span>
+channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'irw'</span>);
+channel_vis(rayChanObj, <span class="string">'Animation'</span>, <span class="string">'interframe'</span>);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_12.png" alt=""> <p>Over the wider signal bandwidth, the channel frequency response is no longer flat.  The impact of the multipath channel on wideband signals is often referred to as frequency-selective fading.</p><pre class="codeinput">channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'fr'</span>);
+channel_vis(rayChanObj, <span class="string">'Animation'</span>, <span class="string">'medium'</span>);
+channel_vis(rayChanObj, <span class="string">'SampleIndex'</span>, 1);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_13.png" alt=""> <p>You can also use the channel visualization tool to display composite visualizations.  In the example below, we show two visualizations: (1) the magnitude of the multipath fading components plotted over a frame period, and (2) a snapshot of the multipath gains.</p><pre class="codeinput">channel_vis(rayChanObj, <span class="string">'Visualization'</span>, <span class="string">'compgain'</span>);
+channel_vis(rayChanObj, <span class="string">'Animation'</span>, <span class="string">'interframe'</span>);
+set(rayChanObj.MultipathFigure.FigureHandle,<span class="keyword">...</span>
+    <span class="string">'Position'</span>, [544 447 700 525]);
+</pre><img vspace="5" hspace="5" src="chandemo_multipathfading_14.png" alt=""> <p class="footer">Copyright 2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Multipath Fading Channel
+% Rayleigh and Rician fading channels are useful models of real-world
+% phenomena in wireless communication. These phenomena include multipath
+% scattering effects, time dispersion, and Doppler shifts that arise from
+% relative motion between the transmitter and receiver. 
+%
+% This demo shows how to use the following in order to model a fading 
+% channel:
+% 
+% # Rayleigh and Rician multipath fading channel objects 
+% # Channel visualization tool
+% 
+% Processing a signal using a fading channel involves the following steps:
+%
+% # Create a channel object that describes the channel that you want to 
+%    use. A channel object is a type of MATLAB(R) variable that contains
+%    information about the channel, such as the maximum Doppler shift.
+% # Adjust properties of the channel object, if necessary, to tailor it to
+%    your needs. For example, you can change the path delays or average 
+%    path gains.
+% # Apply the channel object to your signal using the filter function,
+%    which has been overloaded to work with channel objects.
+%
+% The characteristics of a channel can be plotted using the channel 
+% visualization tool.
+
+%   Copyright 2008 The MathWorks, Inc.
+%   $Revision: 1.1.6.2 $  $Date: 2009/01/05 17:45:54 $
+
+%% Initialization
+% The following variables control both the Rayleigh and Rician channel
+% objects.  By default, the channel is modeled as four fading paths, each
+% representing a cluster of multipath components received at around the
+% same delay.
+sampleTime = 1/500000; % Sample time (s)
+maxDopplerShift = 200; % Maximum Doppler shift of diffuse components (Hz)
+delayVector = 1.0e-004 * [0 0.0400 0.0800 0.1200];  % Discrete delays of 
+                                                    % four-path channel (s)
+gainVector = [0 -3 -6 -9]; % Average path gains (dB)
+
+%%
+% The maximum Doppler shift is computed as v*f/c, where v is the mobile
+% speed, f is the carrier frequency, and c is the speed of light. For
+% example, a maximum Doppler shift of 200 Hz (as above) corresponds to a
+% mobile speed of 65 mph (30 m/s) and a carrier frequency of 2 GHz.  
+%
+% By convention, the delay of the first path is typically set to zero.  For
+% subsequent paths, a 1 microsecond delay corresponds to a 300 m difference
+% in path length.  In some outdoor multipath environments, reflected paths
+% can be up to several kilometers longer than the shortest path. With the
+% path delays specified above, the last path is 3.6 km longer than the
+% shortest path, and thus arrives 12 microseconds later.
+%
+% Together, the path delays and path gains specify the channel's average 
+% delay profile.  Typically, the average path gains decay exponentially 
+% with delay (i.e., the dB values decay linearly), but the specific delay 
+% profile depends on the propagation environment.  In the delay profile 
+% specified above, we assume a 3 dB decrease in average power for every 4
+% microseconds of path delay.
+%
+% The following variables control the Rician channel object.  The Doppler
+% shift of the specular component is typically smaller than the
+% maximum Doppler shift (above) and depends on the mobile's direction of
+% travel relative to the direction of the specular component.  The K-factor
+% specifies the linear ratio of average received power from the 
+% specular component relative to that of the associated diffuse components.
+specDopplerShift = 100;  % Doppler shift of specular component (Hz)
+KFactor = 10;  % Linear ratio of specular power to diffuse power
+
+%% Creating Channel Objects
+% With the parameters specified above, we can now create the Rayleigh and
+% Rician channel objects using the RAYLEIGHCHAN and RICIANCHAN functions.
+
+% Create Rayleigh channel object
+rayChanObj = rayleighchan(sampleTime, maxDopplerShift, delayVector,...
+                          gainVector) ;
+rayChanObj.StoreHistory = 1; % Store channel state information as signal is 
+                             % processed for later visualization
+% Create Rician channel object
+ricChanObj = ricianchan(sampleTime, maxDopplerShift, KFactor, ...
+                        delayVector, gainVector, specDopplerShift);
+ricChanObj.StoreHistory = 1; % Store channel state information as signal is 
+                             % processed for later visualization
+
+%% Modulation and Channel Filtering
+% The MODEM.PSKMOD function can be used to create a PSK modulator object
+% The modulation object can then be used to modulate the channel data,
+% which has been generated using the RANDI function here. Note that in 
+% the code below a 'frame' refers to a vector of information bits.
+
+% QPSK modulation with a phase offset of pi/4 is used for this demo
+phaseOff = pi/4;
+modObj = modem.pskmod(4, phaseOff);
+modObj.InputType = 'Bit';
+
+% Number of bits transmitted per frame is set to be 1000. For QPSK
+% modulation, this corresponds to 500 symbols per frame.
+bitsPerFrame = 1000;
+msg = randi([0 1],bitsPerFrame,1);
+
+% Modulate data for transmission over channel
+modSignal = modulate(modObj, msg);
+
+% Apply channel object on the modulated data using the FILTER function
+filter(rayChanObj,modSignal);
+filter(ricChanObj, modSignal);
+
+%% Visualization
+% The Communications Toolbox(TM) provides a plotting function that helps
+% you visualize the characteristics of a fading channel using a GUI. The
+% channel visualization tool can be invoked using the PLOT or the
+% CHANNEL_VIS function.
+%
+% Using option 'IR' opens the visualization for the bandlimited impulse 
+% response (green curve). The visualization also shows the delays and
+% magnitudes of the underlying fading path gains (red/magenta/blue
+% stembars) clustered around the peak of the impulse response. Since the
+% channel's delay span (12 microseconds) is much smaller than our QPSK
+% symbol period (100 microseconds), these components cause minimal time
+% dispersion.  The resultant bandlimited impulse response closely 
+% approximates a sinc pulse and thus has very small intersymbol 
+% interference (ISI) components (green circles).
+% 
+% Note: For path gains, red corresponds to the smallest path delay while 
+% blue corresponds to the largest.  Components with intermediate delay 
+% values are shades between red and blue, becoming more blue for larger
+% delays.
+channel_vis(rayChanObj, 'Visualization', 'ir'); % View Impulse Response
+channel_vis(rayChanObj, 'Animation', 'medium'); % Set animation speed
+channel_vis(rayChanObj, 'SampleIndex', 1); % Set animation start point
+
+% Note: In this plot, the gains do not equal the average path gains because
+% the Doppler effect causes the gains to fluctuate around their average
+% values over time
+
+%% Narrowband or Frequency-Flat Fading
+% If the bandwidth is too small for the signal to resolve the individual
+% components, the frequency response is approximately flat because of the 
+% minimal time dispersion caused by the multipath channel. This kind of 
+% low-dispersion multipath fading is often referred to as narrowband 
+% fading, or frequency-flat fading.  
+channel_vis(rayChanObj, 'close'); % Close Channel Visualization Tool
+sampleTime = 1/20000; % 20 kb/s transmission
+
+% Set data characteristics
+bitsPerFrame = 1000;
+numFrames = 20;
+
+% Create a Rayleigh channel object
+rayChanObj = rayleighchan(sampleTime, maxDopplerShift, delayVector,...
+                          gainVector) ;
+rayChanObj.StoreHistory = 1;
+rayChanObj.ResetBeforeFiltering = 0; % Retain channel states across 
+                                     % multiple frames
+
+% Process multiple frames
+for i = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); % Create data
+    modSignal = modulate(modObj, msg); % Modulate data
+    filter(rayChanObj,modSignal); % Apply channel filtering to the data
+    channel_vis(rayChanObj, 'Visualization', 'fr'); % Frequency response
+    plot(rayChanObj);
+end
+
+% Visualize the channel frequency response
+channel_vis(rayChanObj, 'Animation', 'medium');
+channel_vis(rayChanObj, 'SampleIndex', 1);
+
+%%
+% Note that all delayed components combine at a single delay (in this case,
+% at zero). Using the "Multipath gain" visualization, you can validate this
+% narrowband fading behavior. When the signal's fading envelope (blue
+% dashed curve) closely approximates the "Narrowband" curve (magenta dots),
+% you can regard the channel as exhibiting narrowband fading. 
+channel_vis(rayChanObj, 'Visualization', 'gain');
+
+%%
+% To simplify and speed up modeling, narrowband fading channels are
+% typically modeled as a single-path fading channel. (That is, a
+% multiple-path fading model overspecifies a narrowband fading channel.)
+% The following settings correspond to a narrowband fading channel. Notice
+% that the shape of the bandlimited impulse response is also flat.
+delayVector = 0;  % Single fading path with zero delay
+gainVector = 0;  % Average path gain of 1 (0 dB)
+channel_vis(rayChanObj, 'close');
+
+% Set data characteristics
+bitsPerFrame = 1000;
+numFrames = 100;
+
+% Create a Rayleigh channel object
+rayChanObj = rayleighchan(sampleTime, maxDopplerShift, delayVector,...
+                          gainVector) ;
+rayChanObj.StoreHistory = 1;
+rayChanObj.ResetBeforeFiltering = 0;
+
+% Process multiple frames
+for i = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); % Create data
+    modSignal = modulate(modObj, msg); % Modulate data
+    filter(rayChanObj,modSignal); % Apply channel filtering to data
+    channel_vis(rayChanObj, 'Visualization', 'fr'); % Frequency response
+    plot(rayChanObj);
+end
+
+% View channel frequency response
+channel_vis(rayChanObj, 'Visualization', 'fr');
+channel_vis(rayChanObj, 'Animation', 'medium');
+channel_vis(rayChanObj, 'SampleIndex', 1);
+
+%%
+% The single-path fading channel is modeled as a complex gain, which
+% captures both the attenuation and phase shift of the channel. The "Phasor
+% trajectory" visualization shows how this complex gain changes over a
+% transmitted frame. The blue line is the phasor of the path, and the green
+% line is its trajectory over time. The signal experiences a deep fade when
+% this trajectory passes through or near zero.
+channel_vis(rayChanObj, 'Visualization', 'phasor');
+channel_vis(rayChanObj, 'Animation', 'slow');
+channel_vis(rayChanObj, 'SampleIndex', 1);
+
+%%
+% The "Multipath gain" visualization shows the dB gain of the fading
+% channel.  The magnitude fluctuates over a 30-40 dB range in the Rayleigh
+% fading channel. 
+channel_vis(rayChanObj, 'Visualization', 'gain');
+
+%%
+% The Doppler spectrum is a statistical characterization of the fading
+% process. The channel visualization tool makes periodic measurements of
+% the Doppler spectrum (blue dots). Over time, the average of this
+% measurement better approximates the theoretical Doppler spectrum (red
+% dashed curve). A close approximation indicates good statistical coverage
+% by the Rayleigh fading process.
+channel_vis(rayChanObj, 'close');
+
+% View Doppler spectrum
+channel_vis(rayChanObj, 'Visualization', 'doppler');
+
+%% Rician Fading
+% The Rician fading channel object models line-of-sight propagation in 
+% addition to diffuse multipath scattering. This results in a smaller 
+% variation in the magnitude of the channel gain. Note that the magnitude 
+% fluctuates over approximately a 10 dB range (compared with 30-40 dB for 
+% the Rayleigh fading channel).  This variation would be further reduced by
+% increasing the K-factor (currently set to 10).
+
+% Rician channel object
+ricChanObj = ricianchan(sampleTime, maxDopplerShift, KFactor, delayVector, ...
+                        gainVector, specDopplerShift);
+ricChanObj.StoreHistory = 1; 
+
+% Create data
+bitsPerFrame = 1000;
+msg = randi([0 1],bitsPerFrame,1);
+modSignal = modulate(modObj, msg);
+channel_vis(rayChanObj, 'close');
+
+% Apply Rician channel object on the signal
+ricFiltSig = filter(ricChanObj,modSignal);
+channel_vis(ricChanObj, 'Visualization', 'gain'); % Multipath components
+
+%%
+% You can also see the impact of this reduced magnitude variation on the
+% phasor trajectory.  Unlike Rayleigh fading, the trajectory is unlikely to
+% pass through or near zero.
+channel_vis(ricChanObj, 'Visualization', 'phasor');
+channel_vis(ricChanObj, 'Animation', 'slow');
+channel_vis(ricChanObj, 'SampleIndex', 1);
+
+%% Wideband or Frequency Selective Channel
+% We now return to our original four-path Rayleigh fading channel.  We saw
+% earlier how narrowband fading causes signal attenuation and phase
+% rotation.  A scatter plot shows the impact of narrowband fading on the
+% signal constellation.  (To slow down the channel dynamics for 
+% visualization purposes, we've greatly reduced the maximum Doppler shift.)
+% In addition to attenuation and rotation, you can see some signal 
+% distortion because of the small amount of ISI in the received signal.
+delayVector = (0:3)*(4e-6);
+gainVector = (0:3)*(-3);
+maxDopplerShift = 5;
+
+% Close visualization tool and initialize scatter plot
+channel_vis(ricChanObj, 'close');
+h = scatterplot(0);
+title('Received Signal After Rayleigh Fading');
+xlabel('In-Phase Amplitude'); % Set axis labels
+ylabel('Quadrature Amplitude');
+xlim([-2 2]); % Set axis limits
+ylim([-2 2]);
+grid on;
+
+% Create a Rayleigh channel object
+rayChanObj = rayleighchan(sampleTime, maxDopplerShift, delayVector,...
+                          gainVector) ;
+rayChanObj.StoreHistory = 1;
+rayChanObj.ResetBeforeFiltering = 0;
+
+% Apply channel in a loop, maintaining continuity
+% Plot only the current data in each iteration
+numFrames = 100;
+bitsPerFrame = 200;
+
+% Process multiple frames
+for n = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); % Create data
+    modSignal = modulate(modObj, msg); % Modulate data
+    rayFiltSig = filter(rayChanObj,modSignal); % Apply channel filtering
+
+    % Plot the new data from this iteration
+    set(get(get(h, 'Children'), 'Children'), 'XData', ...
+        real(rayFiltSig(6:end)), 'Ydata', imag(rayFiltSig(6:end)));
+    pause(0.05); % Pause between re-draws
+    drawnow; % Refresh the image
+end
+
+%%
+% When we increase the signal bandwidth to 500 kb/s (250 ksym/s), we see
+% much greater distortion in the signal constellation. This distortion is
+% ISI that comes from time dispersion of the wideband signal. The channel's
+% delay span (12 microseconds) is now larger than the QPSK symbol period (4
+% microseconds), so the resultant bandlimited impulse response is no longer
+% well-approximated by a sinc pulse.
+close(h);
+reset(rayChanObj);
+rayChanObj.InputSamplePeriod =  1/500000;  % 500 kb/s transmission.
+
+% Initialize scatter plot
+h = scatterplot(0); % Initialize scatter plot
+title('Received Signal After Rayleigh Fading');
+xlabel('In-Phase Amplitude'); % Set axis labels
+ylabel('Quadrature Amplitude');
+xlim([-2 2]); % Set axis limits
+ylim([-2 2]);
+grid on;
+
+% Apply channel in a loop, maintaining continuity
+% Plot only the current data in each iteration
+numFrames = 100;
+bitsPerFrame = 200;
+
+% Process multiple frames
+for n = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); % Create data
+    modSignal = modulate(modObj, msg); % Modulate data
+    rayFiltSig = filter(rayChanObj,modSignal); % Apply channel filtering
+
+    % Plot the new data from this iteration
+    set(get(get(h, 'Children'), 'Children'), 'XData', ...
+        real(rayFiltSig(6:end)), 'Ydata', imag(rayFiltSig(6:end)));
+    pause(0.05); % Pause between re-draws
+    drawnow; % Refresh the image
+end
+
+%%
+% By selecting the "IR Waterfall" visualization, you can see the evolution
+% of the impulse response over a frame.  We've increased the frame length
+% and restored the maximum Doppler shift to 200 Hz in this example.
+close(h);
+reset(rayChanObj);
+
+bitsPerFrame = 1000;
+rayChanObj.MaxDopplerShift = 200;
+numFrames = 13;
+
+% Process multiple frames
+for i = 1:numFrames
+    msg = randi([0 1],bitsPerFrame,1); % Create data
+    modSignal = modulate(modObj, msg); % Modulate data
+    filter(rayChanObj,modSignal); % Apply channel filtering to the data
+end
+
+% IR Waterfall visualization
+channel_vis(rayChanObj, 'Visualization', 'irw');
+channel_vis(rayChanObj, 'Animation', 'interframe');
+
+%% 
+% Over the wider signal bandwidth, the channel frequency response is no
+% longer flat.  The impact of the multipath channel on wideband signals is
+% often referred to as frequency-selective fading.
+channel_vis(rayChanObj, 'Visualization', 'fr');
+channel_vis(rayChanObj, 'Animation', 'medium');
+channel_vis(rayChanObj, 'SampleIndex', 1);
+%% 
+% You can also use the channel visualization tool to display composite
+% visualizations.  In the example below, we show two visualizations: (1)
+% the magnitude of the multipath fading components plotted over a frame
+% period, and (2) a snapshot of the multipath gains.
+channel_vis(rayChanObj, 'Visualization', 'compgain');
+channel_vis(rayChanObj, 'Animation', 'interframe');
+set(rayChanObj.MultipathFigure.FigureHandle,...
+    'Position', [544 447 700 525]);
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

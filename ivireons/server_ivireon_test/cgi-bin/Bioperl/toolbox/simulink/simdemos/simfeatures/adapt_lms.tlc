@@ -1,0 +1,185 @@
+%%
+%% TLC file for Level-2 M file S-Function adapt_lms.m used in
+%% the system identification demo.
+%% 
+%implements adapt_lms "C"
+
+%% Function: BlockTypeSetup ===============================================
+%%
+%function BlockTypeSetup(block, system) void
+  %<LibAddToCommonIncludes("<math.h>")>
+%endfunction
+
+%% Function: Start ============================================================
+%%
+%function Start(block, system) Output
+
+  %openfile tmpBuffer
+  %assign rollVars = ["DWork"]
+  %assign rollRegions = [0:31]
+  %roll idx = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+    %<LibBlockDWork(X, "", lcv, idx)> = 0;
+    %<LibBlockDWork(H, "", lcv, idx)> = 0;	
+  %endroll
+  %closefile tmpBuffer
+  %if !WHITE_SPACE(tmpBuffer)      
+    %<tmpBuffer>\      
+  %endif
+  
+%endfunction 
+
+%% Function: Outputs ==========================================================
+%%
+%function Outputs(block, system) Output
+  
+  %if !LibBlockInputSignalIsFrameData(0) 
+    %<OutputsNonFrame(block, system)>\
+  %else
+    %<OutputsFrame(block, system)>\
+  %endif
+
+%endfunction
+
+
+%% Function: OutputsNonFrame ==================================================
+%%
+%function OutputsNonFrame(block, system) Output
+
+  %assign N = 31
+  %assign M = 30
+  
+  %assign rollVars = ["DWork"]
+
+  %assign mu = LibBlockParameter(MSFcnParameter, "", "", 0)
+  
+  %assign Xlabel = LibBlockDWork(X, "", "", 0) 
+  
+  %assign u = LibBlockInputSignal(1, "", "", 0)
+  %assign d = LibBlockInputSignal(0, "", "", 0)
+  %assign y = LibBlockOutputSignal(0, "", "", 0)
+  
+  %assign xRollVars = ["<dwork>/X"]
+  %assign rollRegions = [0:%<M>]
+  %roll k = rollRegions, lcv = RollThreshold, block, "Roller", xRollVars
+    %assign X1 = LibBlockDWork(X, "", "%<M>-"+lcv, k) 
+    %assign X2 = LibBlockDWork(X, "", "%<N>-"+lcv, k) 
+    %<X2> = %<X1>;
+  %endroll
+
+  %<Xlabel> = %<u>;
+    
+  %<y> = 0;
+  %assign rollRegions = [0:%<N>]
+  %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+    %assign Xlabel = LibBlockDWork(X, "", lcv, k) 
+    %assign Hlabel = LibBlockDWork(H, "", lcv, k) 
+    %<y> = %<y> + %<Xlabel>*%<Hlabel>;
+  %endroll
+  
+  %assign rollRegions = [0:%<N>]
+  %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+    %assign Xlabel = LibBlockDWork(X, "", lcv, k) 
+    %assign Hlabel = LibBlockDWork(H, "", lcv, k) 
+    %<Hlabel> = %<Hlabel> + %<mu>*(%<d> - %<y>)*%<Xlabel>;
+  %endroll
+  
+  %assign b   = ParamSettings.ActualCoefs[0]
+  %assign dec = "{"
+  
+  %foreach k = N-1
+    %assign tmp = b[k]
+    %assign dec = dec + "%<tmp>,"
+  %endforeach
+  %assign tmp = b[N]
+  %assign dec = dec+"%<tmp>}"
+  
+  {
+    static const double b[%<N+1>] = %<dec>;
+    
+    %assign diff = LibBlockOutputSignal(1, "", "", 0)
+    %<diff> = 0;
+    
+    %assign hRollVars = ["<dwork>/H"]
+    %assign rollRegions = [0:%<N>]
+    %roll k = rollRegions, lcv = RollThreshold, block, "Roller", hRollVars
+      %assign Hlabel = LibBlockDWork(H, "", lcv, k) 
+      
+      %<diff> = %<diff> + (b[%<lcv>] - %<Hlabel>)*(b[%<lcv>] - %<Hlabel>);
+    %endroll
+    %<diff> = sqrt(%<diff>);
+  }
+ 
+%endfunction
+
+%% Function: OutputsFrame =====================================================
+%%
+%function OutputsFrame(block, system) Output
+
+  %assign N = 31
+  %assign M = 30
+  
+
+  %assign mu = LibBlockParameter(MSFcnParameter, "", "", 0)
+  
+  %assign Xlabel = LibBlockDWork(X, "", "", 0) 
+  
+  %assign rollVars = ["DWork", "U", "Y"]
+
+  %roll idx = RollRegions, lcv = RollThreshold, block, "Roller", rollVars
+ 
+    %assign u = LibBlockInputSignal(1, "", lcv, idx)
+    %assign d = LibBlockInputSignal(0, "", lcv, idx)
+    %assign y = LibBlockOutputSignal(0, "", lcv, idx)
+    
+    %assign rollRegions = [0:%<M>]
+    %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      %assign X1 = LibBlockDWork(X, "", "%<M>-"+lcv, k) 
+      %assign X2 = LibBlockDWork(X, "", "%<N>-"+lcv, k) 
+      %<X2> = %<X1>;
+    %endroll
+    
+    %<Xlabel> = %<u>;
+    
+    %<y> = 0;
+    %assign rollRegions = [0:%<N>]
+    %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      %assign Xlabel = LibBlockDWork(X, "", lcv, k) 
+      %assign Hlabel = LibBlockDWork(H, "", lcv, k) 
+      %<y> = %<y> + %<Xlabel>*%<Hlabel>;
+    %endroll
+    
+    %assign rollRegions = [0:%<N>]
+    %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      %assign Xlabel = LibBlockDWork(X, "", lcv, k) 
+      %assign Hlabel = LibBlockDWork(H, "", lcv, k) 
+      %<Hlabel> = %<Hlabel> + %<mu>*(%<d> - %<y>)*%<Xlabel>;
+    %endroll
+    
+  %endroll
+  
+  %assign b   = ParamSettings.ActualCoefs[0]
+  %assign dec = "{"
+  
+  %foreach k = N-1
+    %assign tmp = b[k]
+    %assign dec = dec + "%<tmp>,"
+  %endforeach
+  %assign tmp = b[N]
+  %assign dec = dec+"%<tmp>}"
+  
+  {
+    static const double b[%<N+1>] = %<dec>;
+    
+    %assign diff = LibBlockOutputSignal(1, "", "", 0)
+    %<diff> = 0;
+    
+    %assign rollRegions = [0:%<N>]
+    %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      %assign Hlabel = LibBlockDWork(H, "", lcv, k) 
+      
+      %<diff> = %<diff> + (b[%<lcv>] - %<Hlabel>)*(b[%<lcv>] - %<Hlabel>);
+    %endroll
+    %<diff> = sqrt(%<diff>);
+  }
+ 
+%endfunction

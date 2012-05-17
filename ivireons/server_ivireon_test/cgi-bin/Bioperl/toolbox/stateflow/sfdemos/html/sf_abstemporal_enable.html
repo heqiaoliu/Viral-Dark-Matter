@@ -1,0 +1,94 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Absolute Time Temporal Logic in the Presence of Enabled Subsystems</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_abstemporal_enable.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_abstemporal_enable.mdl</div><div class="right"><a href="matlab:sf_abstemporal_enable">Open this model</a></div></div><div class="content"><h1>Absolute Time Temporal Logic in the Presence of Enabled Subsystems</h1><p>This model illustrates the behavior of absolute time temporal logic in the presence of enabled subsystems.</p><img vspace="5" hspace="5" src="sf_abstemporal_enable_01.png" alt=""> <p>The model contains an enabled subsystem <tt>EnabledSubsys</tt> which contains a single chart <tt>Chart</tt>. Initially the option "States when Enabling" for the enable port <tt>EnabledSubsys/Enable</tt> is set to "held".</p><img vspace="5" hspace="5" src="sf_abstemporal_enable_02.png" alt=""> <p>The chart itself is very simple. It consists of two states <tt>A</tt> and <tt>B</tt> with the transition from <tt>A</tt> to <tt>B</tt> guarded by <tt>after(5,sec)</tt>.</p><img vspace="5" hspace="5" src="sf_abstemporal_enable_03.png" alt=""> <p>The signal driving <tt>EnabledSubsys</tt> looks as below.</p><img vspace="5" hspace="5" src="sf_abstemporal_enable_04.png" alt=""> <p>When the model is simulated, we get the following output.</p><img vspace="5" hspace="5" src="sf_abstemporal_enable_05.png" alt=""> <p>Notice that the transition from <tt>A</tt> to <tt>B</tt> happens at <tt>t = 9</tt>, rather than at <tt>t = 7</tt> even though we entered <tt>A</tt> at <tt>t = 2</tt>. This illustrates an important semantic rule for absolute time temporal logic in the presence of enabled subsystems. In particular, when a chart is disabled, we do <i>not</i> continue to accumulate the time which the chart spent in the currently active state(s).</p><p>If we change the option "States when Enabling" for the enable port <tt>EnabledSubsys/Enable</tt> to "reset" and re-run the simulation, we see the following behavior:</p><img vspace="5" hspace="5" src="sf_abstemporal_enable_06.png" alt=""> <p>Notice that now, the transition from <tt>A</tt> to <tt>B</tt> happens at <tt>t = 10</tt>. This is because at <tt>t = 5</tt>, when the enabled subsystem got re-enabled, Stateflow&reg; will "start fresh". In other words, it executes the default transitions, resets all the temporal counters and performs all the other initializations it did at <tt>t = 2</tt>. We therefore stay in <tt>A</tt> for 5 more seconds after <tt>t = 5</tt>.</p><p>For more details please refer to the section <a href="matlab:sfhelp('sf_abstemporal_enable')">Using Absolute-Time Temporal Logic in a Conditionally Executed Subsystem</a> for more information.</p><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Absolute Time Temporal Logic in the Presence of Enabled Subsystems
+% 
+% This model illustrates the behavior of absolute time temporal logic in
+% the presence of enabled subsystems.
+
+%   Copyright 2009 The MathWorks, Inc.
+
+bdclose all
+clear all
+close all
+
+model = 'sf_abstemporal_enable';
+open_system(model);
+
+r = sfroot;
+m = r.find('-isa', 'Stateflow.Machine', 'Name', model);
+c = m.find('-isa', 'Stateflow.Chart', 'Name', 'Chart');
+
+close_system([model '/EnabledSubsys']);
+close_system([model '/Scope']);
+c.Visible = 0;
+
+%% 
+% The model contains an enabled subsystem |EnabledSubsys| which contains a
+% single chart |Chart|. Initially the option "States when Enabling" for the
+% enable port |EnabledSubsys/Enable| is set to "held". 
+
+set_param([model '/EnabledSubsys/Enable'], 'StatesWhenEnabling', 'held');
+open_system([model '/EnabledSubsys']);
+
+%% 
+% The chart itself is very simple. It consists of two states |A| and |B|
+% with the transition from |A| to |B| guarded by |after(5,sec)|. 
+
+c.Visible = 1;
+
+%% 
+% The signal driving |EnabledSubsys| looks as below.
+
+open_system([model '/Signal Builder']);
+
+%% 
+% When the model is simulated, we get the following output.
+
+close_system([model '/Signal Builder']);
+evalc('sim(model)');
+open_system([model '/Scope']);
+
+%% 
+% Notice that the transition from |A| to |B| happens at |t = 9|, rather
+% than at |t = 7| even though we entered |A| at |t = 2|. This illustrates
+% an important semantic rule for absolute time temporal logic in the
+% presence of enabled subsystems. In particular, when a chart is disabled,
+% we do _not_ continue to accumulate the time which the chart spent in the
+% currently active state(s).
+% 
+% If we change the option "States when Enabling" for the enable port
+% |EnabledSubsys/Enable| to "reset" and re-run the simulation, we see the
+% following behavior:
+
+set_param([model '/EnabledSubsys/Enable'], 'StatesWhenEnabling', 'reset');
+evalc('sim(model)');
+open_system([model '/Scope']);
+
+%% 
+% Notice that now, the transition from |A| to |B| happens at |t = 10|. This
+% is because at |t = 5|, when the enabled subsystem got re-enabled,
+% Stateflow(R) will "start fresh". In other words, it executes the default
+% transitions, resets all the temporal counters and performs all the other
+% initializations it did at |t = 2|. We therefore stay in |A| for 5 more
+% seconds after |t = 5|.
+%
+% For more details please refer to the section
+% <matlab:sfhelp('sf_abstemporal_enable') Using Absolute-Time Temporal Logic in a Conditionally Executed Subsystem> 
+% for more information.
+
+%% 
+bdclose all
+clear all
+close all
+
+##### SOURCE END #####
+--></body></html>

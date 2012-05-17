@@ -1,0 +1,192 @@
+#VRML V2.0 utf8
+
+WorldInfo {
+  title "Robot Gripper - VRML Model"
+  info ["Copyright 2000-2006 The MathWorks, Inc. and HUMUSOFT s.r.o."]
+}
+
+NavigationInfo {
+  avatarSize [0.05, 1.6, 0.75]
+  speed 0.1
+  headlight TRUE
+  type ["EXAMINE"]
+}
+
+
+Background {
+	groundColor 0 0.8 0
+	skyAngle [1 1.2 1.5708]
+	skyColor [
+		0.8 0.8 1
+		0.7 0.7 0.8
+		0.5 0.5 0.8
+		0.4 0.4 0.8
+	]
+
+}
+
+Transform {
+	translation 0.5 0.5 0.75	 
+	rotation 0 1 0 0.47
+	children 
+	DEF Camera_Overview Viewpoint {
+		orientation 1 0 0 -0.45 
+		position	0 0 0 
+		fieldOfView 0.4
+		description "Overview"
+	}
+}
+
+DEF Camera_Z Viewpoint {
+  position 0.1 0.1 0.5
+	description "Look along -Z"
+} 
+
+
+Transform {
+	translation 2.5 2.5 3.75	 
+	rotation 0 1 0 0.58
+	children 
+	DEF Camera_Ortho Viewpoint {
+		orientation 1 0 0 -0.48
+		position	0 0 0 
+		fieldOfView 0.1
+		description "Pseudo ortho view"
+	}
+}
+
+
+Transform {
+	center 0 0 0
+	translation 1 0.5 0
+	rotation 0 1 0 1.57
+	children 
+	DEF Camera_Claws Viewpoint {
+		orientation 1 0 0 -0.45
+		position	0 0 0 
+		fieldOfView 0.15
+		description "Claws"
+	}
+}
+
+
+DirectionalLight {
+	direction -1 -2 -1
+	color 1 1 1
+	intensity 0.1
+}
+
+DirectionalLight {
+	direction 0 -2 1
+	color 1 1 1
+	intensity 0.1
+}
+ 
+
+DEF Robot_Gripper Transform {
+  children [
+
+    DEF Base Transform {
+      children [
+        Inline {
+          url ["robot_gripper_base.wrl"]
+        }
+      ]
+    },
+
+    DEF Upperarm Transform {
+      children [
+        Inline {
+          url ["robot_gripper_upperarm.wrl"]
+        }
+      ]
+    },
+
+    DEF Forearm Transform {
+      children [
+        Inline {
+          url ["robot_gripper_forearm.wrl"]
+        },
+         Transform {
+	        center 0 0 0
+	        translation 0.15 0.3 0
+	        rotation 0 1 0 -1.57
+	        children 
+	        DEF Camera_Grip Viewpoint {
+		        orientation 1 0 0 -1
+		        position	0 0 0 
+		        description "Grip Camera"
+	        }
+        }
+
+      ]
+    },
+
+    DEF Wrist Transform {
+      children [
+        Inline {
+          url ["robot_gripper_wrist.wrl"]
+        }
+      ]
+    },
+
+    # Parts forming the grip are inside the Grip transform to allow 
+    # separate grip manipulation if needed later on.
+    # When Grip coords stay in [0 0 0] (aren't controlled from Simulink),
+    # all parts inside behave as if defined in global coordinates 
+    # - this is intended behaviour for this model.
+    DEF Grip Transform {
+      children [
+        DEF Metacarples Transform {
+          children [
+            Inline {
+              url ["robot_gripper_metacarples.wrl"]
+            }
+          ]
+        },
+        DEF Fingerlink2_Left Transform {
+          children [
+            Inline {
+              url ["robot_gripper_secondfingerlink_l.wrl"]
+            }
+          ]
+        },
+        DEF Fingerlink2_Right Transform {
+          children [
+            Inline {
+              url ["robot_gripper_secondfingerlink_r.wrl"]
+            }
+          ]
+        },
+        DEF Fingerlink1_Left Transform {
+          children [
+            Inline {
+              url ["robot_gripper_firstfingerlink_l.wrl"]
+            }
+          ]
+        },
+        DEF Fingerlink1_Right Transform {
+          children [
+            Inline {
+              url ["robot_gripper_firstfingerlink_r.wrl"]
+            }
+          ]
+        },
+        DEF Fingertip_Left Transform {
+          children [
+            Inline {
+              url ["robot_gripper_fingertip_l.wrl"]
+            }
+          ]
+        },
+        DEF Fingertip_Right Transform {
+          children [
+            Inline {
+              url ["robot_gripper_fingertip_r.wrl"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

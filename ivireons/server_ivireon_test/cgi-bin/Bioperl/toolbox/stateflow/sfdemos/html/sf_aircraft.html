@@ -1,0 +1,173 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling Fault Management Control Logic in an Aircraft Elevator Control System</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_aircraft.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_aircraft.mdl</div><div class="right"><a href="matlab:sf_aircraft">Open this model</a></div></div><div class="content"><h1>Modeling Fault Management Control Logic in an Aircraft Elevator Control System</h1><!--introduction--><p>In this demo, we use Model-Based Design to design a fault detection, isolation, and recovery (FDIR) application for a pair of aircraft elevators with redundant actuators.  The control logic used in this model is the same that is used in the Avionics subsystem of the Aerospace Blockset&#8482; demo entitled "NASA HL-20 with FlightGear Interface."</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#3">Description of Elevator Control System</a></li><li><a href="#8">Control Logic for Elevator Control System</a></li><li><a href="#11">Failure Definition</a></li><li><a href="#12">Injecting Failures Into System</a></li><li><a href="#18">Responding to Failures</a></li><li><a href="#19">Isolating Actuators When Failures Occur</a></li><li><a href="#20">Recovering from Failures</a></li><li><a href="#21">References</a></li></ul></div><img vspace="5" hspace="5" src="sf_aircraft_01.png" alt=""> <p><b>Figure 1: Top level of aircraft elevator control system model</b></p><h2>Description of Elevator Control System<a name="3"></a></h2><p>A typical aircraft has two elevators attached on the horizontal tails (one on each side of the fuselage). There are a number of redundant parts in the system to enhance safety of the aircraft.</p><img vspace="5" hspace="5" src="sf_aircraft_02.png" alt=""> <p><b>Figure 2: Schematic showing how the components of the elevator system are connected to one another</b></p><p>For example, as shown in Figure 2, there are:</p><div><ul><li>Two independent hydraulic actuators per elevator (four total)</li><li>Three separate hydraulic circuits to drive the actuators</li><li>Two primary flight control units (PFCU)</li><li>Two control modules per actuator: full range control law and limited / reduced range control law</li></ul></div><h2>Control Logic for Elevator Control System<a name="8"></a></h2><img vspace="5" hspace="5" src="sf_aircraft_03.png" alt=""> <p><b>Figure 3: Actuator mode logic</b></p><p>Each outer actuator has a dedicated hydraulic circuit, whereas the inner actuators share one hydraulic circuit.  Each actuator can be in either one of five modes: Passive, Standby, Active, Off, and Isolated.  By default, the outer actuators are in the Active mode, and the inner actuators are in the Standby mode. If a fault is detected in the outer actuators or in the hydraulic circuits that are connected to them, the system responds accordingly to maintain stability by turning the outer actuators off and activating the inner actuators.</p><h2>Failure Definition<a name="11"></a></h2><p>If the aircraft is flying perfectly level, then the actuator position should maintain a constant value. If the position of an actuator increases or decreases by 10 cm from this zero point, then a failure has occurred in that actuator. A failure also occurs if the change in position is very rapid (i.e., the position changes at least 20 cm in 0.01 seconds).</p><p>Similarly, a fault occurs in one of the hydraulic circuits if the pressure is out-of-bounds or if the pressure changes very rapidly. In this demo, the pressure in the hydraulic circuit should always be between 500 kPA and 2 MPa, and the pressure should not change more than 100 kPa in 0.01 seconds.</p><h2>Injecting Failures Into System<a name="12"></a></h2><img vspace="5" hspace="5" src="sf_aircraft_04.png" alt=""> <p><b>Figure 4: GUI used to inject failures into the system</b></p><p>A separate GUI (shown in Figure 4) that was created in GUIDE is used to inject failures into either the hydraulic circuits or the actuators.  By checking or unchecking boxes and pressing the Update button on the GUI, custom MATLAB&reg; code runs as an intermediary between the GUI and the Simulink&reg; model.  For example, when checking the H1 box and pressing the Update button to inject a failure into hydraulic circuit 1, the following custom MATLAB code is evaluated:</p><p><tt>% Define H1_fail Constant block location and get current value</tt></p><p><tt>blockname=[mname '/Signal conditioning '...</tt></p><p><tt>'and failures /Hydraulic Pressures/Measured ',char(10),...</tt></p><p><tt>'Hydraulic system 1 ',...</tt></p><p><tt>'pressures/Hydraulic pressure/H1_fail'];</tt></p><p><tt>val=get(handles.H1,'Value');</tt></p><p><tt>% Change value of H1_fail Constant block from 0 to 1 or from 1 to 0.</tt></p><p><tt>if val</tt></p><pre> set_param(blockname,'value','1');</pre><p><tt>else</tt></p><pre> set_param(blockname,'value','0');</pre><p><tt>end</tt></p><p>This effectively turns on a switch within the Signal conditioning subsystem that injects a fault into hydraulic circuit 1.</p><img vspace="5" hspace="5" src="sf_aircraft_05.png" alt=""> <p><b>Figure 5: Switch that injects a failure into hydraulic circuit #1 if value of Constant block H1_fail does not equal 0</b></p><h2>Responding to Failures<a name="18"></a></h2><p>Stateflow&reg; responds to failures in the hydraulic circuits and actuators using truth table functions, event broadcasting, and control logic.  As an example, if there is a failure in hydraulic circuit 1 and no other failures occur, the L_switch truth table function evaluates Decision D1 as true and performs Action 2, which is to turn off the left outer actuator.  This event is broadcast to the LO state, where the left outer actuator turns off.  After this occurs, an event is broadcast from the LO state to the LI state so that the left inner actuator is activated.  The right inner actuator is then activated since the left inner actuator is also active.  When this happens, an event is sent from the RI state to the RO state to place the right outer actuator on standby.  Thus, after a failure occurs in hydraulic circuit 1, the left outer actuator is turned off, the right outer actuaor is placed on standby, and the inner actuators are activated.</p><h2>Isolating Actuators When Failures Occur<a name="19"></a></h2><p>When a failure occurs in one of the actuators, that actuator can no longer be activated. This is represented in the state chart by adding an Isolated state that contains no outgoing transitions.  Therefore, once an actuator enters the Isolated state, it remains in the Isolated state.</p><h2>Recovering from Failures<a name="20"></a></h2><p>A recovery mechanism has also been placed in the control logic in case a failed system comes back online.  For example, if failures are no longer detected in hydraulic circuit 1, the condition !u.low_press[0] is true, and the LO state can transition from the Off state to the Standby state. That way, if a failure occurs in another system, such as the left inner actuator, then the left outer actuator can be activated.</p><h2>References<a name="21"></a></h2><p>Pieter J. Mosterman and Jason Ghidella, "Model Reuse for the Training of Fault Scenarios in Aerospace," in <i>Proceedings of the AIAA&reg; Modeling and Simulation Technologies Conference</i>, CD-ROM, paper 2004-4931, August 16 - 19, Rhode Island Convention Center, Providence, RI, 2004.</p><p>Jason R. Ghidella and Pieter J. Mosterman, "Applying Model-Based Design to a Fault Detection, Isolation, and Recovery System," in <i>Military Embedded Systems</i>, Summer, 2006.</p><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling Fault Management Control Logic in an Aircraft Elevator Control System
+% 
+% In this demo, we use Model-Based Design to design a fault detection,
+% isolation, and recovery (FDIR) application for a pair of aircraft
+% elevators with redundant actuators.  The control logic used in this model
+% is the same that is used in the Avionics subsystem of the Aerospace Blockset(TM)
+% demo entitled "NASA HL-20 with FlightGear Interface."
+% Copyright 2009 The MathWorks, Inc.
+%%
+%
+bdclose all;
+mdl = 'sf_aircraft';
+open_system(mdl);
+
+rt = sfroot;
+machine = rt.find('-isa','Stateflow.Machine','Name',mdl);
+ModeLogicChart = machine.find('-isa','Stateflow.Chart','Name','Mode Logic');
+ModeLogicChart.visible = 0;
+%%
+% *Figure 1: Top level of aircraft elevator control system model*
+%% Description of Elevator Control System
+%
+% A typical aircraft has two elevators attached on the horizontal tails
+% (one on each side of the fuselage). There are a number of redundant parts
+% in the system to enhance safety of the aircraft. 
+%% 
+% 
+imshow('sf_aircraft_FDIR_overview.png')
+set(gcf,'NumberTitle','off','Toolbar','none','MenuBar','none')
+%%
+% *Figure 2: Schematic showing how the components of the elevator system
+% are connected to one another*
+%%
+% For example, as shown in Figure 2, there are:
+%%
+% * Two independent hydraulic actuators per elevator (four total)
+% * Three separate hydraulic circuits to drive the actuators
+% * Two primary flight control units (PFCU)
+% * Two control modules per actuator: full range control law and limited /
+% reduced range control law
+%
+%% Control Logic for Elevator Control System
+ModeLogicChart.visible = 1;
+%%
+% *Figure 3: Actuator mode logic*
+%%
+% Each outer actuator has a dedicated hydraulic circuit, whereas the inner
+% actuators share one hydraulic circuit.  Each actuator can be in either
+% one of five modes: Passive, Standby, Active, Off, and Isolated.  By
+% default, the outer actuators are in the Active mode, and the inner
+% actuators are in the Standby mode. If a fault is detected in the outer
+% actuators or in the hydraulic circuits that are connected to them, the
+% system responds accordingly to maintain stability by turning the outer
+% actuators off and activating the inner actuators. 
+%
+%% Failure Definition
+% If the aircraft is flying perfectly level, then the actuator position
+% should maintain a constant value. If the position of an actuator
+% increases or decreases by 10 cm from this zero point, then a failure has
+% occurred in that actuator. A failure also occurs if the change in
+% position is very rapid (i.e., the position changes at least 20 cm in 0.01
+% seconds). 
+%
+% Similarly, a fault occurs in one of the hydraulic circuits if the
+% pressure is out-of-bounds or if the pressure changes very rapidly. In
+% this demo, the pressure in the hydraulic circuit should always be between
+% 500 kPA and 2 MPa, and the pressure should not change more than 100 kPa
+% in 0.01 seconds. 
+%
+%% Injecting Failures Into System
+%
+sf_aircraft_failures;
+%%
+% *Figure 4: GUI used to inject failures into the system*
+%%
+% A separate GUI (shown in Figure 4) that was created in GUIDE is used to inject
+% failures into either the hydraulic circuits or the actuators.  By
+% checking or unchecking boxes and pressing the Update button on the GUI,
+% custom MATLAB(R) code runs as an intermediary between the
+% GUI and the Simulink(R) model.  For example, when checking the H1 box and
+% pressing the Update button to inject a failure into hydraulic circuit 1,
+% the following custom MATLAB code is evaluated:
+%%
+% |% Define H1_fail Constant block location and get current value|
+%
+% |blockname=[mname '/Signal conditioning '...|
+%
+% |'and failures /Hydraulic Pressures/Measured ',char(10),...|
+%
+% |'Hydraulic system 1 ',...|
+%
+% |'pressures/Hydraulic pressure/H1_fail'];|
+%
+% |val=get(handles.H1,'Value');|
+%
+% |% Change value of H1_fail Constant block from 0 to 1 or from 1 to 0.|
+%
+% |if val|
+%
+%   set_param(blockname,'value','1');
+%
+% |else|
+%
+%   set_param(blockname,'value','0');
+%
+% |end|
+%%
+% This effectively turns on a switch within the Signal conditioning
+% subsystem that injects a fault into hydraulic circuit 1.
+blockname=[mdl '/Signal conditioning '...
+'and failures /Hydraulic Pressures/Measured ',char(10),...
+'Hydraulic system 1 ',...
+'pressures/Hydraulic pressure/H1_fail'];
+set_param(blockname,'value','1');
+open_system([mdl '/Signal conditioning '...
+'and failures /Hydraulic Pressures/Measured ',char(10),...
+'Hydraulic system 1 ',...
+'pressures/Hydraulic pressure']);
+%%
+% *Figure 5: Switch that injects a failure into hydraulic circuit #1 if
+% value of Constant block H1_fail does not equal 0*
+%% Responding to Failures
+% Stateflow(R) responds to failures in the hydraulic circuits and actuators
+% using truth table functions, event broadcasting, and control logic.  As
+% an example, if there is a failure in hydraulic circuit 1 and no other
+% failures occur, the L_switch truth table function evaluates Decision D1
+% as true and performs Action 2, which is to turn off the left outer
+% actuator.  This event is broadcast to the LO state, where the left outer
+% actuator turns off.  After this occurs, an event is broadcast from the LO
+% state to the LI state so that the left inner actuator is activated.  The
+% right inner actuator is then activated since the left inner actuator is
+% also active.  When this happens, an event is sent from the RI state to
+% the RO state to place the right outer actuator on standby.  Thus, after
+% a failure occurs in hydraulic circuit 1, the left outer actuator is turned
+% off, the right outer actuaor is placed on standby, and the inner
+% actuators are activated.
+%
+%% Isolating Actuators When Failures Occur
+% When a failure occurs in one of the actuators, that actuator can no
+% longer be activated. This is represented in the state chart by adding an
+% Isolated state that contains no outgoing transitions.  Therefore, once an
+% actuator enters the Isolated state, it remains in the Isolated state.
+%
+%% Recovering from Failures
+% A recovery mechanism has also been placed in the control logic in case a
+% failed system comes back online.  For example, if failures are no longer
+% detected in hydraulic circuit 1, the condition !u.low_press[0] is true,
+% and the LO state can transition from the Off state to the Standby state.
+% That way, if a failure occurs in another system, such as the left inner
+% actuator, then the left outer actuator can be activated. 
+%
+%% References 
+% Pieter J. Mosterman and Jason Ghidella, "Model Reuse for the Training
+% of Fault Scenarios in Aerospace," in _Proceedings of the AIAA(R) Modeling and
+% Simulation Technologies Conference_, CD-ROM, paper 2004-4931, August 16 -
+% 19, Rhode Island Convention Center, Providence, RI, 2004.
+%%
+% Jason R. Ghidella and Pieter J. Mosterman, "Applying Model-Based Design
+% to a Fault Detection, Isolation, and Recovery System," in _Military
+% Embedded Systems_, Summer, 2006.
+##### SOURCE END #####
+--></body></html>

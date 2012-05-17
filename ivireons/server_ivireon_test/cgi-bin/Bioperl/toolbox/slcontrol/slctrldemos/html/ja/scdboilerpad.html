@@ -1,0 +1,97 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>ドラム-ボイラーの圧力の調整</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="scdboilerpad.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdboilerpad">エディターで scdboilerpad.m を開く</a></div><div class="right"><a href="matlab:echodemo scdboilerpad">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>ドラム-ボイラーの圧力の調整</h1><!--introduction--><!--/introduction--><h2>目次</h2><div><ul><li><a href="#3">手順 1: モデルを初期化して開く</a></li><li><a href="#5">手順 2: 標準操作点の検索とモデルの線形化</a></li><li><a href="#15">手順 3: レギュレーターと状態オブザーバーの設計</a></li><li><a href="#18">手順 4: シミュレーションとテスト</a></li></ul></div><p>このデモでは、応用例として、ドラム-ボイラーを使った Simulink&reg; Control Design™ の使用法を説明します。操作点の検索機能を使用して、モデルの線形化だけでなく、それ以降の状態オブザーバーおよび LQR の設計についても説明します。</p><p>このドラム-ボイラー モデルにおける制御上の問題は、給水の流量と適用された標準熱を調整することで、炉からのランダムな熱変動に対してボイラーの圧力を調整することです。この例の場合、ランダムな熱変動の 95% が 50% 未満である標準発熱量です。これは、炉による燃焼ボイラーでは異常ではありません。</p><h2>手順 1: モデルを初期化して開く<a name="3"></a></h2><p>開始するには、Simulink&reg; モデルを開きます。</p><pre class="codeinput">Boiler_Demo
+</pre><img vspace="5" hspace="5" src="../scdboilerpad_01.png" alt=""> <p>ボイラー制御モデルのプリロード関数は、コントローラーの次数を初期化します。これは、操作点と線形モデルを計算するために、Simulink モデルは実行可能でなければならないため必要です。u0、y0 は、操作点の計算後に設定されるため、最初は 0 に設定されることに注意してください。オブザーバーとレギュレーターも、コントローラーの設計手順で計算されるため、最初は 0 に設定されます。</p><h2>手順 2: 標準操作点の検索とモデルの線形化<a name="5"></a></h2><p>モデルの初期状態値は、Simulink モデルで定義されます。これらの状態値を使って、関数 findop を使用した定常状態の操作点を検索します。</p><p>最初に、状態値がわかっている操作点の仕様を作成します。</p><pre class="codeinput">opspec = operspec(<span class="string">'Boiler_Demo'</span>);
+opspec.States(1).Known = 1;
+opspec.States(2).Known = 1;
+opspec.States(3).Known = [1;1];
+</pre><p>ここで、操作点の仕様を調整して、入力を計算しなければならないことと、入力が下限であることを示します。</p><pre class="codeinput">opspec.Inputs(1).Known = [0;0];     <span class="comment">%Inputs unknown</span>
+opspec.Inputs(1).Min = [0;0];   <span class="comment">%Input minimum value</span>
+</pre><p>最後に、出力の仕様を操作点の仕様に追加します。これは、出力の操作点が処理時に計算されるようにするのに必要です。</p><pre class="codeinput">opspec = addoutputspec(opspec,<span class="string">'Boiler_Demo/Boiler'</span>,1);
+opspec.Outputs(1).Known = 0;    <span class="comment">%Outputs unknown</span>
+opspec.Outputs(1).Min = 0;      <span class="comment">%Output minimum value</span>
+</pre><p>次に、操作点を計算して、レポートを生成します。</p><pre class="codeinput">[opSS,opReport] = findop(<span class="string">'Boiler_Demo'</span>,opspec);
+</pre><pre class="codeoutput">
+ Operating Point Search Report:
+---------------------------------
+
+ Operating Report for the Model Boiler_Demo.
+ (Time-Varying Components Evaluated at time t=0)
+
+Operating point specifications were successfully met.
+States: 
+----------
+(1.) Boiler_Demo/Boiler/Steam volume
+      x:           5.6      dx:     7.85e-013 (0)
+(2.) Boiler_Demo/Boiler/Temperature
+      x:           180      dx:    -5.93e-014 (0)
+(3.) Boiler_Demo/Observer/Internal
+      x:             0      dx:             0 (0)
+      x:             0      dx:             0 (0)
+
+Inputs: 
+----------
+(1.) Boiler_Demo/Input
+      u:     2.41e+005    [0 Inf]
+      u:           100    [0 Inf]
+
+Outputs: 
+----------
+(1.) Boiler_Demo/Boiler
+      y:        1e+003    [0 Inf]
+
+</pre><p>この点の周りのモデルを線形化する前に、線形モデルの入力信号と出力信号を指定します。</p><p>最初に、線形化の入力点を指定します。</p><pre class="codeinput">Boiler_io(1)=linio(<span class="string">'Boiler_Demo/Sum'</span>,1,<span class="string">'in'</span>);
+Boiler_io(2)=linio(<span class="string">'Boiler_Demo/Demux'</span>,2,<span class="string">'in'</span>);
+</pre><p>ここで、線形化の開ループの出力点を指定します。</p><pre class="codeinput">Boiler_io(3)=linio(<span class="string">'Boiler_Demo/Boiler'</span>,1,<span class="string">'out'</span>,<span class="string">'on'</span>);
+setlinio(<span class="string">'Boiler_Demo'</span>,Boiler_io);
+</pre><p>このコードでは、選択した操作点の周りの線形モデルを見つけます。</p><pre class="codeinput">Lin_Boiler = linearize(<span class="string">'Boiler_Demo'</span>,opSS,Boiler_io);
+</pre><p>最後に、関数 minreal を使用して、モデルが最小実現であることを確認します (たとえば、極/零点の相殺がないなど)。</p><pre class="codeinput">Lin_Boiler = minreal(Lin_Boiler);
+</pre><pre class="codeoutput">1 state removed.
+</pre><h2>手順 3: レギュレーターと状態オブザーバーの設計<a name="15"></a></h2><p>この線形モデルを使用して、LQR レギュレーターと Kalman フィルター状態オブザーバーを設計します。最初に、コントローラーのオフセットを検索し、コントローラーが、計算された操作点を取得することで、選択した線形化ポイントの周りで動作していることを確認します。</p><pre class="codeinput">u0 = opReport.Inputs.u;
+y0 = opReport.Outputs.y;
+</pre><p>ここで、関数 lqry を使用してレギュレーターを設計します。入力の変動は制限されていますが、出力の厳密なレギュレーションが必要であることに注意してください。</p><pre class="codeinput">Q = diag(1e8);                  <span class="comment">%Output regulation</span>
+R = diag([1e2,1e6]);            <span class="comment">%Input limitation</span>
+[K,S,E] = lqry(Lin_Boiler,Q,R);
+</pre><p>関数 kalman を使用して、Kalman 状態オブザーバーを設計します。この例では、主なノイズ源はプロセス ノイズであることに注意してください。1 つの入力を介してのみシステムに入るため、G と H の形式です。</p><pre class="codeinput">[A,B,C,D] = ssdata(Lin_Boiler);
+G = [B(:,1)];
+H = [0];
+QN = 1e4;
+RN = 1e-1;
+NN = 0;
+[Kobsv,L,P] = kalman(ss(A,[B G],C,[D H]),QN,RN);
+</pre><h2>手順 4: シミュレーションとテスト<a name="18"></a></h2><p>設計したコントローラーに対するプロセス入力および出力は次のとおりです。</p><pre class="codeinput">sim(<span class="string">'Boiler_Demo'</span>)
+</pre><p>以下は、給水の作動信号 (単位は kg/s) です。</p><pre class="codeinput">figSize = [0 0 360 240];
+h = figure(1); plot(FeedWater.time/60,FeedWater.signals.values)
+set(h,<span class="string">'color'</span>,[1 1 1])
+set(h,<span class="string">'Position'</span>,figSize)
+title(<span class="string">'Feedwater flow rate [kg/s]'</span>);
+ylabel(<span class="string">'Flow [kg/s]'</span>)
+xlabel(<span class="string">'time [min]'</span>)
+grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../scdboilerpad_02.png" alt=""> <p>次に、熱の作動信号 (単位は kJ) を示します。</p><pre class="codeinput">h = figure(2); plot(Heat.time/60,Heat.signals.values/1000)
+set(h,<span class="string">'color'</span>,[1 1 1])
+set(h,<span class="string">'Position'</span>,figSize)
+title(<span class="string">'Applied heat [kJ]'</span>);
+ylabel(<span class="string">'Heat [kJ]'</span>)
+xlabel(<span class="string">'time [min]'</span>)
+grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../scdboilerpad_03.png" alt=""> <p>次の図は、熱の外乱 (単位は kJ) を示しています。外乱は、熱の標準値の 50% も変動します。</p><pre class="codeinput">h = figure(3); plot(HeatDist.time/60,HeatDist.signals.values/1000)
+set(h,<span class="string">'color'</span>,[1 1 1])
+set(h,<span class="string">'Position'</span>,figSize)
+title(<span class="string">'Heat disturbance [kJ]'</span>);
+ylabel(<span class="string">'Heat [kJ]'</span>)
+xlabel(<span class="string">'time [min]'</span>)
+grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../scdboilerpad_04.png" alt=""> <p>次の図は、対応するドラム圧力 (単位は kPa) を示しています。外乱が比較的大きい場合でも、圧力は標準値の約 1% 変動することに注目してください。</p><pre class="codeinput">h =figure(4); plot(DrumPressure.time/60,DrumPressure.signals.values)
+set(h,<span class="string">'color'</span>,[1 1 1])
+set(h,<span class="string">'Position'</span>,figSize)
+title(<span class="string">'Drum pressure [kPa]'</span>);
+ylabel(<span class="string">'Pressure [kPa]'</span>)
+xlabel(<span class="string">'time [min]'</span>)
+grid <span class="string">on</span>
+
+bdclose(<span class="string">'Boiler_Demo'</span>)
+</pre><img vspace="5" hspace="5" src="../scdboilerpad_05.png" alt=""> <p class="footer">Copyright 2005-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Regulating Pressure in a Drum Boiler % Copyright 2005-2007 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $ $Date: 2010/07/29 21:29:21 $  %%  % This demo illustrates how to use Simulink(R) Control Design(TM), using a drum % boiler as an example application. Using the operating point search % function, we illustrate model linearization as well as subsequent state % observer and LQR design.   %% % In this drum-boiler model, the control problem is to regulate boiler % pressure in the face of random heat fluctuations from the furnace by % adjusting the feedwater flow rate and the nominal heat applied. For this % example, 95% of the random heat fluctuations are less than 50% of the % nominal heating value. This is not unusual for a furnace-fired boiler.    %% Step 1: Initialize and Open the Model % To begin, let's open the Simulink(R) model. Boiler_Demo   %% % The boiler control model's pre-load function initializes the controller sizes. This is  % necessary because to compute the operating point and linear model, the  % Simulink model must be executable. Note that u0, y0 are set after the  % operating point computation and are thus initially set to zero. The observer  % and regulator are computed during the controller design step and are  % also initially set to zero.   %% Step 2: Find a Nominal Operating Point and Linearize the Model % The model's initial state values are defined in the Simulink model. Using  % these state values find the steady state operating point using the findop function.   %% % First, we'll create an operating point specification where the state values are known. opspec = operspec('Boiler_Demo'); opspec.States(1).Known = 1; opspec.States(2).Known = 1; opspec.States(3).Known = [1;1];  %% % Now, let's adjust the operating point specification to indicate that the inputs must be computed and that they are lower bounded. opspec.Inputs(1).Known = [0;0];     %Inputs unknown opspec.Inputs(1).Min = [0;0];   %Input minimum value  %% % Finally, we'll add an output specification to the operating point specification; this is necessary to ensure that the output operating point is computed during the solution process.  opspec = addoutputspec(opspec,'Boiler_Demo/Boiler',1); opspec.Outputs(1).Known = 0;    %Outputs unknown opspec.Outputs(1).Min = 0;      %Output minimum value  %% % Next, we compute the operating point and generate a report. [opSS,opReport] = findop('Boiler_Demo',opspec);  %% % Before linearizing the model around this point, we'll specify the input and % output signals for the linear model.   %% % First we specify the input points for linearization. Boiler_io(1)=linio('Boiler_Demo/Sum',1,'in'); Boiler_io(2)=linio('Boiler_Demo/Demux',2,'in');  %% % Now we specify the open loop output points for linearization. Boiler_io(3)=linio('Boiler_Demo/Boiler',1,'out','on'); setlinio('Boiler_Demo',Boiler_io);  %%  % In this code, we find a linear model around the chosen operating point. Lin_Boiler = linearize('Boiler_Demo',opSS,Boiler_io);  %%  % Finally, using the minreal function, make sure that the model is a % minimum realization, (e.g., there are no pole zero cancellations). Lin_Boiler = minreal(Lin_Boiler);  %% Step 3: Designing a Regulator and State Observer % Using this linear model, we will design an LQR regulator and Kalman filter state  % observer. First find the controller offsets to make sure that the controller  % is operating around the chosen linearization point by retrieving the computed  % operating point.  u0 = opReport.Inputs.u; y0 = opReport.Outputs.y;  %% % Now design the regulator using the lqry function. Note that tight regulation  % of the output is required while input variation should be limited.  Q = diag(1e8);                  %Output regulation R = diag([1e2,1e6]);            %Input limitation [K,S,E] = lqry(Lin_Boiler,Q,R);  %% % Design the Kalman state observer using the kalman function. Note that for  % this example the main noise source is process noise.  It enters the system  % only through one input, hence the form of G and H.  [A,B,C,D] = ssdata(Lin_Boiler); G = [B(:,1)]; H = [0]; QN = 1e4; RN = 1e-1; NN = 0; [Kobsv,L,P] = kalman(ss(A,[B G],C,[D H]),QN,RN);  %% Step 4: Simulate and Test % For the designed controller the process inputs and outputs are shown below.  sim('Boiler_Demo')  %% % Here is the feedwater actuation signal in kg/s figSize = [0 0 360 240]; h = figure(1); plot(FeedWater.time/60,FeedWater.signals.values) set(h,'color',[1 1 1]) set(h,'Position',figSize) title('Feedwater flow rate [kg/s]'); ylabel('Flow [kg/s]') xlabel('time [min]') grid on  %% % This illustrates the heat actuation signal in kJ: h = figure(2); plot(Heat.time/60,Heat.signals.values/1000) set(h,'color',[1 1 1]) set(h,'Position',figSize) title('Applied heat [kJ]'); ylabel('Heat [kJ]') xlabel('time [min]') grid on  %%  % The next figure shows the heat disturbance in kJ. Note that the % disturbance varies by as much as 50% of the nominal heat value. h = figure(3); plot(HeatDist.time/60,HeatDist.signals.values/1000) set(h,'color',[1 1 1]) set(h,'Position',figSize) title('Heat disturbance [kJ]'); ylabel('Heat [kJ]') xlabel('time [min]') grid on  %% % The figure below shows the corresponding drum pressure in kPa. Notice  % how the pressure varies by about 1% of the nominal value even though  % the disturbance is relatively large.   h =figure(4); plot(DrumPressure.time/60,DrumPressure.signals.values) set(h,'color',[1 1 1]) set(h,'Position',figSize) title('Drum pressure [kPa]'); ylabel('Pressure [kPa]') xlabel('time [min]') grid on  bdclose('Boiler_Demo') displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

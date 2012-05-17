@@ -1,0 +1,91 @@
+%% File : diraxisrot.tlc
+%% Abstract:
+%% This block defines a three-axis transformation on an input vector
+%% through an Euler angle rotation described by an axis rotation sequence.
+%%
+
+%%
+%% Initial coding by A S Bozin
+%% Copyright 1997-2010 The MathWorks, Inc.
+%% $Revision: 1.7 $ $Date: 2001/04/12 21:25:33 $
+%%
+%implements sbdaxisrot "C"
+
+%% Function: BlockTypeSetup ===================================================
+%% Abstract:
+%%
+%function BlockTypeSetup(block, system) void
+%endfunction
+
+%% Function: Outputs ==========================================================
+%% Abstract:
+%%
+%function Outputs(block, system) Output
+  %assign sfcnName = ParamSettings.FunctionName
+  /* %<Type> Block: (%<sfcnName>): %<LibParentMaskBlockName(block)> */
+  %%
+  %%
+  %assign width = LibBlockOutputSignalWidth(0)
+  %foreach idx = width
+    %assign uvect%<idx+1> = LibBlockInputSignal(0,"","","%<tRealPart>%<idx>")
+    %assign yvect%<idx+1> = LibBlockOutputSignal(0,"","","%<tRealPart>%<idx>")
+  %endforeach
+  {
+    real_T       us1,us2,us3;
+    real_T       ys1,ys2,ys3;
+    real_T       alpha, cosa, sina;
+    /*
+     *
+     */
+    ys1 = %<uvect1>;
+    ys2 = %<uvect2>;
+    ys3 = %<uvect3>;
+    /*
+     * Loop through the axis sequence
+     */
+    %assign rollVars = ["u1", "<param>/P1"]
+    %roll idx = RollRegions, lcv = 2, block, "Roller", rollVars
+      %assign angle = LibBlockInputSignal(1, "", lcv, "%<tRealPart>%<idx>")
+      %assign p1 = LibBlockParameter(P1, "", lcv, idx)
+      cosa = %<LibGenMathFcnCall("cos", tSS_DOUBLE, "alpha = %<angle>","")>;
+      sina = %<LibGenMathFcnCall("sin", tSS_DOUBLE, "alpha", "")>;
+      us1 = ys1;
+      us2 = ys2;
+      us3 = ys3;
+      /*
+       * Unrolled loops
+       */
+      switch ((int)%<p1>) {
+      case 1:
+	 ys1 = us1;
+	 ys2 = cosa * us2 + sina * us3;
+	 ys3 = cosa * us3 - sina * us2;
+	 break;
+      case 2:
+	 ys1 = cosa * us1 - sina * us3;
+	 ys2 = us2;
+	 ys3 = sina * us1 + cosa * us3;
+	 break;
+      case 3:
+         ys1 = cosa * us1 + sina * us2;
+	 ys2 = cosa * us2 - sina * us1;
+	 ys3 = us3;
+	 break;
+      default:
+	 ys1 = us1;
+	 ys2 = us2;
+	 ys3 = us3;
+	 break;
+      }
+    %endroll
+    /*
+     * Transformed vector coordinates
+     */
+    %<yvect1> = ys1;
+    %<yvect2> = ys2;
+    %<yvect3> = ys3;
+  }
+%endfunction  %% Outputs
+
+
+%% [EOF] diraxisrot.tlc

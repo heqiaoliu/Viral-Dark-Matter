@@ -1,0 +1,113 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using FFT2 on the GPU to Simulate Diffraction Patterns</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-10"><meta name="DC.source" content="paralleldemo_gpu_fft2.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_gpu_fft2">Open paralleldemo_gpu_fft2.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_gpu_fft2">Run in the Command Window</a></div></div><div class="content"><h1>Using FFT2 on the GPU to Simulate Diffraction Patterns</h1><!--introduction--><p>This demo uses Parallel Computing Toolbox&#8482; to perform a 2-dimensional Fast Fourier Transform (FFT) on a GPU. The 2-dimensional Fourier transform is used in optics to calculate far-field diffraction patterns. These diffraction patterns are observed when a monochromatic light source passes through a small aperture, such as in Young's double-slit experiment.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Define Coordinate System</a></li><li><a href="#2">Diffraction Pattern for a Rectangular Aperture</a></li><li><a href="#3">Displaying the Light Intensity for a Rectangular Aperture</a></li><li><a href="#4">Simulation of Young's Double-Slit Experiment</a></li><li><a href="#5">Displaying the Light Intensity for Young's Double-Slit</a></li></ul></div><h2>Define Coordinate System<a name="1"></a></h2><p>Before we simulate the light that has passed through an aperture, we must define our coordinate system. To get the correct numerical behavior when we call <tt>fft2</tt>, we must carefully arrange <tt>x</tt> and <tt>y</tt> so that the zero value is in the correct place.</p><pre class="codeinput"><span class="comment">% N2 is half the size in each dimension.</span>
+N2 = 1024;
+[x, y] = meshgrid( -1 : 1/N2 : (N2-1)/N2 );
+gx = gpuArray( x );
+gy = gpuArray( y );
+</pre><h2>Diffraction Pattern for a Rectangular Aperture<a name="2"></a></h2><p>We simulate the effect of passing a parallel beam of monochromatic light through a small rectangular aperture. The 2-dimensional Fourier transform describes the light field at a large distance from the aperture. We start by forming <tt>aperture</tt> as a logical mask based on the coordinate system, then the light source is simply a double-precision version of the aperture. The far-field light signal is found using <tt>fft2</tt>.</p><pre class="codeinput">aperture       = ( abs(gx) &lt; 4/N2 ) .* ( abs(gy) &lt; 2/N2 );
+lightsource    = double( aperture );
+farfieldsignal = fft2( lightsource );
+</pre><h2>Displaying the Light Intensity for a Rectangular Aperture<a name="3"></a></h2><p>We calculate the far-field light intensity from the magnitude squared of the light field. We use <tt>real</tt> and <tt>imag</tt> because there is currently limited arithmetic support for <tt>GPUArray</tt> arrays. Finally, we use <tt>gather</tt> to bring the data back to the host for display.</p><pre class="codeinput">realsig = real( farfieldsignal );
+imagsig = imag( farfieldsignal );
+farfieldintensity = realsig.*realsig + imagsig.*imagsig;
+
+imagesc( fftshift( gather( farfieldintensity ) ) );
+axis( <span class="string">'equal'</span> ); axis( <span class="string">'off'</span> );
+title( <span class="string">'Rectangular aperture far-field diffraction pattern'</span> );
+</pre><img vspace="5" hspace="5" src="paralleldemo_gpu_fft2_01.png" alt=""> <h2>Simulation of Young's Double-Slit Experiment<a name="4"></a></h2><p>One of the most famous experiments in optics is Young's double-slit experiment which shows light interference when an aperture comprises two parallel slits. A series of bright points are visible where constructive interference takes place. In this case, we form the aperture representing two slits. We restrict the aperture in the <tt>y</tt> direction to ensure that the resulting pattern is not entirely concentrated along the horizontal axis.</p><pre class="codeinput">slits          = (abs( gx ) &lt;= 10/N2) .* (abs( gx ) &gt;= 8/N2);
+aperture       = slits .* (abs(gy) &lt; 20/N2);
+lightsource    = double( aperture );
+farfieldsignal = fft2( lightsource );
+</pre><h2>Displaying the Light Intensity for Young's Double-Slit<a name="5"></a></h2><p>We calculate and display the intensity as before.</p><pre class="codeinput">realsig = real( farfieldsignal );
+imagsig = imag( farfieldsignal );
+farfieldintensity = fftshift( gather( realsig.*realsig + imagsig.*imagsig ) );
+imagesc( farfieldintensity );
+axis( <span class="string">'equal'</span> ); axis( <span class="string">'off'</span> );
+title( <span class="string">'Double slit far-field diffraction pattern'</span> );
+</pre><img vspace="5" hspace="5" src="paralleldemo_gpu_fft2_02.png" alt=""> <p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using FFT2 on the GPU to Simulate Diffraction Patterns
+% This demo uses Parallel Computing Toolbox(TM) to perform a 2-dimensional
+% Fast Fourier Transform (FFT) on a GPU. The 2-dimensional Fourier
+% transform is used in optics to calculate far-field diffraction patterns.
+% These diffraction patterns are observed when a monochromatic light source
+% passes through a small aperture, such as in Young's double-slit
+% experiment.
+
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.8.2.4.1 $   $Date: 2010/06/09 17:57:35 $
+
+%% Define Coordinate System
+% Before we simulate the light that has passed through an aperture, we must
+% define our coordinate system. To get the correct numerical behavior when
+% we call |fft2|, we must carefully arrange |x| and |y| so that the zero
+% value is in the correct place.
+
+% N2 is half the size in each dimension.
+N2 = 1024;
+[x, y] = meshgrid( -1 : 1/N2 : (N2-1)/N2 );
+gx = gpuArray( x );
+gy = gpuArray( y );
+
+%% Diffraction Pattern for a Rectangular Aperture
+% We simulate the effect of passing a parallel beam of monochromatic light
+% through a small rectangular aperture. The 2-dimensional Fourier transform
+% describes the light field at a large distance from the aperture. We start
+% by forming |aperture| as a logical mask based on the coordinate system,
+% then the light source is simply a double-precision version of the
+% aperture. The far-field light signal is found using |fft2|.
+
+aperture       = ( abs(gx) < 4/N2 ) .* ( abs(gy) < 2/N2 );
+lightsource    = double( aperture );
+farfieldsignal = fft2( lightsource );
+
+%% Displaying the Light Intensity for a Rectangular Aperture
+% We calculate the far-field light intensity from the magnitude squared of
+% the light field. We use |real| and |imag| because there is currently
+% limited arithmetic support for |GPUArray| arrays. Finally, we use
+% |gather| to bring the data back to the host for display.
+
+realsig = real( farfieldsignal );
+imagsig = imag( farfieldsignal );
+farfieldintensity = realsig.*realsig + imagsig.*imagsig;
+
+imagesc( fftshift( gather( farfieldintensity ) ) );
+axis( 'equal' ); axis( 'off' );
+title( 'Rectangular aperture far-field diffraction pattern' );
+
+%% Simulation of Young's Double-Slit Experiment
+% One of the most famous experiments in optics is Young's double-slit
+% experiment which shows light interference when an aperture comprises two
+% parallel slits. A series of bright points are visible where constructive
+% interference takes place. In this case, we form the aperture representing
+% two slits. We restrict the aperture in the |y| direction to ensure that
+% the resulting pattern is not entirely concentrated along the horizontal
+% axis.
+
+slits          = (abs( gx ) <= 10/N2) .* (abs( gx ) >= 8/N2);
+aperture       = slits .* (abs(gy) < 20/N2);
+lightsource    = double( aperture );
+farfieldsignal = fft2( lightsource );
+
+%% Displaying the Light Intensity for Young's Double-Slit
+% We calculate and display the intensity as before.
+
+realsig = real( farfieldsignal );
+imagsig = imag( farfieldsignal );
+farfieldintensity = fftshift( gather( realsig.*realsig + imagsig.*imagsig ) );
+imagesc( farfieldintensity );
+axis( 'equal' ); axis( 'off' );
+title( 'Double slit far-field diffraction pattern' );
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

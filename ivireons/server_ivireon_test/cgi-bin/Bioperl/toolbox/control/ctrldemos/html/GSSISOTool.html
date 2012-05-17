@@ -1,0 +1,181 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Getting Started with the SISO Design Tool</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="GSSISOTool.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit GSSISOTool">Open GSSISOTool.m in the Editor</a></div><div class="right"><a href="matlab:echodemo GSSISOTool">Run in the Command Window</a></div></div><div class="content"><h1>Getting Started with the SISO Design Tool</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Compensator Design Task and the SISO Design Tool</a></li><li><a href="#2">Compensator Design Problem Example</a></li><li><a href="#4">Launching the SISO Design Tool and Configuring Design Objectives</a></li><li><a href="#14">Tuning Compensators</a></li><li><a href="#18">Automated Tuning of Compensators</a></li><li><a href="#19">Summary</a></li></ul></div><h2>Compensator Design Task and the SISO Design Tool<a name="1"></a></h2><p>The SISO Design Tool facilitates the compensator design process by providing interactive and automated tools to tune compensators for a feedback control system. The SISO Design Tool allows:</p><p>1) The design problem to be setup graphically by defining the control design requirement on time, frequency, and pole/zero response plots.</p><p>2) Tuning the compensator with:</p><div><ul><li>automated design methods such as Ziegler Nichols, IMC, and LQG.</li><li>graphically tuning poles and zeros on design plots such as Bode and root locus.</li><li>optimization to meet time and frequency-domain requirements using  Simulink&reg; Design Optimization&#8482;.</li></ul></div><p>3) While tuning the compensators, the closed-loop and open-loop responses are dynamically updated to display the performance of the control system.</p><p>The design process using the SISO Design Tool will be illustrated with an example problem.</p><h2>Compensator Design Problem Example<a name="2"></a></h2><p>For this example we will design a compensator for the system</p><p><img src="GSSISOTool_eq81989.png" alt="$$ G(s) = \frac{1}{s+1} $$"></p><p>with the following design requirements:</p><div><ul><li>Zero steady state error with respect to a step input.</li><li>80% rise time &lt; 1 second.</li><li>Settling time &lt; 2 seconds.</li><li>Maximum overshoot &lt; 20%.</li><li>Open-loop crossover constraint of less than 5 rad/s.</li></ul></div><h2>Launching the SISO Design Tool and Configuring Design Objectives<a name="4"></a></h2><p>For this example we will use the standard feedback structure with the controller in the forward path which happens to be the default feedback structure when launching the SISO Design Tool. To launch the SISO Design Tool with the specified plant G type</p><p><tt>&gt;&gt; sisotool(tf(1,[1,1]))</tt></p><p>This will bring up two windows. The first window is Control and Estimation Tools Manager (CETM)</p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolCETMStep1.png" alt=""> </p><p>and the second window is the SISO Design graphical editors</p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolDesignPlotsStep1.png" alt=""> </p><p>In the CETM the <b>SISO Design Task</b> node contains tabbed panels which are used to configure the compensator design options as well as manipulate the compensators. For complete details of the functionality for each of the panels refer to the documentation.</p><p>For this design example we will use the root-locus plot and open-loop Bode plot for graphically tuning the compensator and validate the design by viewing the step response.</p><p>To view the closed-loop step response, click on the <b>Analysis Plot</b> tab in the CETM. Now configure the plot by selecting "Step" for the first plot and checking the first check box for the response "Closed-Loop r to y". This will bring up the SISO Tool Viewer.</p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolCETMStep2.png" alt=""> </p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolAnalysisPlotsStep2.png" alt=""> </p><p>Now add the time domain design requirements to the step response plot by right clicking on the axis and selecting the <b>Design Requirements -&gt; New</b> menu item. We will use the "Step response bounds" design requirement type to specify the rise time, settling time and overshoot requirements.</p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolStepConstraint.png" alt=""> </p><p>We can now use this time response with its requirements to view the performance of the compensator design.</p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolAnalysisPlotsStep3.png" alt=""> </p><p>To specify the frequency domain crossover requirement, right click the bode axis in the SISO Design window and select the <b>Design Requirement-&gt;New</b> menu item and specify an upper gain limit.</p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolCrossOverConstraint.png" alt=""> </p><p>Now that the problem has been set up we will begin to design the compensator to satisfy the problem specifications.</p><h2>Tuning Compensators<a name="14"></a></h2><p>Compensators can be manually tuned from the graphical editors or the <b>Compensator Editor</b> tab of the CETM. For this example we will use the graphical editors to tune the compensator. To begin the design an integrator will be added to achieve zero steady state error to a step input. To add the integrator to the compensator use the right-click menu on the root-locus plot and select <b>Add Pole/Zero-&gt;Integrator</b>. To create a desirable shape for the root locus plot we will add a zero at approximately -2. To add the zero, use the right-click menu on the root-locus plot and select <b>Add Pole/Zero-&gt;Real Zero</b> menu item and then left-click at approximately -2 on the real axis of the root locus plot. Now in the bode plot adjust the open-loop gain by clicking and dragging the curve on the magnitude plot such that the cross-over and time domain constraints are satisfied.</p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolDesignPlotsStep4.png" alt=""> </p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolAnalysisPlotsStep4.png" alt=""> </p><p>To view the compensator go to <b>Compensator Editor</b> tab. Note that the steps performed in the graphical tuning plots to tune the compensator can also be accomplished from this panel.</p><p><img vspace="5" hspace="5" src="../Figures/GSSISOToolCETMStep4.png" alt=""> </p><h2>Automated Tuning of Compensators<a name="18"></a></h2><p>In addition to the manual tuning interfaces, the SISO Design Tool also provides the following automated tuning algorithms:</p><div><ul><li>Use the <b>PID tuning</b>, <b>IMC tuning</b>, and <b>LQG synthesis</b> options in the <b>Automated Tuning</b> panel to compute initial parameters for the compensators based on tuning parameters such as closed-loop time constants.  See the demo <a href="autotunedemo.html">"Automated Controller Design in the SISO Design Tool"</a>.</li><li>Use the <b>Optimization based tuning</b> option in the <b>Automated Tuning</b> panel (requires Simulink Design Optimization) to tune the compensators using both time and frequency domain design requirements.  See the demo <a href="../../../sldo/sldodemos/optim/html/dcmotor_demopad.html">"DC Motor Controller Tuning"</a>.</li></ul></div><h2>Summary<a name="19"></a></h2><p>Using the SISO Design Tool we were able to successfully design a compensator such that all of the specified design requirements were satisfied. The tool facilitated the heuristic process of compensator design by providing an interactive and visual environment for</p><div><ul><li>Specifying the design requirements</li><li>Tuning the compensator, and</li><li>Evaluating the performance of the design.</li></ul></div><p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Getting Started with the SISO Design Tool
+%
+
+%   Copyright 1986-2009 The MathWorks, Inc.
+%   $Revision: 1.1.8.6 $  $Date: 2009/07/18 15:50:06 $
+
+%% Compensator Design Task and the SISO Design Tool
+% The SISO Design Tool facilitates the compensator design process by
+% providing interactive and automated tools to tune compensators for a
+% feedback control system. The SISO Design Tool allows: 
+%
+% 1) The design problem to be setup graphically by defining the control
+% design requirement on time, frequency, and pole/zero response plots.
+%
+% 2) Tuning the compensator with:
+%
+% * automated design methods such as Ziegler Nichols, IMC, and LQG.
+% * graphically tuning poles and zeros on design plots such as Bode and root locus.
+% * optimization to meet time and frequency-domain requirements using
+%  Simulink(R) Design Optimization(TM).
+%
+% 3) While tuning the compensators, the closed-loop and open-loop responses
+% are dynamically updated to display the performance of the control system.
+%
+% The design process using the SISO Design Tool will be illustrated with an
+% example problem.
+
+
+%% Compensator Design Problem Example 
+% For this example we will design a compensator for the system
+
+%%
+% $$ G(s) = \frac{1}{s+1} $$
+%
+% with the following design requirements:
+%
+% * Zero steady state error with respect to a step input.
+% * 80% rise time < 1 second.
+% * Settling time < 2 seconds.
+% * Maximum overshoot < 20%.
+% * Open-loop crossover constraint of less than 5 rad/s.
+
+
+%% Launching the SISO Design Tool and Configuring Design Objectives
+% For this example we will use the standard feedback structure with the
+% controller in the forward path which happens to be the default feedback
+% structure when launching the SISO Design Tool. To launch the SISO Design
+% Tool with the specified plant G type
+%
+% |>> sisotool(tf(1,[1,1]))|
+%
+% This will bring up two windows. The first window is Control and
+% Estimation Tools Manager (CETM) 
+%
+% <<../Figures/GSSISOToolCETMStep1.png>>
+
+%%
+% and the second window is the SISO Design graphical editors
+%
+% <<../Figures/GSSISOToolDesignPlotsStep1.png>>
+
+%%
+% In the CETM the *SISO Design Task* node contains tabbed panels which are
+% used to configure the compensator design options as well as manipulate
+% the compensators. For complete details of the functionality for each of
+% the panels refer to the documentation.
+
+%%
+% For this design example we will use the root-locus plot and open-loop
+% Bode plot for graphically tuning the compensator and validate the design
+% by viewing the step response.
+%
+% To view the closed-loop step response, click on the *Analysis Plot* tab in
+% the CETM. Now configure the plot by selecting "Step" for the first plot
+% and checking the first check box for the response "Closed-Loop r to y". This
+% will bring up the SISO Tool Viewer.
+%
+% <<../Figures/GSSISOToolCETMStep2.png>>
+%%
+% <<../Figures/GSSISOToolAnalysisPlotsStep2.png>>
+
+%%
+% Now add the time domain design requirements to the step response plot by right
+% clicking on the axis and selecting the *Design Requirements -> New* menu item.
+% We will use the "Step response bounds" design requirement type to specify the 
+% rise time, settling time and overshoot requirements.
+
+
+%%
+% <<../Figures/GSSISOToolStepConstraint.png>>
+
+%%
+% We can now use this time response with its requirements to view the
+% performance of the compensator design.
+%
+% <<../Figures/GSSISOToolAnalysisPlotsStep3.png>> 
+
+%%
+% To specify the frequency domain crossover requirement, right click the
+% bode axis in the SISO Design window and select the *Design Requirement->New* 
+% menu item and specify an upper gain limit.
+%
+% <<../Figures/GSSISOToolCrossOverConstraint.png>> 
+
+
+%% 
+% Now that the problem has been set up we will begin to design the
+% compensator to satisfy the problem specifications.
+
+%% Tuning Compensators
+% Compensators can be manually tuned from the graphical editors or the 
+% *Compensator Editor* tab of the CETM. For this example we will use the
+% graphical editors to tune the compensator. To begin the design an
+% integrator will be added to achieve zero steady state error to a step
+% input. To add the integrator to the compensator use the right-click menu
+% on the root-locus plot and select *Add Pole/Zero->Integrator*. To create
+% a desirable shape for the root locus plot we will add a zero at
+% approximately -2. To add the zero, use the right-click menu on the
+% root-locus plot and select *Add Pole/Zero->Real Zero* menu item and then
+% left-click at approximately -2 on the real axis of the root locus
+% plot. Now in the bode plot adjust the open-loop gain by clicking and
+% dragging the curve on the magnitude plot such that the cross-over and time
+% domain constraints are satisfied.
+%%
+% <<../Figures/GSSISOToolDesignPlotsStep4.png>>
+
+%%
+% <<../Figures/GSSISOToolAnalysisPlotsStep4.png>>
+
+
+%%
+% To view the compensator go to *Compensator Editor* tab. Note that the steps
+% performed in the graphical tuning plots to tune the compensator can also
+% be accomplished from this panel. 
+%
+% <<../Figures/GSSISOToolCETMStep4.png>>
+
+
+
+%% Automated Tuning of Compensators
+% In addition to the manual tuning interfaces, the SISO Design Tool also
+% provides the following automated tuning algorithms:
+%
+% * Use the *PID tuning*, *IMC tuning*, and *LQG synthesis* options in the
+% *Automated Tuning* panel to compute initial parameters for the
+% compensators based on tuning parameters such as closed-loop time
+% constants.  See the demo
+% <autotunedemo.html "Automated Controller Design in the SISO Design Tool">.
+% * Use the *Optimization based tuning* option in the *Automated Tuning*
+% panel (requires Simulink Design Optimization) to tune the compensators using
+% both time and frequency domain design requirements.  See the demo
+% <../../../sldo/sldodemos/optim/html/dcmotor_demopad.html "DC Motor Controller Tuning">.
+
+
+%% Summary
+% Using the SISO Design Tool we were able to successfully design a
+% compensator such that all of the specified design requirements were
+% satisfied. The tool facilitated the heuristic process of compensator
+% design by providing an interactive and visual environment for
+%
+% * Specifying the design requirements
+% * Tuning the compensator, and
+% * Evaluating the performance of the design.
+
+
+displayEndOfDemoMessage(mfilename)
+ 
+
+##### SOURCE END #####
+--></body></html>

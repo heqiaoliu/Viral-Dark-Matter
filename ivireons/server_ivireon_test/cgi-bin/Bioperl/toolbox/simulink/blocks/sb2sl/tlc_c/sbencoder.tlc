@@ -1,0 +1,104 @@
+%% File: sbencoder.tlc
+%% Abstract:
+%% The encoder block will take binary input and convert it to its decimal repreentation.
+%% Multiple output words are supported with the number of bits specified for each.
+%%
+
+%%
+%% Initial coding by A S Bozin
+%% Copyright 1997-2010 The MathWorks, Inc.
+%% $Revision: 1.1.6.1 $ $Date: 2010/02/08 22:56:26 $
+%%
+%implements sbencoder "C"
+
+%% Function: Start ============================================================
+%% Abstract:
+%%
+%function Start(block, system) Output
+  %assign sfcnName = ParamSettings.FunctionName
+  /* Binary to decimal conversion Block */
+  /* %<Type> Block: (%<sfcnName>): %<LibParentMaskBlockName(block)> */
+  %assign numbits = LibBlockDWork(NumBits, "", "", 0)
+  /*
+  * Initialize working vectors
+  */
+  %<numbits> = sizeof(uint32_T) << 3;
+%endfunction  %% Outputs
+
+%% Function: Outputs ==========================================================
+%% Abstract:
+%%
+%function Outputs(block, system) Output
+  %assign sfcnName = ParamSettings.FunctionName
+  /* Binary to decimal conversion Block */
+  /* %<Type> Block: (%<sfcnName>): %<LibParentMaskBlockName(block)> */
+  {
+    %assign up  = LibBlockDWork(Channels, "0", "", "")
+    %assign numbits = LibBlockDWork(NumBits, "", "", 0)
+    %assign minop = LibBlockParameterAddr(MinimumOutput,"0", "", "")
+    %assign res = LibBlockParameterAddr(ChannelResolution,"0", "", "")
+    %assign nbp  = LibBlockParameterAddr(NumBitsPerChannel,"0", "", "")
+    %assign nlp  = LibBlockParameterAddr(NumLocationsPerChannel,"0", "", "")
+    %assign y = LibBlockOutputSignalAddr(0, "", "", 0)
+    %assign nch = LibBlockOutputSignalWidth(0)
+    real_T const       *up;
+    real_T             *y = %<y>;
+    int_T               bsize = %<numbits>;
+    real_T const       *minop = %<minop>;
+    real_T const       *res = %<res>;
+    int_T const        *nbp = %<nbp>;
+    int_T const        *nlp = %<nlp>;
+    real_T              u, yf;
+    int_T               kc, kl, ku;
+    int_T               nb, nl;
+    int_T               nch = %<nch>;
+    uint_T              msb = 1 << (bsize - 1), mask;
+    %if (block.Connections.InputPortContiguous[0] == "yes")
+      %assign ui = LibBlockInputSignalAddr(0, "", "", 0)
+      up = %<ui>;
+    %else
+      up = &%<up>;
+      %assign rollVars = ["U", "<dwork>/Channels"]
+      %roll idx = RollRegions, lcv = RollThreshold, block, "FlatRoller", rollVars
+	%if lcv == ""
+	  %assign ui = LibBlockInputSignal(0, "", lcv, idx)
+	  %assign ri = LibBlockDWork(Channels, "", lcv, idx)
+	  %<ri> = %<ui>;
+	%else
+	  %assign ui = LibBlockInputSignalAddr(0, "", "", idx)
+	  %assign ri = LibBlockDWork(Channels, "", "", idx)
+	  %assign dt = LibBlockInputSignalDataTypeName(0, "")
+	  (void) %<LibGenMemFcnCall("memcpy", "&%<ri>", "%<ui>", "%<ROLL_ITERATIONS()> * sizeof(%<dt>)")>;
+	%endif
+      %endroll
+    %endif
+    /*
+     * For each output channel do
+     */
+    ku = 0;
+    for (kc = 0; kc < nch; kc++) {
+      nb = *nbp++;
+      nl = *nlp++;
+      /*
+       * For each input channel do
+       */
+      yf = 0.0;
+      mask = 1 << ((nb - 1) % bsize);
+      for (kl = 0; kl <= nl; kl++) {
+	uint32_T              acc = 0;
+
+	while (mask) {
+	  u = up[ku++];
+	  if (u > 0.0)
+	  acc |= mask;
+	  mask >>= 1;
+	}
+	mask = msb;
+	yf = %<LibGenSharedMathFcnCall("ldexp", tSS_DOUBLE, "yf", "bsize")> + acc;
+      }
+      *y++ = yf * (*res++) + *minop++;
+    }
+  }
+%endfunction  %% Outputs
+
+%% [EOF] sbencoder.tlc

@@ -1,0 +1,117 @@
+%% File : msfcn_frame_filt.tlc
+%% Abstract:
+%% Inlined TLC file for S-function msfcn_frame_filt.c
+%% Copyright 2009 The MathWorks, Inc.
+%implements msfcn_frame_filt "C"
+
+%% Function: BlockInstanceSetup ===========================================
+%% Abstract:
+%%          Block Setup
+%%
+%function BlockInstanceSetup(block, system) void
+ 
+  %%   Set the expression-folding compliance.
+  %<LibBlockSetIsExpressionCompliant(block)>
+  
+%endfunction
+
+
+%% Function: Start ========================================================
+%% Abstract:
+%%          Initialize Dworks to Zero
+%%
+%function Start(block, system) Output
+
+    %assign rollVars    = ["DWork"]
+    %assign dWorkWidth  = LibBlockDWorkWidth(x)
+    %assign rollRegions = [0:%<dWorkWidth-1>]
+    %roll idx = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      %<LibBlockDWork(x, "", lcv, idx)> = 0.0;
+    %endroll
+    
+%endfunction 
+
+
+%% Function: Outputs ======================================================
+%% Abstract:
+%%          The output function points to the proper function for 
+%%          frame-based or sample-based input signals.
+%%
+%function Outputs(block, system) Output
+
+  %if !LibBlockInputSignalIsFrameData(0) 
+    %<OutputsNonFrame(block, system)>
+  %else
+    %<OutputsFrame(block, system)>
+  %endif
+%endfunction
+
+%% Function: OutputsNonFrame ==============================================
+%% Abstract:
+%%          Output Function for Sample-Based Input Signals
+%%
+%function OutputsNonFrame(block, system) Output
+
+  %% Define the variables to use in the output loop.
+  %assign rollVars = ["DWork","Y", "U"]
+  
+  %% Get the filter coefficients from the RTW file.
+  %with block
+    %assign c1 = ParamSettings.Coef1
+    %assign c2 = ParamSettings.Coef2
+  %endwith
+
+  %% Define the output loop bounds.
+  %assign dWorkWidth  = LibBlockDWorkWidth(x)
+  %assign rollRegions = [0:%<dWorkWidth-1>]
+
+  %% Output Loop
+  %roll idx = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+
+    %assign state = LibBlockDWork(x, "", lcv, idx)     
+    %assign u = LibBlockInputSignal(0, "", lcv, idx)
+    %assign y = LibBlockOutputSignal(0, "", lcv, idx)
+    %<y> = (%<c1>*%<u> + %<c2>*%<state>);
+  
+    %<state> = %<u>;
+  
+  %endroll 
+%endfunction
+
+%% Function: OutputsFrame ==============================================
+%% Abstract:
+%%          Output Function for Frame-Based Input Signals
+%%
+%function OutputsFrame(block, system) Output
+
+%% Get the filter coefficients from the RTW file.
+  %with block
+    %assign c1 = ParamSettings.Coef1
+    %assign c2 = ParamSettings.Coef2
+  %endwith
+
+%% Obtain the frame signal sizes.
+%assign nSamples  = LibBlockInputSignalDimensions(0)[0]
+%assign nChannels = LibBlockInputSignalDimensions(0)[1]
+
+%% Set up the variables for use in the output loop.
+%assign u     = LibBlockInputSignal( 0, "sample+channel*%<nSamples>", "", 0)
+%assign y     = LibBlockOutputSignal(0, "sample+channel*%<nSamples>", "", 0)
+%assign state = LibBlockDWork(x, "channel","", 0) 
+
+{
+%% Output Loop
+%% Note that the order of the loop variables matters; the loop traverses 
+%% the frame signal, which is an [nSamples x nChannels] matrix. 
+int channel;
+int sample;
+for(sample = 0; sample < %<nSamples>; sample++){
+    for (channel = 0; channel < %<nChannels>; channel++) {
+         %<y> = %<c1> * %<u> + %<c2> * %<state>;
+         %<state> = %<u>;
+    }
+}
+
+}
+%endfunction
+

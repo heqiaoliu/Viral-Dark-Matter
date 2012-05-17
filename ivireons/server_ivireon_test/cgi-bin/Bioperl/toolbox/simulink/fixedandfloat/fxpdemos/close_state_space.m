@@ -1,0 +1,6 @@
+
+%   Copyright 2008 The MathWorks, Inc.
+
+clear Ab_z Ac_s Ac_z BaseType Bb_z Bc_s Bc_z Cb_z Cc_s Cc_z ...    
+  Db_z Dc_s Dc_z LongType SampleTime ShortType den_s ntemp num_s ...
+  plant_dc_gain sys_s sys_z sysb_z u0 wn xb0_z xc0_s xc0_z zeta;         

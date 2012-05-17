@@ -1,0 +1,320 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>BER Performance of Different Equalizers</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="eqberdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit eqberdemo">Open eqberdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo eqberdemo">Run in the Command Window</a></div></div><div class="content"><h1>BER Performance of Different Equalizers</h1><!--introduction--><p>This script shows the BER performance of several types of equalizers in a static channel with a null in the passband.  The script constructs and implements a linear equalizer object and a decision feedback equalizer (DFE) object.  It also initializes and invokes a maximum likelihood sequence estimation (MLSE) equalizer.  The MLSE equalizer is first invoked with perfect channel knowledge, then with a straightforward but imperfect channel estimation technique.</p><p>As the simulation progresses, it updates a BER plot for comparative analysis between the equalization methods.  It also shows the signal spectra of the linearly equalized and DFE equalized signals.  It also shows the relative burstiness of the errors, indicating that at low BERs, both the MLSE algorithm and the DFE algorithm suffer from error bursts.  In particular, the DFE error performance is burstier with detected bits fed back than with correct bits fed back.  Finally, during the "imperfect" MLSE portion of the simulation, it shows and dynamically updates the estimated channel response.</p><p>To experiment with this demo, you can change such parameters as the channel impulse response, the number of equalizer tap weights, the recursive least squares (RLS) forgetting factor, the least mean square (LMS) step size, the MLSE traceback length, the error in estimated channel length, and the maximum number of errors collected at each Eb/No value.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Code Structure</a></li><li><a href="#2">Signal and Channel Parameters</a></li><li><a href="#3">Adaptive Equalizer Parameters</a></li><li><a href="#4">MLSE Equalizer and Channel Estimation Parameters, and Initial Visualization</a></li><li><a href="#5">Construct RLS and LMS Linear and DFE Equalizer Objects</a></li><li><a href="#6">Linear Equalizer</a></li><li><a href="#7">Decision Feedback Equalizer</a></li><li><a href="#8">Ideal MLSE Equalizer, with Perfect Channel Knowledge</a></li><li><a href="#9">MLSE Equalizer with an Imperfect Channel Estimate</a></li></ul></div><h2>Code Structure<a name="1"></a></h2><p>This script relies on several other scripts and functions to perform link simulations over a range of Eb/No values.  These files are as follows:</p><p>eqber_adaptive - a script that runs link simulations for linear and DFE equalizers</p><p>eqber_mlse - a script that runs link simulations for ideal and imperfect MLSE equalizers</p><p>eqber_siggen - a script that generates a binary phase shift keying (BPSK) signal with no pulse shaping, then processes it through the channel and adds noise</p><p>eqber_graphics - a function that generates and updates plots showing the performance of the linear, DFE, and MLSE equalizers.  Type "edit eqber_graphics" at the MATLAB&reg; command line to view this file.</p><p>The scripts eqber_adaptive and eqber_mlse illustrate how to use adaptive and MLSE equalizers across multiple blocks of data such that state information is retained between data blocks.</p><h2>Signal and Channel Parameters<a name="2"></a></h2><p>Set parameters related to the signal and channel.  Use BPSK without any pulse shaping, and a 5-tap real-valued symmetric channel impulse response.  (See section 10.2.3 of Digital Communications by J. Proakis, 4th Ed., for more details on the channel.)  Set initial states of data and noise generators. Set the Eb/No range.</p><pre class="codeinput"><span class="comment">% System simulation parameters</span>
+Fs      = 1;      <span class="comment">% sampling frequency (notional)</span>
+nBits   = 2048;   <span class="comment">% number of BPSK symbols per vector</span>
+maxErrs = 200;    <span class="comment">% target number of errors at each Eb/No</span>
+maxBits = 1e6;    <span class="comment">% maximum number of symbols at each Eb/No</span>
+
+<span class="comment">% Modulated signal parameters</span>
+M          = 2;            <span class="comment">% order of modulation</span>
+Rs         = Fs;           <span class="comment">% symbol rate</span>
+nSamp      = Fs/Rs;        <span class="comment">% samples per symbol</span>
+Rb         = Rs * log2(M); <span class="comment">% bit rate</span>
+
+<span class="comment">% Channel parameters</span>
+chnl       = [0.227 0.460 0.688 0.460 0.227]';  <span class="comment">% channel impulse response</span>
+chnlLen    = length(chnl);      <span class="comment">% channel length, in samples</span>
+EbNo       = 0:14;              <span class="comment">% in dB</span>
+BER        = zeros(size(EbNo)); <span class="comment">% initialize values</span>
+
+<span class="comment">% Create PSK modulator</span>
+hMod = modem.pskmod(M);
+
+<span class="comment">% Create a local random stream to be used by random number generators for</span>
+<span class="comment">% repeatability.</span>
+hStream = RandStream(<span class="string">'mt19937ar'</span>, <span class="string">'Seed'</span>, 12345);
+</pre><h2>Adaptive Equalizer Parameters<a name="3"></a></h2><p>Set parameter values for the linear and DFE equalizers.  Use a 31-tap linear equalizer, and a DFE with 15 feedforward and feedback taps.  Use the recursive least squares (RLS) algorithm for the first block of data to ensure rapid tap convergence.  Use the least mean square (LMS) algorithm thereafter to ensure rapid execution speed.</p><pre class="codeinput"><span class="comment">% Linear equalizer parameters</span>
+nWts         = 31;       <span class="comment">% number of weights</span>
+algType1     = <span class="string">'rls'</span>;    <span class="comment">% RLS algorithm for first data block at each Eb/No</span>
+forgetFactor = 0.999999; <span class="comment">% parameter of RLS algorithm</span>
+algType2     = <span class="string">'lms'</span>;    <span class="comment">% LMS algorithm for remaining data blocks</span>
+stepSize     = 0.00001;  <span class="comment">% parameter of LMS algorithm</span>
+
+<span class="comment">% DFE parameters - use same update algorithms as linear equalizer</span>
+nFwdWts      = 15;       <span class="comment">% number of feedforward weights</span>
+nFbkWts      = 15;       <span class="comment">% number of feedback weights</span>
+</pre><h2>MLSE Equalizer and Channel Estimation Parameters, and Initial Visualization<a name="4"></a></h2><p>Set the parameters of the MLSE equalizer.  Use a traceback length of six times the length of the channel impulse response.  Initialize the equalizer states. Set the equalization mode to "continuous", to enable seamless equalization over multiple blocks of data.  Use a cyclic prefix in the channel estimation technique, and set the length of the prefix.  Assume that the estimated length of the channel impulse response is one sample longer than the actual length.</p><pre class="codeinput"><span class="comment">% MLSE equalizer parameters</span>
+tbLen      = 30;                 <span class="comment">% MLSE equalizer traceback length</span>
+numStates  = M^(chnlLen-1);      <span class="comment">% number of trellis states</span>
+[mlseMetric, mlseStates, mlseInputs] = deal([]);
+const      = get(hMod, <span class="string">'Constellation'</span>); <span class="comment">% signal constellation</span>
+mlseType   = <span class="string">'ideal'</span>;            <span class="comment">% perfect channel estimates at first</span>
+mlseMode   = <span class="string">'cont'</span>;             <span class="comment">% no MLSE resets</span>
+
+<span class="comment">% Channel estimation parameters</span>
+chnlEst = chnl;         <span class="comment">% perfect estimation initially</span>
+prefixLen = 2*chnlLen;  <span class="comment">% cyclic prefix length</span>
+excessEst = 1;          <span class="comment">% length of estimated channel impulse response</span>
+                        <span class="comment">% beyond the true length</span>
+
+<span class="comment">% Initialize the graphics for the simulation.  Plot the unequalized channel</span>
+<span class="comment">% frequency response, and the BER of an ideal BPSK system.</span>
+idealBER = berawgn(EbNo, <span class="string">'psk'</span>, M, <span class="string">'nondiff'</span>);
+
+[hBER, hLegend, legendString, hLinSpec, hDfeSpec, hErrs, hText1, hText2,<span class="keyword">...</span>
+  hFit, hEstPlot, hFig, hLinFig, hDfeFig] = eqber_graphics(<span class="string">'init'</span>, chnl, <span class="keyword">...</span>
+                                                    EbNo, idealBER, nBits);
+</pre><img vspace="5" hspace="5" src="eqberdemo_01.png" alt=""> <img vspace="5" hspace="5" src="eqberdemo_02.png" alt=""> <h2>Construct RLS and LMS Linear and DFE Equalizer Objects<a name="5"></a></h2><p>The RLS update algorithm is used to initially set the weights, and the LMS algorithm is used thereafter for speed purposes.</p><pre class="codeinput">alg1 = eval([algType1 <span class="string">'('</span> num2str(forgetFactor) <span class="string">')'</span>]);
+linEq1 = lineareq(nWts, alg1);
+alg2 = eval([algType2 <span class="string">'('</span> num2str(stepSize) <span class="string">')'</span>]);
+linEq2 = lineareq(nWts, alg2);
+[linEq1.RefTap, linEq2.RefTap] = <span class="keyword">...</span>
+    deal(round(nWts/2));    <span class="comment">% Set reference tap to center tap</span>
+[linEq1.ResetBeforeFiltering, linEq2.ResetBeforeFiltering] = <span class="keyword">...</span>
+    deal(0);                <span class="comment">% Maintain continuity between iterations</span>
+
+dfeEq1 = dfe(nFwdWts, nFbkWts, alg1);
+dfeEq2 = dfe(nFwdWts, nFbkWts, alg2);
+[dfeEq1.RefTap, dfeEq2.RefTap] = <span class="keyword">...</span>
+    deal(round(nFwdWts/2)); <span class="comment">% Set reference tap to center forward tap</span>
+[dfeEq1.ResetBeforeFiltering, dfeEq2.ResetBeforeFiltering] = <span class="keyword">...</span>
+    deal(0);                <span class="comment">% Maintain continuity between iterations</span>
+</pre><h2>Linear Equalizer<a name="6"></a></h2><p>Run the linear equalizer, and plot the equalized signal spectrum, the BER, and the burst error performance for each data block.  Note that as the Eb/No increases, the linearly equalized signal spectrum has a progressively deeper null.  This highlights the fact that a linear equalizer must have many more taps to adequately equalize a channel with a deep null.  Note also that the errors occur with small inter-error intervals, which is to be expected at such a high error rate.</p><p>See eqber_adaptive.m for a listing of the simulation code for the adaptive equalizers.</p><pre class="codeinput">firstRun = true;  <span class="comment">% flag to ensure known initial states for noise and data</span>
+eqType = <span class="string">'linear'</span>;
+eqber_adaptive;
+</pre><img vspace="5" hspace="5" src="eqberdemo_03.png" alt=""> <img vspace="5" hspace="5" src="eqberdemo_04.png" alt=""> <img vspace="5" hspace="5" src="eqberdemo_05.png" alt=""> <h2>Decision Feedback Equalizer<a name="7"></a></h2><p>Run the DFE, and plot the equalized signal spectrum, the BER, and the burst error performance for each data block.  Note that the DFE is much better able to mitigate the channel null than the linear equalizer, as shown in the spectral plot and the BER plot.  The plotted BER points at a given Eb/No value are updated every data block, so they move up or down depending on the number of errors collected in that block.  Note also that the DFE errors are somewhat bursty, due to the error propagation caused by feeding back detected bits instead of correct bits. The burst error plot shows that as the BER decreases, a significant number of errors occurs with an inter-error arrival of five bits or less.  (If the DFE equalizer were run in training mode at all times, the errors would be far less bursty.)</p><p>For every data block, the plot also indicates the average inter-error interval if those errors were randomly occurring.</p><p>See eqber_adaptive.m for a listing of the simulation code for the adaptive equalizers.</p><pre class="codeinput">close(hFig(ishghandle(hFig)));
+
+eqType = <span class="string">'dfe'</span>;
+eqber_adaptive;
+</pre><img vspace="5" hspace="5" src="eqberdemo_06.png" alt=""> <img vspace="5" hspace="5" src="eqberdemo_07.png" alt=""> <img vspace="5" hspace="5" src="eqberdemo_08.png" alt=""> <h2>Ideal MLSE Equalizer, with Perfect Channel Knowledge<a name="8"></a></h2><p>Run the MLSE equalizer with a perfect channel estimate, and plot the BER and the burst error performance for each data block.  Note that the errors occur in an extremely bursty fashion.  Observe, particularly at low BERs, that the overwhelming percentage of errors occur with an inter-error interval of one or two bits.</p><p>See eqber_mlse.m for a listing of the simulation code for the MLSE equalizers.</p><pre class="codeinput">close(hLinFig(ishghandle(hLinFig)), hDfeFig(ishghandle(hDfeFig)));
+
+eqType = <span class="string">'mlse'</span>;
+mlseType = <span class="string">'ideal'</span>;
+eqber_mlse;
+</pre><img vspace="5" hspace="5" src="eqberdemo_09.png" alt=""> <img vspace="5" hspace="5" src="eqberdemo_10.png" alt=""> <h2>MLSE Equalizer with an Imperfect Channel Estimate<a name="9"></a></h2><p>Run the MLSE equalizer with an imperfect channel estimate, and plot the BER and the burst error performance for each data block.  These results align fairly closely with the ideal MLSE results.  (The channel estimation algorithm is highly dependent on the data, such that an FFT of a transmitted data block has no nulls.)  Note how the estimated channel plots compare with the actual channel spectrum plot.</p><p>See eqber_mlse.m for a listing of the simulation code for the MLSE equalizers.</p><pre class="codeinput">mlseType = <span class="string">'imperfect'</span>;
+eqber_mlse;
+</pre><img vspace="5" hspace="5" src="eqberdemo_11.png" alt=""> <img vspace="5" hspace="5" src="eqberdemo_12.png" alt=""> <img vspace="5" hspace="5" src="eqberdemo_13.png" alt=""> <p class="footer">Copyright 1996-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% BER Performance of Different Equalizers
+% This script shows the BER performance of several types of equalizers in a
+% static channel with a null in the passband.  The script constructs and
+% implements a linear equalizer object and a decision feedback equalizer (DFE)
+% object.  It also initializes and invokes a maximum likelihood sequence
+% estimation (MLSE) equalizer.  The MLSE equalizer is first invoked with perfect
+% channel knowledge, then with a straightforward but imperfect channel
+% estimation technique.
+%
+% As the simulation progresses, it updates a BER plot for comparative analysis
+% between the equalization methods.  It also shows the signal spectra of the
+% linearly equalized and DFE equalized signals.  It also shows the relative
+% burstiness of the errors, indicating that at low BERs, both the MLSE algorithm
+% and the DFE algorithm suffer from error bursts.  In particular, the DFE error
+% performance is burstier with detected bits fed back than with correct bits fed
+% back.  Finally, during the "imperfect" MLSE portion of the simulation, it
+% shows and dynamically updates the estimated channel response.
+%
+% To experiment with this demo, you can change such parameters as the channel
+% impulse response, the number of equalizer tap weights, the recursive least
+% squares (RLS) forgetting factor, the least mean square (LMS) step size, the
+% MLSE traceback length, the error in estimated channel length, and the maximum
+% number of errors collected at each Eb/No value.
+%
+
+%   Copyright 1996-2008 The MathWorks, Inc.
+%   $Revision: 1.1.12.8 $  $Date: 2009/01/05 17:45:59 $
+
+
+%% Code Structure
+% This script relies on several other scripts and functions to perform link
+% simulations over a range of Eb/No values.  These files are as follows:
+%
+% eqber_adaptive - a script that runs link
+% simulations for linear and DFE equalizers
+%
+% eqber_mlse - a script that runs link simulations
+% for ideal and imperfect MLSE equalizers
+%
+% eqber_siggen - a script that generates a binary phase
+% shift keying (BPSK) signal with no pulse shaping, then processes it through
+% the channel and adds noise
+%
+% eqber_graphics - a function that generates and updates plots showing the
+% performance of the linear, DFE, and MLSE equalizers.  Type "edit
+% eqber_graphics" at the MATLAB(R) command line to view this file.
+%
+% The scripts eqber_adaptive and eqber_mlse illustrate how to use adaptive and
+% MLSE equalizers across multiple blocks of data such that state information is
+% retained between data blocks.
+%
+
+
+%% Signal and Channel Parameters
+% Set parameters related to the signal and channel.  Use BPSK without any pulse
+% shaping, and a 5-tap real-valued symmetric channel impulse response.  (See
+% section 10.2.3 of Digital Communications by J. Proakis, 4th Ed., for more
+% details on the channel.)  Set initial states of data and noise generators.
+% Set the Eb/No range.
+
+% System simulation parameters
+Fs      = 1;      % sampling frequency (notional)
+nBits   = 2048;   % number of BPSK symbols per vector
+maxErrs = 200;    % target number of errors at each Eb/No
+maxBits = 1e6;    % maximum number of symbols at each Eb/No
+
+% Modulated signal parameters
+M          = 2;            % order of modulation
+Rs         = Fs;           % symbol rate
+nSamp      = Fs/Rs;        % samples per symbol
+Rb         = Rs * log2(M); % bit rate
+
+% Channel parameters
+chnl       = [0.227 0.460 0.688 0.460 0.227]';  % channel impulse response
+chnlLen    = length(chnl);      % channel length, in samples
+EbNo       = 0:14;              % in dB
+BER        = zeros(size(EbNo)); % initialize values
+
+% Create PSK modulator
+hMod = modem.pskmod(M);
+
+% Create a local random stream to be used by random number generators for
+% repeatability.
+hStream = RandStream('mt19937ar', 'Seed', 12345);
+
+%% Adaptive Equalizer Parameters
+% Set parameter values for the linear and DFE equalizers.  Use a 31-tap linear
+% equalizer, and a DFE with 15 feedforward and feedback taps.  Use the recursive
+% least squares (RLS) algorithm for the first block of data to ensure rapid tap
+% convergence.  Use the least mean square (LMS) algorithm thereafter to ensure
+% rapid execution speed.
+
+% Linear equalizer parameters
+nWts         = 31;       % number of weights
+algType1     = 'rls';    % RLS algorithm for first data block at each Eb/No
+forgetFactor = 0.999999; % parameter of RLS algorithm
+algType2     = 'lms';    % LMS algorithm for remaining data blocks
+stepSize     = 0.00001;  % parameter of LMS algorithm
+
+% DFE parameters - use same update algorithms as linear equalizer
+nFwdWts      = 15;       % number of feedforward weights 
+nFbkWts      = 15;       % number of feedback weights
+
+
+%% MLSE Equalizer and Channel Estimation Parameters, and Initial Visualization
+% Set the parameters of the MLSE equalizer.  Use a traceback length of six times
+% the length of the channel impulse response.  Initialize the equalizer states.
+% Set the equalization mode to "continuous", to enable seamless equalization
+% over multiple blocks of data.  Use a cyclic prefix in the channel estimation
+% technique, and set the length of the prefix.  Assume that the estimated length
+% of the channel impulse response is one sample longer than the actual length.
+
+% MLSE equalizer parameters
+tbLen      = 30;                 % MLSE equalizer traceback length
+numStates  = M^(chnlLen-1);      % number of trellis states
+[mlseMetric, mlseStates, mlseInputs] = deal([]);
+const      = get(hMod, 'Constellation'); % signal constellation
+mlseType   = 'ideal';            % perfect channel estimates at first
+mlseMode   = 'cont';             % no MLSE resets
+
+% Channel estimation parameters
+chnlEst = chnl;         % perfect estimation initially
+prefixLen = 2*chnlLen;  % cyclic prefix length
+excessEst = 1;          % length of estimated channel impulse response
+                        % beyond the true length
+
+% Initialize the graphics for the simulation.  Plot the unequalized channel
+% frequency response, and the BER of an ideal BPSK system.
+idealBER = berawgn(EbNo, 'psk', M, 'nondiff');
+
+[hBER, hLegend, legendString, hLinSpec, hDfeSpec, hErrs, hText1, hText2,...
+  hFit, hEstPlot, hFig, hLinFig, hDfeFig] = eqber_graphics('init', chnl, ...
+                                                    EbNo, idealBER, nBits);
+
+%% Construct RLS and LMS Linear and DFE Equalizer Objects
+% The RLS update algorithm is used to initially set the weights, and the LMS
+% algorithm is used thereafter for speed purposes.
+alg1 = eval([algType1 '(' num2str(forgetFactor) ')']);
+linEq1 = lineareq(nWts, alg1);
+alg2 = eval([algType2 '(' num2str(stepSize) ')']);
+linEq2 = lineareq(nWts, alg2);
+[linEq1.RefTap, linEq2.RefTap] = ...
+    deal(round(nWts/2));    % Set reference tap to center tap
+[linEq1.ResetBeforeFiltering, linEq2.ResetBeforeFiltering] = ...
+    deal(0);                % Maintain continuity between iterations
+
+dfeEq1 = dfe(nFwdWts, nFbkWts, alg1);
+dfeEq2 = dfe(nFwdWts, nFbkWts, alg2);
+[dfeEq1.RefTap, dfeEq2.RefTap] = ...
+    deal(round(nFwdWts/2)); % Set reference tap to center forward tap
+[dfeEq1.ResetBeforeFiltering, dfeEq2.ResetBeforeFiltering] = ...
+    deal(0);                % Maintain continuity between iterations
+
+
+%% Linear Equalizer
+% Run the linear equalizer, and plot the equalized signal spectrum, the BER, and
+% the burst error performance for each data block.  Note that as the Eb/No
+% increases, the linearly equalized signal spectrum has a progressively deeper
+% null.  This highlights the fact that a linear equalizer must have many more
+% taps to adequately equalize a channel with a deep null.  Note also that the
+% errors occur with small inter-error intervals, which is to be expected at such
+% a high error rate.
+%
+% See eqber_adaptive.m for a listing of the simulation code
+% for the adaptive equalizers.
+firstRun = true;  % flag to ensure known initial states for noise and data
+eqType = 'linear';
+eqber_adaptive;
+
+%% Decision Feedback Equalizer
+% Run the DFE, and plot the equalized signal spectrum, the BER, and the burst
+% error performance for each data block.  Note that the DFE is much better able
+% to mitigate the channel null than the linear equalizer, as shown in the
+% spectral plot and the BER plot.  The plotted BER points at a given Eb/No value
+% are updated every data block, so they move up or down depending on the number
+% of errors collected in that block.  Note also that the DFE errors are somewhat
+% bursty, due to the error propagation caused by feeding back detected bits
+% instead of correct bits. The burst error plot shows that as the BER decreases,
+% a significant number of errors occurs with an inter-error arrival of five bits
+% or less.  (If the DFE equalizer were run in training mode at all times, the
+% errors would be far less bursty.)  
+%
+% For every data block, the plot also indicates the average inter-error interval
+% if those errors were randomly occurring.
+%
+% See eqber_adaptive.m for a listing of the simulation code
+% for the adaptive equalizers.
+close(hFig(ishghandle(hFig)));
+
+eqType = 'dfe';
+eqber_adaptive;
+ 
+%% Ideal MLSE Equalizer, with Perfect Channel Knowledge
+% Run the MLSE equalizer with a perfect channel estimate, and plot the BER and
+% the burst error performance for each data block.  Note that the errors occur
+% in an extremely bursty fashion.  Observe, particularly at low BERs, that the
+% overwhelming percentage of errors occur with an inter-error interval of one or
+% two bits.
+%
+% See eqber_mlse.m for a listing of the simulation code
+% for the MLSE equalizers.
+close(hLinFig(ishghandle(hLinFig)), hDfeFig(ishghandle(hDfeFig)));
+
+eqType = 'mlse';
+mlseType = 'ideal';
+eqber_mlse;
+
+%% MLSE Equalizer with an Imperfect Channel Estimate
+% Run the MLSE equalizer with an imperfect channel estimate, and plot the BER
+% and the burst error performance for each data block.  These results align
+% fairly closely with the ideal MLSE results.  (The channel estimation algorithm
+% is highly dependent on the data, such that an FFT of a transmitted data block
+% has no nulls.)  Note how the estimated channel plots compare with the actual
+% channel spectrum plot.
+%
+% See eqber_mlse.m for a listing of the simulation code
+% for the MLSE equalizers.
+mlseType = 'imperfect';
+eqber_mlse;
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,191 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Adaptive Equalizer Simulation (Part II)</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="adapteqpt2.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit adapteqpt2">Open adapteqpt2.m in the Editor</a></div><div class="right"><a href="matlab:echodemo adapteqpt2">Run in the Command Window</a></div></div><div class="content"><h1>Adaptive Equalizer Simulation (Part II)</h1><!--introduction--><p>This script simulates a communication link with PSK modulation, raised-cosine pulse shaping, multipath fading, and adaptive equalization.</p><p>It is the second of two parts:  Part I (adapteqpt1.m) sets simulation parameters and creates channel and equalizer objects.  Part II (adapteqpt2.m) performs a link simulation based on these settings, which are stored in the MATLAB&reg; workspace.  Part I sets up three equalization scenarios, and calls Part II for each of these.  For information on the Part I script, enter demo('toolbox','comm') at the MATLAB prompt, and select "Adaptive Equalizer Simulation (Part I)".  To experiment with simulation settings, you can edit the Part I script.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Auxiliary Functions</a></li><li><a href="#2">Workspace Variables</a></li><li><a href="#3">Generate Data Symbols</a></li><li><a href="#4">Pulse Shaping and Channel</a></li><li><a href="#5">Received Signal Sampling</a></li><li><a href="#6">Detection without Equalizer</a></li><li><a href="#7">Detection with Equalizer</a></li><li><a href="#8">Graphics</a></li></ul></div><h2>Auxiliary Functions<a name="1"></a></h2><p>This script uses the following auxiliary functions:</p><pre> adapteq_pulsefilter: Filter a signal with a pulse filter.
+   adapteq_pskdetect: Detect PSK signal and perform error calculations.
+    adapteq_graphics: Visualize signal processing and performance.
+   adapteq_checkvars: Check for workspace variables (see next section).</pre><h2>Workspace Variables<a name="2"></a></h2><p>This script uses the following variables in the MATLAB workspace.</p><pre>        M: Modulation order
+ nPayload: Number of payload data symbols
+   xTrain: Training sequence (before payload)
+    xTail: Tail sequence (after payload)
+   txFilt: Structure containing transmit filter information
+   rxFilt: Structure containing receive filter information
+pskmodObj: PSK modulator object
+     chan: Channel object
+    snrdB: Average signal-to-noise ratio (dB)
+    eqObj: Equalizer object
+  simName: Name of simulation (for figure window name)
+    block: Current transmission block number (use 1 for first call)</pre><p>The adapteq_checkvars function checks if the above workspace variables exist. If not, it creates a default set corresponding to the first scenario of Part I.  The adapteq_checkvars function also displays the channel and equalizer objects if the variable 'block' is equal to 1.</p><pre class="codeinput">adapteq_checkvars;
+</pre><pre class="codeoutput"> 
+chan =
+ 
+             ChannelType: 'Rayleigh'
+       InputSamplePeriod: 5.0000e-007
+         DopplerSpectrum: [1x1 doppler.jakes]
+         MaxDopplerShift: 20
+              PathDelays: 0
+           AvgPathGaindB: 0
+      NormalizePathGains: 1
+            StoreHistory: 0
+          StorePathGains: 0
+               PathGains: 0.0167 + 0.0379i
+      ChannelFilterDelay: 0
+    ResetBeforeFiltering: 0
+     NumSamplesProcessed: 0
+
+ 
+eqObj =
+ 
+                  EqType: 'Linear Equalizer'
+                 AlgType: 'LMS'
+                nWeights: 1
+             nSampPerSym: 1
+                  RefTap: 1
+                SigConst: [1x4 double]
+                StepSize: 0.0300
+           LeakageFactor: 1
+                 Weights: 0
+            WeightInputs: 0
+    ResetBeforeFiltering: 1
+     NumSamplesProcessed: 0
+
+</pre><h2>Generate Data Symbols<a name="3"></a></h2><p>Generate payload data and PSK symbols.  Prefix these symbols with a training sequence, and append a tail sequence.</p><pre class="codeinput">payloadData = randi(hStream, [0 M-1], 1, nPayload);  <span class="comment">% Payload data</span>
+xPayload = modulate(pskmodObj, payloadData);  <span class="comment">% Payload symbols</span>
+x = [xTrain xPayload xTail];  <span class="comment">% Transmitted block</span>
+</pre><h2>Pulse Shaping and Channel<a name="4"></a></h2><p>Pass symbols through a pulse shaping transmit filter.  This process also involves upsampling using an efficient polyphase filter implementation (see auxiliary function adapteq_pulsefilter.m).  The transmitted signal is then passed through a multipath channel and a receive filter matched to the transmit filter response.  The receive filtering downsamples using an efficient polyphase filter implementation.  The variables txFilt and rxFilt are passed out of the adapteq_pulsefilter functions because they are structures that retain states between calls.</p><pre class="codeinput">[txSig, txFilt] = adapteq_pulsefilter(x, txFilt);  <span class="comment">% Transmit filter</span>
+chFiltSig = filter(chan, txSig);  <span class="comment">% Multipath channel</span>
+rxSig = awgn(chFiltSig, snrdB, 0, hStream);  <span class="comment">% AWGN</span>
+[filtSig, rxFilt] = adapteq_pulsefilter(rxSig, rxFilt);  <span class="comment">% Receiver filter</span>
+</pre><h2>Received Signal Sampling<a name="5"></a></h2><p>Select training/payload samples, accounting for filter delay and equalizer delay.</p><pre class="codeinput">nTrain = length(xTrain);  <span class="comment">% Number of training symbols</span>
+filterDelay = (length(txFilt.Coeff) + length(rxFilt.Coeff) - 2)/2;
+eqDelay = eqObj.RefTap - 1;  <span class="comment">% Delay of equalizer (in samples)</span>
+nSamples = eqObj.nSampPerSym*(nTrain + nPayload) + eqDelay;
+rxSamples = filtSig(filterDelay/rxFilt.DownsampleFactor + (1:nSamples));
+</pre><h2>Detection without Equalizer<a name="6"></a></h2><p>Downsample to symbol rate and use PSK detection without equalization. We use the auxiliary function adapteq_pskdetect.m because we want do a similar operation after equalization (see next section).  In addition to detecting data and computing the BER, this function also returns indices for the symbols corresponding to bit errors (these indices are stored in yErr0).</p><pre class="codeinput">rxSamples0 = downsample(rxSamples, eqObj.nSampPerSym);  <span class="comment">% Symbol rate</span>
+yPayload0 = rxSamples0(nTrain + (1:nPayload));  <span class="comment">% Payload samples</span>
+[rxdata0, BER0, yErr0] = adapteq_pskdetect(<span class="keyword">...</span>
+    yPayload0, xPayload, payloadData, M);
+</pre><h2>Detection with Equalizer<a name="7"></a></h2><p>Equalize using equalizer object.  Select payload samples and use PSK detection as above.</p><pre class="codeinput">[y, yd, err] = equalize(eqObj, rxSamples, xTrain);
+yPayload = y(nTrain + eqDelay/eqObj.nSampPerSym + (1:nPayload));
+[rxData, BER, yErr] = adapteq_pskdetect(<span class="keyword">...</span>
+    yPayload, xPayload, payloadData, M);
+</pre><h2>Graphics<a name="8"></a></h2><p>Plot results (see auxiliary function adapteq_graphics.m).  The red circles in the signal constellation plots correspond to symbol errors. In the "Weights" plot, blue and magenta lines correspond to real and imaginary parts, respectively.</p><pre class="codeinput">adapteq_graphics(yPayload0, yErr0, BER0, <span class="keyword">...</span>
+                 yPayload, yErr, BER, <span class="keyword">...</span>
+                 err, eqObj.weights, <span class="keyword">...</span>
+                 simName, block);
+</pre><img vspace="5" hspace="5" src="adapteqpt2_01.png" alt=""> <p class="footer">Copyright 1996-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Adaptive Equalizer Simulation (Part II)
+% This script simulates a communication link with PSK modulation,
+% raised-cosine pulse shaping, multipath fading, and adaptive equalization.
+%
+% It is the second of two parts:  Part I (adapteqpt1.m) sets simulation
+% parameters and creates channel and equalizer objects.  Part II
+% (adapteqpt2.m) performs a link simulation based on these settings, which
+% are stored in the MATLAB(R) workspace.  Part I sets up three equalization
+% scenarios, and calls Part II for each of these.  For information on the
+% Part I script, enter demo('toolbox','comm') at the MATLAB prompt, and
+% select "Adaptive Equalizer Simulation (Part I)".  To experiment with
+% simulation settings, you can edit the Part I script.  
+
+%   Copyright 1996-2008 The MathWorks, Inc.
+%   $Revision: 1.1.4.4 $  $Date: 2009/01/05 17:45:50 $
+
+%% Auxiliary Functions
+% This script uses the following auxiliary functions:
+%
+%   adapteq_pulsefilter: Filter a signal with a pulse filter.
+%     adapteq_pskdetect: Detect PSK signal and perform error calculations.
+%      adapteq_graphics: Visualize signal processing and performance.
+%     adapteq_checkvars: Check for workspace variables (see next section).
+
+%% Workspace Variables
+% This script uses the following variables in the MATLAB workspace.
+%
+%          M: Modulation order
+%   nPayload: Number of payload data symbols     
+%     xTrain: Training sequence (before payload)
+%      xTail: Tail sequence (after payload)
+%     txFilt: Structure containing transmit filter information
+%     rxFilt: Structure containing receive filter information
+%  pskmodObj: PSK modulator object
+%       chan: Channel object
+%      snrdB: Average signal-to-noise ratio (dB)
+%      eqObj: Equalizer object
+%    simName: Name of simulation (for figure window name)
+%      block: Current transmission block number (use 1 for first call)
+%
+% The adapteq_checkvars function checks if the above workspace variables
+% exist. If not, it creates a default set corresponding to the first
+% scenario of Part I.  The adapteq_checkvars function also displays the
+% channel and equalizer objects if the variable 'block' is equal to 1.
+adapteq_checkvars;
+
+%% Generate Data Symbols
+% Generate payload data and PSK symbols.  Prefix these symbols with a
+% training sequence, and append a tail sequence.
+payloadData = randi(hStream, [0 M-1], 1, nPayload);  % Payload data
+xPayload = modulate(pskmodObj, payloadData);  % Payload symbols
+x = [xTrain xPayload xTail];  % Transmitted block
+
+%% Pulse Shaping and Channel
+% Pass symbols through a pulse shaping transmit filter.  This process also
+% involves upsampling using an efficient polyphase filter implementation
+% (see auxiliary function adapteq_pulsefilter.m).  The transmitted signal
+% is then passed through a multipath channel and a receive filter matched
+% to the transmit filter response.  The receive filtering downsamples using
+% an efficient polyphase filter implementation.  The variables txFilt and
+% rxFilt are passed out of the adapteq_pulsefilter functions because they
+% are structures that retain states between calls.
+[txSig, txFilt] = adapteq_pulsefilter(x, txFilt);  % Transmit filter
+chFiltSig = filter(chan, txSig);  % Multipath channel 
+rxSig = awgn(chFiltSig, snrdB, 0, hStream);  % AWGN
+[filtSig, rxFilt] = adapteq_pulsefilter(rxSig, rxFilt);  % Receiver filter
+
+%% Received Signal Sampling
+% Select training/payload samples, accounting for filter delay and
+% equalizer delay.
+nTrain = length(xTrain);  % Number of training symbols
+filterDelay = (length(txFilt.Coeff) + length(rxFilt.Coeff) - 2)/2;
+eqDelay = eqObj.RefTap - 1;  % Delay of equalizer (in samples)
+nSamples = eqObj.nSampPerSym*(nTrain + nPayload) + eqDelay;
+rxSamples = filtSig(filterDelay/rxFilt.DownsampleFactor + (1:nSamples));
+
+%% Detection without Equalizer
+% Downsample to symbol rate and use PSK detection without equalization. We
+% use the auxiliary function adapteq_pskdetect.m because we want do a
+% similar operation after equalization (see next section).  In addition to
+% detecting data and computing the BER, this function also returns indices
+% for the symbols corresponding to bit errors (these indices are stored in
+% yErr0).
+rxSamples0 = downsample(rxSamples, eqObj.nSampPerSym);  % Symbol rate
+yPayload0 = rxSamples0(nTrain + (1:nPayload));  % Payload samples
+[rxdata0, BER0, yErr0] = adapteq_pskdetect(...
+    yPayload0, xPayload, payloadData, M);
+
+%% Detection with Equalizer
+% Equalize using equalizer object.  Select payload samples and use PSK
+% detection as above.
+[y, yd, err] = equalize(eqObj, rxSamples, xTrain);
+yPayload = y(nTrain + eqDelay/eqObj.nSampPerSym + (1:nPayload));
+[rxData, BER, yErr] = adapteq_pskdetect(...
+    yPayload, xPayload, payloadData, M);
+
+%% Graphics
+% Plot results (see auxiliary function adapteq_graphics.m).  The red
+% circles in the signal constellation plots correspond to symbol errors. In
+% the "Weights" plot, blue and magenta lines correspond to real and
+% imaginary parts, respectively.
+adapteq_graphics(yPayload0, yErr0, BER0, ...
+                 yPayload, yErr, BER, ...
+                 err, eqObj.weights, ...
+                 simName, block);
+
+##### SOURCE END #####
+--></body></html>

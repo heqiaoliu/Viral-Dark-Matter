@@ -1,0 +1,150 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>Simulink&reg; Accelerator™ がコードを再生成している原因の特定</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-02"><meta name="DC.source" content="slAccelDemoWhyRebuild_script.m"><link rel="stylesheet" type="text/css" href="../../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit slAccelDemoWhyRebuild_script">エディターで slAccelDemoWhyRebuild_script.m を開く</a></div><div class="right"><a href="matlab:echodemo slAccelDemoWhyRebuild_script">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>Simulink&reg; Accelerator™ がコードを再生成している原因の特定</h1><!--introduction--><p>Simulink&reg; Accelerator™ は、はっきりした理由もないのに、シミュレーションが開始されるたびにモデルのシミュレーション ターゲットを再生成することがあります。このデモでは、Simulink&reg; MATLAB&reg; ファイル API を使用して、Simulink Accelerator がターゲットを再生成し続ける原因を特定し、その後、この情報を使用してモデルを変更し、ターゲットが再生成される原因を取り除きます。</p><p>最初に、背景を少々説明します。Simulink Accelerator は、シミュレーション ターゲットと呼ばれる実行可能バージョンのモデルを作成して、通常の (高速化されていない) シミュレーション時のようにモデルを解釈するのではなく、このターゲットを実行することにより、モデルのシミュレーションの速度を向上させます。Simulink Accelerator は、モデルから C コードを生成して、MATLAB&reg; 関数 mex を呼び出し、生成されたコードをコンパイルして Simulink に動的にリンクすることにより、シミュレーション ターゲットを作成します。</p><p>このコード生成およびコンパイル処理は、初めてモデルを高速化したときと、再生成する必要があるほど大幅にモデルが変更されたとき (たとえばブロックの追加後など) に実行されます。Simulink はモデルのチェックサムを使用して、コードを再生成する必要があるかどうかを判定します。このチェックサムは、モデルとそのモデルに含まれているブロックの属性に基づいて、md5 チェックサム アルゴリズムを使用して計算される 4 つの整数の配列です。モデルが変更されたことによってチェックサムが変更されると、Simulink Accelerator はシミュレーション ターゲットを再生成します。</p><p>どのようなモデルの変更によってチェックサムが変更され、コードが再生成されたのか不明な場合もあります。このデモでは、そのようなシナリオを作成した後、それを解決します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">一時作業ディレクトリの作成</a></li><li><a href="#2">実行時に毎回コードを再生成するサンプル モデルを開く</a></li><li><a href="#6">チェックサムの詳細の取得</a></li><li><a href="#11">詳細を使用した変更の特定</a></li><li><a href="#15">再作成する必要をなくすためのモデルの変更</a></li><li><a href="#18">モデルがシミュレートされるたびにコードを再生成していないことの確認</a></li><li><a href="#21">クリーン アップ</a></li></ul></div><h2>一時作業ディレクトリの作成<a name="1"></a></h2><p>高速モードで実行するといくつかのファイルが作成されるため、まず、一時領域に移動します。</p><pre class="codeinput">originalDir = pwd;
+tempDir = tempname;
+mkdir(tempDir)
+cd(tempDir)
+</pre><h2>実行時に毎回コードを再生成するサンプル モデルを開く<a name="2"></a></h2><p>単純なモデルである slAccelDemoWhyRebuild は、アクセラレータ モードでシミュレートされるたびにコードを再生成します。</p><pre class="codeinput">model = <span class="string">'slAccelDemoWhyRebuild'</span>;
+open_system(model)
+</pre><img vspace="5" hspace="5" src="../slAccelDemoWhyRebuild_script_01.png" alt=""> <p>このモデルは、最初にアクセラレータ モードで実行したときは、予期したとおりコードを生成してコンパイルします。</p><pre class="codeinput">simOutput = evalc([<span class="string">'sim('''</span>,model,<span class="string">''')'</span>]);
+<span class="keyword">if</span> ~isempty(strfind(simOutput,<span class="string">'Building the Accelerator target for model'</span>))
+    disp(<span class="string">'Built Simulink Accelerator mex file'</span>)
+<span class="keyword">else</span>
+    disp(<span class="string">'Did not build Simulink Accelerator mex file'</span>)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Built Simulink Accelerator mex file
+</pre><p>2 回目のシミュレーションでは、同じ Simulink Accelerator の mex ファイルが再利用されると予想するのは自然なことです。しかし、2 回目のシミュレーションでは、コードが再生成されます。</p><pre class="codeinput">simOutput = evalc([<span class="string">'sim('''</span>,model,<span class="string">''')'</span>]);
+<span class="keyword">if</span> ~isempty(strfind(simOutput,<span class="string">'Building the Accelerator target for model'</span>))
+    disp(<span class="string">'Built Simulink Accelerator mex file'</span>)
+<span class="keyword">else</span>
+    disp(<span class="string">'Did not build Simulink Accelerator mex file'</span>)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Built Simulink Accelerator mex file
+</pre><p>原因を調べてみましょう。</p><p>Simulink Accelerator は、以前に生成されたコードが現在のモデル設定にまだ有効であるかどうかを判定するために、コードの生成に使用されたモデルのチェックサムと、現在のチェックサムを比較します。これらのチェックサムが等しい場合は、以前に生成されたコードがまだ有効であるため、Simulink Accelerator はそのコードを現在のシミュレーションに再利用します。チェックサムの値が異なっている場合は、Simulink Accelerator はコードを再生成して再作成します。したがって、チェックサム計算の詳細を調べると、Simulink Accelerator がコードを再生成した原因を解明できます。</p><h2>チェックサムの詳細の取得<a name="6"></a></h2><p>次のコマンドによって、モデルのチェックサム計算の詳細が取得されます。</p><pre class="codeinput">[cs1,csdet1]=Simulink.BlockDiagram.getChecksum(model);
+</pre><p>最初の出力は、モデルのチェックサム値そのものです。2 つ目の出力は、チェックサム計算に入れられたものの詳細を示しています。2 回目のチェックサムと詳細を取得しましょう。</p><pre class="codeinput">[cs2,csdet2]=Simulink.BlockDiagram.getChecksum(model);
+</pre><p>これらの 2 つのチェックサム値を比較するということは、Simulink Accelerator がコードを再生成するかどうかを判定するのと同じことです。Simulink Accelerator が実行時に毎回コードを再生成するという事実に基づいて予想したとおり、これらのチェックサム値は異なっています。</p><pre class="codeinput"><span class="keyword">if</span> (cs1 ~= cs2)
+    disp(<span class="string">'Checksums are different'</span>)
+<span class="keyword">else</span>
+    disp(<span class="string">'Checksums are the same'</span>)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Checksums are different
+</pre><p>チェックサムが異なっていることがわかったので、次に問題となるのはその原因です。信号のデータ型、複数のブロック パラメーター値、ブロックの接続情報など、さまざまなものがチェックサム計算に入れられます。チェックサムが異なっている原因を理解するには、チェックサムの計算に使用された項目に関して、何が変更されているのかを確認する必要があります。2 番目の引数として返されたチェックサム詳細に、その情報が示されています。</p><pre class="codeinput">csdet1
+</pre><pre class="codeoutput">
+csdet1 = 
+
+          ContentsChecksum: [1x1 struct]
+         InterfaceChecksum: [1x1 struct]
+     ContentsChecksumItems: [237x1 struct]
+    InterfaceChecksumItems: [66x1 struct]
+
+</pre><p>チェックサム詳細は、4 つのフィールドを持つ構造体配列です。これらのフィールドのうち、2 つはモデル チェックサムのコンポーネント チェックサム (つまり、ContentsChecksum と InterfaceChecksum) で、残りの 2 つは対応するチェックサムの詳細です。</p><p>まず、モデルの内容が異なっているのか、あるいはモデルのインターフェイスが異なっているのかを確認しましょう。</p><pre class="codeinput"><span class="keyword">if</span> (csdet1.ContentsChecksum.Value ~= csdet2.ContentsChecksum.Value)
+    disp(<span class="string">'Contents checksums are different'</span>)
+<span class="keyword">else</span>
+    disp(<span class="string">'Contents checksums are the same'</span>)
+<span class="keyword">end</span>
+<span class="keyword">if</span> (csdet1.InterfaceChecksum.Value ~= csdet2.InterfaceChecksum.Value)
+    disp(<span class="string">'Interface checksums are different'</span>)
+<span class="keyword">else</span>
+    disp(<span class="string">'Interface checksums are the same'</span>)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Contents checksums are different
+Interface checksums are the same
+</pre><h2>詳細を使用した変更の特定<a name="11"></a></h2><p>ContentsChecksum が変更されていることがわかったので、ContentsChecksumItems を調べて、何が変更されているのかを確認できます。</p><pre class="codeinput">idxForDifferences=[];
+<span class="keyword">for</span> idx = 1:length(csdet1.ContentsChecksumItems)
+    <span class="keyword">if</span> (~strcmp(csdet1.ContentsChecksumItems(idx).Handle, <span class="keyword">...</span>
+                csdet2.ContentsChecksumItems(idx).Handle))
+        idxForDifferences=[idxForDifferences,idx];
+        disp([<span class="string">'Handles different for item '</span>,num2str(idx)]);
+    <span class="keyword">end</span>
+    <span class="keyword">if</span> (~strcmp(csdet1.ContentsChecksumItems(idx).Identifier, <span class="keyword">...</span>
+                csdet2.ContentsChecksumItems(idx).Identifier))
+        disp([<span class="string">'Identifiers different for item '</span>,num2str(idx)]);
+        idxForDifferences=[idxForDifferences,idx];
+    <span class="keyword">end</span>
+    <span class="keyword">if</span>(ischar(csdet1.ContentsChecksumItems(idx).Value))
+        <span class="keyword">if</span> (~strcmp(csdet1.ContentsChecksumItems(idx).Value, <span class="keyword">...</span>
+                    csdet2.ContentsChecksumItems(idx).Value))
+            disp([<span class="string">'String Values different for item '</span>,num2str(idx)]);
+            idxForDifferences=[idxForDifferences,idx];
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    <span class="keyword">if</span>(isnumeric(csdet1.ContentsChecksumItems(idx).Value))
+        <span class="keyword">if</span> (csdet1.ContentsChecksumItems(idx).Value ~= <span class="keyword">...</span>
+            csdet2.ContentsChecksumItems(idx).Value)
+            disp([<span class="string">'Numeric values are different for item '</span>,num2str(idx)]);
+            idxForDifferences=[idxForDifferences,idx];
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">String Values different for item 72
+</pre><p>idxForDifferences に示されているインデックスの項目が異なっていることがわかったので、2 つの ContentsChecksumItems 配列内にあるそれらの項目を調べることができます。</p><pre class="codeinput">blk1 = csdet1.ContentsChecksumItems(idxForDifferences(1)).Handle
+blk2 = csdet2.ContentsChecksumItems(idxForDifferences(1)).Handle
+id1 = csdet1.ContentsChecksumItems(idxForDifferences(1)).Identifier
+id2 = csdet2.ContentsChecksumItems(idxForDifferences(1)).Identifier
+</pre><pre class="codeoutput">
+blk1 =
+
+slAccelDemoWhyRebuild/Random Number
+
+
+blk2 =
+
+slAccelDemoWhyRebuild/Random Number
+
+
+id1 =
+
+RunTimeParameter{'Seed'}.RTParamCSInfo.Data
+
+
+id2 =
+
+RunTimeParameter{'Seed'}.RTParamCSInfo.Data
+
+</pre><p>両方ともハンドルは slAccelDemoWhyRebuild/Random Number です。これは、そのブロックのデータが変更されていることを示しています。両方とも識別子は RunTimeParameter{'Seed'}.RTParamCSInfo.Data です。これにより、ブロックの「Seed」という名前のランタイム パラメーターがそのデータ (つまり値) を変更していることがわかります。</p><p>Seed パラメーターを調べてみましょう。</p><pre class="codeinput">get_param(csdet1.ContentsChecksumItems(idxForDifferences(1)).Handle,<span class="string">'Seed'</span>)
+</pre><pre class="codeoutput">
+ans =
+
+floor((sum(clock)+rand)*10000)
+
+</pre><p>Random Number ブロックの Seed パラメーターは floor((sum(clock)+rand)*10000) です。このパラメーターは、モデルが実行されるたびに変化します。このモデルでは [インライン パラメーター] 最適化が選択選択されていることが原因で既定ですべてのパラメーターが調整不可能なパラメーターとなります。パラメーターが調整不可能な場合、生成コードでそのパラメーターが必要な場所には Simulink Accelerator によってそのパラメーターの実際の値が定数式として挿入されます。そのため、調整不可能なパラメーターの値が変化すると、コードを再生成する必要があります。パラメーターが調整可能な場合、Simulink Accelerator によってそのパラメーターのグローバル変数宣言が生成され、生成コードでそのパラメーターが必要な場所にはその変数が使用されます。この設定を使用すると、Simulink Accelerator がコードを再生成することなく、パラメーターの値を変更できます。</p><h2>再作成する必要をなくすためのモデルの変更<a name="15"></a></h2><p>モデルが実行されるたびに Simulink Accelerator がコードを再生成しなくても済むようにするには、Random Number ブロック内の Seed パラメーターを調整可能なものにする必要があります。以下にその方法を示します。</p><p>まず、調整可能な Simulink.Parameter オブジェクトを作成します。このデモでは、これはコマンドラインを使用して行いますが、代わりにモデル エクスプローラーを使用することもできます。</p><pre class="codeinput">initSeed = Simulink.Parameter;
+initSeed.RTWInfo.StorageClass = <span class="string">'ExportedGlobal'</span>;
+initSeed.Value = floor((sum(clock)+rand)*10000)
+</pre><pre class="codeoutput"> 
+initSeed =
+ 
+Simulink.Parameter (handle)
+          Value: 20761501
+        RTWInfo: [1x1 Simulink.ParamRTWInfo]
+    Description: ''
+       DataType: 'auto'
+            Min: -Inf
+            Max: Inf
+       DocUnits: ''
+     Complexity: 'real'
+     Dimensions: [1 1]
+
+</pre><p>次に、その調整可能なパラメーター オブジェクトをブロックの Seed パラメーターの値として設定します。</p><pre class="codeinput">set_param(csdet1.ContentsChecksumItems(idxForDifferences(1)).Handle,<span class="string">'Seed'</span>,<span class="string">'initSeed'</span>)
+</pre><p>最後に、実行のたびにこのパラメーターの値を変更するように、モデルの InitFcn を設定します。</p><pre class="codeinput">set_param(model,<span class="string">'InitFcn'</span>,<span class="string">'initSeed.Value = floor((sum(clock)+rand)*10000);'</span>)
+</pre><h2>モデルがシミュレートされるたびにコードを再生成していないことの確認<a name="18"></a></h2><p>アクセラレータ モードでモデルをシミュレートして、いくつかの点を変更したために予想されるとおりにモデルが作成されることを確認しましょう。</p><pre class="codeinput">simOutput = evalc([<span class="string">'sim('''</span>,model,<span class="string">''')'</span>]);
+<span class="keyword">if</span> ~isempty(strfind(simOutput,<span class="string">'Building the Accelerator target for model'</span>))
+    disp(<span class="string">'Built Simulink Accelerator mex file'</span>)
+<span class="keyword">else</span>
+    disp(<span class="string">'Did not build Simulink Accelerator mex file'</span>)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Built Simulink Accelerator mex file
+</pre><p>2 回目のシミュレーションを実行しましょう。今回は、再生成は行われないはずです。</p><pre class="codeinput">simOutput = evalc([<span class="string">'sim('''</span>,model,<span class="string">''')'</span>]);
+<span class="keyword">if</span> ~isempty(strfind(simOutput,<span class="string">'Building the Accelerator target for model'</span>))
+    disp(<span class="string">'Built Simulink Accelerator mex file'</span>)
+<span class="keyword">else</span>
+    disp(<span class="string">'Did not build Simulink Accelerator mex file'</span>)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Did not build Simulink Accelerator mex file
+</pre><p>Simulink Accelerator は、1 回目のシミュレーションのときにコードを生成するだけで済みました。</p><h2>クリーン アップ<a name="21"></a></h2><p>モデルを閉じて、生成されたファイルを削除します。</p><pre class="codeinput">bdclose(model)
+clear([model,<span class="string">'_acc'</span>])
+cd(originalDir)
+rmdir(tempDir,<span class="string">'s'</span>)
+</pre><p class="footer">Copyright 2006-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Determining Why Simulink(R) Accelerator(TM) is Regenerating Code % % Sometimes, for no apparent reason, Simulink(R) Accelerator(TM) regenerates the % simulation target for a model at the beginning of every simulation. This demo % uses Simulink(R) MATLAB(R) file API to determine why Simulink Accelerator keeps regenerating % the target and then uses this information to change the model to eliminate % the cause of the target regeneration. %     % First, some background. Simulink Accelerator speeds up simulation of your % model by creating an executable version of the model, called a simulation % target, and running this target instead of interpreting the model as is done % during normal (unaccelerated) simulation. Simulink Accelerator creates the % simulation target by generating C code from your model and invoking the MATLAB(R) % mex function to compile and dynamically link the generated code to Simulink. % % This code generation and compilation process happens the first time you % accelerate the model and any time the model changes significantly enough to % require regeneration (for example, after addition of a block). Simulink uses % the model's checksum to determine if the code needs to be regenerated. This % checksum is an array of four integers computed by using an md5 checksum % algorithm based on attributes of the model and the blocks it contains. Any % change in the model that changes the checksum causes Simulink Accelerator to % regenerate the simulation target. %  % Sometimes, it is not clear what model change triggered a checksum change and % hence code regeneration. This demo creates such a scenario and then resolves % it.  % Copyright 2006-2010 The MathWorks, Inc. % $Revision: 1.1.4.9.2.1 $   %% Create a Temporary Working Directory % Since running in accelerated mode % creates some files, first move to a temporary area.  originalDir = pwd; tempDir = tempname; mkdir(tempDir) cd(tempDir)  %% Open an Example Model That Regenerates Code For Every Run % The simple model, slAccelDemoWhyRebuild, regenerates code every time  % it is simulated in Accelerator mode.  model = 'slAccelDemoWhyRebuild'; open_system(model) %% % The first time the model runs in Accelerator mode, it generates and compiles code as expected.  simOutput = evalc(['sim(''',model,''')']); if ~isempty(strfind(simOutput,'Building the Accelerator target for model'))     disp('Built Simulink Accelerator mex file') else      disp('Did not build Simulink Accelerator mex file') end %% % It is natural to expect the second simulation to reuse the same  % Simulink Accelerator mex file. However, it regenerates code. simOutput = evalc(['sim(''',model,''')']); if ~isempty(strfind(simOutput,'Building the Accelerator target for model'))     disp('Built Simulink Accelerator mex file') else      disp('Did not build Simulink Accelerator mex file') end %% % We'd like to know why. % % To determine if the previously generated code is still valid for the current % model configuration, Simulink Accelerator compares the checksum of the model as % used to generate the code to the current checksum. If they are equal, the % previously generated code is still valid and Simulink Accelerator reuses it % for the current simulation. If the values differ, Simulink Accelerator regenerates and % rebuilds the code. Thus examining the details of the checksum computation can  % reveal why Simulink Accelerator regenerated the code.  %% Get the Checksum Details % The following command gets the model checksum computation details:  [cs1,csdet1]=Simulink.BlockDiagram.getChecksum(model);  %% % The first output is the model checksum value itself.  % The second output gives details of what went into the checksum computation.  % Let's get the checksum and details a second time.   [cs2,csdet2]=Simulink.BlockDiagram.getChecksum(model);  %% % Comparing these two checksum values is equivalent to determining if the  % Simulink Accelerator will regenerate code.  % Note that the checksum values are different, as we expect based on the  % fact that Simulink Accelerator regenerates code every time it runs. if (cs1 ~= cs2)     disp('Checksums are different') else     disp('Checksums are the same') end  %% % Now that we know that the checksums differ, the next question is why. Many % things go into the checksum computation, including signal data types, some % block parameter values, and block connectivity information. To understand why % the checksums differ, we need to see what has changed about the items used in % computing the checksum.  The checksum details returned as the second argument % give that information. csdet1 %% % The checksum details is a structure array with four fields, two of which are % the component checksums of the model checksum (i.e. ContentsChecksum and  % InterfaceChecksum) and the other two of which are the corresponding checksum  % details.  % % First let's see if the difference lies in the model's contents or the  % model's interface if (csdet1.ContentsChecksum.Value ~= csdet2.ContentsChecksum.Value)     disp('Contents checksums are different') else     disp('Contents checksums are the same') end if (csdet1.InterfaceChecksum.Value ~= csdet2.InterfaceChecksum.Value)     disp('Interface checksums are different') else     disp('Interface checksums are the same') end  %% Use the Details to Determine the Change % Now that we know the change is in the ContentsChecksum, we can look at the % ContentsChecksumItems to see what has changed. idxForDifferences=[]; for idx = 1:length(csdet1.ContentsChecksumItems)     if (~strcmp(csdet1.ContentsChecksumItems(idx).Handle, ...                 csdet2.ContentsChecksumItems(idx).Handle))         idxForDifferences=[idxForDifferences,idx];         disp(['Handles different for item ',num2str(idx)]);     end     if (~strcmp(csdet1.ContentsChecksumItems(idx).Identifier, ...                 csdet2.ContentsChecksumItems(idx).Identifier))         disp(['Identifiers different for item ',num2str(idx)]);         idxForDifferences=[idxForDifferences,idx];     end     if(ischar(csdet1.ContentsChecksumItems(idx).Value))         if (~strcmp(csdet1.ContentsChecksumItems(idx).Value, ...                     csdet2.ContentsChecksumItems(idx).Value))             disp(['String Values different for item ',num2str(idx)]);             idxForDifferences=[idxForDifferences,idx];         end      end     if(isnumeric(csdet1.ContentsChecksumItems(idx).Value))         if (csdet1.ContentsChecksumItems(idx).Value ~= ...             csdet2.ContentsChecksumItems(idx).Value)             disp(['Numeric values are different for item ',num2str(idx)]);             idxForDifferences=[idxForDifferences,idx];         end     end end %% % Now that we know the differences are in the items at the indices listed in % idxForDifferences, we can look at those items in the two ContentsChecksumItems % arrays blk1 = csdet1.ContentsChecksumItems(idxForDifferences(1)).Handle blk2 = csdet2.ContentsChecksumItems(idxForDifferences(1)).Handle id1 = csdet1.ContentsChecksumItems(idxForDifferences(1)).Identifier id2 = csdet2.ContentsChecksumItems(idxForDifferences(1)).Identifier  %% % The Handle for both is 'slAccelDemoWhyRebuild/Random Number' which indicates % the block with the changing data.  The identifier for both is % 'RunTimeParameter{'Seed'}.RTParamCSInfo.Data' which tells us that the block's % run-time parameter named 'Seed' is changing its Data (or value) % % Let's look at the Seed parameter get_param(csdet1.ContentsChecksumItems(idxForDifferences(1)).Handle,'Seed')    %% % The Seed parameter of the Random Number block is floor((sum(clock)+rand)*10000), % which changes every time the model runs.  This model has the "Inline % Parameters" optimization selected, which causes all parameters to be % nontunable by default.  If a parameter is nontunable, Simulink Accelerator % inserts the actual value of the parameter as a constant expression wherever % the generated code needs the value. Thus as the value of the nontunable % parameter changes, the code needs to be regenerated.  If a parameter is % tunable, Simulink Accelerator generates a global variable declaration for % the parameter and uses the variable wherever the generated code needs the % parameter's value. This configuration allows for the parameter's value to % change without causing Simulink Accelerator to regenerate code. %    %% Changing the Model So It Will Not Need to Rebuild % To keep Simulink Accelerator from needing to regenerate  % code every time the model runs, we need to make the Seed parameter  % in the Random Number block tunable. Here is how we can do that: % % First, create a tunable Simulink.Parameter object. For this demo, we will use % the command line to do this, but you could use the Model Explorer  % instead.  initSeed = Simulink.Parameter; initSeed.RTWInfo.StorageClass = 'ExportedGlobal'; initSeed.Value = floor((sum(clock)+rand)*10000)  %% % Next, set the tunable parameter object as the value of the block's Seed parameter set_param(csdet1.ContentsChecksumItems(idxForDifferences(1)).Handle,'Seed','initSeed') %% % Finally, set the model's InitFcn to change the value of the parameter with each run set_param(model,'InitFcn','initSeed.Value = floor((sum(clock)+rand)*10000);')  %% Verify that the Model Does Not Regenerate Code Every Time It Is Simulated % Let's simulate the model in Accelerator mode and verify that it does % build, as we expect because we changed some things.   simOutput = evalc(['sim(''',model,''')']); if ~isempty(strfind(simOutput,'Building the Accelerator target for model'))     disp('Built Simulink Accelerator mex file') else      disp('Did not build Simulink Accelerator mex file') end %% % Now let's simulate a second time. This time no rebuild should happen. simOutput = evalc(['sim(''',model,''')']); if ~isempty(strfind(simOutput,'Building the Accelerator target for model'))     disp('Built Simulink Accelerator mex file') else      disp('Did not build Simulink Accelerator mex file') end %% % Note that Simulink Accelerator needed to generate code only for the first simulation.  %% Cleaning Up % Close the model and remove the generated files. bdclose(model) clear([model,'_acc']) cd(originalDir) rmdir(tempDir,'s')   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

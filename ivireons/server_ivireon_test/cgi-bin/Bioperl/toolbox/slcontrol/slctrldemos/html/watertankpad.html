@@ -1,0 +1,139 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Trimming and Linearizing Simulink Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="watertankpad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit watertankpad">Open watertankpad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo watertankpad">Run in the Command Window</a></div></div><div class="content"><h1>Trimming and Linearizing Simulink Models</h1><!--introduction--><p>The <a href="matlab:scdguihelp('functions');">command line</a> tools available in Simulink&reg; Control Design&#8482; software allow for the programmatic specification of the input and output points for the linearization of a model. Additionally, there are new command line tools to extract and specify (trimming) operating points for a linearization. This demo introduces some of these commands by linearizing a <a href="matlab:scdguihelp('watertank');">water-tank</a> feedback control system. An open loop linearized model of the watertank will be extracted at an operating point where the tank level is at H = 10. The following 3 steps linearize and analyze the water-tank model.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">Step 1: Configuring Linearization Points</a></li><li><a href="#6">Step 2: Computing and Specifying Operating Points</a></li><li><a href="#11">Step 3: Linearizing and Analyzing the Model</a></li></ul></div><p>Open the model</p><pre class="codeinput">watertank
+</pre><img vspace="5" hspace="5" src="watertankpad_01.png" alt=""> <img vspace="5" hspace="5" src="watertankpad_02.png" alt=""> <h2>Step 1: Configuring Linearization Points<a name="2"></a></h2><p>The linearization points specify the inputs and outputs of a linearized model. To extract the open loop linearized model, add an input point at the output of the Controller block and an output point, with a loop opening, at the output of the Water-Tank System block.</p><p>Specify the input point</p><pre class="codeinput">watertank_io(1)=linio(<span class="string">'watertank/PID Controller'</span>,1,<span class="string">'in'</span>);
+</pre><p>Specify the output point with a loop opening</p><pre class="codeinput">watertank_io(2)=linio(<span class="string">'watertank/Water-Tank System'</span>,1,<span class="string">'out'</span>,<span class="string">'on'</span>);
+</pre><p>The linearization points can then be set and viewed in the model</p><pre class="codeinput">setlinio(<span class="string">'watertank'</span>,watertank_io);
+watertank
+</pre><h2>Step 2: Computing and Specifying Operating Points<a name="6"></a></h2><p>This next step involves finding an operating point of the Simulink model 'watertank' so that the level of the tank is at H = 10. One approach is to simulate the model then extract the operating point when the simulation is near the desired value. The command FINDOP will simulate a model and extract the operating points at times defined in the function call.</p><pre class="codeinput">opsim = findop(<span class="string">'watertank'</span>,10)
+</pre><pre class="codeoutput">
+ Operating Point for the Model watertank.
+ (Time-Varying Components Evaluated at time t=10)
+
+States: 
+----------
+(1.) watertank/PID Controller/Integrator
+      x: 1.69         
+(2.) watertank/Water-Tank System/H
+      x: 10.1         
+
+Inputs: None 
+----------
+</pre><p>In this operating point, H is not at the desired value of 10. However, you can use this operating point to initialize a search for the desired operating point where H = 10. An operating point specification object allows you to specify the desired value of H = 10.</p><p>Create an operating point specification object</p><pre class="codeinput">opspec = operspec(<span class="string">'watertank'</span>);
+</pre><p>Initialize the values of the states of the operating point specification with the ones in the operating point opsim</p><pre class="codeinput">opspec = initopspec(opspec,opsim);
+</pre><p>The specified operating point can then be searched for (trimmed) using the FINDOP command</p><pre class="codeinput">opss = findop(<span class="string">'watertank'</span>,opspec);
+</pre><pre class="codeoutput">
+ Operating Point Search Report:
+---------------------------------
+
+ Operating Report for the Model watertank.
+ (Time-Varying Components Evaluated at time t=0)
+
+Operating point specifications were successfully met.
+States: 
+----------
+(1.) watertank/PID Controller/Integrator
+      x:          1.26      dx:             0 (0)
+(2.) watertank/Water-Tank System/H
+      x:            10      dx:     -1.1e-014 (0)
+
+Inputs: None 
+----------
+
+Outputs: None 
+----------
+
+</pre><h2>Step 3: Linearizing and Analyzing the Model<a name="11"></a></h2><p>You are now ready to linearize the plant model by using the LINEARIZE function.</p><pre class="codeinput">sys = linearize(<span class="string">'watertank'</span>,opss,watertank_io);
+</pre><p>The resulting model is a state space object that you can analyze using any of the tools in the Control System Toolbox&#8482; software.</p><pre class="codeinput">bode(sys);
+</pre><img vspace="5" hspace="5" src="watertankpad_03.png" alt=""> <p>Close the Simulink model</p><pre class="codeinput">bdclose(<span class="string">'watertank'</span>)
+</pre><p class="footer">Copyright 2005 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Trimming and Linearizing Simulink Models
+%
+% Copyright 2005 The MathWorks, Inc.
+% $Revision: 1.1.6.5 $ $Date: 2009/12/22 18:58:00 $
+%
+% The <matlab:scdguihelp('functions'); command line> tools available in
+% Simulink(R) Control Design(TM) software allow for the programmatic
+% specification of the input and output points for the linearization of a
+% model. Additionally, there are new command line tools to extract and
+% specify (trimming) operating points for a linearization. This demo
+% introduces some of these commands by linearizing a 
+% <matlab:scdguihelp('watertank'); water-tank> feedback control system. An
+% open loop linearized model of the watertank will be extracted at an
+% operating point where the tank level is at H = 10. The following 3 steps
+% linearize and analyze the water-tank model.
+
+%%
+% Open the model
+watertank
+
+%% Step 1: Configuring Linearization Points
+% The linearization points specify the inputs and outputs of a linearized
+% model. To extract the open loop linearized model, add an input point at
+% the output of the Controller block and an output point, with a loop
+% opening, at the output of the Water-Tank System block.
+
+%%
+% Specify the input point
+watertank_io(1)=linio('watertank/PID Controller',1,'in');
+%%
+% Specify the output point with a loop opening
+watertank_io(2)=linio('watertank/Water-Tank System',1,'out','on');
+
+%%
+% The linearization points can then be set and viewed in the model 
+setlinio('watertank',watertank_io);
+watertank
+
+%% Step 2: Computing and Specifying Operating Points
+% This next step involves finding an operating point of the Simulink model
+% 'watertank' so that the level of the tank is at H = 10. One approach is
+% to simulate the model then extract the operating point when the
+% simulation is near the desired value. The command FINDOP will simulate a
+% model and extract the operating points at times defined in the function
+% call.  
+opsim = findop('watertank',10)
+
+%%
+% In this operating point, H is not at the desired value of 10.
+% However, you can use this operating point to initialize a
+% search for the desired operating point where H = 10. An operating point
+% specification object allows you to specify the desired value of H = 10.
+
+%%
+% Create an operating point specification object
+opspec = operspec('watertank');
+%%
+% Initialize the values of the states of the operating point specification
+% with the ones in the operating point opsim
+opspec = initopspec(opspec,opsim);
+%%
+% The specified operating point can then be searched for (trimmed) using
+% the FINDOP command
+opss = findop('watertank',opspec);
+
+%% Step 3: Linearizing and Analyzing the Model
+% You are now ready to linearize the plant model by using the LINEARIZE
+% function.
+sys = linearize('watertank',opss,watertank_io);
+
+%%
+% The resulting model is a state space object that you can analyze using
+% any of the tools in the Control System Toolbox(TM) software.
+bode(sys);
+
+%%
+% Close the Simulink model
+bdclose('watertank')
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

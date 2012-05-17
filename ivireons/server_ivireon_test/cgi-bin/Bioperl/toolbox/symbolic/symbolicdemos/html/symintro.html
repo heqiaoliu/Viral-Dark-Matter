@@ -1,0 +1,312 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Introduction</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="symintro.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit symintro">Open symintro.m in the Editor</a></div><div class="right"><a href="matlab:echodemo symintro">Run in the Command Window</a></div></div><div class="content"><h1>Introduction</h1><p>The Symbolic Math Toolbox&#8482; software uses "symbolic objects" produced by the "sym" function.  For example, the statement</p><pre class="codeinput">x = sym(<span class="string">'x'</span>);
+</pre><p>produces a symbolic variable named x.</p><p>You can combine the statements</p><pre class="codeinput">a = sym(<span class="string">'a'</span>); t = sym(<span class="string">'t'</span>); x = sym(<span class="string">'x'</span>); y = sym(<span class="string">'y'</span>);
+</pre><p>into one statement involving the "syms" function.</p><pre class="codeinput">syms <span class="string">a</span> <span class="string">t</span> <span class="string">x</span> <span class="string">y</span>
+</pre><p>You can use symbolic variables in expressions and as arguments to many different functions.</p><pre class="codeinput">r = x^2 + y^2
+
+theta = atan(y/x)
+
+e = exp(i*pi*t)
+</pre><pre class="codeoutput"> 
+r =
+ 
+x^2 + y^2
+ 
+ 
+theta =
+ 
+atan(y/x)
+ 
+ 
+e =
+ 
+exp(pi*t*i)
+ 
+</pre><p>It is sometimes desirable to use the "simple" or "simplify" function to transform expressions into more convenient forms.</p><pre class="codeinput">f = cos(x)^2 + sin(x)^2
+
+f = simple(f)
+</pre><pre class="codeoutput"> 
+f =
+ 
+cos(x)^2 + sin(x)^2
+ 
+ 
+f =
+ 
+1
+ 
+</pre><p>Derivatives and integrals are computed by the "diff" and "int" functions.</p><pre class="codeinput">diff(x^3)
+
+int(x^3)
+
+int(exp(-t^2))
+</pre><pre class="codeoutput"> 
+ans =
+ 
+3*x^2
+ 
+ 
+ans =
+ 
+x^4/4
+ 
+ 
+ans =
+ 
+(pi^(1/2)*erf(t))/2
+ 
+</pre><p>If an expression involves more than one variable, differentiation and integration use the variable which is closest to 'x' alphabetically, unless some other variable is specified as a second argument. In the following vector, the first two elements involve integration with respect to 'x', while the second two are with respect to 'a'.</p><pre class="codeinput">[int(x^a), int(a^x), int(x^a,a), int(a^x,a)]
+</pre><pre class="codeoutput"> 
+ans =
+ 
+[ piecewise([a = -1, log(x)], [a &lt;&gt; -1, x^(a + 1)/(a + 1)]), a^x/log(a), x^a/log(x), piecewise([x = -1, log(a)], [x &lt;&gt; -1, a^(x + 1)/(x + 1)])]
+ 
+</pre><p>You can also create symbolic constants with the sym function.  The argument can be a string representing a numerical value.  Statements like pi = sym('pi') and delta = sym('1/10') create symbolic numbers which avoid the floating point approximations inherent in the values of pi and 1/10.  The pi created in this way temporarily replaces the built-in numeric function with the same name.</p><pre class="codeinput">pi = sym(<span class="string">'pi'</span>)
+
+delta = sym(<span class="string">'1/10'</span>)
+
+s = sym(<span class="string">'sqrt(2)'</span>)
+</pre><pre class="codeoutput"> 
+pi =
+ 
+pi
+ 
+ 
+delta =
+ 
+1/10
+ 
+ 
+s =
+ 
+2^(1/2)
+ 
+</pre><p>Conversion of floating point values to symbolic constants involves some consideration of roundoff error.  For example, with either of the following statements, the value assigned to t is not exactly one-tenth.</p><pre class="codeinput">t = 1/10, t = 0.1
+</pre><pre class="codeoutput">
+t =
+
+    0.1000
+
+
+t =
+
+    0.1000
+
+</pre><p>The technique for converting floating point numbers is specified by an optional second argument to the sym function.  The possible values of the argument are 'f', 'r', 'e' or 'd'.  The default is 'r'.</p><p>'f' stands for 'floating point'.  All values are represented in the form (2^e+N*2^(e-52)) or -(2^e+N*2^(e-52)) where N and e are integers. This captures the floating point values exactly.</p><pre class="codeinput">sym(t,<span class="string">'f'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+3602879701896397/36028797018963968
+ 
+</pre><p>'r' stands for 'rational'.  Floating point numbers obtained by evaluating expressions of the form p/q, p*pi/q, sqrt(p), 2^q and 10^q for modest sized integers p and q are converted to the corresponding symbolic form.  This effectively compensates for the roundoff error involved in the original evaluation, but may not represent the floating point value precisely.</p><pre class="codeinput">sym(t,<span class="string">'r'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+1/10
+ 
+</pre><p>If no simple rational approximation can be found, an expression of the form p*2^q with large integers p and q reproduces the floating point value exactly.</p><pre class="codeinput">sym(1+sqrt(5),<span class="string">'r'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+910872158600853/281474976710656
+ 
+</pre><p>'e' stands for 'estimate error'.  The 'r' form is supplemented by a term involving the variable 'eps' which estimates the difference between the theoretical rational expression and its actual floating point value.</p><pre class="codeinput">sym(t,<span class="string">'e'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+eps/40 + 1/10
+ 
+</pre><p>'d' stands for 'decimal'.  The number of digits is taken from the current setting of DIGITS used by VPA.  Fewer than 16 digits loses some accuracy, while more than 16 digits may not be warranted.</p><pre class="codeinput">digits(15)
+sym(t,<span class="string">'d'</span>)
+
+digits(25)
+sym(t,<span class="string">'d'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+0.1
+ 
+ 
+ans =
+ 
+0.1000000000000000055511151
+ 
+</pre><p>The 25 digit result does not end in a string of 0's, but is an accurate decimal representation of the floating point number nearest to 1/10.</p><p>MATLAB&reg; language vector and matrix notation extends to symbolic variables.</p><pre class="codeinput">n = 4;
+
+A = x.^((0:n)'*(0:n))
+
+D = diff(log(A))
+</pre><pre class="codeoutput"> 
+A =
+ 
+[ 1,   1,   1,    1,    1]
+[ 1,   x, x^2,  x^3,  x^4]
+[ 1, x^2, x^4,  x^6,  x^8]
+[ 1, x^3, x^6,  x^9, x^12]
+[ 1, x^4, x^8, x^12, x^16]
+ 
+ 
+D =
+ 
+[ 0,   0,   0,    0,    0]
+[ 0, 1/x, 2/x,  3/x,  4/x]
+[ 0, 2/x, 4/x,  6/x,  8/x]
+[ 0, 3/x, 6/x,  9/x, 12/x]
+[ 0, 4/x, 8/x, 12/x, 16/x]
+ 
+</pre><p class="footer">Copyright 1993-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Introduction
+%
+%  Copyright 1993-2008 The MathWorks, Inc.
+%  $Revision: 1.1.6.2 $  $Date: 2009/07/06 20:59:47 $
+%
+% The Symbolic Math Toolbox(TM) software uses "symbolic objects" produced
+% by the "sym" function.  For example, the statement
+
+x = sym('x');
+
+%%
+%
+% produces a symbolic variable named x.
+
+%%
+% You can combine the statements
+
+a = sym('a'); t = sym('t'); x = sym('x'); y = sym('y');
+
+%%
+%
+% into one statement involving the "syms" function.
+
+syms a t x y
+
+%%
+% You can use symbolic variables in expressions and as arguments to
+% many different functions.
+
+r = x^2 + y^2
+
+theta = atan(y/x)
+
+e = exp(i*pi*t)
+
+%%
+% It is sometimes desirable to use the "simple" or "simplify" function
+% to transform expressions into more convenient forms.
+
+f = cos(x)^2 + sin(x)^2
+
+f = simple(f)
+
+%%
+% Derivatives and integrals are computed by the "diff" and "int" functions.
+
+diff(x^3)
+
+int(x^3)
+
+int(exp(-t^2))
+
+%%
+% If an expression involves more than one variable, differentiation and
+% integration use the variable which is closest to 'x' alphabetically,
+% unless some other variable is specified as a second argument.
+% In the following vector, the first two elements involve integration
+% with respect to 'x', while the second two are with respect to 'a'.
+
+[int(x^a), int(a^x), int(x^a,a), int(a^x,a)]
+
+%%
+% You can also create symbolic constants with the sym function.  The
+% argument can be a string representing a numerical value.  Statements
+% like pi = sym('pi') and delta = sym('1/10') create symbolic numbers
+% which avoid the floating point approximations inherent in the values
+% of pi and 1/10.  The pi created in this way temporarily replaces the
+% built-in numeric function with the same name.
+
+pi = sym('pi')
+
+delta = sym('1/10')
+
+s = sym('sqrt(2)')
+
+%%
+% Conversion of floating point values to symbolic constants involves
+% some consideration of roundoff error.  For example, with either of the
+% following statements, the value assigned to t is not exactly one-tenth.
+
+t = 1/10, t = 0.1
+
+%%
+% The technique for converting floating point numbers is specified by an
+% optional second argument to the sym function.  The possible values of the
+% argument are 'f', 'r', 'e' or 'd'.  The default is 'r'.
+
+%%
+% 'f' stands for 'floating point'.  All values are represented in the
+% form (2^e+N*2^(e-52)) or -(2^e+N*2^(e-52)) where N and e are integers.
+% This captures the floating point values exactly.
+
+sym(t,'f')
+
+%%
+% 'r' stands for 'rational'.  Floating point numbers obtained by evaluating
+% expressions of the form p/q, p*pi/q, sqrt(p), 2^q and 10^q for modest sized
+% integers p and q are converted to the corresponding symbolic form.  This
+% effectively compensates for the roundoff error involved in the original evaluation,
+% but may not represent the floating point value precisely.
+
+sym(t,'r')
+
+%%
+% If no simple rational approximation can be found, an expression of the form
+% p*2^q with large integers p and q reproduces the floating point value exactly.
+
+sym(1+sqrt(5),'r')
+
+%%
+% 'e' stands for 'estimate error'.  The 'r' form is supplemented by a term
+% involving the variable 'eps' which estimates the difference between the
+% theoretical rational expression and its actual floating point value.
+
+sym(t,'e')
+
+%%
+% 'd' stands for 'decimal'.  The number of digits is taken from the current
+% setting of DIGITS used by VPA.  Fewer than 16 digits loses some accuracy,
+% while more than 16 digits may not be warranted.
+
+digits(15)
+sym(t,'d')
+
+digits(25)
+sym(t,'d')
+
+%%
+%
+% The 25 digit result does not end in a string of 0's, but is an accurate
+% decimal representation of the floating point number nearest to 1/10.
+
+%%
+% MATLAB(R) language vector and matrix notation extends to symbolic variables.
+
+n = 4;
+
+A = x.^((0:n)'*(0:n))
+
+D = diff(log(A))
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

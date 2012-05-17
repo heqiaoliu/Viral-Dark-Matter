@@ -1,0 +1,121 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Changing Transparency</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="transpdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit transpdemo">Open transpdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo transpdemo">Run in the Command Window</a></div></div><div class="content"><h1>Changing Transparency</h1><!--introduction--><p>Modifying the transparency value for graphics objects reveals structure that is obscured with opaque objects.  For patches and surfaces, use the <tt>FaceAlpha</tt> and <tt>EdgeAlpha</tt> properties to specify the transparency of faces and edges.  The following examples illustrate this.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">A Transparent Isosurface</a></li><li><a href="#6">A Texture Map</a></li></ul></div><h2>A Transparent Isosurface<a name="1"></a></h2><p>The <tt>flow</tt> function generates data for the speed profile of a submerged jet within an infinite tank.  One way to visualize this data is by creating an isosurface illustrating where the rate of flow is equal to a specified value.</p><pre class="codeinput">cla
+[x y z v] = flow;
+<span class="comment">% Compute and create a patch object from data created from the isosurface with a</span>
+<span class="comment">% isosurface scalar value of -3</span>
+p = patch(isosurface(x,y,z,v,-3));
+<span class="comment">% Get the normals to the isosurface based on the gradients of v - scalar values</span>
+<span class="comment">% at the x,y,z coordinate</span>
+isonormals(x,y,z,v,p);
+set(p,<span class="string">'facecolor'</span>,<span class="string">'red'</span>,<span class="string">'edgecolor'</span>,<span class="string">'none'</span>);
+daspect([1 1 1]);
+</pre><img vspace="5" hspace="5" src="transpdemo_01.png" alt=""> <p>Change view to 3-D.</p><pre class="codeinput">view(3); axis <span class="string">tight</span>; grid <span class="string">on</span>;
+</pre><img vspace="5" hspace="5" src="transpdemo_02.png" alt=""> <p>Add a light source to the scene to give the surface more definition.</p><pre class="codeinput">camlight;
+</pre><img vspace="5" hspace="5" src="transpdemo_03.png" alt=""> <p>Apply smooth rather than faceted shading by changing lighting from default 'flat' to <a href="matlab:web(fullfile(docroot,'/techdoc/visualize/f1-44962.html'))">'gouraud'</a>.</p><pre class="codeinput">lighting <span class="string">gouraud</span>;
+</pre><img vspace="5" hspace="5" src="transpdemo_04.png" alt=""> <p>Adding transparency to the isosurface reveals that there is greater complexity in the fluid flow than is visible using the opaque surface.  The statement <tt>alpha(0.5)</tt> sets the <tt>FaceAlpha</tt> value for the isosurface face to 0.5.</p><pre class="codeinput">alpha(0.5)
+</pre><img vspace="5" hspace="5" src="transpdemo_05.png" alt=""> <h2>A Texture Map<a name="6"></a></h2><p>The <tt>MAT</tt> file <tt>topo.mat</tt> has color data representing the different continents on the globe.  This example shows how to map this data onto the surface of a sphere.</p><p>The <tt>sphere</tt> function generates coordinates of a sphere.  Setting the <tt>cdata</tt> property of the <tt>surface</tt> object to <tt>topo</tt> maps the color data contained in <tt>topo</tt> for each continent onto the surface of the sphere. In addition, the <tt>facecolor</tt> property needs to be set to <tt>texturemap</tt> if the size of the <i>z</i>-data is different from the size of the cdata MATLAB&reg; then  fills in the color at <i>z</i>-data points where the color is not specified using interpolation. The software can also map the color data onto the surface if you specify the <tt>facealpha</tt> transparency property to be of type <tt>texture</tt>.  If this property is not specified, the globe will not be transparent.  Other options for <tt>facealpha</tt> are available.  Search for <tt>facealpha texture</tt> in the doc for more information.</p><pre class="codeinput">cla <span class="string">reset</span>;
+load <span class="string">topo</span>;
+[x y z] = sphere(45);
+s = surface(x,y,z,<span class="string">'facecolor'</span>,<span class="string">'texturemap'</span>,<span class="string">'cdata'</span>,topo);
+set(s,<span class="string">'edgecolor'</span>,<span class="string">'none'</span>,<span class="string">'facealpha'</span>,<span class="string">'texture'</span>,<span class="string">'alphadata'</span>,topo);
+set(s,<span class="string">'backfacelighting'</span>,<span class="string">'unlit'</span>);
+colormap(topomap1);
+alpha(<span class="string">'direct'</span>);
+alphamap([.1;1])
+axis <span class="string">off</span> <span class="string">vis3d</span>;
+campos([2 13 10]);
+camlight;
+lighting <span class="string">gouraud</span>;
+</pre><img vspace="5" hspace="5" src="transpdemo_06.png" alt=""> <p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Changing Transparency
+% Modifying the transparency value for graphics objects reveals structure that
+% is obscured with opaque objects.  For patches and surfaces, use the
+% |FaceAlpha| and |EdgeAlpha| properties to specify the transparency of 
+% faces and edges.  The following examples illustrate this.
+
+% Copyright 1984-2007 The MathWorks, Inc.
+% $Revision: 1.6.4.4 $ $Date: 2008/05/27 19:50:33 $
+
+
+%% A Transparent Isosurface
+% The |flow| function generates data for the speed profile of a submerged jet
+% within an infinite tank.  One way to visualize this data is by creating an
+% isosurface illustrating where the rate of flow is equal to a specified value.
+
+cla
+[x y z v] = flow;
+% Compute and create a patch object from data created from the isosurface with a 
+% isosurface scalar value of -3
+p = patch(isosurface(x,y,z,v,-3));
+% Get the normals to the isosurface based on the gradients of v - scalar values
+% at the x,y,z coordinate
+isonormals(x,y,z,v,p);
+set(p,'facecolor','red','edgecolor','none');
+daspect([1 1 1]);
+%%
+% Change view to 3-D.
+view(3); axis tight; grid on;
+%%
+% Add a light source to the scene to give the surface more definition.
+camlight; 
+%%
+% Apply smooth rather than faceted shading by changing lighting from
+% default 'flat' to 
+% <matlab:web(fullfile(docroot,'/techdoc/visualize/f1-44962.html'))
+% 'gouraud'>.
+lighting gouraud;
+
+%%
+% Adding transparency to the isosurface reveals that there is greater complexity
+% in the fluid flow than is visible using the opaque surface.  The statement
+% |alpha(0.5)| sets the |FaceAlpha| value for the isosurface face to 0.5.
+
+alpha(0.5)
+
+
+%% A Texture Map
+% The |MAT| file |topo.mat| has color data representing the different continents on
+% the globe.  This example shows how to map this data onto the surface of a sphere. 
+%
+% The |sphere| function generates coordinates of a sphere.  Setting the 
+% |cdata| property of the |surface| object to |topo| maps the 
+% color data contained in |topo| for each continent onto the surface of the sphere. In 
+% addition, the |facecolor| property needs to be set to |texturemap| if the 
+% size of the _z_-data is different from the size of the cdata 
+% MATLAB(R) then  fills in the color at _z_-data points where the color is 
+% not specified using interpolation.  
+% The software can also map the color data onto the surface if you specify 
+% the |facealpha| transparency property to be of type |texture|.  If this
+% property is not specified, the globe will not be transparent.  Other
+% options for |facealpha| are available.  Search for |facealpha texture| in
+% the doc for more information.
+
+cla reset;
+load topo;                                                       
+[x y z] = sphere(45);                                            
+s = surface(x,y,z,'facecolor','texturemap','cdata',topo);
+set(s,'edgecolor','none','facealpha','texture','alphadata',topo);
+set(s,'backfacelighting','unlit');                               
+colormap(topomap1); 
+alpha('direct'); 
+alphamap([.1;1])
+axis off vis3d;
+campos([2 13 10]); 
+camlight; 
+lighting gouraud;
+
+
+displayEndOfDemoMessage(mfilename)
+
+
+##### SOURCE END #####
+--></body></html>

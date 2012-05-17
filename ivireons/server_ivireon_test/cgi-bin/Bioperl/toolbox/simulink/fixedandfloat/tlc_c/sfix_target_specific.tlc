@@ -1,0 +1,94 @@
+%% $RCSfile: sfix_target_specific.tlc,v $
+%% $Revision: 1.9.2.5 $ 
+%% $Date: 2005/01/27 02:03:06 $
+%%
+%% Copyright 1994-2004 The MathWorks, Inc.
+%%
+%% Abstract:
+%%      Determine the C Languages most common target specific items.
+%%
+
+%implements sfix_target_specific "C"
+
+%% Function: BlockInstanceSetup ===============================================
+%% Abstract:
+%% 	Pre-code generation work
+%%
+%function BlockInstanceSetup(block, system) void
+  %%
+%endfunction %% BlockInstanceSetup
+
+
+%% Function: Outputs ==========================================================
+%% Abstract:
+%%   Each input is assumed to be of Type real_T and it is assumed that
+%%   the standard C Math.h library is available for use on Type real_T
+%%
+%function Outputs(block, system) Output
+  %%
+  %assign noop = %<LibAddToModelSources("hostcpuinfo")>
+  %%
+  %openfile myProto 
+  %if ::GenCPP
+  #ifdef __cplusplus
+  extern "C" {
+  #endif
+  %endif
+  extern  void hostcpuinfo(double cpu_info[]);
+  %if ::GenCPP
+  #ifdef __cplusplus
+  }
+  #endif
+  %endif
+  %closefile myProto
+  %%
+  %<LibCacheFunctionPrototype(myProto)>
+  %%
+  %%
+  %%  Comment generated code
+  %%
+  /* Determine the C Languages most common target specific items. */
+{
+  double cpu_info[7]; 
+
+  /* hostcpuinfo returns an array of doubles containing information about the
+   * host cpu.  This information is dynamically calculated, so should be
+   * host independant.  The array contains the following information:
+   *
+   * element #   Value/descrtiption
+   *    0        Shift right behavior
+   *               0 == logical
+   *               1 == arithmetic
+   *    1        Signed Integer division rounding
+   *               1 == round toward floor
+   *               2 == round toward 0
+   *               3 == undefined rounding behavior
+   *    2        Byte ordering
+   *               0 == Little Endian
+   *               1 == Big Endian
+   *    3        Number of bits per char
+   *    4        Number of bits per short
+   *    5        Number of bits per int
+   *    6        Number of bits per long
+   */
+  hostcpuinfo(cpu_info); 
+
+  /* shifts right on signed integers */
+  %<LibBlockOutputSignal(0,"","",0)> = cpu_info[0];
+
+  /* negative operand integer division rounding  */
+  %<LibBlockOutputSignal(1,"","",0)> = cpu_info[1];
+  
+  /* Byte ordering */
+  %<LibBlockOutputSignal(2,"","",0)> = cpu_info[2];
+
+  /* bits per char, short, int, long */
+  %<LibBlockOutputSignal(3,"","",0)> = cpu_info[3];
+  %<LibBlockOutputSignal(3,"","",1)> = cpu_info[4];
+  %<LibBlockOutputSignal(3,"","",2)> = cpu_info[5];
+  %<LibBlockOutputSignal(3,"","",3)> = cpu_info[6];
+
+}    
+%endfunction  %% Outputs
+
+%% [EOF] sfix_target_specific.tlc

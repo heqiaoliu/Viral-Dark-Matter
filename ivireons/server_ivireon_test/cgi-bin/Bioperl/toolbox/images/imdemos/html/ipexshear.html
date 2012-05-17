@@ -1,0 +1,280 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Padding and Shearing an Image Simultaneously</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="ipexshear.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexshear">Open ipexshear.m in the Editor</a></div><div class="right"><a href="matlab:echodemo ipexshear">Run in the Command Window</a></div></div><div class="content"><h1>Padding and Shearing an Image Simultaneously</h1><!--introduction--><p>In this demonstration, we construct a <tt>tform</tt> struct that represents a simple shear transformation, then apply it to an image. We explore how the transformation affects straight lines and circles, and then use it as a vehicle to explore the various options for image padding that can be used with <tt>imtransform</tt> and <tt>tformarray</tt>.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Step 1: Transform an Image Using Simple Shear</a></li><li><a href="#6">Step 2: Explore the Transformation</a></li><li><a href="#8">Step 3: Compare the 'fill', 'replicate', and 'bound' Pad Methods</a></li><li><a href="#12">Step 4: Exercise the 'circular' and 'symmetric' Pad Methods</a></li></ul></div><h2>Step 1: Transform an Image Using Simple Shear<a name="1"></a></h2><p>In two dimensions, a simple shear transformation that maps a pair of input coordinates <tt>[u v]</tt> to a pair of output coordinates <tt>[x y]</tt> has the form</p><p><img src="ipexshear_eq66717.png" alt="$$x = u + a * v$$"></p><p><img src="ipexshear_eq75711.png" alt="$$y = v$$"></p><p>where <tt>a</tt> is a constant.</p><p>Any simple shear is a special case of an affine transformation. You can easily verify that</p><p><img src="ipexshear_eq55900.png" alt="$$[\begin{array}{c c}x\ y\ 1\end{array}] = [\begin{array}{c c}u\ v\ 1\end{array}] * \left[\begin{array}{c c c}1\;0\;0\\a\;1\;0\\0\;0\;1\end{array}\right]$$"></p><p>yields the values for <tt>x</tt> and <tt>y</tt> that you received from the first two equations.</p><p>Setting <tt>a</tt> = 0.45, we construct an affine <tt>tform</tt> struct using <tt>maketform</tt>.</p><pre class="codeinput">a = 0.45;
+T = maketform(<span class="string">'affine'</span>, [1 0 0; a 1 0; 0 0 1] );
+</pre><p>We select, read, and view and image to transform.</p><pre class="codeinput">A = imread(<span class="string">'football.jpg'</span>);
+h1 = figure; imshow(A); title(<span class="string">'Original Image'</span>);
+</pre><img vspace="5" hspace="5" src="ipexshear_01.png" alt=""> <p>We choose a shade of orange as our fill value.</p><pre class="codeinput">orange = [255 127 0]';
+</pre><p>We are ready to use <tt>T</tt> to transform <tt>A</tt>. We could call <tt>imtransform</tt> as follows:</p><p>B = imtransform(A,T,'cubic','FillValues',orange);</p><p>but this is wasteful since we would apply cubic interpolation along both columns and rows. (With our pure shear transform, we really only need to interpolate along each row.) Instead, we create and use a resampler that applies cubic interpolation along the rows but simply uses nearest neighbor interpolation along the columns, then call <tt>imtransform</tt> and display the result.</p><pre class="codeinput">R = makeresampler({<span class="string">'cubic'</span>,<span class="string">'nearest'</span>},<span class="string">'fill'</span>);
+B = imtransform(A,T,R,<span class="string">'FillValues'</span>,orange);
+h2 = figure; imshow(B);
+title(<span class="string">'Sheared Image'</span>);
+</pre><img vspace="5" hspace="5" src="ipexshear_02.png" alt=""> <h2>Step 2: Explore the Transformation<a name="6"></a></h2><p>Transforming a grid of straight lines or an array of circles with <tt>tformfwd</tt> is a good way to understand a transformation (as long as it has both forward and inverse functions).</p><p>Define a grid of lines covering the original image, and display it over the image  Then use <tt>tformfwd</tt> to apply the pure shear to each line in the grid, and display the result over the sheared image.</p><pre class="codeinput">[U,V] = meshgrid(0:64:320,0:64:256);
+[X,Y] = tformfwd(T,U,V);
+gray = 0.65 * [1 1 1];
+
+figure(h1);
+hold <span class="string">on</span>;
+line(U, V, <span class="string">'Color'</span>,gray);
+line(U',V',<span class="string">'Color'</span>,gray);
+
+figure(h2);
+hold <span class="string">on</span>;
+line(X, Y, <span class="string">'Color'</span>,gray);
+line(X',Y',<span class="string">'Color'</span>,gray);
+</pre><img vspace="5" hspace="5" src="ipexshear_03.png" alt=""> <img vspace="5" hspace="5" src="ipexshear_04.png" alt=""> <p>You can do the same thing with an array of circles.</p><pre class="codeinput">gray = 0.65 * [1 1 1];
+<span class="keyword">for</span> u = 0:64:320
+    <span class="keyword">for</span> v = 0:64:256
+        theta = (0 : 32)' * (2 * pi / 32);
+        uc = u + 20*cos(theta);
+        vc = v + 20*sin(theta);
+        [xc,yc] = tformfwd(T,uc,vc);
+        figure(h1); line(uc,vc,<span class="string">'Color'</span>,gray);
+        figure(h2); line(xc,yc,<span class="string">'Color'</span>,gray);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="ipexshear_05.png" alt=""> <img vspace="5" hspace="5" src="ipexshear_06.png" alt=""> <h2>Step 3: Compare the 'fill', 'replicate', and 'bound' Pad Methods<a name="8"></a></h2><p>When we applied the shear transformation, <tt>imtransform</tt> filled in the orange triangles to the left and right, where there was no data. That's because we specified a pad method of <tt>'fill'</tt> when calling <tt>makeresampler</tt>. There are a total of five different pad method choices (<tt>'fill'</tt>, <tt>'replicate'</tt>, <tt>'bound'</tt>, <tt>'circular'</tt>, and <tt>'symmetric'</tt>). Here we compare the first three.</p><p>First, to get a better look at how the <tt>'fill'</tt> option worked, use the <tt>'XData'</tt> and <tt>'YData'</tt> options in <tt>imtransform</tt> to force some additional space around the output image.</p><pre class="codeinput">R = makeresampler({<span class="string">'cubic'</span>,<span class="string">'nearest'</span>},<span class="string">'fill'</span>);
+
+Bf = imtransform(A,T,R,<span class="string">'XData'</span>,[-49 500],<span class="string">'YData'</span>,[-49 400],<span class="keyword">...</span>
+                 <span class="string">'FillValues'</span>,orange);
+
+figure, imshow(Bf);
+title(<span class="string">'Pad Method = ''fill'''</span>);
+</pre><img vspace="5" hspace="5" src="ipexshear_07.png" alt=""> <p>Now, try the <tt>'replicate'</tt> method (no need to specify fill values in this case).</p><pre class="codeinput">R = makeresampler({<span class="string">'cubic'</span>,<span class="string">'nearest'</span>},<span class="string">'replicate'</span>);
+Br = imtransform(A,T,R,<span class="string">'XData'</span>,[-49 500],<span class="string">'YData'</span>, [-49 400]);
+
+figure, imshow(Br);
+title(<span class="string">'Pad Method = ''replicate'''</span>);
+</pre><img vspace="5" hspace="5" src="ipexshear_08.png" alt=""> <p>And try the <tt>'bound'</tt> method.</p><pre class="codeinput">R = makeresampler({<span class="string">'cubic'</span>,<span class="string">'nearest'</span>}, <span class="string">'bound'</span>);
+Bb = imtransform(A,T,R,<span class="string">'XData'</span>,[-49 500],<span class="string">'YData'</span>,[-49 400],<span class="keyword">...</span>
+                 <span class="string">'FillValues'</span>,orange);
+figure, imshow(Bb);
+title(<span class="string">'Pad Method = ''bound'''</span>);
+</pre><img vspace="5" hspace="5" src="ipexshear_09.png" alt=""> <p>Results with <tt>'fill'</tt> and <tt>'bound'</tt> look very similar, but look closely and you'll see that the edges are smoother with <tt>'fill'</tt>. That's because the input image is padded with the fill values, then the cubic interpolation is applied across the edge, mixing fill and image values. In contrast, <tt>'bound'</tt> recognizes a strict boundary between the inside and outside of the input image. Points falling outside are filled. Points falling inside are interpolated, using replication when they're near the edge. A close up look helps show this more clearly. We choose <tt>XData</tt> and <tt>YData</tt> to bracket a point near the lower right corner of the image, in the output image space, the resize with <tt>'nearest'</tt> to preserve the appearance of the individual pixels.</p><pre class="codeinput">R = makeresampler({<span class="string">'cubic'</span>,<span class="string">'nearest'</span>},<span class="string">'fill'</span>);
+Cf = imtransform(A,T,R,<span class="string">'XData'</span>,[423 439],<span class="string">'YData'</span>,[245 260],<span class="keyword">...</span>
+                 <span class="string">'FillValues'</span>,orange);
+
+R = makeresampler({<span class="string">'cubic'</span>,<span class="string">'nearest'</span>},<span class="string">'bound'</span>);
+Cb = imtransform(A,T,R,<span class="string">'XData'</span>,[423 439],<span class="string">'YData'</span>,[245 260],<span class="keyword">...</span>
+                 <span class="string">'FillValues'</span>,orange);
+
+Cf = imresize(Cf,12,<span class="string">'nearest'</span>);
+Cb = imresize(Cb,12,<span class="string">'nearest'</span>);
+
+figure;
+subplot(1,2,1); imshow(Cf); title(<span class="string">'Pad Method = ''fill'''</span>);
+subplot(1,2,2); imshow(Cb); title(<span class="string">'Pad Method = ''bound'''</span>);
+</pre><img vspace="5" hspace="5" src="ipexshear_10.png" alt=""> <h2>Step 4: Exercise the 'circular' and 'symmetric' Pad Methods<a name="12"></a></h2><p>The remaining two pad methods are <tt>'circular'</tt> (circular repetition in each dimension) and <tt>'symmetric'</tt> (circular repetition of the image with an appended mirror image). To show more of the pattern that emerges, we redefine the transformation to cut the scale in half.</p><pre class="codeinput">Thalf = maketform(<span class="string">'affine'</span>,[1 0; a 1; 0 0]/2);
+
+R = makeresampler({<span class="string">'cubic'</span>,<span class="string">'nearest'</span>},<span class="string">'circular'</span>);
+Bc = imtransform(A,Thalf,R,<span class="string">'XData'</span>,[-49 500],<span class="string">'YData'</span>,[-49 400],<span class="keyword">...</span>
+                 <span class="string">'FillValues'</span>,orange);
+figure, imshow(Bc);
+title(<span class="string">'Pad Method = ''circular'''</span>);
+</pre><img vspace="5" hspace="5" src="ipexshear_11.png" alt=""> <pre class="codeinput">R = makeresampler({<span class="string">'cubic'</span>,<span class="string">'nearest'</span>},<span class="string">'symmetric'</span>);
+Bs = imtransform(A,Thalf,R,<span class="string">'XData'</span>,[-49 500],<span class="string">'YData'</span>,[-49 400],<span class="keyword">...</span>
+                 <span class="string">'FillValues'</span>,orange);
+figure, imshow(Bs);
+title(<span class="string">'Pad Method = ''symmetric'''</span>);
+</pre><img vspace="5" hspace="5" src="ipexshear_12.png" alt=""> <p class="footer">Copyright 1993-2006 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Padding and Shearing an Image Simultaneously
+% In this demonstration, we construct a |tform| struct that represents a
+% simple shear transformation, then apply it to an image. We explore how
+% the transformation affects straight lines and circles, and then use it as
+% a vehicle to explore the various options for image padding that can be
+% used with |imtransform| and |tformarray|. 
+%
+% Copyright 1993-2006 The MathWorks, Inc.
+% $Revision: 1.4.4.4 $ $Date: 2006/05/24 03:33:01 $
+
+%% Step 1: Transform an Image Using Simple Shear 
+% In two dimensions, a simple shear transformation that maps a pair of
+% input coordinates |[u v]| to a pair of output coordinates |[x y]| has the form
+% 
+% $$x = u + a * v$$
+% 
+% 
+% $$y = v$$
+% 
+%
+% where |a| is a constant.
+%
+% Any simple shear is a special case of an affine transformation. You can
+% easily verify that
+% 
+% $$[\begin{array}{c c}x\ y\ 1\end{array}] = [\begin{array}{c c}u\ v\ 1\end{array}] * \left[\begin{array}{c c c}1\;0\;0\\a\;1\;0\\0\;0\;1\end{array}\right]$$
+% 
+% yields the values for |x| and |y| that you received from the first two equations.
+
+%%
+% Setting |a| = 0.45, we construct an affine |tform| struct using
+% |maketform|.
+
+a = 0.45;
+T = maketform('affine', [1 0 0; a 1 0; 0 0 1] );
+
+%%
+% We select, read, and view and image to transform.
+
+A = imread('football.jpg');
+h1 = figure; imshow(A); title('Original Image');
+
+%%
+% We choose a shade of orange as our fill value.
+
+orange = [255 127 0]';
+
+%%
+% We are ready to use |T| to transform |A|. We could call |imtransform| as follows:
+%
+% B = imtransform(A,T,'cubic','FillValues',orange);
+%
+% but this is wasteful since we would apply cubic interpolation along both
+% columns and rows. (With our pure shear transform, we really only need to
+% interpolate along each row.) Instead, we create and use a resampler that
+% applies cubic interpolation along the rows but simply uses nearest
+% neighbor interpolation along the columns, then call |imtransform| and display the result.
+
+R = makeresampler({'cubic','nearest'},'fill');
+B = imtransform(A,T,R,'FillValues',orange);
+h2 = figure; imshow(B);
+title('Sheared Image');
+
+%% Step 2: Explore the Transformation
+% Transforming a grid of straight lines or an array of circles with
+% |tformfwd| is a good way to understand a transformation (as long as it has
+% both forward and inverse functions).
+%
+% Define a grid of lines covering the original image, and
+% display it over the image  Then use |tformfwd| to apply the pure shear to
+% each line in the grid, and display the result over the sheared image.
+
+[U,V] = meshgrid(0:64:320,0:64:256);
+[X,Y] = tformfwd(T,U,V);
+gray = 0.65 * [1 1 1];
+
+figure(h1);
+hold on;
+line(U, V, 'Color',gray);
+line(U',V','Color',gray);
+
+figure(h2);
+hold on;
+line(X, Y, 'Color',gray);
+line(X',Y','Color',gray);
+
+%%
+% You can do the same thing with an array of circles. 
+
+gray = 0.65 * [1 1 1];
+for u = 0:64:320
+    for v = 0:64:256
+        theta = (0 : 32)' * (2 * pi / 32);
+        uc = u + 20*cos(theta);
+        vc = v + 20*sin(theta);
+        [xc,yc] = tformfwd(T,uc,vc);
+        figure(h1); line(uc,vc,'Color',gray);
+        figure(h2); line(xc,yc,'Color',gray);
+    end
+end
+
+%% Step 3: Compare the 'fill', 'replicate', and 'bound' Pad Methods
+% When we applied the shear transformation, |imtransform| filled in the
+% orange triangles to the left and right, where there was no data. That's
+% because we specified a pad method of |'fill'| when calling |makeresampler|.
+% There are a total of five different pad method choices (|'fill'|,
+% |'replicate'|, |'bound'|, |'circular'|, and |'symmetric'|). Here we compare the first three.
+%
+% First, to get a better look at how the |'fill'| option worked, use the
+% |'XData'| and |'YData'| options in |imtransform| to force some additional space
+% around the output image.
+
+R = makeresampler({'cubic','nearest'},'fill');
+
+Bf = imtransform(A,T,R,'XData',[-49 500],'YData',[-49 400],...
+                 'FillValues',orange);
+
+figure, imshow(Bf);
+title('Pad Method = ''fill''');
+
+%%
+% Now, try the |'replicate'| method (no need to specify fill values in this
+% case).
+
+R = makeresampler({'cubic','nearest'},'replicate');
+Br = imtransform(A,T,R,'XData',[-49 500],'YData', [-49 400]);
+
+figure, imshow(Br);
+title('Pad Method = ''replicate''');
+
+%%
+% And try the |'bound'| method.
+
+R = makeresampler({'cubic','nearest'}, 'bound');
+Bb = imtransform(A,T,R,'XData',[-49 500],'YData',[-49 400],...
+                 'FillValues',orange);
+figure, imshow(Bb);
+title('Pad Method = ''bound''');
+
+%%
+% Results with |'fill'| and |'bound'| look very similar, but look closely and
+% you'll see that the edges are smoother with |'fill'|. That's because the
+% input image is padded with the fill values, then the cubic interpolation
+% is applied across the edge, mixing fill and image values. In contrast,
+% |'bound'| recognizes a strict boundary between the inside and outside of
+% the input image. Points falling outside are filled. Points falling inside
+% are interpolated, using replication when they're near the edge. A close
+% up look helps show this more clearly. We choose |XData| and |YData| to
+% bracket a point near the lower right corner of the image, in the output
+% image space, the resize with |'nearest'| to preserve the appearance of
+% the individual pixels.
+
+R = makeresampler({'cubic','nearest'},'fill');
+Cf = imtransform(A,T,R,'XData',[423 439],'YData',[245 260],...
+                 'FillValues',orange);
+
+R = makeresampler({'cubic','nearest'},'bound');
+Cb = imtransform(A,T,R,'XData',[423 439],'YData',[245 260],...
+                 'FillValues',orange);
+
+Cf = imresize(Cf,12,'nearest');
+Cb = imresize(Cb,12,'nearest');
+
+figure;
+subplot(1,2,1); imshow(Cf); title('Pad Method = ''fill''');
+subplot(1,2,2); imshow(Cb); title('Pad Method = ''bound''');
+
+%% Step 4: Exercise the 'circular' and 'symmetric' Pad Methods
+% The remaining two pad methods are |'circular'| (circular repetition in each
+% dimension) and |'symmetric'| (circular repetition of the image with an
+% appended mirror image). To show more of the pattern that emerges, we
+% redefine the transformation to cut the scale in half.
+
+Thalf = maketform('affine',[1 0; a 1; 0 0]/2);
+
+R = makeresampler({'cubic','nearest'},'circular');
+Bc = imtransform(A,Thalf,R,'XData',[-49 500],'YData',[-49 400],...
+                 'FillValues',orange);
+figure, imshow(Bc);
+title('Pad Method = ''circular''');
+
+%%
+
+R = makeresampler({'cubic','nearest'},'symmetric');
+Bs = imtransform(A,Thalf,R,'XData',[-49 500],'YData',[-49 400],...
+                 'FillValues',orange);
+figure, imshow(Bs);
+title('Pad Method = ''symmetric''');
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

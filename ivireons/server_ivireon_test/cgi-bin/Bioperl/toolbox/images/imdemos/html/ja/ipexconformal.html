@@ -1,0 +1,133 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   <!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>等角写像の調査</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipexconformal.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexconformal">エディターで ipexconformal.m を開く</a></div><div class="right"><a href="matlab:echodemo ipexconformal">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>等角写像の調査</h1><!--introduction--><p>幾何学的なイメージ変換は、流体問題において重要な等角写像の理解に役立ちます。また、写像自体、対象となる特別な効果に対して、イメージを変換するために使用することができます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">手順 1: 等角変換の選択</a></li><li><a href="#2">手順 2: 等角変換を使用したイメージの歪み</a></li><li><a href="#8">手順 3: フォワード変換の構築</a></li><li><a href="#11">手順 4: グリッド ラインを使用したマッピングの調査</a></li><li><a href="#13">手順 5: 円群を使用したマッピングの調査</a></li><li><a href="#15">手順 6: イメージを使用したマッピングの調査</a></li><li><a href="#18">手順 7: 出力イメージの部分のマスクによる特別な効果の取得</a></li><li><a href="#21">手順 8: 異なるイメージへの影響の繰り返し</a></li></ul></div><h2>手順 1: 等角変換の選択<a name="1"></a></h2><p>等角変換、つまりマッピングには、多数の重要なプロパティと使用法があります。  イメージ変換に関連するプロパティの 1 つに、ローカル形状の維持があります (孤立点での維持を除く場合もあります)。</p><p>このデモでは、2 次元等角変換を使用してイメージを歪めます。  出力から入力へのマッピングである <tt>g: R^2 -&gt; R^2</tt> は、複雑な解析的関数 <tt>G: C -&gt; C</tt> で定義されます。ここで、</p><pre>  G(z) = (z + 1/z) / 2 です。</pre><p>以下では、<tt>R^2</tt> (Euclidean 平面) の各点 <tt>(x,y)</tt> と、<tt>C</tt> (複素平面) の点 <tt>z = x + i*y</tt> の間の直接対応により <tt>g</tt> を定義します。</p><pre>  g(x,y) = (Re(w),Im(w)) = (u,v)</pre><p>ここで、</p><pre>  w = u + i*v = G(x + i*y) です。</pre><p>流体力学では、この等角写像が重要です。これは、円板 (または、3 番目の次元を追加する場合は円筒) の周りの流線を直線に変換するためです  (『Introduction to Applied Mathematics』、Strang, Gilbert 著、マサチューセッツ州ウェルズリー Wellesley-Cambridge Press 発行、1986 の 340～341 ページを参照してください)。</p><p>複素変数の値に関する注記： <tt>x</tt> および <tt>y</tt> について <tt>g</tt> の定義を直接表すことができますが、元となる変換の簡潔さがあいまいになります。  この欠点は、以下の手順 3 にも現れます。  そこで、実数変数を単純に挿入する場合、ただ単に 2 次の公式を適用するのではなく、連立非線形方程式の組を解く必要があります。</p><h2>手順 2: 等角変換を使用したイメージの歪み<a name="2"></a></h2><p>開始するには、ピーマンのイメージを読み込み、300&times;500 のサブイメージを抽出して、そのイメージを表示します。</p><pre class="codeinput"> A = imread(<span class="string">'peppers.png'</span>);
+ A = A(31:330,1:500,:);
+ figure, imshow(A)
+ title(<span class="string">'Original Image'</span>,<span class="string">'FontSize'</span>,14)
+</pre><img vspace="5" hspace="5" src="../ipexconformal_01.png" alt=""> <p>次に、<tt>maketform</tt> を使用して、関数 <tt>conformalInverse</tt> へのハンドルをその <tt>INVERSE_FCN</tt> 引数として持つカスタムの <tt>tform</tt> 構造体を作成します。</p><pre class="codeinput">conformal = maketform(<span class="string">'custom'</span>, 2, 2, [], @conformalInverse, []);
+</pre><p><tt>conformalInverse</tt> を表示する場合は、以下のようになります。</p><pre class="codeinput">type <span class="string">conformalInverse.m</span>
+</pre><pre class="codeoutput">
+function U = conformalInverse(X, t)
+% conformalInverse Inverse conformal transformation.
+%
+% Supports conformal transformation demo, ipexconformal.m
+% (&quot;Exploring a Conformal Mapping&quot;).
+
+% Copyright 2005-2009 The MathWorks, Inc. 
+% $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:50 $
+
+Z = complex(X(:,1),X(:,2));
+W = (Z + 1./Z)/2;
+U(:,2) = imag(W);
+U(:,1) = real(W);
+
+</pre><p>水平および垂直の範囲は、元のイメージと変換されたイメージを入出力の複素平面にマッピングする場合に必要です。<tt>uData</tt> および <tt>vData</tt> の割合が、元のイメージの高さ幅比 (3/5) に一致することに注意してください。</p><pre class="codeinput">uData = [ -1.25   1.25];  <span class="comment">% Bounds for REAL(w)</span>
+vData = [  0.75  -0.75];  <span class="comment">% Bounds for IMAG(w)</span>
+xData = [ -2.4    2.4 ];  <span class="comment">% Bounds for REAL(z)</span>
+yData = [  2.0   -2.0 ];  <span class="comment">% Bounds for IMAG(z)</span>
+</pre><p><tt>SIZE</tt> パラメーターを使用して <tt>imtransform</tt> を適用し、縦横比が <tt>xData</tt> および <tt>yData</tt> の割合 (6/5) と一致することを確認し、その結果を表示します。</p><pre class="codeinput">B = imtransform( A, conformal, <span class="string">'cubic'</span>, <span class="keyword">...</span>
+                <span class="string">'UData'</span>, uData,<span class="string">'VData'</span>, vData,<span class="keyword">...</span>
+                <span class="string">'XData'</span>, xData,<span class="string">'YData'</span>, yData,<span class="keyword">...</span>
+                <span class="string">'Size'</span>, [300 360], <span class="string">'FillValues'</span>, 255 );
+figure, imshow(B)
+title(<span class="string">'Transformed Image'</span>,<span class="string">'FontSize'</span>,14)
+</pre><img vspace="5" hspace="5" src="../ipexconformal_02.png" alt=""> <p>元のイメージと変換されたイメージを比較します。エッジがカーブしていることを除き、イメージの外側の境界は変換によって維持されます。元のイメージの各特徴は変換されたイメージに 2 回現れることに注意してください (各種のピーマンを見てください)。また、変換されたイメージの中央に穴があります。この穴のエッジの周りには 4 つの規則的な先端があります。</p><p>実際は、入力 w 平面のすべての点は、出力 <tt>z</tt> 平面の 2 つの点 (それぞれ単位円の内側と外側の点) にマッピングされます。単位円の内側のコピーは、外側のコピーよりかなり小さくなります。中心の穴の周りの先端は、単位円の内側にマッピングされた 4 つのイメージ コーナーの単なるコピーです。</p><h2>手順 3:フォワード変換の構築<a name="8"></a></h2><p><tt>maketform</tt> で作成された変換にフォワード関数がある場合、<tt>tformfwd</tt> を通常の幾何学的オブジェクト (特に、長方形グリッドおよび円の一様配列) に適用し、変換に関する詳細な洞察を得ることができます。この例では、<tt>G</tt> が 2 つの出力点を各入力点にマッピングするので、一意のフォワード変換はありません。ただし、注意して 2 つのフォワード関数を使用すれば続行できます。</p><p><tt>w = (z + 1/z)/2</tt> とし、2 次方程式を解くと、結果は以下のようになります。</p><pre> z^2 + 2*w*z + 1 = 0</pre><p>以下のことがわかります。</p><pre> z = w +/- sqrt{(w^2 - 1)</pre><p>正および負の平方根により、2 つの別個のフォワード変換が導かれます。<tt>maketform</tt> と、関数 <tt>conformalForward1</tt> へのハンドルを使用して 1 つ目の変換を作成します。</p><pre class="codeinput">t1 = maketform(<span class="string">'custom'</span>, 2, 2, @conformalForward1, [], []);
+</pre><p><tt>conformalForward1</tt> を表示する場合は、以下のようになります。</p><pre class="codeinput">type <span class="string">conformalForward1.m</span>
+</pre><pre class="codeoutput">
+function X = conformalForward1(U, t)
+% conformalForward1 Forward transformation with positive square root.
+%
+% Supports conformal transformation demo, ipexconformal.m
+% (&quot;Exploring a Conformal Mapping&quot;).
+
+% Copyright 2005-2009 The MathWorks, Inc. 
+% $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:50 $
+
+W = complex(U(:,1),U(:,2));
+Z = W + sqrt(W.^2 - 1);
+X(:,2) = imag(Z);
+X(:,1) = real(Z);
+
+</pre><p>符号変化を除き <tt>conformalForward1</tt> とほとんど同じ別の関数で、2 つ目の変換を作成します。</p><pre class="codeinput">t2 = maketform(<span class="string">'custom'</span>, 2, 2, @conformalForward2, [], []);
+
+type <span class="string">conformalForward2.m</span>
+</pre><pre class="codeoutput">
+function X = conformalForward2(U, t)
+% conformalForward2 Forward transformation with negative square root.
+%
+% Supports conformal transformation demo, ipexconformal.m
+% (&quot;Exploring a Conformal Mapping&quot;).
+
+% Copyright 2005-2009 The MathWorks, Inc. 
+% $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:50 $
+
+W = complex(U(:,1),U(:,2));
+Z = W - sqrt(W.^2 - 1);
+X(:,2) = imag(Z);
+X(:,1) = real(Z);
+
+</pre><h2>手順 4:グリッド ラインを使用したマッピングの調査<a name="11"></a></h2><p>imdemos ディレクトリに存在する他の関数を使用して、2 つのフォワード変換により、線のグリッドのマッピングを示すことができます。</p><pre class="codeinput">f3 = figure(<span class="string">'Name'</span>,<span class="string">'Conformal Transformation:Grid Lines'</span>);
+axIn  = conformalSetupInputAxes( subplot(1,2,1));
+axOut = conformalSetupOutputAxes(subplot(1,2,2));
+conformalShowLines(axIn, axOut, t1, t2)
+
+<span class="comment">% Reduce wasted vertical space in figure</span>
+set(f3,<span class="string">'Position'</span>,[1 1 1 0.7].*get(f3,<span class="string">'Position'</span>))
+</pre><img vspace="5" hspace="5" src="../ipexconformal_03.png" alt=""> <p>変換の前後に、グリッド ラインが入力面の象限に従って色分けされていることがわかります。その色も出力面に変換されたグリッドに従います。象限は、単位円の外側の領域と単位円の内側の領域にそれぞれ変わることに注意してください。グリッド ライン間の直角交点は、実数軸上の +1 および -1 の点を除き、変換時に維持されます (等角マッピングの形状維持プロパティの証拠)。</p><h2>手順 5:円群を使用したマッピングの調査<a name="13"></a></h2><p>等角変換では、小さな円はほとんど円状のまま残り、位置とサイズのみが変わります。ここでは、再度 2 つのフォワード変換を適用することで、均一なサイズの円の規則的配列をマッピングします。</p><pre class="codeinput">f4 = figure(<span class="string">'Name'</span>,<span class="string">'Conformal Transformation:Circles'</span>);
+axIn  = conformalSetupInputAxes( subplot(1,2,1));
+axOut = conformalSetupOutputAxes(subplot(1,2,2));
+conformalShowCircles(axIn, axOut, t1, t2)
+
+<span class="comment">% Reduce wasted vertical space in figure</span>
+set(f4,<span class="string">'Position'</span>,[1 1 1 0.7].*get(f4,<span class="string">'Position'</span>))
+</pre><img vspace="5" hspace="5" src="../ipexconformal_04.png" alt=""> <p>接触が維持されているサークル パッキングへの変換がわかります。この例での色分けは、<tt>w^2 - 1</tt> の正 (緑) または負 (青) の平方根の使用を示します。円は大幅に変わりますが、円のまま残ることに注意してください (再度の形状維持)。</p><h2>手順 6:イメージを使用したマッピングの調査<a name="15"></a></h2><p>等角写像を詳細に調査するには、入力イメージおよび変換されたイメージを、前の例で使用した軸の組みに配置し、カーブのセットを重ね合わせます。</p><p>最初に、半透明に描画された入力イメージを、実数軸に沿った黒い楕円と赤い線と共に、等角写像の入力軸上に表示します。</p><pre class="codeinput">figure
+axIn = conformalSetupInputAxes(axes);
+conformalShowInput(axIn, A, uData, vData)
+title(<span class="string">'Original Image Superposed on Input Plane'</span>,<span class="string">'FontSize'</span>,14)
+</pre><img vspace="5" hspace="5" src="../ipexconformal_05.png" alt=""> <p>次に、出力イメージを、2 つの黒い円と 1 つの赤い円と共に、等角写像の出力軸上に表示します。ここでも、イメージが半透明になります。</p><pre class="codeinput">figure
+axOut = conformalSetupOutputAxes(axes);
+conformalShowOutput(axOut, B, xData, yData)
+title(<span class="string">'Transformed Image Superposed on Output Plane'</span>,<span class="string">'FontSize'</span>,14)
+</pre><img vspace="5" hspace="5" src="../ipexconformal_06.png" alt=""> <p>MATLAB&reg; グラフィックスを使用すると、元のイメージと変換されたイメージをシフトしてスケーリングし、入力 (<tt>w</tt>) および出力 (<tt>z</tt>) 平面上にそれぞれ簡単に重ね合わせることができます。半透明を使用すると、楕円、線、および円を参照しやすくなります。w 平面内の楕円は、水平軸上の 5/4 および -5/4 と、垂直軸上の 3/4 および -3/4 に切片があります。<tt>G</tt> は、この楕円の原点を中心とする 2 つの円 (半径 2 の円と半径 1/2 の円) をマッピングします。さらに、赤で示したように、<tt>G</tt> は単位円を実数軸上の区間 [-1 1] にマッピングします。</p><h2>手順 7:出力イメージの部分のマスクによる特別な効果の取得<a name="18"></a></h2><p>カスタムの <tt>tform</tt> 構造体内の逆変換関数が、与えられた出力イメージ位置について <tt>NaN</tt> が埋め込まれたベクトルを返す場合、関数 <tt>imtransform</tt> (および <tt>tformarray</tt>) は、該当の位置に指定された埋め込み値を割り当てます。この手順では、手順 1 を繰り返しますが、この機能を利用するよう逆変換関数を若干変更します。</p><pre class="codeinput">type <span class="string">conformalInverseClip.m</span>
+</pre><pre class="codeoutput">
+function U = conformalInverseClip( X, t )
+% conformalInverseClip Inverse conformal transformation with clipping.
+%
+% This is a modification of conformalInverse in which points in X
+% inside the circle of radius 1/2 or outside the circle of radius 2 map to
+% NaN + i*NaN.
+%
+% Supports conformal transformation demo, ipexconformal.m
+% (&quot;Exploring a Conformal Mapping&quot;).
+
+% Copyright 2000-2009 The MathWorks, Inc. 
+% $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:50 $
+
+Z = complex(X(:,1),X(:,2));
+W = (Z + 1./Z)/2;
+q = 0.5 &lt;= abs(Z) &amp; abs(Z) &lt;= 2;
+W(~q) = complex(NaN,NaN);
+U(:,2) = imag(W);
+U(:,1) = real(W);
+
+</pre><p>これは、以下に示す 2 行を追加したことを除き、手順 2 で定義した関数と同じです。</p><pre>q = 0.5 &lt;= abs(Z) &amp; abs(Z) &lt;= 2;
+W(~q) = complex(NaN,NaN);</pre><p>これにより、逆変換によって、原点に中心があり radii が 1/2 および 2 である 2 つの円の間にない点で <tt>NaN</tt> が返されます。この結果、指定の埋め込み値を持つ出力イメージの該当部分をマスクすることになります。</p><pre class="codeinput">ring = maketform(<span class="string">'custom'</span>, 2, 2, [], @conformalInverseClip, []);
+Bring = imtransform( A, ring, <span class="string">'cubic'</span>,<span class="keyword">...</span>
+                    <span class="string">'UData'</span>, uData,  <span class="string">'VData'</span>, vData,<span class="keyword">...</span>
+                    <span class="string">'XData'</span>, [-2 2], <span class="string">'YData'</span>, yData,<span class="keyword">...</span>
+                    <span class="string">'Size'</span>, [400 400], <span class="string">'FillValues'</span>, 255 );
+figure, imshow(Bring)
+title(<span class="string">'Transformed Image With Masking'</span>,<span class="string">'FontSize'</span>,14);
+</pre><img vspace="5" hspace="5" src="../ipexconformal_07.png" alt=""> <p>結果は、リング効果を生成するために外側のコーナーと内側の先端がマスクされていることを除き、最初の変換と同じになります。</p><h2>手順 8:異なるイメージへの影響の繰り返し<a name="21"></a></h2><p>&quot;リング&quot; 変換を冬の緑 (ヘムロックおよびエルダー ベリー) のイメージに適用することで、美的な特殊効果が得られます。</p><p>既に 3/5 の高さ幅比を持っているイメージ <tt>greens.jpg</tt> を読み込んで表示します。</p><pre class="codeinput">C = imread(<span class="string">'greens.jpg'</span>);
+figure, imshow(C)
+title(<span class="string">'Winter Greens Image'</span>,<span class="string">'FontSize'</span>,14);
+</pre><img vspace="5" hspace="5" src="../ipexconformal_08.png" alt=""> <p>イメージを変換し、結果を表示します。このとき、四角形の出力イメージを作成します。</p><pre class="codeinput">D = imtransform( C, ring, <span class="string">'cubic'</span>,<span class="keyword">...</span>
+                 <span class="string">'UData'</span>, uData, <span class="string">'VData'</span>, vData,<span class="keyword">...</span>
+                 <span class="string">'XData'</span>, [-2 2], <span class="string">'YData'</span>, [-2 2],<span class="keyword">...</span>
+                 <span class="string">'Size'</span>, [400 400], <span class="string">'FillValues'</span>, 255 );
+figure, imshow(D)
+title(<span class="string">'Transformed and Masked Winter Greens Image'</span>,<span class="string">'FontSize'</span>,14);
+</pre><img vspace="5" hspace="5" src="../ipexconformal_09.png" alt=""> <p>出力イメージ内のオブジェクトのローカル形状は維持されることに注意してください。エルダー ベリーは丸いままです。</p><p class="footer">Copyright 2000-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Exploring a Conformal Mapping % % Geometric image transformations are useful in understanding a conformal % mapping that is important in fluid-flow problems, and the mapping itself % can be used to transform imagery for an interesting special effect.  % Copyright 2000-2009 The MathWorks, Inc.  % $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:50 $  %% Step 1: Select a Conformal Transformation % % Conformal transformations, or mappings, have many important properties % and uses.  One property relevant to image transformation is the % preservation of local shape (except sometimes at isolated points). % % This demo uses a 2-D conformal transformation to warp an image.  The % mapping from output to input, |g: R^2 -> R^2|, is defined in terms of a % complex analytic function |G: C -> C|, where % %    G(z) = (z + 1/z) / 2. % % We define |g| via a direct correspondence between each point |(x,y)| in % |R^2| (the Euclidean plane) and the point |z = x + i*y| in |C| (the % complex plane), % %    g(x,y) = (Re(w),Im(w)) = (u,v) % % where % %    w = u + i*v = G(x + i*y). % % This conformal mapping is important in fluid mechanics because it % transforms lines of flow around a circular disk (or cylinder, if we add a % third dimension) to straight lines. (See pp. 340-341 in Strang, Gilbert, % Introduction to Applied Mathematics, Wellesley-Cambridge Press, % Wellesley, MA, 1986.) %  % A note on the value of complex variables: although we could express the % definition of |g| directly in terms of |x| and |y|, that would obscure % the underlying simplicity of the transformation.  This disadvantage would % come back to haunt us in Step 3 below.  There, if we worked purely in % real variables, we would need to solve a pair of simultaneous nonlinear % equations instead of merely applying the quadratic formula!  %% Step 2: Warp an Image Using the Conformal Transformation  % % We start by loading the peppers image, extracting a 300-by-500 subimage, % and displaying it.   A = imread('peppers.png');  A = A(31:330,1:500,:);  figure, imshow(A)  title('Original Image','FontSize',14)    %% % Then use |maketform| to make a custom |tform| struct with a handle to % function |conformalInverse| as its |INVERSE_FCN| argument:  conformal = maketform('custom', 2, 2, [], @conformalInverse, []);  %% % To view |conformalInverse| use:  type conformalInverse.m  %% % Horizontal and vertical bounds are needed for mapping the original and % transformed images to the input and output complex planes. Note that the % proportions in |uData| and |vData| match the height-to-width ratio of the % original image (3/5).  uData = [ -1.25   1.25];  % Bounds for REAL(w) vData = [  0.75  -0.75];  % Bounds for IMAG(w) xData = [ -2.4    2.4 ];  % Bounds for REAL(z) yData = [  2.0   -2.0 ];  % Bounds for IMAG(z)  %% % We apply |imtransform| using the |SIZE| parameter to ensure an aspect % ratio that matches the proportions in |xData| and |yData| (6/5), and view % the result.  B = imtransform( A, conformal, 'cubic', ...                 'UData', uData,'VData', vData,...                 'XData', xData,'YData', yData,...                 'Size', [300 360], 'FillValues', 255 ); figure, imshow(B) title('Transformed Image','FontSize',14)  %% % Compare the original and transformed images. Except that the edges are % now curved, the outer boundary of the image is preserved by the % transformation. Note that each feature from the original image appears % twice in the transformed image (look at the various peppers). And there % is a hole in the middle of the transformed image with four regular cusps % around its edges. % % In fact, every point in the input w-plane is mapped to two points in the % output |z|-plane, one inside the unit circle and one outside. The copies % inside the unit circle are much smaller than those outside. It's clear % that the cusps around the central hole are just the copies of the four % image corners that mapped inside the unit circle.  %% Step 3: Construct Forward Transformations % % If the transformation created with |maketform| has a forward function, % then we can apply |tformfwd| to regular geometric objects (in particular, % to rectangular grids and uniform arrays of circles) to obtain further % insight into the transformation. In this example, because |G| maps two % output points to each input point, there is no unique forward % transformation. But we can proceed if we are careful and work with two % different forward functions. % % Letting |w = (z + 1/z)/2| and solving the quadratic equation that % results, %  %   z^2 + 2*w*z + 1 = 0, %  % we find that %  %   z = w +/- sqrt{(w^2 - 1). %  % The positive and the negative square roots lead to two separate forward % transformations. We construct the first using |maketform| and a handle to % the function, |conformalForward1|.  t1 = maketform('custom', 2, 2, @conformalForward1, [], []);  %% % To view |conformalForward1| use:  type conformalForward1.m  %% % We construct the second transformation with another function that is % identical to |conformalForward1| except for a sign change.  t2 = maketform('custom', 2, 2, @conformalForward2, [], []);  type conformalForward2.m  %% Step 4: Explore the Mapping Using Grid Lines % % With the two forward transformations, we can illustrate the mapping of a % grid of lines, using additional functions located in the directory imdemos  f3 = figure('Name','Conformal Transformation: Grid Lines'); axIn  = conformalSetupInputAxes( subplot(1,2,1)); axOut = conformalSetupOutputAxes(subplot(1,2,2)); conformalShowLines(axIn, axOut, t1, t2)  % Reduce wasted vertical space in figure set(f3,'Position',[1 1 1 0.7].*get(f3,'Position'))  %% % You can see that the grid lines are color-coded according to their % quadrants in the input plane before and after the transformations. The % colors also follow the transformed grids to the output planes. Note that % each quadrant transforms to a region outside the unit circle and to a % region inside the unit circle. The right-angle intersections between grid % lines are preserved under the transformation REPLACE_WITH_DASH_DASH evidence of the % shape-preserving property of conformal mappings REPLACE_WITH_DASH_DASH except for the points % at +1 and -1 on the real axis.   %% Step 5: Explore the Mapping Using Packed Circles % % Under a conformal transformation, small circles should remain nearly % circular, changing only in position and size.  Again applying the two % forward transformations, this time we map a regular array of % uniformly-sized circles.  f4 = figure('Name','Conformal Transformation: Circles'); axIn  = conformalSetupInputAxes( subplot(1,2,1)); axOut = conformalSetupOutputAxes(subplot(1,2,2)); conformalShowCircles(axIn, axOut, t1, t2)  % Reduce wasted vertical space in figure set(f4,'Position',[1 1 1 0.7].*get(f4,'Position'))  %% % You can see that the transform to a circle packing where tangencies have % been preserved.  In this example, the color coding indicates use of the % positive (green) or negative (blue) square root of |w^2 - 1|.  Note that % the circles change dramatically but that they remain circles % (shape-preservation, once again).  %% Step 6: Explore the Mapping Using Images % % To further explore the conformal mapping, we can place the input and % transformed images on the pair of axes used in the preceding examples and % superpose a set of curves as well. % % First we display the input image, rendered semi-transparently, over the % input axes of the conformal map, along with a black ellipse and a % red line along the real axis.  figure axIn = conformalSetupInputAxes(axes); conformalShowInput(axIn, A, uData, vData) title('Original Image Superposed on Input Plane','FontSize',14)  %% % Next we display the output image over the output axes of the conformal % map, along with two black circles and one red circle.  Again, the % image is semi-transparent.  figure axOut = conformalSetupOutputAxes(axes); conformalShowOutput(axOut, B, xData, yData) title('Transformed Image Superposed on Output Plane','FontSize',14)  %% % MATLAB(R) graphics made it easy to shift and scale the original and % transformed images to superpose  them on the input (|w-|) and output % (|z-|) planes, respectively. The use of semi-transparency makes it easier % to see the ellipse, line, and circles.  The ellipse in the w-plane has % intercepts at 5/4 and -5/4 on the horizontal axis and 3/4 and -3/4 on the % vertical axis.  |G| maps two circles centered on the origin to this % ellipse: the one with radius 2 and the one with radius 1/2. And, as shown % in red, |G| maps the unit circle to the interval [-1 1] on the real axis.  %% Step 7: Obtain a Special Effect by Masking Parts of the Output Image % % If the inverse transform function within a custom |tform| struct returns % a vector filled with |NaN| for a given output image location, then % |imtransform| (and also |tformarray|) assign the specified fill value at % that location. In this step we repeat Step 1, but modify our inverse % transformation function slightly to take advantage of this feature.  type conformalInverseClip.m  %% % This is the same as the function defined in Step 2, except for the two % additional lines: % %  q = 0.5 <= abs(Z) & abs(Z) <= 2; %  W(~q) = complex(NaN,NaN); % % which cause the inverse transformation to return |NaN| at any point not % between the two circles with radii of 1/2 and 2, centered on the origin. % The result is to mask that portion of the output image with the specified % fill value.  ring = maketform('custom', 2, 2, [], @conformalInverseClip, []); Bring = imtransform( A, ring, 'cubic',...                     'UData', uData,  'VData', vData,...                     'XData', [-2 2], 'YData', yData,...                     'Size', [400 400], 'FillValues', 255 ); figure, imshow(Bring) title('Transformed Image With Masking','FontSize',14);  %% % The result is identical to our initial transformation except that the % outer corners and inner cusps have been masked away to produce a ring % effect.  %% Step 8: Repeat the Effect on a Different Image % % Applying the "ring" transformation to an image of winter greens (hemlock % and alder berries) leads to an aesthetic special effect. % % Load the image |greens.jpg|, which already has a 3/5 height-to-width % ratio, and display it.  C = imread('greens.jpg'); figure, imshow(C) title('Winter Greens Image','FontSize',14);  %% % Transform the image and display the result, this time creating a square % output image.  D = imtransform( C, ring, 'cubic',...                  'UData', uData, 'VData', vData,...                  'XData', [-2 2], 'YData', [-2 2],...                  'Size', [400 400], 'FillValues', 255 ); figure, imshow(D) title('Transformed and Masked Winter Greens Image','FontSize',14);  %% % Notice that the local shapes of objects in the output image are % preserved.  The alder berries stayed round!   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,127 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>離散時間フィルター (DFILT) オブジェクトのご利用の前に</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="dfiltdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit dfiltdemo">エディターで dfiltdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo dfiltdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>離散時間フィルター (DFILT) オブジェクトのご利用の前に</h1><!--introduction--><p>DFILT オブジェクトを使用すると、直接型や 2 次セクション型、ラティス、状態空間を含むさまざまな構造の離散時間フィルターのシミュレーションと解析を行うことができます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">ヘルプ</a></li><li><a href="#2">離散時間フィルターの作成</a></li><li><a href="#9">フィルター係数の取得と設定</a></li><li><a href="#13">フィルター解析</a></li><li><a href="#20">DFILT オブジェクトを使ったフィルター処理</a></li><li><a href="#22">多段フィルター</a></li><li><a href="#24">周波数変換</a></li><li><a href="#25">Simulink&reg; モデルの生成</a></li></ul></div><h2>ヘルプ<a name="1"></a></h2><p>コマンド ウィンドウで &quot;help dfilt&quot; と入力すると、Signal Processing Toolbox™ でサポートされている構造と dfilt オブジェクトを操作するメソッドのリストが表示されます。サポートされている構造のリストに直接アクセスする場合は、&quot;help dfilt.structures&quot; と入力します。特定の構造またはメソッドの詳細を参照するには、&quot;help dfilt.&lt;structure&gt;&quot; または &quot;help dfilt/&lt;method&gt;&quot; と入力します。以下に例を示します。</p><pre class="codeinput">help <span class="string">dfilt/freqz</span>
+</pre><pre class="codeoutput"> FREQZ  Discrete-time filter frequency response.
+    [H,W] = FREQZ(Hd,N) returns the N-point complex frequency response
+    vector H and the N-point frequency vector W in radians/sample of the
+    discrete-time filter Hd.  The frequency response is evaluated at N
+    points equally spaced around the upper half of the unit circle. If N
+    isn't specified, it defaults to 8192.
+ 
+    FREQZ(Hd) with no output argument will launch FVTool in the Magnitude
+    and Phase Response.
+ 
+    [H,W] = FREQZ(Hd) returns a matrix H if Hd is a vector.  Each column of
+    the matrix corresponds to each filter in the vector.  If a row vector
+    of frequency points is specified, each row of the matrix corresponds to
+    each filter in the vector.
+ 
+    For additional parameters, see SIGNAL/FREQZ.
+ 
+    See also DFILT, SIGNAL/FREQZ, FVTOOL.
+
+</pre><h2>離散時間フィルターの作成<a name="2"></a></h2><p>DFILT オブジェクトを作成するには、使用する構造を選択する必要があります。たとえば、直接型 FIR または直接型対称 FIR として線形位相偶数次数 FIR フィルターを実装できます。</p><pre class="codeinput">b = fir1(50,.4);        <span class="comment">% 50th-order linear-phase FIR filter</span>
+h1 = dfilt.dffir(b);    <span class="comment">% Direct-form FIR implementation</span>
+h2 = dfilt.dfsymfir(b); <span class="comment">% Symmetric direct-form FIR implementation</span>
+</pre><p>通常は、明示的に DFILT フィルターを作成しません。代わりに、FDESIGN を使った設計の結果としてこれらのフィルターが得られます。</p><pre class="codeinput">f = fdesign.lowpass(<span class="string">'N,F3dB'</span>,5,.5);
+h = design(f,<span class="string">'butter'</span>);  <span class="comment">% 5th-order IIR filter</span>
+</pre><p>フィルター構造を変換するには、CONVERT メソッドを使用します。</p><pre class="codeinput">hdf1  = convert(h,<span class="string">'df1'</span>);  <span class="comment">% Direct-form I implementation</span>
+hdf1t = convert(h,<span class="string">'df1t'</span>); <span class="comment">% Transposed direct-form I implementation</span>
+hdf2  = convert(h,<span class="string">'df2'</span>);  <span class="comment">% Direct-form II implementation</span>
+hdf2t = convert(h,<span class="string">'df2t'</span>); <span class="comment">% Transposed direct-form II implementation</span>
+</pre><p>離散時間フィルターの情報は、info メソッドを呼び出して取得します。以下に例を示します。</p><pre class="codeinput">info(h1)
+</pre><pre class="codeoutput">Discrete-Time FIR Filter (real)    
+-------------------------------    
+Filter Structure  :Direct-Form FIR
+Filter Length     : 51             
+Stable            :Yes            
+Linear Phase      :Yes (Type 1)   
+</pre><p>Filter Design Toolbox™ がインストールされ、フィルターが FDESIGN で設計されている場合、オプションの文字列の引数 'long' が info() に渡され、設計メソッド、オプション、仕様、測定値、および実装コストを含むフィルターの詳細な情報を取得できます。</p><p>オブジェクトのコピーを作成するには、copy メソッドを使用します。以下に例を示します。</p><pre class="codeinput">hdf1_2 = copy(hdf1);
+</pre><p>構文 hdf1_2 = hdf1 を使用すると、オブジェクト ハンドルのみがコピーされ、新しいオブジェクトは作成されません。</p><h2>フィルター係数の取得と設定<a name="9"></a></h2><p>フィルターの係数を通常の MATLAB&reg; ベクトルとして処理するには、フィルターの係数を常にオブジェクトから取得します。既存の DFILT オブジェクトの係数を変更するには、新しい係数を設定します。</p><p>直接型 FIR 構造にのみ、分子係数があります。この係数は、フィルターの重みとしても知られています。</p><pre class="codeinput">h1
+</pre><pre class="codeoutput"> 
+h1 =
+ 
+     FilterStructure: 'Direct-Form FIR'
+          Arithmetic: 'double'         
+           Numerator: [1x51 double]    
+    PersistentMemory: false            
+                                       
+</pre><pre class="codeinput">b = get(h1,<span class="string">'Numerator'</span>);   <span class="comment">% Assign the coefficients to vector b</span>
+bnorm = b./max(b);         <span class="comment">% Manipulate the vector as usual</span>
+set(h1,<span class="string">'Numerator'</span>,bnorm); <span class="comment">% Set the modified coefficients</span>
+</pre><p>直接型 IIR 構造には分子係数と分母係数があります。</p><pre class="codeinput">hdf1
+</pre><pre class="codeoutput"> 
+hdf1 =
+ 
+     FilterStructure: 'Direct-Form I'
+          Arithmetic: 'double'       
+           Numerator: [1x6 double]   
+         Denominator: [1x6 double]   
+    PersistentMemory: false          
+                                     
+</pre><pre class="codeinput">num = get(hdf1,<span class="string">'Numerator'</span>);
+den = get(hdf1,<span class="string">'Denominator'</span>);
+</pre><h2>フィルター解析<a name="13"></a></h2><p>フィルター処理以外にも、DFILT オブジェクトに対してさまざまな解析を実行できます。分子ベクトルと分母ベクトルで動作する多くの解析関数は、DFILT オブジェクトで動作するようにオーバーロードされています。</p><pre class="codeinput">[H,w]  = freqz(hdf2t);   <span class="comment">% Frequency response</span>
+[Gd,w] = grpdelay(hdf1); <span class="comment">% Group-delay</span>
+[hi,n] = impz(h2);       <span class="comment">% Impulse response</span>
+</pre><p>ただし、プロットを生成する解析関数は、通常の MATLAB Figure の代わりに Filter Visualization Tool (FVTool) を使用してプロットするため、DFILT オブジェクトと共に使用するとさらに効果的です。</p><pre class="codeinput">hfvt = fvtool(hdf1t);
+set(hfvt, <span class="string">'Color'</span>, [1 1 1])
+</pre><img vspace="5" hspace="5" src="../dfiltdemo_01.png" alt=""> <p>FVTool では、さまざまなサンプリング周波数の設定 (軸の任意の場所を右クリック)、振幅、振幅の 2 乗、振幅 (dB)、またはゼロ位相応答の表示 (Y ラベルを右クリック)、および群遅延、極-零点プロットなどの異なる解析間の切り替え (ツールバーまたは [解析] メニューを使用) が可能です。これらのアクションの多くは、FVTool の API からも実行できます (詳細は、「FVTool の API を使用」のデモを参照してください)。以下に例を示します。</p><pre class="codeinput">set(hfvt, <span class="string">'MagnitudeDisplay'</span>, <span class="string">'Magnitude'</span>);
+</pre><img vspace="5" hspace="5" src="../dfiltdemo_02.png" alt=""> <pre class="codeinput">set(hfvt, <span class="string">'Analysis'</span>, <span class="string">'polezero'</span>);
+</pre><img vspace="5" hspace="5" src="../dfiltdemo_03.png" alt=""> <p>他の解析関数は、DFILT オブジェクトでのみ使用可能です。</p><pre class="codeinput">islinphase(h1) <span class="comment">% Checks for linear-phase</span>
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><pre class="codeinput">isstable(hdf1) <span class="comment">% Checks for stability</span>
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><pre class="codeinput">order(hdf2)    <span class="comment">% Returns filter order</span>
+</pre><pre class="codeoutput">
+ans =
+
+     5
+
+</pre><h2>DFILT オブジェクトを使ったフィルター処理<a name="20"></a></h2><p>フィルター処理は、選択した構造に対して実装されます。これは、常に直接型 II の転置構成を実装する通常の関数 FILTER(b,a,x) よりはるかに柔軟です。</p><p>フィルター処理を実行するには、オーバーロードされた関数 FILTER と、最初の入力としての DFILT オブジェクトおよび 2 番目の入力としてのフィルター処理対象の信号を使用します。既定の設定では、'States' プロパティに保存されているフィルターの状態は、それぞれゼロに初期化されています。また、'PersistentMemory' プロパティは false で、フィルター処理を実行する前にオブジェクトがリセットされることを表しています。これによって、同じシーケンスが 2 回フィルター処理され、同じ出力が生成されます。</p><pre class="codeinput"><span class="comment">% To filter, we use the overloaded FILTER function with the DFILT object as</span>
+<span class="comment">% its first input, then the signal to be filtered as its second input.</span>
+x = ones(5,1);
+y = filter(hdf1, x)
+</pre><pre class="codeoutput">
+y =
+
+    0.0528
+    0.3167
+    0.8111
+    1.1718
+    1.1196
+
+</pre><pre class="codeinput">zf = hdf1.States <span class="comment">% The object stores the final conditions in the 'States' property.</span>
+</pre><pre class="codeoutput"> 
+zf =
+ 
+      Numerator: [5x1 double]
+    Denominator: [5x1 double]
+
+</pre><h2>多段フィルター<a name="22"></a></h2><p>複数の DFILT オブジェクトをカスケード (シリアル) 設定またはパラレル設定のいずれかで接続できます。接続されたオブジェクトは DFILT オブジェクトであるため、DFILT オブジェクトの解析関数はすべて合成オブジェクトにも使用できます。さらに、合成オブジェクトと他の DFILT オブジェクトを接続して、任意のレベルの相互接続を生成することもできます。</p><pre class="codeinput">Hcas = cascade(h1,hdf1);
+Hpar = parallel(Hcas,hdf2);
+y = filter(Hpar,randn(100,1));
+</pre><p>より有益な例として、Filter Design Toolbox で使用可能な関数を調べてみましょう (次のコードを使用するには、Filter Design Toolbox がインストールされている必要があります)。間引きと補間を使用すると、効率的なシングル レート フィルターを設計できます。</p><pre class="codeinput">f    = fdesign.lowpass(<span class="string">'Fp,Fst,Ap,Ast'</span>,.1,.12,1,96);
+hcas = design(f,<span class="string">'multistage'</span>);
+set(hfvt, <span class="string">'Analysis'</span>, <span class="string">'magnitude'</span>, <span class="string">'MagnitudeDisplay'</span>, <span class="string">'Magnitude (dB)'</span>, <span class="string">'Filter'</span>,  hcas);
+</pre><img vspace="5" hspace="5" src="../dfiltdemo_04.png" alt=""> <h2>周波数変換<a name="24"></a></h2><p>Filter Design Toolbox がインストールされている場合、DFILT オブジェクトに対して周波数変換を実行できます。変換は、数値の精度を最大にするため、セクションごとに実行されます。</p><pre class="codeinput">f = fdesign.lowpass(<span class="string">'N,F3dB'</span>,30,.4);
+hsos = design(f,<span class="string">'butter'</span>);       <span class="comment">% Lowpass Butterworth with cutoff at 0.4</span>
+htrans = iirlp2hp(hsos,0.4,0.8); <span class="comment">% Transformed filter is also SOS</span>
+set(hfvt, <span class="string">'Filter'</span>, [hsos, htrans]);
+</pre><img vspace="5" hspace="5" src="../dfiltdemo_05.png" alt=""> <h2>Simulink&reg; モデルの生成<a name="25"></a></h2><p>Signal Processing Blockset™ がインストールされている場合、DFILT オブジェクトの Simulink&reg; モデルを生成して、正確なフィルター構造を維持できます。</p><pre class="codeinput">realizemdl(hsos, <span class="string">'Blockname'</span>, <span class="string">'Filter Realization'</span>); <span class="comment">% Each 2nd-order section is implemented as transposed direct-form I</span>
+</pre><img vspace="5" hspace="5" src="../dfiltdemo_06.png" alt=""> <p>また、BLOCK メソッドを使用して、単一の S-Function 駆動ブロックを作成することもできます。このメソッドでは、Signal Processing Blockset の &quot;Digital Filter&quot; ブロックを使用して、フィルター オブジェクトの係数で係数フィールドを指定します。このメソッドは、&quot;Digital Filter&quot; ブロックでサポートされているフィルター構造でのみ機能します。</p><pre class="codeinput">bdclose
+block(hsos, <span class="string">'Blockname'</span>, <span class="string">'Digital Filter'</span>);
+</pre><p>Figure とモデルをクリーンアップします。</p><pre class="codeinput">close(hfvt);
+bdclose
+</pre><p><a href="dfiltfilteringdemo.html">dfiltfilteringdemo.m</a> も参照してください。</p><p class="footer">Copyright 1988-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Getting Started with Discrete-Time Filter (DFILT) Objects % DFILT objects allow you to simulate and analyze discrete-time filters in % a variety of structures including direct forms, second-order sections, % lattice, and state-space.  % Copyright 1988-2007 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $ $Date: 2010/07/29 21:29:04 $  %% Getting Help  % Typing "help dfilt" in the command window gives you a list of structures % supported by the Signal Processing Toolbox(TM) as well as methods % operating on dfilt objects.  To access the list of supported structures % directly, type "help dfilt.structures".  For further information about a % particular structure or method, type "help dfilt.<structure>" or "help % dfilt/<method>".  For example: help dfilt/freqz   %% Constructing a Discrete-Time Filter % To create a DFILT object, you need to select the structure to be used. % For example, you can implement a linear-phase even-order FIR filter  % either as a direct-form FIR or as a symmetric direct-form FIR.  b = fir1(50,.4);        % 50th-order linear-phase FIR filter h1 = dfilt.dffir(b);    % Direct-form FIR implementation h2 = dfilt.dfsymfir(b); % Symmetric direct-form FIR implementation  %% % Note that one usually does not construct DFILT filters explicitly. % Instead, one obtains these filters as a result from a design using % FDESIGN.  f = fdesign.lowpass('N,F3dB',5,.5); h = design(f,'butter');  % 5th-order IIR filter %% % Use the CONVERT method to convert a filter structure to another. hdf1  = convert(h,'df1');  % Direct-form I implementation hdf1t = convert(h,'df1t'); % Transposed direct-form I implementation hdf2  = convert(h,'df2');  % Direct-form II implementation hdf2t = convert(h,'df2t'); % Transposed direct-form II implementation  %% % Information about discrete-time filters can be obtained by invoking the  % info method, for example: info(h1) %% % When the Filter Design Toolbox(TM) is installed and the filter is design % with FDESIGN, an optional string argument 'long' can be passed to % info() to get detailed information about the filter that includes the % design method, options, specifications, measurements and implementation % cost.  %% % To create a copy of an object, use the copy method, for example: hdf1_2 = copy(hdf1); %% % Note that using the syntax hdf1_2 = hdf1 copies only the object handle % and does not create a new object.   %% Getting and Setting the Filter Coefficients % To manipulate the coefficients of a filter as a regular MATLAB(R) vector, % you can always get them from the object. To modify the coefficients of an % existing DFILT object, you can set new ones. % % Direct-form FIR structures only have numerator coefficients; these are % also known as the filter weights. h1 %% b = get(h1,'Numerator');   % Assign the coefficients to vector b bnorm = b./max(b);         % Manipulate the vector as usual set(h1,'Numerator',bnorm); % Set the modified coefficients  %% % Direct-form IIR structures have numerator and denominator coefficients. hdf1 %% num = get(hdf1,'Numerator');   den = get(hdf1,'Denominator');  %% Filter Analysis % In addition to filtering, you can perform a wide range of analyses on % DFILT objets. Most analysis functions that work with numerator and % denominator vectors have been overloaded to work with DFILT objects.  [H,w]  = freqz(hdf2t);   % Frequency response [Gd,w] = grpdelay(hdf1); % Group-delay [hi,n] = impz(h2);       % Impulse response  %% % However, the analysis functions that can produce plots are much more % powerful when working with DFILT objects since they use the Filter % Visualization Tool (FVTool) to plot instead of a regular MATLAB figure.  hfvt = fvtool(hdf1t); set(hfvt, 'Color', [1 1 1])  %% % In FVTool it is possible to set different sampling frequencies (by % right-clicking anywhere on the axis), view magnitude, magnitude-squared, % magnitude (dB) or zerophase responses (by right-clicking on the y-label), % and switch between different analysis such as group delay, pole/zero % plot, etc. (by using the toolbar or the 'Analysis' menu). Most of these % actions can also be performed from FVTool's API (see Using FVTool's % Application Program Interface (API) demo for more info). For example: set(hfvt, 'MagnitudeDisplay', 'Magnitude'); %% set(hfvt, 'Analysis', 'polezero');  %% % Other analysis functions are available exclusively for DFILT objects. islinphase(h1) % Checks for linear-phase %% isstable(hdf1) % Checks for stability %% order(hdf2)    % Returns filter order  %% Filtering with DFILT Objects % The filtering operation is implemented for the structure selected. This % is far more flexible than the usual FILTER(b,a,x) function which always % implements transposed direct-form II. % % To filter, we use the overloaded FILTER function with the DFILT object as % its first input, then the signal to be filtered as its second input. By % default, the states of the filter, stored in the 'States' property, are % each initialized to zero. Furthermore the 'PersistentMemory' property % is false which means that the object is reset before the filter is run. % This allows to filter the same sequence twice and produce the same % output.  % To filter, we use the overloaded FILTER function with the DFILT object as % its first input, then the signal to be filtered as its second input.  x = ones(5,1); y = filter(hdf1, x)  %% zf = hdf1.States % The object stores the final conditions in the 'States' property.   %% Multistage Filters % It is possible to connect two or more DFILT objects in either cascade % (serial) or parallel configurations. Because the resulting connected % objects are DFILT objects themselves, all of the DFILT object analysis % functions are available for the composite objects as well. Moreover, % you can connect composite objects with other DFILT objects, resulting in % arbitrary levels of interconnection.  Hcas = cascade(h1,hdf1); Hpar = parallel(Hcas,hdf2); y = filter(Hpar,randn(100,1));  %% % For more instructive examples we turn to functions available in the  % Filter Design Toolbox. (The following code requires that you have the  % Filter Design Toolbox installed). Design an efficient single rate filter % using decimators and interpolators. f    = fdesign.lowpass('Fp,Fst,Ap,Ast',.1,.12,1,96);  hcas = design(f,'multistage'); set(hfvt, 'Analysis', 'magnitude', 'MagnitudeDisplay', 'Magnitude (dB)', 'Filter',  hcas);  %% Frequency Transformations % When the Filter Design Toolbox is installed, you can also perform % frequency transformations on DFILT objects. Transformations are performed % on a per-section basis for maximum numerical accuracy.  f = fdesign.lowpass('N,F3dB',30,.4); hsos = design(f,'butter');       % Lowpass Butterworth with cutoff at 0.4 htrans = iirlp2hp(hsos,0.4,0.8); % Transformed filter is also SOS set(hfvt, 'Filter', [hsos, htrans]);  %% Generating Simulink(R) Models % When the Signal Processing Blockset(TM) is installed, you can generate Simulink(R) models of % DFILT objects, that maintain the exact filter structure.   realizemdl(hsos, 'Blockname', 'Filter Realization'); % Each 2nd-order section is implemented as transposed direct-form I  %% % Single S-Function driven blocks can also be created using the BLOCK % method. This method will use a "Digital Filter" block from the Signal % Processing Blockset and populate its coefficient fields with the % coefficients from the filter object.  This method only works for the % filter structures supported by the "Digital Filter" block.  bdclose block(hsos, 'Blockname', 'Digital Filter');   %% % Clean up the figures and models.  close(hfvt); bdclose  %% % See also <dfiltfilteringdemo.html dfiltfilteringdemo.m>   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

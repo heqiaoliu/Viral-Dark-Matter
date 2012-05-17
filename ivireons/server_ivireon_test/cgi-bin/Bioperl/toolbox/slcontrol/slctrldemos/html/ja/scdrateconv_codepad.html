@@ -1,0 +1,52 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>異なるレート変換メソッドを使った線形化</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="scdrateconv_codepad.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdrateconv_codepad">エディターで scdrateconv codepad.m を開く</a></div><div class="right"><a href="matlab:echodemo scdrateconv_codepad">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>異なるレート変換メソッドを使った線形化</h1><!--introduction--><!--/introduction--><h2>目次</h2><div><ul><li><a href="#2">問題の例</a></li></ul></div><p>Simulink&reg; Control Design™ には、マルチレート モデルの線形化に対してレート変換メソッドを指定する機能があります。レート変換メソッドの選択は、結果の線形化モデルに影響を与える場合があります。このデモでは、2 つの異なるレート変換メソッドを使用して、離散線形時不変モデルの抽出を説明します。</p><h2>問題の例<a name="2"></a></h2><p>Simulink&reg; モデル <tt>scdmrate.mdl</tt> には、5 つのブロックで指定された 3 つの異なるサンプリング レートがあります。ブロックは以下のとおりです。</p><div><ul><li><tt>sysC</tt> - 連続線形ブロック</li><li><tt>Integrator</tt> - 連続積分器</li><li><tt>sysTs1</tt> - サンプル時間が 0.01 秒のブロック</li><li><tt>sysTs2</tt> - サンプル時間が 0.025 秒のブロック</li><li><tt>Zero-Order Hold</tt> - 入力信号を 0.01 秒でサンプリングするブロック</li></ul></div><p>Simulink モデルを開きます。</p><pre class="codeinput">scdmrate
+</pre><img vspace="5" hspace="5" src="../scdrateconv_codepad_01.png" alt=""> <p>この例では、<tt>sysTs1</tt> ブロックの出力と <tt>Zero-Order Hold</tt> ブロックの出力間のモデルを線形化します。また、<tt>Zero-Order Hold</tt> ブロックでループを開いている部分を追加して、システムのプラント モデルを抽出します。</p><pre class="codeinput">model = <span class="string">'scdmrate'</span>;
+io(1) = linio(<span class="string">'scdmrate/sysTs1'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'scdmrate/Zero-Order Hold'</span>,1,<span class="string">'out'</span>,<span class="string">'on'</span>);
+</pre><p>これらの線形化ポイントを使用すると、モデル <tt>scdmrate_ol</tt> を効果的に線形化できます。</p><pre class="codeinput">scdmrate_ol
+</pre><img vspace="5" hspace="5" src="../scdrateconv_codepad_02.png" alt=""> <p>連続信号と離散信号の両方を含んでいるモデルを線形化すると、ソフトウェアはレート変換メソッドを使用して、最初に連続信号を離散信号に変換します。既定のレート変換メソッドは、ゼロ次ホールドです。レート変換メソッドを表示または変更するには、関数 linoptions の <tt>RateConversionMethod</tt> プロパティを使用します。次のコマンドは、<tt>RateConversionMethod</tt> が既定の <tt>zoh</tt> に設定されていることを示しています。</p><pre class="codeinput">opt = linoptions
+</pre><pre class="codeoutput"> 
+Options for LINEARIZE:
+    LinearizationAlgorithm        : blockbyblock
+    SampleTime (-1 Auto Detect)   : -1
+    UseFullBlockNameLabels (on/off): off
+    UseBusSignalLabels (on/off): off
+ 
+  Options for 'blockbyblock' algorithm
+    BlockReduction (on/off)                   : on
+    IgnoreDiscreteStates (on/off)             : off
+    RateConversionMethod (zoh/tustin/prewarp/ : zoh
+                          upsampling_zoh/           
+                          upsampling_tustin/        
+                          upsampling_prewarp        
+    PreWarpFreq                               : 10
+    UseExactDelayModel                        : off
+ 
+  Options for 'numericalpert' algorithm
+    NumericalPertRel : 1.000000e-005
+    NumericalXPert   : []
+    NumericalUPert   : []
+ 
+Options for FINDOP:
+    OptimizationOptions        : [1x1 struct]
+    OptimizerType              : graddescent_elim
+    DisplayReport (on/iter/off): on
+
+
+</pre><p>次のコマンドは、ゼロ次ホールド法を使用して、線形化を実行します。線形化には、<tt>Zero-Order Hold</tt> ブロックが含まれているため、線形化のサンプル時間は 0.01 です。</p><pre class="codeinput">sys_zoh = linearize(model,io,opt);
+</pre><p>次のコマンドは、レート変換メソッドを Tustin (双一次変換) メソッドに変更してから、このメソッドを使用して線形化します。この線形化モデルのサンプル時間も 0.01 です。</p><pre class="codeinput">opt.RateConversionMethod = <span class="string">'tustin'</span>;
+sys_tust = linearize(model,io,opt);
+</pre><p>サンプル時間をオプション オブジェクトで 0 に指定することで、連続時間線形化モデルを作成することもできます。レート変換メソッドは、まだ離散時間線形化モデルを作成しますが、離散時間モデルを連続時間モデルに変換します。</p><pre class="codeinput">opt.SampleTime = 0;
+sys_c = linearize(model,io,opt);
+</pre><p>3 つの線形化のボード線図は、2 つのレート変換メソッドの効果を示しています。この例では、Tustin レート変換メソッドが最も正確な連続システムの位相応答を表現し、ゼロ次ホールドがゲイン応答に最も一致しています。</p><pre class="codeinput">p = bodeoptions(<span class="string">'cstprefs'</span>);
+p.YLimMode = {<span class="string">'manual'</span>};
+p.YLim = {[-100 0];[-180 -30]};
+p.Grid = <span class="string">'on'</span>;
+bodeplot(sys_c,sys_zoh,sys_tust,p);
+h = legend(<span class="string">'sys_c'</span>,<span class="string">'sys_zoh'</span>,<span class="string">'sys_tust'</span>,<span class="string">'Location'</span>,<span class="string">'SouthWest'</span>);
+set(h,<span class="string">'Interpreter'</span>,<span class="string">'none'</span>)
+</pre><img vspace="5" hspace="5" src="../scdrateconv_codepad_03.png" alt=""> <p class="footer">Copyright 2005-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Linearization Using Different Rate Conversion Methods % Copyright 2005-2009 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $ $Date: 2010/07/29 21:29:23 $  %% % Simulink(R) Control Design(TM) offers the ability to specify the rate % conversion method for the linearization of a multirate model.  The choice of % rate conversion methodology can affect the resulting linearized model. % This demo illustrates the extraction of a discrete linear time invariant % model using two different rate conversion methods.  %% Example Problem % In the Simulink(R) model |scdmrate.mdl| there are three different sample % rates specified in five blocks. These blocks are % % * |sysC| - a continuous linear block,  % * |Integrator| - a continuous integrator, % * |sysTs1| - a block that has a sample time of 0.01 seconds, % * |sysTs2| - a block that has a sample time of 0.025 seconds, and % * |Zero-Order Hold| - a block that samples the incoming signal at 0.01  % seconds. % %% % Open the Simulink model scdmrate  %%  % In this example, you linearize the model between the output of the block % |sysTs1| and the block |Zero-Order Hold|.  Additionally, you add a loop % opening at the block |Zero-Order Hold| to extract the plant model for the % system. model = 'scdmrate'; io(1) = linio('scdmrate/sysTs1',1,'in');  io(2) = linio('scdmrate/Zero-Order Hold',1,'out','on');   %%  % Using these linearization points the linearization effectively results in % the linearization of the model |scdmrate_ol|. scdmrate_ol  %%  % When linearizing a model that contains both continuous and discrete % signals, the software first converts the continuous signals to discrete % signals, using a rate conversion method. The default rate conversion % method is zero-order hold. To view or change the rate conversion method, % use the |RateConversionMethod| property in the linoptions function. The % following command shows that |RateConversionMethod| is set to the default % setting, |zoh|: opt = linoptions  %% % The following command performs a linearization using the zero-order hold % method. Because the linearization includes the |Zero-Order Hold| block, the % sample time of the linearization is 0.01. sys_zoh = linearize(model,io,opt);  %% % The following commands change the rate conversion method to the Tustin % (Bilinear transformation) method and then linearize using % this method. The sample time of this linearized model is also 0.01. opt.RateConversionMethod = 'tustin'; sys_tust = linearize(model,io,opt);  %%  % It is also possible to create a continuous-time linearized model by % specifying the sample time as 0 in the options object. The rate % conversion method still creates a discrete-time linearized model but then % converts the discrete-time model to a continuous-time model. opt.SampleTime = 0; sys_c = linearize(model,io,opt);  %%  % The Bode plots for the three linearizations show the effects of the two % rate conversion methods.  In this example, the Tustin rate conversion % method gives the most accurate representation of the phase response of % the continuous system and the zero-order hold gives the best match to the % magnitude response. p = bodeoptions('cstprefs'); p.YLimMode = {'manual'}; p.YLim = {[-100 0];[-180 -30]}; p.Grid = 'on'; bodeplot(sys_c,sys_zoh,sys_tust,p); h = legend('sys_c','sys_zoh','sys_tust','Location','SouthWest'); set(h,'Interpreter','none')   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

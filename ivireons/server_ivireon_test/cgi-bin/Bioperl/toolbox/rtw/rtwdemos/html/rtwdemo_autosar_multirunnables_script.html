@@ -1,0 +1,101 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>AUTOSAR Code Generation for Multiple Runnable Entities</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_autosar_multirunnables_script.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_autosar_multirunnables_script">Open rtwdemo_autosar_multirunnables_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_autosar_multirunnables_script">Run in the Command Window</a></div></div><div class="content"><h1>AUTOSAR Code Generation for Multiple Runnable Entities</h1><!--introduction--><p>This demonstration shows you how to configure and generate AUTOSAR-compliant code and export AUTOSAR software component description XML files for a Simulink&reg; model with multiple runnable entities.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Overview of Multi-Runnable Support</a></li><li><a href="#2">Designate Multiple Runnable Entities</a></li><li><a href="#3">Define the Inter-RunnableVariables</a></li><li><a href="#4">Change the AUTOSAR Port Settings</a></li><li><a href="#5">Generate AUTOSAR-Compliant Code</a></li><li><a href="#6">NOTE: Merge into the Authoring Tool</a></li><li><a href="#7">Further Information</a></li></ul></div><h2>Overview of Multi-Runnable Support<a name="1"></a></h2><p>You can use the rtwdemo_autosar_multirunnables model to see how to construct a Simulink model to designate multiple runnable entities.</p><div><ul><li>Open the model rtwdemo_autosar_multirunnables.</li></ul></div><pre class="codeinput"><span class="comment">% Model defines</span>
+modelName = <span class="string">'rtwdemo_autosar_multirunnables'</span>;
+
+<span class="comment">% open the model</span>
+open_system( modelName );
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_multirunnables_script_01.png" alt=""> <h2>Designate Multiple Runnable Entities<a name="2"></a></h2><p>Double-click the ASWC subsystem, which represents the atomic software component. You can see the multiple runnable entities that compose the atomic software component. Each function-call subsystem defines a runnable entity. This model contains three function-call subsystems: Runnable1, Runnable2, Runnable3. An additional runnable entity aggregating the initialization functions for each of the function-call subsystems is also created at code generation.</p><pre class="codeinput"><span class="comment">% open the ASWC subsystem</span>
+open_system( [modelName, <span class="string">'/ASWC'</span>] );
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_multirunnables_script_02.png" alt=""> <h2>Define the Inter-RunnableVariables<a name="3"></a></h2><p>Inter-runnable variables ensure data consistency between runnable entities. You define these variables through the signals that connect the entities. The signals are labeled with their inter-runnable variable name. This model has four inter-runnable variables: irv1, irv2, irv3, irv4. The interrunnable variables may route through Goto and From blocks, but any labels present on the respective line segments must be consistent.</p><h2>Change the AUTOSAR Port Settings<a name="4"></a></h2><p><a href="matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'autosar_interface_dialog_box')">Overview of the AUTOSAR Interface dialog</a></p><p>You can change the AUTOSAR port settings.</p><div><ol><li>Right-click on the ASWC subsystem and select: <b>Real-Time Workshop</b> &gt; <b>AUTOSAR Multi-Runnable Component</b> &gt; <b>Configure</b></li><li>Click the <b>Validate</b> button once you are happy with your changes.</li></ol></div><h2>Generate AUTOSAR-Compliant Code<a name="5"></a></h2><p>To generate AUTOSAR-compliant code from the model:</p><div><ol><li>Right-click on the ASWC subsystem and select: <b>Real-Time Workshop</b> &gt; <b>AUTOSAR Multi-Runnable Component</b> &gt; <b>Export Functions</b></li><li>Click the <b>Build</b> button once the parameter dialog appears.</li></ol></div><p>An alternative method to generate AUTOSAR-compliant code from the model is to execute the following command.</p><pre class="codeinput">rtwbuild( [modelName, <span class="string">'/ASWC'</span>], <span class="string">'Mode'</span>, <span class="string">'ExportFunctionCalls'</span>);
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model: ASWC
+### Generating XML files description for model: ASWC
+### Successful completion of Real-Time Workshop code generation for model: ASWC
+</pre><h2>NOTE: Merge into the Authoring Tool<a name="6"></a></h2><p>This demonstration makes use of BasicSoftwarePorts. If you intend to import the generated XML files into an AUTOSAR authoring tool, you should include the server interface referenced by the BasicSoftwarePorts (<a href="matlab:web(fullfile(matlabroot,'toolbox','rtw','rtwdemos','NvMInterface.arxml'))">NvMInterface.arxml</a>).</p><h2>Further Information<a name="7"></a></h2><p><a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_autosar')">AUTOSAR Target documentation</a></p><p class="footer">Copyright 1990-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% AUTOSAR Code Generation for Multiple Runnable Entities
+% This demonstration shows you how to configure and generate AUTOSAR-compliant
+% code and export AUTOSAR software component description XML files for a
+% Simulink(R) model with multiple runnable entities.
+
+%   Copyright 1990-2008 The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2010/04/05 22:29:58 $
+
+%% Overview of Multi-Runnable Support
+% You can use the rtwdemo_autosar_multirunnables model to see how to construct a
+% Simulink model to designate multiple runnable entities.
+%
+% * Open the model rtwdemo_autosar_multirunnables.
+%
+
+% Model defines
+modelName = 'rtwdemo_autosar_multirunnables';
+
+% open the model
+open_system( modelName );
+
+%% Designate Multiple Runnable Entities
+% Double-click the ASWC subsystem, which represents the atomic software
+% component. You can see the multiple runnable entities that compose the atomic
+% software component. Each function-call subsystem defines a runnable
+% entity. This model contains three function-call subsystems: Runnable1,
+% Runnable2, Runnable3. An additional runnable entity aggregating the
+% initialization functions for each of the function-call subsystems is also
+% created at code generation.
+
+% open the ASWC subsystem
+open_system( [modelName, '/ASWC'] );
+
+%% Define the Inter-RunnableVariables
+% Inter-runnable variables ensure data consistency between runnable
+% entities. You define these variables through the signals that connect the
+% entities. The signals are labeled with their inter-runnable variable
+% name. This model has four inter-runnable variables: irv1, irv2, irv3, irv4.
+% The interrunnable variables may route through Goto and From blocks, but
+% any labels present on the respective line segments must be consistent.
+
+%% Change the AUTOSAR Port Settings
+% <matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'autosar_interface_dialog_box') Overview of the AUTOSAR Interface dialog>
+%
+% You can change the AUTOSAR port settings.
+%
+% # Right-click on the ASWC subsystem and select: *Real-Time Workshop* >
+% *AUTOSAR Multi-Runnable Component* > *Configure* 
+% # Click the *Validate* button
+% once you are happy with your changes.
+
+%% Generate AUTOSAR-Compliant Code
+% To generate AUTOSAR-compliant code from the model:
+%
+% # Right-click on the ASWC subsystem and select: *Real-Time Workshop* >
+% *AUTOSAR Multi-Runnable Component* > *Export Functions* 
+% # Click the *Build*
+% button once the parameter dialog appears.
+%
+% An alternative method to generate AUTOSAR-compliant code from the model is to
+% execute the following command.
+
+rtwbuild( [modelName, '/ASWC'], 'Mode', 'ExportFunctionCalls');
+
+%% NOTE: Merge into the Authoring Tool
+% This demonstration makes use of BasicSoftwarePorts. If you intend to import
+% the generated XML files into an AUTOSAR authoring tool, you should include the
+% server interface referenced by the BasicSoftwarePorts
+% (<matlab:web(fullfile(matlabroot,'toolbox','rtw','rtwdemos','NvMInterface.arxml'))
+% NvMInterface.arxml>).
+
+%% Further Information
+%
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_autosar') AUTOSAR Target documentation>
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

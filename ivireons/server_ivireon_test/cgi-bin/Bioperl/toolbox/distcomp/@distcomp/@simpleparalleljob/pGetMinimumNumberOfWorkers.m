@@ -1,0 +1,17 @@
+function val = pGetMinimumNumberOfWorkers(job, val)
+; %#ok Undocumented
+%PGETMINIMUMNUMBEROFWORKERS A short description of the function
+%
+%  VAL = PGETMINIMUMNUMBEROFWORKERS(JOB, VAL)
+
+%  Copyright 2000-2006 The MathWorks, Inc.
+
+%  $Revision: 1.1.10.3 $    $Date: 2006/06/27 22:39:01 $ 
+
+serializer = job.Serializer;
+
+if ~isempty(serializer)
+    try
+        val = serializer.getField(job, 'minworkers');
+    end
+end

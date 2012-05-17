@@ -1,0 +1,558 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Getting Started with Filter Design (FDESIGN) Objects</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="fdesigngettingstarteddemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit fdesigngettingstarteddemo">Open fdesigngettingstarteddemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo fdesigngettingstarteddemo">Run in the Command Window</a></div></div><div class="content"><h1>Getting Started with Filter Design (FDESIGN) Objects</h1><!--introduction--><p>The filter design (FDESIGN) objects are a collection of objects that allow you to design lowpass, highpass, and many other types of filters with a variety of constraints. The design process computes the filter coefficients using the various algorithms available in the Signal Processing Toolbox&#8482; and Filter Design Toolbox&#8482; and associates a particular filter structure to those coefficients.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Getting Help</a></li><li><a href="#2">Creating a Filter Design Object</a></li><li><a href="#4">Changing Specification Types</a></li><li><a href="#6">Setting Design Parameters</a></li><li><a href="#13">Normalizing Frequency Specifications</a></li><li><a href="#15">Designing Filters</a></li><li><a href="#23">Using Design Time Options</a></li><li><a href="#29">Comparing Designs</a></li></ul></div><h2>Getting Help<a name="1"></a></h2><p>Typing "help fdesign" in the command window will bring up the help for the filter design objects.  Various hyperlinks in the help allow you to navigate to all of the help for the filter design objects.  You can also type "help fdesign/responses" for information about the response types that can be specified with filter design objects.</p><h2>Creating a Filter Design Object<a name="2"></a></h2><p>To create a filter design object, you need to select the response to be used.  For example, to create a lowpass filter you would type:</p><pre class="codeinput">h = fdesign.lowpass
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass'      
+          Specification: 'Fp,Fst,Ap,Ast'
+            Description: {4x1 cell}     
+    NormalizedFrequency: true           
+                  Fpass: 0.45           
+                  Fstop: 0.55           
+                  Apass: 1              
+                  Astop: 60             
+                                        
+</pre><p>Notice that each specification is listed as an abbreviation, for example Fp is the abbreviation for Fpass (the passband frequency edge) and Fst is the abbreviation for Fstop (the stopband frequency edge). The 'Description' property gives a full description of the properties that are added by the 'Specification'.</p><pre class="codeinput">get(h, <span class="string">'Description'</span>)
+</pre><pre class="codeoutput">
+ans = 
+
+    'Passband Frequency'
+    'Stopband Frequency'
+    'Passband Ripple (dB)'
+    'Stopband Attenuation (dB)'
+
+</pre><h2>Changing Specification Types<a name="4"></a></h2><p>The 'Specification' property allows you to select different design parameters.  This is a string which lists the specifications that will be used for the design.  To see all valid specifications type:</p><pre class="codeinput">set(h, <span class="string">'Specification'</span>)
+</pre><pre class="codeoutput">
+ans = 
+
+    'Fp,Fst,Ap,Ast'
+    'N,F3dB'
+    'Nb,Na,F3dB'
+    'N,F3dB,Ap'
+    'N,F3dB,Ap,Ast'
+    'N,F3dB,Ast'
+    'N,F3dB,Fst'
+    'N,Fc'
+    'N,Fc,Ap,Ast'
+    'N,Fp,Ap'
+    'N,Fp,Ap,Ast'
+    'N,Fp,F3dB'
+    'N,Fp,Fst'
+    'N,Fp,Fst,Ap'
+    'N,Fp,Fst,Ast'
+    'N,Fst,Ap,Ast'
+    'N,Fst,Ast'
+    'Nb,Na,Fp,Fst'
+
+</pre><p>Changing the 'Specification' will change which properties the object has:</p><pre class="codeinput">set(h, <span class="string">'Specification'</span>, <span class="string">'N,Fc'</span>);
+h
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass'                          
+          Specification: 'N,Fc'                             
+            Description: {'Filter Order';'Cutoff Frequency'}
+    NormalizedFrequency: true                               
+            FilterOrder: 10                                 
+                Fcutoff: 0.5                                
+                                                            
+</pre><h2>Setting Design Parameters<a name="6"></a></h2><p>You can set design parameters after creating your specification object, or you can pass the specifications when you construct your object.  For example:</p><pre class="codeinput">specs = <span class="string">'N,Fp,Fst'</span>;
+h = fdesign.lowpass(specs)
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass' 
+          Specification: 'N,Fp,Fst'
+            Description: {3x1 cell}
+    NormalizedFrequency: true      
+            FilterOrder: 10        
+                  Fpass: 0.45      
+                  Fstop: 0.55      
+                                   
+</pre><p>After specifying the specification that you want to use, you then specify the values for those specifications.</p><pre class="codeinput">N     = 40;  <span class="comment">% Filter Order</span>
+Fpass = .33; <span class="comment">% Passband Frequency Edge</span>
+Fstop = .4;  <span class="comment">% Stopband Frequency Edge</span>
+h     = fdesign.lowpass(specs, N, Fpass, Fstop)
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass' 
+          Specification: 'N,Fp,Fst'
+            Description: {3x1 cell}
+    NormalizedFrequency: true      
+            FilterOrder: 40        
+                  Fpass: 0.33      
+                  Fstop: 0.4       
+                                   
+</pre><p>You can also specify a sampling frequency after all of the specifications have been entered.</p><pre class="codeinput">Fpass = 1.3;
+Fstop = 1.6;
+Fs    = 4.5; <span class="comment">% Sampling Frequency</span>
+h     = fdesign.lowpass(specs, N, Fpass, Fstop, Fs)
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass' 
+          Specification: 'N,Fp,Fst'
+            Description: {3x1 cell}
+    NormalizedFrequency: false     
+                     Fs: 4.5       
+            FilterOrder: 40        
+                  Fpass: 1.3       
+                  Fstop: 1.6       
+                                   
+</pre><p>Amplitude specifications can be given in linear or squared units by providing a flag to the constructor.  However, they will always be stored in dB.</p><pre class="codeinput">Apass = .0575;
+specs = <span class="string">'N,Fp,Ap'</span>;
+h     = fdesign.lowpass(specs, N, Fpass, Apass, Fs, <span class="string">'linear'</span>)
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass'        
+          Specification: 'N,Fp,Ap'        
+            Description: {3x1 cell}       
+    NormalizedFrequency: false            
+                     Fs: 4.5              
+            FilterOrder: 40               
+                  Fpass: 1.3              
+                  Apass: 0.999980343384991
+                                          
+</pre><pre class="codeinput">Apass = .95;
+h     = fdesign.lowpass(specs, N, Fpass, Apass, Fs, <span class="string">'squared'</span>)
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass'        
+          Specification: 'N,Fp,Ap'        
+            Description: {3x1 cell}       
+    NormalizedFrequency: false            
+                     Fs: 4.5              
+            FilterOrder: 40               
+                  Fpass: 1.3              
+                  Apass: 0.222763947111522
+                                          
+</pre><p>An alternative way of changing specifications is by using the SETSPECS method. The SETSPECS method works in the same way as the constructor.</p><pre class="codeinput">specs = <span class="string">'N,F3dB'</span>;
+F3dB  = .9;
+Fs    = 2.5;
+setspecs(h, specs, N, F3dB, Fs);
+h
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass'                       
+          Specification: 'N,F3dB'                        
+            Description: {'Filter Order';'3dB Frequency'}
+    NormalizedFrequency: false                           
+                     Fs: 2.5                             
+            FilterOrder: 40                              
+                   F3dB: 0.9                             
+                                                         
+</pre><p>If your object is already set to the correct 'Specification' you can omit that input from your call to SETSPECS.</p><pre class="codeinput">F3dB  = 1.1;
+Fs    = 3;
+setspecs(h, N, F3dB, Fs);
+h
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass'                       
+          Specification: 'N,F3dB'                        
+            Description: {'Filter Order';'3dB Frequency'}
+    NormalizedFrequency: false                           
+                     Fs: 3                               
+            FilterOrder: 40                              
+                   F3dB: 1.1                             
+                                                         
+</pre><h2>Normalizing Frequency Specifications<a name="13"></a></h2><p>To normalize your frequency specifications you can use the NORMALIZEFREQ method.</p><pre class="codeinput">normalizefreq(h);
+h
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass'                       
+          Specification: 'N,F3dB'                        
+            Description: {'Filter Order';'3dB Frequency'}
+    NormalizedFrequency: true                            
+            FilterOrder: 40                              
+                   F3dB: 0.733333333333333               
+                                                         
+</pre><p>The NORMALIZEFREQ method can also be used to unnormalize the frequency specifications.</p><pre class="codeinput">newFs = 3.1;
+normalizefreq(h, false, newFs);
+h
+</pre><pre class="codeoutput"> 
+h =
+ 
+               Response: 'Lowpass'                       
+          Specification: 'N,F3dB'                        
+            Description: {'Filter Order';'3dB Frequency'}
+    NormalizedFrequency: false                           
+                     Fs: 3.1                             
+            FilterOrder: 40                              
+                   F3dB: 1.13666666666667                
+                                                         
+</pre><h2>Designing Filters<a name="15"></a></h2><p>To design filters you use the DESIGN method.</p><pre class="codeinput">h  = fdesign.lowpass;
+Hd = design(h)
+</pre><pre class="codeoutput"> 
+Hd =
+ 
+     FilterStructure: 'Direct-Form FIR'
+          Arithmetic: 'double'         
+           Numerator: [1x43 double]    
+    PersistentMemory: false            
+                                       
+</pre><p>With no extra inputs this will design the default filter.  To determine which method was used, use the DESIGNMETHODS method with the 'default' flag.</p><pre class="codeinput">designmethods(h, <span class="string">'default'</span>)
+</pre><pre class="codeoutput">
+
+Default Design Methods for class fdesign.lowpass (Fp,Fst,Ap,Ast):
+
+
+equiripple
+
+</pre><p>Specifying no outputs will launch FVTool.</p><pre class="codeinput">design(h)
+set(gcf,<span class="string">'Color'</span>,<span class="string">'white'</span>)
+</pre><img vspace="5" hspace="5" src="fdesigngettingstarteddemo_01.png" alt=""> <pre class="codeinput">close(gcf)
+</pre><p>For a complete list of design methods, use DESIGNMETHODS with no extra inputs.</p><pre class="codeinput">designmethods(h)
+</pre><pre class="codeoutput">
+
+Design Methods for class fdesign.lowpass (Fp,Fst,Ap,Ast):
+
+
+butter
+cheby1
+cheby2
+ellip
+equiripple
+ifir
+kaiserwin
+multistage
+
+</pre><p>To get a better description of each design method use the 'full' flag.</p><pre class="codeinput">designmethods(h, <span class="string">'full'</span>)
+</pre><pre class="codeoutput">
+
+Design Methods for class fdesign.lowpass (Fp,Fst,Ap,Ast):
+
+
+Butterworth
+Chebyshev type I
+Chebyshev type II
+Elliptic
+Equiripple
+Interpolated FIR
+Kaiser window
+Multistage equiripple
+
+</pre><p>DESIGNMETHODS can also take the 'fir' or 'iir' flags to return only FIR algorithms or IIR algorithms.</p><p>To design a filter with a specific algorithm, specify it at design time.</p><pre class="codeinput">design(h, <span class="string">'kaiserwin'</span>)
+set(gcf,<span class="string">'Color'</span>,<span class="string">'white'</span>)
+</pre><img vspace="5" hspace="5" src="fdesigngettingstarteddemo_02.png" alt=""> <pre class="codeinput">close(gcf);
+</pre><h2>Using Design Time Options<a name="23"></a></h2><p>Some methods have options that are specific to that method. For help on these design options use the HELP method and pass the desired algorithm name.</p><pre class="codeinput">help(h, <span class="string">'ellip'</span>)
+</pre><pre class="codeoutput"> DESIGN Design a Elliptic iir filter.
+    HD = DESIGN(D, 'ellip') designs a Elliptic filter specified by the
+    FDESIGN object D.
+ 
+    HD = DESIGN(..., 'FilterStructure', STRUCTURE) returns a filter with the
+    structure STRUCTURE.  STRUCTURE is 'df2sos' by default and can be any of
+    the following:
+
+    'df1sos'
+    'df2sos'
+    'df1tsos'
+    'df2tsos'
+    'cascadeallpass'
+    'cascadewdfallpass'
+ 
+    HD = DESIGN(..., 'MatchExactly', MATCH) designs an Elliptic filter
+    and matches the frequency and magnitude specification for the band
+    MATCH exactly.  The other band will exceed the specification.  MATCH
+    can be 'stopband', 'passband' or 'both', and is 'both' by default.
+ 
+    HD = DESIGN(..., 'SOSScaleNorm', NORM) designs an SOS filter and scales
+    the coefficients using the P-Norm NORM. NORM can be either a 
+    discrete-time-domain norm or a frequency-domain norm. Valid time-domain 
+    norms are 'l1','l2', and 'linf'. Valid frequency-domain norms are 
+    'L1','L2', and 'Linf'. Note that L2-norm is equal to l2-norm 
+    (Parseval's theorem) but the same is not true for other norms.
+    
+    The different norms can be ordered in terms of how stringent they are 
+    as follows: 'l1' &gt;= 'Linf' &gt;= 'L2' = 'l2' &gt;= 'L1' &gt;= 'linf'.
+    Using the most stringent scaling, 'l1', the filter is the least prone 
+    to overflow, but also has the worst signal-to-noise ratio. Linf-scaling is 
+    the most commonly used scaling in practice.
+    
+    Scaling is turned off by default, which is equivalent to setting
+    SOSScaleNorm = ''.
+ 
+    HD = DESIGN(..., 'SOSScaleOpts', OPTS) designs an SOS filter and scales
+    the coefficients using an FDOPTS.SOSSCALING object OPTS.  Scaling options 
+    are:
+    Property                Default     Description/Valid values
+    ---------               -------     ------------------------
+    'sosReorder'            'auto'      Reorder section prior to scaling.
+                                        {'auto','none','up','down','lowpass',
+                                         'highpass','bandpass','bandstop'}
+    'MaxNumerator'          2           Maximum value for numerator coefficients
+    'NumeratorConstraint'   'none'      {'none', 'unit', 'normalize','po2'}
+    'OverflowMode'          'wrap'      {'wrap','saturate'}
+    'ScaleValueConstraint'  'unit'      {'unit','none','po2'}
+    'MaxScaleValue'         'Not used'  Maximum value for scale values
+    
+    When sosReorder is set to 'auto', the sections will be automatically
+    reordered depending on the response type of the design (lowpass,
+    highpass, etc.).
+    
+    Note that 'MaxScaleValue' will only be used when 'ScaleValueConstraint'
+    is set to something other than 'unit'. If 'MaxScaleValue' is set to a
+    number, the 'ScaleValueConstraint' will be changed to 'none'. Further,
+    if SOSScaleNorm is off (as it is by default), then all the SOSScaleOpts
+    will be ignored.
+ 
+    For more information about P-Norm and scaling options see help for DFILT\SCALE.
+ 
+    % Example #1 - Design a lowpass Elliptic filter in the DF2TSOS structure.
+       h  = fdesign.lowpass('N,Fp,Ap,Ast');
+       Hd = design(h, 'ellip', 'FilterStructure', 'df2tsos');
+ 
+</pre><p>These are specified at design time as a parameter/value pair. For example:</p><pre class="codeinput">design(h, <span class="string">'ellip'</span>, <span class="string">'MatchExactly'</span>, <span class="string">'passband'</span>)
+set(gcf,<span class="string">'Color'</span>,<span class="string">'white'</span>)
+</pre><img vspace="5" hspace="5" src="fdesigngettingstarteddemo_03.png" alt=""> <pre class="codeinput">close(gcf);
+</pre><p>These parameters can also be specified in a structure.  The DESIGNOPTS method will return a valid structure for your object and specificed algorithm with the default values.</p><pre class="codeinput"><span class="comment">% Get the default design time options</span>
+do = designopts(h, <span class="string">'ellip'</span>);
+
+<span class="comment">% Match the stopband exactly.</span>
+do.MatchExactly = <span class="string">'stopband'</span>;
+</pre><pre class="codeinput">design(h, <span class="string">'ellip'</span>, do);
+set(gcf,<span class="string">'Color'</span>,<span class="string">'white'</span>)
+</pre><img vspace="5" hspace="5" src="fdesigngettingstarteddemo_04.png" alt=""> <pre class="codeinput">close(gcf)
+</pre><h2>Comparing Designs<a name="29"></a></h2><p>Design can also be used to investigate various designs simultaneously.</p><pre class="codeinput"><span class="comment">% Show all FIR designs</span>
+design(h, <span class="string">'allfir'</span>);
+set(gcf,<span class="string">'Color'</span>,<span class="string">'white'</span>)
+</pre><img vspace="5" hspace="5" src="fdesigngettingstarteddemo_05.png" alt=""> <pre class="codeinput">close(gcf)
+
+<span class="comment">% Show all IIR designs</span>
+design(h, <span class="string">'alliir'</span>);
+set(gcf,<span class="string">'Color'</span>,<span class="string">'white'</span>)
+axis([0 1 -91 5])
+</pre><img vspace="5" hspace="5" src="fdesigngettingstarteddemo_06.png" alt=""> <pre class="codeinput">close(gcf)
+</pre><p class="footer">Copyright 1999-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Getting Started with Filter Design (FDESIGN) Objects
+% The filter design (FDESIGN) objects are a collection of objects that
+% allow you to design lowpass, highpass, and many other types of filters
+% with a variety of constraints. The design process computes the filter
+% coefficients using the various algorithms available in the 
+% Signal Processing Toolbox(TM) and Filter Design Toolbox(TM) and
+% associates a particular filter structure to those coefficients.
+
+% Copyright 1999-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.7 $ $Date: 2009/11/13 05:03:09 $
+
+%% Getting Help 
+% Typing "help fdesign" in the command window will bring up the help for
+% the filter design objects.  Various hyperlinks in the help allow you to
+% navigate to all of the help for the filter design objects.  You can also
+% type "help fdesign/responses" for information about the response types
+% that can be specified with filter design objects.
+
+%% Creating a Filter Design Object
+% To create a filter design object, you need to select the response to be
+% used.  For example, to create a lowpass filter you would type:
+
+h = fdesign.lowpass
+
+%% 
+% Notice that each specification is listed as an abbreviation, for example
+% Fp is the abbreviation for Fpass (the passband frequency edge) and Fst is
+% the abbreviation for Fstop (the stopband frequency edge). The
+% 'Description' property gives a full description of the properties that
+% are added by the 'Specification'.
+
+get(h, 'Description')
+
+%% Changing Specification Types
+% The 'Specification' property allows you to select different design
+% parameters.  This is a string which lists the specifications that will be
+% used for the design.  To see all valid specifications type:
+
+set(h, 'Specification')
+
+%%
+% Changing the 'Specification' will change which properties the object has:
+
+set(h, 'Specification', 'N,Fc');
+h
+
+%% Setting Design Parameters
+% You can set design parameters after creating your specification object,
+% or you can pass the specifications when you construct your object.  For
+% example:
+
+specs = 'N,Fp,Fst';
+h = fdesign.lowpass(specs)
+
+%%
+% After specifying the specification that you want to use, you then specify
+% the values for those specifications.
+
+N     = 40;  % Filter Order
+Fpass = .33; % Passband Frequency Edge
+Fstop = .4;  % Stopband Frequency Edge
+h     = fdesign.lowpass(specs, N, Fpass, Fstop)
+
+%%
+% You can also specify a sampling frequency after all of the specifications
+% have been entered.
+
+Fpass = 1.3;
+Fstop = 1.6;
+Fs    = 4.5; % Sampling Frequency
+h     = fdesign.lowpass(specs, N, Fpass, Fstop, Fs)
+
+%%
+% Amplitude specifications can be given in linear or squared units by
+% providing a flag to the constructor.  However, they will always be stored
+% in dB.
+
+Apass = .0575;
+specs = 'N,Fp,Ap';
+h     = fdesign.lowpass(specs, N, Fpass, Apass, Fs, 'linear')
+
+%%
+Apass = .95;
+h     = fdesign.lowpass(specs, N, Fpass, Apass, Fs, 'squared')
+
+%% 
+% An alternative way of changing specifications is by using the SETSPECS
+% method. The SETSPECS method works in the same way as the constructor.
+
+specs = 'N,F3dB';
+F3dB  = .9;
+Fs    = 2.5;
+setspecs(h, specs, N, F3dB, Fs);
+h
+
+%%
+% If your object is already set to the correct 'Specification' you can omit
+% that input from your call to SETSPECS.
+
+F3dB  = 1.1;
+Fs    = 3;
+setspecs(h, N, F3dB, Fs);
+h
+
+%% Normalizing Frequency Specifications
+% To normalize your frequency specifications you can use the NORMALIZEFREQ
+% method.
+
+normalizefreq(h);
+h
+
+%%
+% The NORMALIZEFREQ method can also be used to unnormalize the frequency
+% specifications.
+
+newFs = 3.1;
+normalizefreq(h, false, newFs);
+h
+
+%% Designing Filters
+% To design filters you use the DESIGN method.
+
+h  = fdesign.lowpass;
+Hd = design(h)
+
+%%
+% With no extra inputs this will design the default filter.  To determine
+% which method was used, use the DESIGNMETHODS method with the 'default'
+% flag.
+
+designmethods(h, 'default')
+
+%%
+% Specifying no outputs will launch FVTool.
+
+design(h)
+set(gcf,'Color','white')
+%%
+close(gcf)
+
+%%
+% For a complete list of design methods, use DESIGNMETHODS with no extra
+% inputs.
+
+designmethods(h)
+
+%%
+% To get a better description of each design method use the 'full' flag.
+
+designmethods(h, 'full')
+
+%%
+% DESIGNMETHODS can also take the 'fir' or 'iir' flags to return only FIR
+% algorithms or IIR algorithms.
+%
+% To design a filter with a specific algorithm, specify it at design time.
+
+design(h, 'kaiserwin')
+set(gcf,'Color','white')
+%%
+close(gcf);
+
+%% Using Design Time Options
+% Some methods have options that are specific to that method. For help on
+% these design options use the HELP method and pass the desired algorithm
+% name.
+
+help(h, 'ellip')
+
+%%
+% These are specified at design time as a parameter/value pair. For example:
+
+design(h, 'ellip', 'MatchExactly', 'passband')
+set(gcf,'Color','white')
+%%
+close(gcf);
+
+%%
+% These parameters can also be specified in a structure.  The DESIGNOPTS
+% method will return a valid structure for your object and specificed
+% algorithm with the default values.
+
+% Get the default design time options
+do = designopts(h, 'ellip');
+
+% Match the stopband exactly.
+do.MatchExactly = 'stopband';
+
+%%
+
+design(h, 'ellip', do);
+set(gcf,'Color','white')
+%%
+close(gcf)
+
+%% Comparing Designs
+% Design can also be used to investigate various designs simultaneously.
+
+% Show all FIR designs
+design(h, 'allfir');
+set(gcf,'Color','white')
+%%
+close(gcf)
+
+% Show all IIR designs
+design(h, 'alliir');
+set(gcf,'Color','white')
+axis([0 1 -91 5])
+
+%%
+close(gcf)
+
+
+displayEndOfDemoMessage(mfilename)
+
+
+##### SOURCE END #####
+--></body></html>

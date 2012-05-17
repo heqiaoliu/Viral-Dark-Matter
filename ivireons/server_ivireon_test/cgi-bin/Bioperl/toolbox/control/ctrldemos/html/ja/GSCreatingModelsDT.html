@@ -1,0 +1,33 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>離散時間モデルの作成</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="GSCreatingModelsDT.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit GSCreatingModelsDT">エディターで GSCreatingModelsDT.m を開く</a></div><div class="right"><a href="matlab:echodemo GSCreatingModelsDT">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>離散時間モデルの作成</h1><!--introduction--><p>このデモでは、コマンド <tt>tf</tt>、<tt>zpk</tt>、<tt>ss</tt>、および <tt>frd</tt> を使用して離散時間線形モデルを作成する方法を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">離散時間モデルの指定</a></li><li><a href="#4">離散時間システムの認識</a></li></ul></div><h2>離散時間モデルの指定<a name="1"></a></h2><p>Control System Toolbox™ では、連続時間と離散時間の両方のモデルを作成できます。離散時間モデルの作成に使用する文法は、連続時間モデルに使用する分法と類似しています。離散時間モデルでの相違点は、サンプリング時間 (秒単位のサンプリング間隔) を指定する必要があることです。</p><p>たとえば、以下の離散時間伝達関数で、</p><p><img src="../GSCreatingModelsDT_eq01007.png" alt="$$ H(z) = \frac{z - 1}{z^2 - 1.85 z + 0.9} $$"></p><p>サンプリング期間 <tt>Ts = 0.1 s</tt> を使用するには、以下のように入力します。</p><pre class="codeinput">num = [ 1  -1 ];
+den = [ 1  -1.85  0.9 ];
+H = tf(num,den,0.1)
+</pre><pre class="codeoutput"> 
+Transfer function:
+      z - 1
+------------------
+z^2 - 1.85 z + 0.9
+ 
+Sampling time: 0.1
+</pre><p>または、以下を使用することもできます。</p><pre class="codeinput">z = tf(<span class="string">'z'</span>,0.1);
+H = (z - 1) / (z^2 - 1.85*z + 0.9);
+</pre><p>同様に、以下の離散時間状態空間モデルで</p><p><img src="../GSCreatingModelsDT_eq97605.png" alt="$$ x[k+1] = 0.5 x[k] + u[k] $$"></p><p><img src="../GSCreatingModelsDT_eq95269.png" alt="$$ y[k] = 0.2 x[k] .$$"></p><p>サンプリング期間 <tt>Ts = 0.1 s</tt> を使用するには、以下のように入力します。</p><pre class="codeinput">sys = ss(.5,1,.2,0,0.1);
+</pre><h2>離散時間システムの認識<a name="4"></a></h2><p>LTI モデルが離散モデルであるかどうかを判断するには、以下のようにいくつかの方法があります。</p><div><ul><li>サンプリング時間の値にゼロ以外の値が表示されている</li><li><tt>sys.Ts</tt> または <tt>get(sys,'Ts')</tt> がゼロ以外のサンプリング時間値を返す</li><li><tt>isdt(sys)</tt> が true を返す</li></ul></div><p>たとえば、上記の伝達関数 <tt>H</tt> では、以下のようになります。</p><pre class="codeinput">H.Ts
+</pre><pre class="codeoutput">
+ans =
+
+    0.1000
+
+</pre><pre class="codeinput">isdt(H)
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><p>また、離散時間システムは、以下の特性を検出することで特定することもできます。</p><div><ul><li>時間応答プロット - 応答曲線が、サンプリングされたデータの特性を持つ階段状の曲線である</li><li>ボード プロット - ナイキスト周波数 (pi/サンプリング時間) をマークする垂直バーがある</li></ul></div><p>以下のプロットには、これらの特性が示されています。</p><pre class="codeinput">step(H)
+</pre><img vspace="5" hspace="5" src="../GSCreatingModelsDT_01.png" alt=""> <pre class="codeinput">bode(H), grid
+</pre><img vspace="5" hspace="5" src="../GSCreatingModelsDT_02.png" alt=""> <p class="footer">Copyright 1986-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Creating Discrete-Time Models % This demo shows how to create discrete-time linear models using the % |tf|, |zpk|, |ss|, and |frd| commands.  %   Copyright 1986-2007 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $   %% Specifying Discrete-Time Models % Control System Toolbox(TM) lets you create both continuous-time and % discrete-time models. The syntax for creating discrete-time models  % is similar to that for continuous-time models, except that you must  % also provide a sampling time (sampling interval in seconds). % % For example, to specify the discrete-time transfer function: % % $$ H(z) = \frac{z - 1}{z^2 - 1.85 z + 0.9} $$ % % with sampling period |Ts = 0.1 s|, type: num = [ 1  -1 ]; den = [ 1  -1.85  0.9 ]; H = tf(num,den,0.1)  %% % or equivalently: z = tf('z',0.1); H = (z - 1) / (z^2 - 1.85*z + 0.9);  %% % Similarly, to specify the discrete-time state-space model: % % $$ x[k+1] = 0.5 x[k] + u[k] $$ % % $$ y[k] = 0.2 x[k] . $$ % % with sampling period |Ts = 0.1 s|, type: sys = ss(.5,1,.2,0,0.1);  %% Recognizing Discrete-Time Systems % There are several ways to determine if your LTI model is discrete: % % * The display shows a nonzero sampling time value % * |sys.Ts| or |get(sys,'Ts')| return a nonzero sampling time value. % * |isdt(sys)| returns true. %  % For example, for the transfer function |H| specified above, H.Ts  %% isdt(H)  %% % You can also spot discrete-time systems by looking for the following % traits: % % * Time response plots - Response curve has a staircase look owing to  % its sampled-data nature % * Bode plots - There is a vertical bar marking the Nyquist frequency (pi % divided by the sampling time). % % The following plots show these characteristic traits:  step(H)  %% bode(H), grid   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

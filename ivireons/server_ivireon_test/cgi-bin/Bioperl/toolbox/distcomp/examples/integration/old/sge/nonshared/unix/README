@@ -1,0 +1,65 @@
+Copyright 2008 The MathWorks, Inc.
+
+
+UNIX client submitting jobs to a UNIX cluster
+=============================================
+
+Information about a MATLAB job is copied to a host on the cluster. The 
+SGE qsub command is then called to submit the job to the SGE scheduler.
+When the job finishes, its output is copied back to the client host.
+
+Follow these steps to implement the solution:
+
+
+On the Cluster Hosts
+--------------------
+1. The decode function must be on the MATLAB path of the workers. 
+Typically, this is accomplished by copying sgeNonSharedSimpleDecodeFcn.m 
+to $MATLABROOT/toolbox/local on the workers.
+
+2. Refer to $MATLABROOT/toolbox/distcomp/examples/integration/sge/nonshared/unix/matlabpe.template 
+for suggestions on how to configure SGE for MATLAB jobs. Make sure to specify <the_number_of_slots> 
+and replace <path-to> with $MATLABROOT/toolbox/distcomp/examples/integration/sge/nonshared/unix
+
+
+On the Client Host
+-------------------
+1. Set up passwordless ssh and scp from the client host to a host on 
+the cluster. The cluster host must be able to call the qsub command to 
+submit a job to an SGE scheduler.
+
+
+2. The files in 
+$MATLABROOT/toolbox/distcomp/examples/integration/sge/nonshared/unix 
+must be present on the MATLAB path. Copy them to $MATLABROOT/toolbox/local.
+Then, start a MATLAB session.
+
+
+3. Read the documentation for using the Generic Scheduler Interface with 
+the Distributed Computing Toolbox.
+
+
+4. For distributed jobs, you must use sgeNonSharedSimpleSubmitFcn as your submit function. 
+This function requires two additional string value inputs:
+        a. clusterHost - The name of the cluster host that will call qsub command.
+        b. remoteDataLocation - The directory used to store job information on the cluster. 
+                                This directory must be accessible by all the worker hosts.
+
+Example:
+clusterHost = 'myHost1';
+remoteDataLocation = '/share/DATA_LOCATION';
+sched = findResource('scheduler', 'type', 'generic');
+% Use a local directory as the DataLocation
+set(sched, 'DataLocation', '/tmp/DATA_LOCATION');
+set(sched, 'ClusterMatlabRoot', '/apps/matlab');
+set(sched, 'HasSharedFilesystem', false);
+set(sched, 'ClusterOsType', 'unix');
+set(sched, 'GetJobStateFcn', @sgeGetJobState);
+set(sched, 'DestroyJobFcn', @sgeDestroyJob);
+% The SubmitFcn must be a cell array that includes the two additional inputs
+set(sched, 'SubmitFcn', {@sgeNonSharedSimpleSubmitFcn, clusterHost, remoteDataLocation});
+% If you want to run parallel jobs, you must specify a ParallelSubmitFcn
+set(sched, 'ParallelSubmitFcn', {@sgeNonSharedParallelSubmitFcn, clusterHost, remoteDataLocation});
+
+5. Create a job and tasks, submit the job and wait for it to finish before 
+getting the results.

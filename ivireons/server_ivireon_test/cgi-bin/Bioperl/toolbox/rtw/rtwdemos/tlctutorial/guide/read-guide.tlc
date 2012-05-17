@@ -1,0 +1,54 @@
+%% File: read-guide.tlc   (This line is a TLC Comment, and will not print)
+%% $Revision: 1.1.2.1 $
+%% To execute this file, type: tlc -v -r guide.rtw read-guide.tlc
+%% Set format for displaying real values (default is "EXPONENTIAL")
+%realformat "CONCISE"
+Using TLC you can:
+* Directly access any field's value, e.g.
+%assign td = "%" + "<Top.Date>"
+  %<td> -- evaluates to:
+  "%<Top.Date>"
+
+* Assign contents of a field to a variable, e.g.
+%assign worker = Top.Employee.FirstName
+  "%assign worker = Top.Employee.FirstName"
+  worker expands to Top.Employee.FirstName = %<worker>
+
+* Concatenate string values, e.g.
+%assign worker = worker + " " + Top.Employee.LastName
+  "%assign worker = worker + " " + Top.Employee.LastName"
+  worker expands to worker + " " + Top.Employee.LastName = "%<worker>"
+  
+* Perform arithmetic operations, e.g.
+%assign wageCost = Top.Employee.PayRate * Top.Employee.Overhead
+  "%assign wageCost = Top.Employee.PayRate * Top.Employee.Overhead"
+  wageCost expands to Top.Employee.PayRate * Top.Employee.Overhead ...
+ <- %<Top.Employee.PayRate> * %<Top.Employee.Overhead> = %<wageCost>
+  
+* Put variables into a field, e.g.
+  Top.Employee.GrossRate starts at %<Top.Employee.GrossRate>
+%assign Top.Employee.GrossRate = wageCost
+  "%assign Top.Employee.GrossRate = wageCost"
+  Top.Employee.GrossRate expands to wageCost = %<Top.Employee.GrossRate>
+
+* Index lists of values, e.g.
+%assign projects = Top.Project[0].Name + ", " + Top.Project[1].Name...
++ ", " + Top.Project[2].Name
+  "%assign projects = Top.Project[0].Name + ", " + Top.Project[1].Name..."
+  "+ ", " + Top.Project[2].Name"
+  projects expands to Top.Project[0].Name + ", " + Top.Project[1].Name
+  + ", " + Top.Project[2].Name = %<projects>
+
+* Traverse and manipulate list data via loops, e.g.
+%assign diffSum = 0.0
+%foreach i = Top.NumProject
+  - At top of Loop, Project = %<Top.Project[i].Name>; Difficulty = ...
+ %<Top.Project[i].Difficulty>
+  %assign diffSum = diffSum + Top.Project[i].Difficulty
+  - Bottom of Loop, i = %<i>; diffSum = %<diffSum>
+%endforeach
+%assign avgDiff = diffSum / Top.NumProject
+  Average Project Difficulty expands to diffSum / Top.NumProject = %<diffSum> ...
+  / %<Top.NumProject> = %<avgDiff>
+
+%% End of read-guide.tlc

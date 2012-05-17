@@ -1,0 +1,145 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>変換イメージのギャラリーを作成</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipexcheckerboard.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexcheckerboard">エディターで ipexcheckerboard.m を開く</a></div><div class="right"><a href="matlab:echodemo ipexcheckerboard">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>変換イメージのギャラリーを作成</h1><!--introduction--><p>空間変換の多くのプロパティは、チェッカーボード イメージを変換することによって識別できます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">概要</a></li><li><a href="#2">イメージ 1: チェッカーボードを作成する</a></li><li><a href="#3">イメージ 2: チェッカーボードに無反射相似を適用する</a></li><li><a href="#9">イメージ 3: チェッカーボードに相似を適用する</a></li><li><a href="#12">イメージ 4: チェッカーボードにアフィン変換を適用する</a></li><li><a href="#13">イメージ 5: チェッカーボードに射影変換を適用する</a></li><li><a href="#14">イメージ 6: チェッカーボードに多項式変換を適用する</a></li><li><a href="#15">イメージ 7: チェッカーボードに区分的線形変換を適用する</a></li><li><a href="#16">イメージ 8: チェッカーボードに正弦変換を適用する</a></li><li><a href="#17">イメージ 9: チェッカーボードに樽形変換を適用する</a></li><li><a href="#18">イメージ 10: チェッカーボードにピン クッション変換を適用する</a></li><li><a href="#19">概要: チェッカーボードの空間変換をすべて表示</a></li></ul></div><h2>概要<a name="1"></a></h2><p>二次元空間変換、すなわち幾何学的変換は、ユークリッド平面の各ポイントをユークリッド平面の別のポイントに関連付けるマッピングです。以下の例では、幾何学的変換は、直交座標 (x,y) を使用したポイントを直交座標 (u,v) を使用した別のポイントにマッピングする方法を示す規則によって定義されます。チェッカーボード パターンは、入力イメージの平面の座標格子および各変換によってもたらされる歪みのタイプを視覚化する際に役立ちます。</p><h2>イメージ 1: チェッカーボードを作成する<a name="2"></a></h2><p><tt>checkerboard</tt> は四角形のタイルと 4 つの固有の角を持つイメージを生成します。このイメージにより、幾何学的変換によってチェッカーボードのイメージがどのように変化するかが簡単にわかります。</p><p>この例を 1 回実行した後に、イメージ <tt>I</tt> を大きなチェッカーボードまたは好みのイメージに変えてみます。</p><pre class="codeinput">I = checkerboard(10,2);
+imshow(I)
+title(<span class="string">'original'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_01.png" alt=""> <h2>イメージ 2: チェッカーボードに無反射相似を適用する<a name="3"></a></h2><p>無反射相似には、回転、スケーリング、並行移動が含まれます。形状と角度は保持されます。平行線は平行のままです。直線は直線のままです。</p><p>無反射相似の場合、</p><p><img src="../ipexcheckerboard_eq98522.png" alt="$$[\begin{array}{c c}u\ v\end{array}] = [\begin{array}{c c}x\ y\ 1\end{array}]\,T$$"></p><p><tt>T</tt> は 4 つのパラメーターに依存する 3 行 2 列の行列です。</p><pre class="codeinput"><span class="comment">% Try varying these 4 parameters.</span>
+scale = 1.2;       <span class="comment">% scale factor</span>
+angle = 40*pi/180; <span class="comment">% rotation angle</span>
+tx = 0;            <span class="comment">% x translation</span>
+ty = 0;            <span class="comment">% y translation</span>
+
+sc = scale*cos(angle);
+ss = scale*sin(angle);
+
+T = [ sc -ss;
+      ss  sc;
+      tx  ty];
+</pre><p>無反射相似はアフィン変換の一部であるため、以下を使用して <tt>tform</tt> 構造体を作成します。</p><pre class="codeinput">t_nonsim = maketform(<span class="string">'affine'</span>,T);
+I_nonreflective_similarity = imtransform(I,t_nonsim,<span class="string">'FillValues'</span>,.3);
+
+figure, imshow(I_nonreflective_similarity);
+title(<span class="string">'nonreflective similarity'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_02.png" alt=""> <p>平行移動について:<tt>tx</tt> または <tt>ty</tt> をゼロ以外の値に変更した場合、出力イメージには何の影響もないことがわかります。平行移動を含む、変換に対応する座標を表示する場合は、次を実行します。</p><pre class="codeinput">[I_nonreflective_similarity,xdata, ydata] = imtransform(I,t_nonsim,<span class="string">'FillValues'</span>,.3);
+
+figure, imshow(I_nonreflective_similarity,<span class="string">'XData'</span>,xdata,<span class="string">'YData'</span>,ydata)
+axis <span class="string">on</span>
+title(<span class="string">'nonreflective similarity'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_03.png" alt=""> <p><tt>xdata</tt> と <tt>ydata</tt> は変換を表すことに注意してください。表示する出力イメージの部分を指定するには、関数 <tt>imtransform</tt> の 'XData' パラメーターと 'YData' パラメーターを使用します。</p><h2>イメージ 3: チェッカーボードに相似を適用する<a name="9"></a></h2><p>相似変換では、三角形は相似する三角形にマッピングされます。無反射相似変換は、相似変換の一部です。</p><p>相似では、方程式は無反射相似の場合と同じです。</p><p><img src="../ipexcheckerboard_eq98522.png" alt="$$[\begin{array}{c c}u\ v\end{array}] = [\begin{array}{c c}x\ y\ 1\end{array}]\,T$$"></p><p><tt>T</tt> は、4 つのパラメーターとオプションの反射に依存する 3 行 2 列の行列です。</p><pre class="codeinput"><span class="comment">% Try varying these parameters.</span>
+scale = 1.5;        <span class="comment">% scale factor</span>
+angle = 10*pi/180; <span class="comment">% rotation angle</span>
+tx = 0;            <span class="comment">% x translation</span>
+ty = 0;            <span class="comment">% y translation</span>
+a = -1;            <span class="comment">% -1 -&gt; reflection, 1 -&gt; no reflection</span>
+
+sc = scale*cos(angle);
+ss = scale*sin(angle);
+
+T = [   sc   -ss;
+      a*ss  a*sc;
+        tx    ty];
+</pre><p>相似はアフィン変換の一部であるため、以下を使用して <tt>tform</tt> 構造体を作成します。</p><pre class="codeinput">t_sim = maketform(<span class="string">'affine'</span>,T);
+
+<span class="comment">% As in the translation example above, retrieve and display with xdata and ydata</span>
+<span class="comment">% to reveal the reflection.</span>
+[I_similarity,xdata,ydata] = imtransform(I,t_sim,<span class="string">'FillValues'</span>,.3);
+
+figure, imshow(I_similarity,<span class="string">'XData'</span>,xdata,<span class="string">'YData'</span>,ydata)
+axis <span class="string">on</span>
+title(<span class="string">'similarity'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_04.png" alt=""> <h2>イメージ 4: チェッカーボードにアフィン変換を適用する<a name="12"></a></h2><p>アフィン変換では、x と y の次元が個別にスケーリングまたは剪断され、変換、反射、回転が行われます。平行線は平行のままです。直線は直線のままです。相似は、アフィン変換の一部です。</p><p>アフィン変換では、方程式は相似および無反射相似の場合と同じです。</p><p><img src="../ipexcheckerboard_eq98522.png" alt="$$[\begin{array}{c c}u\ v\end{array}] = [\begin{array}{c c}x\ y\ 1\end{array}]\,T$$"></p><p><tt>T</tt> は 3 行 2 列の行列で、6 つの要素はすべて異なります。</p><pre class="codeinput"><span class="comment">% Try varying any of the six elements of T.</span>
+T = [1  0.3;
+     1    1;
+     0    0];
+t_aff = maketform(<span class="string">'affine'</span>,T);
+I_affine = imtransform(I,t_aff,<span class="string">'FillValues'</span>,.3);
+
+figure, imshow(I_affine)
+title(<span class="string">'affine'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_05.png" alt=""> <h2>イメージ 5: チェッカーボードに射影変換を適用する<a name="13"></a></h2><p>射影変換では、四角形は四角形にマッピングされます。直線は直線のままです。アフィン変換は、射影変換の一部です。</p><p>射影変換の場合:</p><p><img src="../ipexcheckerboard_eq21484.png" alt="$$[\,\begin{array}{c c}up\ vp\ wp\end{array}\,] = [\,\begin{array}{c c}x\ y\ w\end{array}\,]\,T$$"></p><p><img src="../ipexcheckerboard_eq33978.png" alt="$$u = \frac{up}{wp}$$"></p><p><img src="../ipexcheckerboard_eq45959.png" alt="$$v = \frac{vp}{wp}$$"></p><p>T は 3 行 3 列の行列で、9 つの要素はすべて異なります。</p><p><img src="../ipexcheckerboard_eq66168.png" alt="$$T = \left[\begin{array}{c c c}A\;D\;G\\B\;E\;H\\C\;F\;I\end{array}\right]$$"></p><p>上記の行列方程式は、下の 2 つの式に相当します。</p><p><img src="../ipexcheckerboard_eq04632.png" alt="$$u = \frac{Ax + By + C}{Gx + Hy + I}$$"></p><p><img src="../ipexcheckerboard_eq18203.png" alt="$$v = \frac{Dx + Ey + F}{Gx + Hy + I}$$"></p><p><tt>T</tt> の 9 つの要素のいずれかを変えて試してみます。</p><pre class="codeinput">T = [1  0 0.008;
+     1  1  0.01;
+     0  0     1];
+t_proj = maketform(<span class="string">'projective'</span>,T);
+I_projective = imtransform(I,t_proj,<span class="string">'FillValues'</span>,.3);
+
+figure, imshow(I_projective)
+title(<span class="string">'projective'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_06.png" alt=""> <h2>イメージ 6: チェッカーボードに多項式変換を適用する<a name="14"></a></h2><p>多項式変換では、x と y の多項式がマッピングを定義します。</p><p>2 次多項式変換では、次のように定義します。</p><p><img src="../ipexcheckerboard_eq14063.png" alt="$$[\begin{array}{c c}u\ v\end{array}] = [\begin{array}{c c} 1\ x\ y\ x*y\ x^2\ y^2\end{array}]\,T$$"></p><p>u と v は共に、x と y の 2 次多項式です。2 次多項式はそれぞれ 6 つの項があります。すべての係数を指定するために、<tt>T</tt> のサイズは 6 行 2 列です。</p><pre class="codeinput">xybase = reshape(randn(12,1),6,2);
+t_poly = cp2tform(xybase,xybase,<span class="string">'polynomial'</span>,2);
+
+<span class="comment">% Try varying any of the twelve elements of T.</span>
+T =   [0     0;
+       1     0;
+       0     1;
+       0.001 0;
+       0.02  0;
+       0.01  0];
+t_poly.tdata = T;
+I_polynomial = imtransform(I,t_poly,<span class="string">'FillValues'</span>,.3);
+
+figure, imshow(I_polynomial)
+title(<span class="string">'polynomial'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_07.png" alt=""> <h2>イメージ 7: チェッカーボードに区分的線形変換を適用する<a name="15"></a></h2><p>区分的線形変換では、イメージの個々の三角形領域にアフィン変換が適用されます。この例では、イメージの左上の三角形領域は変更されませんが、イメージの右下の三角形領域が引き伸ばされます。</p><pre class="codeinput">xy_input = [10 10; 10 30; 30 30; 30 10];
+xy_base =  [10 10; 10 30; 40 35; 30 10];
+t_piecewise_linear = cp2tform(xy_input,xy_base,<span class="string">'piecewise linear'</span>);
+I_piecewise_linear = imtransform(I,t_piecewise_linear);
+
+figure, imshow(I_piecewise_linear)
+title(<span class="string">'piecewise linear'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_08.png" alt=""> <h2>イメージ 8: チェッカーボードに正弦変換を適用する<a name="16"></a></h2><p>次の例とそれに続く 2 つの例では、明示的なマッピング <tt>tmap_b</tt> を作成して、等間隔グリッドの各ポイント (xi,yi) を別のポイント (u,v) に関連付ける方法を示します。このマッピング <tt>tmap_b</tt> は <tt>tformarray</tt> が使用してイメージを変換します。</p><pre class="codeinput"><span class="comment">% locally varying with sinusoid</span>
+[nrows,ncols] = size(I);
+[xi,yi] = meshgrid(1:ncols,1:nrows);
+a1 = 5; <span class="comment">% Try varying the amplitude of the sinusoids.</span>
+a2 = 3;
+imid = round(size(I,2)/2); <span class="comment">% Find index of middle element</span>
+u = xi + a1*sin(pi*xi/imid);
+v = yi - a2*sin(pi*yi/imid);
+tmap_B = cat(3,u,v);
+resamp = makeresampler(<span class="string">'linear'</span>,<span class="string">'fill'</span>);
+I_sinusoid = tformarray(I,[],resamp,[2 1],[1 2],[],tmap_B,.3);
+
+figure, imshow(I_sinusoid)
+title(<span class="string">'sinusoid'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_09.png" alt=""> <h2>イメージ 9: チェッカーボードに樽形変換を適用する<a name="17"></a></h2><p>樽形歪曲はイメージを中心から外側に放射状に変形します。歪みは中心から遠ざかるほど大きくなり、側面が凸状になります。</p><pre class="codeinput"><span class="comment">% radial barrel distortion</span>
+xt = xi(:) - imid;
+yt = yi(:) - imid;
+[theta,r] = cart2pol(xt,yt);
+a = .001; <span class="comment">% Try varying the amplitude of the cubic term.</span>
+s = r + a*r.^3;
+[ut,vt] = pol2cart(theta,s);
+u = reshape(ut,size(xi)) + imid;
+v = reshape(vt,size(yi)) + imid;
+tmap_B = cat(3,u,v);
+I_barrel = tformarray(I,[],resamp,[2 1],[1 2],[],tmap_B,.3);
+
+figure, imshow(I_barrel)
+title(<span class="string">'barrel'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_10.png" alt=""> <h2>イメージ 10: チェッカーボードにピン クッション変換を適用する<a name="18"></a></h2><p>ピンクッション歪曲は、3次方程式に負の偏角があるため樽形歪曲の逆になります。歪みは中心から遠ざかるほど大きくなり、側面が凹状になります。</p><pre class="codeinput"><span class="comment">% radial pin cushion distortion</span>
+xt = xi(:) - imid;
+yt = yi(:) - imid;
+[theta,r] = cart2pol(xt,yt);
+a = -.0005; <span class="comment">% Try varying the amplitude of the cubic term.</span>
+s = r + a*r.^3;
+[ut,vt] = pol2cart(theta,s);
+u = reshape(ut,size(xi)) + imid;
+v = reshape(vt,size(yi)) + imid;
+tmap_B = cat(3,u,v);
+I_pin = tformarray(I,[],resamp,[2 1],[1 2],[],tmap_B,.3);
+
+figure, imshow(I_pin)
+title(<span class="string">'pin cushion'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_11.png" alt=""> <h2>概要: チェッカーボードの空間変換をすべて表示<a name="19"></a></h2><pre class="codeinput">figure
+subplot(5,2,1),imshow(I),title(<span class="string">'original'</span>)
+subplot(5,2,2),imshow(I_nonreflective_similarity),title(<span class="string">'nonreflective similarity'</span>)
+subplot(5,2,3),imshow(I_similarity),title(<span class="string">'similarity'</span>)
+subplot(5,2,4),imshow(I_affine),title(<span class="string">'affine'</span>)
+subplot(5,2,5),imshow(I_projective),title(<span class="string">'projective'</span>)
+subplot(5,2,6),imshow(I_polynomial),title(<span class="string">'polynomial'</span>)
+subplot(5,2,7),imshow(I_piecewise_linear),title(<span class="string">'piecewise linear'</span>)
+subplot(5,2,8),imshow(I_sinusoid),title(<span class="string">'sinusoid'</span>)
+subplot(5,2,9),imshow(I_barrel),title(<span class="string">'barrel'</span>)
+subplot(5,2,10),imshow(I_pin),title(<span class="string">'pin cushion'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexcheckerboard_12.png" alt=""> <p>表示されているイメージのスケールは <tt>subplot</tt> によって変更されています。</p><p class="footer">Copyright 1993-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Creating a Gallery of Transformed Images % Many properties of spatial transformations can be identified by % transforming a checkerboard image.  % Copyright 1993-2007 The MathWorks, Inc.  %% Overview % A two-dimensional spatial, or geometric, transformation is a mapping that % associates each point in a Euclidean plane with another point in a Euclidean % plane. In these examples, the geometric transformation is defined by a rule % that tells how to map the point with Cartesian coordinates (x,y) to another % point with Cartesian coordinates (u,v). A checkerboard pattern helps us % to visualize a coordinate grid in the plane of the input image and the type % of distortion introduced by each transformation.  %% Image 1: Create Checkerboard % |checkerboard| produces an image that has rectangular tiles and four unique % corners, which makes it easy to see how the checkerboard image gets % distorted by geometric transformations. % % After you have run this example once, try changing the image |I| to a larger % checkerboard, or to your favorite image.  I = checkerboard(10,2);  imshow(I) title('original')  %% Image 2: Apply Nonreflective Similarity to Checkerboard % Nonreflective similarity transformations may include a rotation, a scaling, and a % translation. Shapes and angles are preserved. Parallel lines remain % parallel. Straight lines remain straight.  %% % For a nonreflective similarity,  % % $$[\begin{array}{c c}u\ v\end{array}] = [\begin{array}{c c}x\ y\ 1\end{array}]\,T$$  %% % |T| is a 3-by-2 matrix that depends on 4 parameters.  % Try varying these 4 parameters. scale = 1.2;       % scale factor angle = 40*pi/180; % rotation angle tx = 0;            % x translation ty = 0;            % y translation  sc = scale*cos(angle); ss = scale*sin(angle);  T = [ sc -ss;       ss  sc;       tx  ty];  %%  % Since nonreflective similarities are a subset of affine transformations, % create a |tform| struct using:  t_nonsim = maketform('affine',T); I_nonreflective_similarity = imtransform(I,t_nonsim,'FillValues',.3);  figure, imshow(I_nonreflective_similarity); title('nonreflective similarity')  %% % About Translation: If you change either |tx| or |ty| to a non-zero value, % you will notice that it has no effect on the output image. If you want to % see the coordinates that correspond to your transformation, including the % translation, try this:  [I_nonreflective_similarity,xdata, ydata] = imtransform(I,t_nonsim,'FillValues',.3);  figure, imshow(I_nonreflective_similarity,'XData',xdata,'YData',ydata) axis on title('nonreflective similarity')  %% % Notice that |xdata| and |ydata| reveal the translation. To specify what part % of the output image you want to see, use the 'XData' and 'YData' parameters % in the |imtransform| function.  %% Image 3: Apply Similarity to Checkerboard % In a similarity transformation, similar triangles map to similar % triangles. Nonreflective similarity transformations are a subset of similarity % transformations. % % For a similarity, the equation is the same as for a nonreflective similarity: % % $$[\begin{array}{c c}u\ v\end{array}] = [\begin{array}{c c}x\ y\ 1\end{array}]\,T$$ %  %% % |T| is a 3-by-2 matrix that depends on 4 parameters plus an optional reflection.  % Try varying these parameters. scale = 1.5;        % scale factor angle = 10*pi/180; % rotation angle tx = 0;            % x translation ty = 0;            % y translation a = -1;            % -1 -> reflection, 1 -> no reflection  sc = scale*cos(angle); ss = scale*sin(angle);  T = [   sc   -ss;       a*ss  a*sc;         tx    ty];  %%  % Since similarities are a subset of affine transformations, create a |tform| % struct using:  t_sim = maketform('affine',T);  % As in the translation example above, retrieve and display with xdata and ydata % to reveal the reflection. [I_similarity,xdata,ydata] = imtransform(I,t_sim,'FillValues',.3);  figure, imshow(I_similarity,'XData',xdata,'YData',ydata) axis on title('similarity')  %% Image 4: Apply Affine Transformation to Checkerboard % In an affine transformation, the x and y dimensions can be scaled or sheared % independently and there may be a translation, a reflection, and/or a % rotation. Parallel lines remain parallel. Straight lines remain % straight. Similarities are a subset of affine transformations. %  % For an affine transformation, the equation is the same as for a similarity and % nonreflective similarity: % % $$[\begin{array}{c c}u\ v\end{array}] = [\begin{array}{c c}x\ y\ 1\end{array}]\,T$$ % % |T| is 3-by-2 matrix, where all six elements can be different.  % Try varying any of the six elements of T. T = [1  0.3;       1    1;      0    0]; t_aff = maketform('affine',T); I_affine = imtransform(I,t_aff,'FillValues',.3);  figure, imshow(I_affine) title('affine')  %% Image 5: Apply Projective Transformation to Checkerboard % In a projective transformation, quadrilaterals map to quadrilaterals. % Straight lines remain straight. Affine transformations are a subset of % projective transformations. % % For a projective transformation:  % % $$[\,\begin{array}{c c}up\ vp\ wp\end{array}\,] = [\,\begin{array}{c c}x\ y\ w\end{array}\,]\,T$$ % % $$u = \frac{up}{wp}$$  % % $$v = \frac{vp}{wp}$$ % % T is a 3-by-3 matrix, where all nine elements can be different. % % $$T = \left[\begin{array}{c c c}A\;D\;G\\B\;E\;H\\C\;F\;I\end{array}\right]$$ % % The above matrix equation is equivalent to these two expressions: % % $$u = \frac{Ax + By + C}{Gx + Hy + I}$$ % % $$v = \frac{Dx + Ey + F}{Gx + Hy + I}$$ % % Try varying any of the nine elements of |T|.  T = [1  0 0.008;       1  1  0.01;      0  0     1]; t_proj = maketform('projective',T);    I_projective = imtransform(I,t_proj,'FillValues',.3);  figure, imshow(I_projective) title('projective')  %% Image 6: Apply Polynomial Transformation to Checkerboard % In a polynomial transformation, polynomials in x and y define the mapping. % % For a second-order polynomial transformation:  % % $$[\begin{array}{c c}u\ v\end{array}] = [\begin{array}{c c} 1\ x\ y\ x*y\ x^2\ y^2\end{array}]\,T$$ % % Both u and v are second-order polynomials of x and y. Each second-order % polynomial has six terms. To specify all coefficients, |T| has size 6-by-2.  xybase = reshape(randn(12,1),6,2); t_poly = cp2tform(xybase,xybase,'polynomial',2);  % Try varying any of the twelve elements of T. T =   [0     0;          1     0;        0     1;        0.001 0;        0.02  0;        0.01  0]; t_poly.tdata = T; I_polynomial = imtransform(I,t_poly,'FillValues',.3);  figure, imshow(I_polynomial) title('polynomial')  %% Image 7: Apply Piecewise Linear Transformation to Checkerboard % In a piecewise linear transformation, affine transformations are applied % separately to triangular regions of the image. In this example the % triangular region at the upper-left of the image remains unchanged while % the triangular region at the lower-right of the image is stretched.  xy_input = [10 10; 10 30; 30 30; 30 10];  xy_base =  [10 10; 10 30; 40 35; 30 10];  t_piecewise_linear = cp2tform(xy_input,xy_base,'piecewise linear');  I_piecewise_linear = imtransform(I,t_piecewise_linear);  figure, imshow(I_piecewise_linear) title('piecewise linear')  %% Image 8: Apply Sinusoidal Transformation to Checkerboard % This example and the following two examples show how you can create an % explicit mapping |tmap_b| to associate each point in a regular grid (xi,yi) % with a different point (u,v). This mapping |tmap_b| is used by |tformarray| to % transform the image.  % locally varying with sinusoid [nrows,ncols] = size(I); [xi,yi] = meshgrid(1:ncols,1:nrows); a1 = 5; % Try varying the amplitude of the sinusoids. a2 = 3; imid = round(size(I,2)/2); % Find index of middle element u = xi + a1*sin(pi*xi/imid); v = yi - a2*sin(pi*yi/imid); tmap_B = cat(3,u,v); resamp = makeresampler('linear','fill'); I_sinusoid = tformarray(I,[],resamp,[2 1],[1 2],[],tmap_B,.3);  figure, imshow(I_sinusoid) title('sinusoid')  %% Image 9: Apply Barrel Transformation to Checkerboard % Barrel distortion perturbs an image radially outward from its center. % Distortion is greater farther from the center, resulting in convex sides.  % radial barrel distortion xt = xi(:) - imid; yt = yi(:) - imid; [theta,r] = cart2pol(xt,yt); a = .001; % Try varying the amplitude of the cubic term. s = r + a*r.^3; [ut,vt] = pol2cart(theta,s); u = reshape(ut,size(xi)) + imid; v = reshape(vt,size(yi)) + imid; tmap_B = cat(3,u,v); I_barrel = tformarray(I,[],resamp,[2 1],[1 2],[],tmap_B,.3);  figure, imshow(I_barrel) title('barrel')  %% Image 10: Apply Pin Cushion Transformation to Checkerboard % Pin-cushion distortion is the inverse of barrel distortion because the cubic % term has a negative amplitude. Distortion is still greater farther from the % center but it results in concave sides.  % radial pin cushion distortion xt = xi(:) - imid; yt = yi(:) - imid; [theta,r] = cart2pol(xt,yt); a = -.0005; % Try varying the amplitude of the cubic term. s = r + a*r.^3; [ut,vt] = pol2cart(theta,s); u = reshape(ut,size(xi)) + imid; v = reshape(vt,size(yi)) + imid; tmap_B = cat(3,u,v); I_pin = tformarray(I,[],resamp,[2 1],[1 2],[],tmap_B,.3);  figure, imshow(I_pin) title('pin cushion')  %% Summary: Display All of the Spatial Transformations of Checkerboard  figure subplot(5,2,1),imshow(I),title('original') subplot(5,2,2),imshow(I_nonreflective_similarity),title('nonreflective similarity') subplot(5,2,3),imshow(I_similarity),title('similarity') subplot(5,2,4),imshow(I_affine),title('affine') subplot(5,2,5),imshow(I_projective),title('projective') subplot(5,2,6),imshow(I_polynomial),title('polynomial') subplot(5,2,7),imshow(I_piecewise_linear),title('piecewise linear') subplot(5,2,8),imshow(I_sinusoid),title('sinusoid') subplot(5,2,9),imshow(I_barrel),title('barrel') subplot(5,2,10),imshow(I_pin),title('pin cushion')  %% % Note that |subplot| changes the scale of the images being displayed.   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

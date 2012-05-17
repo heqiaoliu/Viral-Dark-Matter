@@ -1,0 +1,114 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>構造体パラメーターへの移行</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-02"><meta name="DC.source" content="sldemo_applyVarStruct.m"><link rel="stylesheet" type="text/css" href="../../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_applyVarStruct.mdl</div><div class="right"><a href="matlab:sldemo_applyVarStruct">このモデルを開く</a></div></div><div class="content"><h1>構造体パラメーターへの移行</h1><!--introduction--><p>このデモは、構造化されていないワークスペース変数によってパラメーター化されている Simulink&reg; モデルを、MATLAB&reg; 構造体によってパラメーター化されているモデルに変換するプロセスを示します。デモでは、Simulink ユーティリティを使用してベース ワークスペースからのモデル変数を階層構造に整理し、その構造をモデルに適用する方法を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">モデルの説明</a></li><li><a href="#2">デモの要件</a></li><li><a href="#3">一般的なワークフロー</a></li><li><a href="#4">MATLAB 構造体への数値変数の収集</a></li><li><a href="#8">MATLAB 構造体の変更</a></li><li><a href="#9">モデルへの MATLAB 構造体の適用</a></li><li><a href="#11">生成コードに含まれる構造体パラメーターの設定</a></li></ul></div><h2>モデルの説明<a name="1"></a></h2><p>デモ モデル <a href="matlab:open_system('sldemo_applyVarStruct');"><tt>sldemo_applyVarStruct</tt></a> を開きます。</p><p>このモデルでは、ベース ワークスペースからの数値パラメーターをいくつか使用します。</p><img vspace="5" hspace="5" src="../sldemo_applyVarStruct_01.png" alt=""> <h2>デモの要件<a name="2"></a></h2><p>このデモでは、元のモデルを変更し、現在の作業ディレクトリにファイルを作成します。デモ モデルを保存する場合は、コピーを現在のディレクトリに保存してください。</p><h2>一般的なワークフロー<a name="3"></a></h2><p>構造体パラメーターを使用するためにモデルを移行するには、以下の手順に従います。</p><p>1. モデルが使用する数値変数をすべて MATLAB 構造体に収集します。</p><p>2. MATLAB 構造体を必要に応じて変更します。</p><p>3. MATLAB 構造体をモデルに適用します。</p><p>4. 生成コード内のパラメーター構造体の外観を設定します (オプション)。</p><h2>MATLAB 構造体への数値変数の収集<a name="4"></a></h2><p>Simulink モデルが使用している変数を確認するには、<b>Simulink.findVars</b> を使用します。</p><pre>model = 'sldemo_applyVarStruct';
+varList = Simulink.findVars(model, 'WorkspaceType', 'base')</pre><pre class="codeoutput">
+varList = 
+
+  20x1 Simulink.WorkspaceVar handle
+  Package: Simulink
+
+  Properties:
+    Name
+    Workspace
+    WorkspaceType
+    UsedByBlocks
+
+
+</pre><pre>var = varList(1)</pre><pre class="codeoutput">
+var = 
+
+  Simulink.WorkspaceVar handle
+  Package: Simulink
+
+  Properties:
+             Name: 'Ka'
+        Workspace: 'base workspace'
+    WorkspaceType: 'base'
+     UsedByBlocks: {'sldemo_applyVarStruct/Controller/Gain3'}
+
+
+</pre><p>モデルが使用している数値変数をすべて含む MATLAB 構造体を生成するには、<b>Simulink.BlockDiagram.createVarStruct</b> を使用します。</p><pre>ModelParam = Simulink.BlockDiagram.createVarStruct(model)</pre><pre class="codeoutput">
+ModelParam = 
+
+     Ka: 0.6770
+     Kf: -1.7460
+     Ki: -3.8640
+     Kq: 0.8156
+     Md: -6.8847
+     Mq: -0.6571
+     Mw: -0.0059
+    Swg: 3
+     Ta: 0.0500
+    Tal: [0.3959 1]
+     Ts: [0.1000 1]
+     Uo: 689.4000
+    Vto: 690.4000
+     W1: [1 2.9710]
+     W2: [1 4.1440]
+     Zd: -63.9979
+     Zw: -0.6385
+      a: 2.5348
+      b: 64.1300
+      g: 32.2000
+
+</pre><p>変数 <b>ModelParam</b> は、名前順の数値変数をフィールドとして含む MATLAB 構造体です。</p><p><b>メモ: </b></p><div><ul><li>モデルとモデルが使用するデータはすべて、<b>Simulink.BlockDiagram.createVarStruct</b> を呼び出す前に読み込まなければなりません。</li><li>MATLAB 構造体の名前は、いずれかの数値変数と同じにしないでください。</li></ul></div><h2>MATLAB 構造体の変更<a name="8"></a></h2><p>元の構造体では、1 つのレベルの階層に変数がすべて含まれています。構造体は、モデルに適用する前に変更できます。たとえば、パラメーター フィールドを並べ替えたり、レベルを追加してモデル パラメーターをグループ化したり、フィールドを追加することができます。</p><p><b>メモ: </b></p><div><ul><li>構造体内のリーフ フィールドの名前は変更しないでください。</li><li>元の変数は、移行プロセスが完了するまでクリアしないでください。</li></ul></div><p>1. これを行う 1 つの方法は、<b>Simulink.saveVars</b> を使用して構造体を MATLAB スクリプトに書き込み、ファイル内で変更することです。</p><pre>Simulink.saveVars('sldemo_applyVarStruct_data.m','ModelParam')
+edit sldemo_applyVarStruct_data.m</pre><p>2. 必要に応じて MATLAB スクリプトを編集します。たとえば、構造体を 2 つの構造体に分割します。</p><div><ul><li><b>'ControlParam'</b> には Controller サブシステム用のすべてのパラメーターが含まれています。</li><li><b>'ModelParam'</b> にはその他すべての数値パラメーターが含まれています。</li></ul></div><pre>ControlParam = struct;
+ControlParam.Ka = 0.677;
+ControlParam.Kf = -1.746;
+ControlParam.Ki = -3.864;
+ControlParam.Kq = 0.8156;
+ControlParam.Tal = [0.3959 1];
+ControlParam.Ts = [0.1 1];
+ControlParam.W1 = [1 2.971];
+ControlParam.W2 = [1 4.144];</pre><pre>ModelParam = struct;
+ModelParam.Md = -6.8847;
+ModelParam.Mq = -0.6571;
+ModelParam.Mw = -0.00592;
+ModelParam.Swg = 3;
+ModelParam.Ta = 0.05;
+ModelParam.Uo = 689.4;
+ModelParam.Vto = 690.4;
+ModelParam.Zd = -63.9979;
+ModelParam.Zw = -0.6385;
+ModelParam.a = 2.5348;
+ModelParam.b = 64.13;
+ModelParam.g = 32.2;</pre><p>変更したデータ ファイルを保存します。これはプリロード関数として使用できます。</p><p>3. 変更した MATLAB スクリプトを実行し、MATLAB 構造体を作成します。</p><pre>sldemo_applyVarStruct_data;</pre><h2>モデルへの MATLAB 構造体の適用<a name="9"></a></h2><p><b>Simulink.BlockDiagram.applyVarStruct</b> を使用すると、ブロック線図内の変数の参照を同等の構造体の参照に自動的に置き換えることができます。</p><p>1. MATLAB 構造体をモデルに適用します。デモ モデルが変更されます。これは書き込み可能なディレクトリに保存できるようになります。</p><pre>[applied,unapplied]=Simulink.BlockDiagram.applyVarStruct(model,'ControlParam')</pre><pre>[applied,unapplied]=Simulink.BlockDiagram.applyVarStruct(model,'ModelParam')</pre><p><b>メモ: </b></p><div><ul><li><b>'preview'</b> ApplyMode を使用すると、モデルを実際に変更せずに、変更される内容に関する情報を取得できます。</li></ul></div><pre>Simulink.BlockDiagram.applyVarStruct(model,'ModelParam', 'ApplyMode', 'preview')</pre><div><ul><li>モデルがコンパイルされている場合は、<b>'cached'</b> SearchMethod を使用して、モデルがリコンパイルされるのを防ぐことができます。</li></ul></div><pre>Simulink.BlockDiagram.applyVarStruct(model,'ModelParam', 'SearchMethod', 'cached')</pre><div><ul><li><b>unapplied</b> の出力が空でない場合は、<b>Simulink.findVars(model,'WorkspaceType','base','Name',variableName)</b> を使用してその理由を調査できます。考えられる原因としては、構造体のフィールド名を変更したか、フィールドを追加したか、あるいは Stateflow&reg; チャート、S-Function、Model ブロックなどの、特別な考慮が必要なブロックによって変数が使用されているなどが考えられます。</li></ul></div><p>2. 変更したモデル内の MATLAB 構造体をテストします。</p><p>不要な変数をクリアし、シミュレーションを実行して結果を確認します。</p><pre>clear;
+model = 'sldemo_applyVarStruct';
+sldemo_applyVarStruct_data;</pre><pre>sim('sldemo_applyVarStruct');</pre><div><ul><li>警告やエラーがないかどうか確認します。</li><li>シミュレーション結果を確認します。</li></ul></div><h2>生成コードに含まれる構造体パラメーターの設定<a name="11"></a></h2><p>既定の設定では、MATLAB 構造体は生成コードには表示されません。その理由は、数値がインライン化されているためです。コードを生成するには Real-Time Workshop&reg; が必要です。</p><p>1. 構造体の変数を調整可能にするには、構造体の値と 'ExportedGlobal' ストレージ クラスを使用して <b>Simulink.Parameter</b> を作成します。</p><pre>p=Simulink.Parameter;
+p.Value=ControlParam;
+p.RTWInfo.StorageClass='ExportedGlobal';
+ControlParam=p;
+clear p;</pre><pre>rtwbuild('sldemo_applyVarStruct');</pre><p>生成されたコードには、調整可能な構造体に対する構造体の型定義が <b>model_types.h</b> ヘッダー ファイルに含まれています。既定の設定では、Real-Time Workshop は、パラメーター構造体の型名を自動的に生成します。この名前は一意ですが、認識が難しくなります。</p><pre> typedef struct {
+   real_T Ka;
+   real_T Kf;
+   real_T Ki;
+   real_T Kq;
+   real_T Tal[2];
+   real_T Ts[2];
+   real_T W1[2];
+   real_T W2[2];
+ } struct_mn4cJ7zsH8aqc8bBlbIkqC;</pre><p>2. この型名を制御するには、<b>Simulink.Bus</b> を使用して Simulink.Parameter オブジェクトのデータ型を指定します。</p><p><b>Simulink.Bus.createObject</b> を使用すると、MATLAB 構造体と同じ形状のバス オブジェクトを作成できます。</p><pre>busInfo=Simulink.Bus.createObject(ControlParam.Value)</pre><p>バス オブジェクト名を Simulink.Parameter DataType 属性に割り当てます。</p><pre>ParamType=eval(busInfo.busName);
+ControlParam.DataType='Bus: ParamType';
+clear(busInfo.busName);
+clear busInfo;</pre><p><b>メモ: </b>バス オブジェクト名をデータ型として受け入れることができるのは <b>Simulink.Parameter</b> のみです。MATLAB 構造体に対しては、型名が Real-Time Workshop によって自動的に生成されます。</p><p>3. データ ファイルを再保存して、変更されたワークスペース変数を含めます。</p><pre>Simulink.saveVars('sldemo_applyVarStruct_data.m', '-append')</pre><p>4. 変更したモデルのコードを再生成します (Real-Time Workshop が必要)。</p><pre>rtwbuild(model);</pre><p>生成された型定義は次のようになります。</p><pre>  typedef struct {
+   real_T Ka;
+   real_T Kf;
+   real_T Ki;
+   real_T Kq;
+   real_T Tal[2];
+   real_T Ts[2];
+   real_T W1[2];
+   real_T W2[2];
+  } ParamType;</pre><p>パラメーター定義は次のとおりです。</p><pre>  ParamType ControlParam = {
+    0.677,
+    -1.746,
+    -3.864,
+    0.8156,
+    {0.3959, 1.0},
+    {0.1, 1.0},
+    {1.0, 2.971},
+    {1.0, 4.144}
+}</pre><p class="footer">Copyright 2005-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Migration to Structure Parameters % This demo illustrates the process of converting a Simulink(R) model that  % is parameterized by unstructured workspace variables to a model that is % parameterized by a MATLAB(R) structure. The demo shows how to use  % Simulink utilities to organize model variables from the base workspace % into a hierarchical structure and then apply the structure to the model.  % Copyright 2005-2010 The MathWorks, Inc. % $Revision: 1.1.2.1 $  $Date: 2010/07/29 21:29:14 $  %% Model Description % Open the demo model <matlab:open_system('sldemo_applyVarStruct'); |sldemo_applyVarStruct|>. %  % This model uses a number of numeric parameters from the base workspace. model = 'sldemo_applyVarStruct'; open_system(model);  %% Demo Requirements  % This demo changes the original model and creates files in the current % working directory. % If you plan to save the demo models, save a copy in the current directory. %  %% Typical Workflow % Migrating a model to use structure parameters follows these steps: % % 1. Collect all numeric variables used by the model into a MATLAB structure. % % 2. Modify the MATLAB structure (if necessary). % % 3. Apply the MATLAB structure to the model. % % 4. Configure the appearance of the parameter structure % in the generated code (optional).  %% Collecting  Numeric Variables into a MATLAB Structure % You can use *Simulink.findVars* to find out what variables are used by  % the Simulink model. % %  model = 'sldemo_applyVarStruct';  %  varList = Simulink.findVars(model, 'WorkspaceType', 'base') varList=Simulink.findVars(model,'WorkspaceType', 'base')  %% %  var = varList(1) var=varList(1)  %% % You can use *Simulink.BlockDiagram.createVarStruct* to generate  % a MATLAB structure containing all numeric variables used by the model. % %  ModelParam = Simulink.BlockDiagram.createVarStruct(model) % ModelParam = Simulink.BlockDiagram.createVarStruct(model)  %% % Variable *ModelParam* is a MATLAB structure that contains the numeric variables as fields % (sorted by name). % % *NOTE:*  % % * The model and all data that the model uses must be loaded before % calling *Simulink.BlockDiagram.createVarStruct*.  % * Do not give MATLAB structure the same name as one of numeric variables. %  %% Modifying the MATLAB Structure % The original structure contains all the variables in one level of hierarchy. % You can change the structure before applying it to the model. % For example, reorder parameter fields, add extra levels % to group model parameters, or add extra fields. % % *NOTE:* % % * Do not change the names of the leaf fields in the structure.  % * Do not clear the original variables until you have finished the migration process. % % 1. One way to do this is to use *Simulink.saveVars* to write the structure  % to a MATLAB script and make changes in the file.  % %  Simulink.saveVars('sldemo_applyVarStruct_data.m','ModelParam') %  edit sldemo_applyVarStruct_data.m % % 2. Edit the MATLAB script as needed. For example, % split the structure into two structures. % % * *'ControlParam'* contains all parameters for the Controller subsystem. % * *'ModelParam'* contains all other numeric parameters. % %  ControlParam = struct; %  ControlParam.Ka = 0.677; %  ControlParam.Kf = -1.746; %  ControlParam.Ki = -3.864; %  ControlParam.Kq = 0.8156; %  ControlParam.Tal = [0.3959 1]; %  ControlParam.Ts = [0.1 1]; %  ControlParam.W1 = [1 2.971]; %  ControlParam.W2 = [1 4.144]; % %  ModelParam = struct; %  ModelParam.Md = -6.8847; %  ModelParam.Mq = -0.6571; %  ModelParam.Mw = -0.00592; %  ModelParam.Swg = 3; %  ModelParam.Ta = 0.05; %  ModelParam.Uo = 689.4; %  ModelParam.Vto = 690.4; %  ModelParam.Zd = -63.9979; %  ModelParam.Zw = -0.6385; %  ModelParam.a = 2.5348; %  ModelParam.b = 64.13; %  ModelParam.g = 32.2; % % Save the modified data file. You can use it as a preload function. % % 3. Run the modified MATLAB script to create the MATLAB structures. % %  sldemo_applyVarStruct_data; %  %% Applying the  MATLAB Structure to the Model % You can use *Simulink.BlockDiagram.applyVarStruct* % to automatically replace the variable references in the block diagram  % by the equivalent structure references. % % 1. Apply the MATLAB structure to the model. % The demo model will be changed. You can then save it to a writable directory. %  %  [applied,unapplied]=Simulink.BlockDiagram.applyVarStruct(model,'ControlParam') %  %  [applied,unapplied]=Simulink.BlockDiagram.applyVarStruct(model,'ModelParam')  % Simulink.BlockDiagram.applyVarStruct(model,'ModelParam');  %% % *NOTE:* % % * You can use *'preview'* ApplyMode to get information  % about what will be changed without actually changing the model: % %  Simulink.BlockDiagram.applyVarStruct(model,'ModelParam', 'ApplyMode', 'preview') % % * If the model has been compiled, you can use *'cached'* SearchMethod to avoid % model recompiling:  % %  Simulink.BlockDiagram.applyVarStruct(model,'ModelParam', 'SearchMethod', 'cached') % % * If *unapplied* output is not empty, you can investigate the reason  % using *Simulink.findVars(model,'WorkspaceType','base','Name',variableName).* % The probable causes are: you changed structure field names or added extra fields; % the variable is used by a block that needs special consideration,  % e.g., Stateflow(R) chart, S-Function or Model block. %  % 2. Test the MATLAB structure in the modified model. %  % Clear unnecessary variables and run the simulation to check results. % %  clear; %  model = 'sldemo_applyVarStruct';  %  sldemo_applyVarStruct_data; %  %  sim('sldemo_applyVarStruct'); % % * Check for any warnings or errors. % * Check simulation results. % clear -regexp ^(?!model|ModelParam|ControlParam).; evalc('sim(model);');  %% Configuring the Structure Parameter to Appear in Generated Code % % By default, the MATLAB structure does not appear in generated code because % numeric values are inlined. Code generation requires Real-Time Workshop(R). % % 1. To make the structure variable tunable, create *Simulink.Parameter* % with the structure value and 'ExportedGlobal' storage class.  % %  p=Simulink.Parameter; %  p.Value=ControlParam; %  p.RTWInfo.StorageClass='ExportedGlobal'; %  ControlParam=p; %  clear p; % %  rtwbuild('sldemo_applyVarStruct'); % tmp=ModelParam; p=Simulink.Parameter; p.Value=ModelParam; p.RTWInfo.StorageClass='ExportedGlobal'; ModelParam=p; clear p;  origPath = path(); workDir = tempname; mkdir(workDir); origDir = cd(workDir); addpath(origDir);  evalc('rtwbuild(model);');  %% % The generated code now contains a structure type definition  % for the tunable structure in the *model_types.h* header file. % By default, Real-Time Workshop generates an automatic name for  % the type of parameter structures. This name is unique, but  % not easy to recognize. % %   typedef struct { %     real_T Ka; %     real_T Kf; %     real_T Ki; %     real_T Kq; %     real_T Tal[2]; %     real_T Ts[2]; %     real_T W1[2]; %     real_T W2[2]; %   } struct_mn4cJ7zsH8aqc8bBlbIkqC; %  % 2. You can control this type name by using *Simulink.Bus* % to specify the data type of the Simulink.Parameter object. % % You can use *Simulink.Bus.createObject* to create a bus object % with the same shape as the MATLAB structure. % %  busInfo=Simulink.Bus.createObject(ControlParam.Value) %  busInfo=Simulink.Bus.createObject(ModelParam.Value);  %% % Assign the bus object name to the Simulink.Parameter DataType attribute. % %  ParamType=eval(busInfo.busName);  %  ControlParam.DataType='Bus: ParamType'; %  clear(busInfo.busName);  %  clear busInfo; % % *NOTE:* Only *Simulink.Parameter* can accept the bus object name as a data type. % For MATLAB structures, Real-Time Workshop generates  % an automatic name for the type.  % % 3. Resave the data file to include the modified workspace variables. % %  Simulink.saveVars('sldemo_applyVarStruct_data.m', '-append') % % 4. Regenerate code for the modified model (requires Real-Time Workshop). %  %  rtwbuild(model); % ParamType=eval(busInfo.busName);  ModelParam.DataType='Bus: ParamType'; clear(busInfo.busName);  clear busInfo;  evalc('rtwbuild(model);');  %% % The generated type definition now appears as: % %    typedef struct { %     real_T Ka; %     real_T Kf; %     real_T Ki; %     real_T Kq; %     real_T Tal[2]; %     real_T Ts[2]; %     real_T W1[2]; %     real_T W2[2]; %    } ParamType; % % The parameter definition is: % %    ParamType ControlParam = { %      0.677, %      -1.746, %      -3.864, %      0.8156, %      {0.3959, 1.0}, %      {0.1, 1.0}, %      {1.0, 2.971}, %      {1.0, 4.144} %    }   %% cd(origDir); path(origPath); bdclose all; rmdir(workDir, 's'); clear;    ##### SOURCE END ##### --></body></html>

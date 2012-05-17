@@ -1,0 +1,181 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Fixed-Point Lowpass Filtering Using Embedded MATLAB&reg; MEX</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="emlmexbasicsdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit emlmexbasicsdemo">Open emlmexbasicsdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo emlmexbasicsdemo">Run in the Command Window</a></div></div><div class="content"><h1>Fixed-Point Lowpass Filtering Using Embedded MATLAB&reg; MEX</h1><!--introduction--><p>This is a demonstration of some aspects of the Embedded MATLAB&reg; C-MEX generation (emlmex). You will generate a C-MEX function from MATLAB&reg; code, run the generated C-MEX function, and display the results.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Description of the Demonstration</a></li><li><a href="#2">Copy Required File</a></li><li><a href="#3">Inspect the MATLAB Weighted Average Filter Function Code</a></li><li><a href="#5">Create the Lowpass Coefficients</a></li><li><a href="#6">Create the Chirp Input Signal</a></li><li><a href="#7">Run the Filter with Floating-Point Data Types</a></li><li><a href="#8">Define Fixed-Point Parameters</a></li><li><a href="#9">Compile the MATLAB-File into a MEX File and Generate the Compilation Report</a></li><li><a href="#10">Run the Filter with Fixed-Point Data Types</a></li><li><a href="#11">Plot the Results</a></li><li><a href="#12">Clean up Temporary Files</a></li></ul></div><h2>Description of the Demonstration<a name="1"></a></h2><p>In this example, you take the weighted average of a signal.  By choosing the weights, or coefficients, in a certain way, you can average out only high frequencies and retain low frequencies.  Because you are allowing the low frequencies to pass through without modification, this is called a "lowpass filter".  A filter of this kind can be used to remove high-frequency hiss from a telephone, for example. A different choice of coefficients would allow you to filter out different frequency bands.</p><h2>Copy Required File<a name="2"></a></h2><p>There is a MATLAB-file that is needed to run this demonstration. Copy it to a temporary directory. This step requires write-permission to the system's temporary directory.</p><pre class="codeinput">emlmexdir = [tempdir filesep <span class="string">'emlmexdir'</span>];
+<span class="keyword">if</span> ~exist(emlmexdir,<span class="string">'dir'</span>)
+    mkdir(emlmexdir);
+<span class="keyword">end</span>
+emlmexsrc = <span class="keyword">...</span>
+    fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'fixedpoint'</span>,<span class="string">'fidemos'</span>,<span class="string">'emlmexfilter.m'</span>);
+copyfile(emlmexsrc,emlmexdir,<span class="string">'f'</span>);
+</pre><h2>Inspect the MATLAB Weighted Average Filter Function Code<a name="3"></a></h2><p>The MATLAB function that performs the weighted average is in the file <tt>emlmexfilter.m</tt>. This code simply calls the <tt>FILTER</tt> function, which implements a Direct Form II Transposed FIR filter:</p><pre class="codeinput">type(fullfile(emlmexdir,<span class="string">'emlmexfilter.m'</span>))
+</pre><pre class="codeoutput">
+function y = emlmexfilter(b, x)
+%EMLMEXFILTER  Filter used in EMLMEXBASICSDEMO.
+% Copyright 1984-2009 The MathWorks, Inc.
+%#eml
+y = filter(b, 1, x);
+
+</pre><p>The following variables are use in this function:</p><div><ul><li><tt>b</tt> is the filter coefficients vector.</li><li><tt>x</tt> is the input signal vector.</li><li><tt>y</tt> is the output signal vector.</li></ul></div><p>So that you can see the effect of the filter, you use a chirp signal for the input <tt>x</tt>.  If played, this chirp sounds like a bird's chirp, going from low frequency to high frequency.  In the plot of the output, you can see the low frequencies passing through unchanged (but delayed a little bit), and the higher frequencies are attenuated.</p><h2>Create the Lowpass Coefficients<a name="5"></a></h2><p>Create FIR filter coefficients using Signal Processing Toolbox&#8482;.</p><pre>% [L,fo,mo,w] = firpmord([1500 2000],[1 0], [0.01 01.], 8000 );
+% b = firpm(L,fo,mo,w);</pre><pre class="codeinput">b = [  -0.0204578867332896
+        0.0086603954613574
+        0.1068667619076360
+       -0.2187706460534480
+        0.0730546552429822
+        0.3153037876114750
+        0.4649509557016000
+        0.3153037876114750
+        0.0730546552429822
+       -0.2187706460534480
+        0.1068667619076360
+        0.0086603954613574
+       -0.0204578867332896]';
+
+stem(b)
+title(<span class="string">'Filter coefficients'</span>)
+</pre><img vspace="5" hspace="5" src="emlmexbasicsdemo_01.png" alt=""> <h2>Create the Chirp Input Signal<a name="6"></a></h2><pre class="codeinput">Fs = 256;      <span class="comment">% Sampling frequency</span>
+Ts = 1/Fs;     <span class="comment">% Sample time</span>
+t = 0:Ts:1-Ts; <span class="comment">% Time vector from 0 to 1 second</span>
+f1 = Fs/2;     <span class="comment">% Target frequency of chirp set to Nyquist</span>
+gain = (1 - 2^-15);          <span class="comment">% Scale the input to be in the range [-1, +1)</span>
+x0 = gain * sin(pi*f1*t.^2); <span class="comment">% Linear chirp from 0 to Fs/2 Hz in 1 second.</span>
+</pre><h2>Run the Filter with Floating-Point Data Types<a name="7"></a></h2><pre class="codeinput">emlcurdir = pwd;
+cd(emlmexdir);
+yfl = emlmexfilter(b, x0);
+</pre><h2>Define Fixed-Point Parameters<a name="8"></a></h2><p>Define signed, best precision fixed-point input arguments with 12-bit word length:</p><pre class="codeinput">reset(fipref);
+bfi = sfi(b,  12);
+xfi = sfi(x0, 12);
+</pre><h2>Compile the MATLAB-File into a MEX File and Generate the Compilation Report<a name="9"></a></h2><pre class="codeinput">emlmex <span class="string">emlmexfilter</span> <span class="string">-report</span> <span class="string">-eg</span> <span class="string">{bfi, xfi}</span> <span class="string">-o</span> <span class="string">emlmexfilterx</span>
+</pre><pre class="codeoutput">C-MEX generation successful: To view the report, evaluate: open('C:\TEMP\R2010bd_251_3348\emlmexdir\emcprj\mexfcn\emlmexfilter\html\index.html').
+</pre><h2>Run the Filter with Fixed-Point Data Types<a name="10"></a></h2><pre class="codeinput">yfi = emlmexfilterx(bfi, xfi);
+</pre><h2>Plot the Results<a name="11"></a></h2><pre class="codeinput">t = 1:length(x0);
+subplot(3,1,[1 2]);
+plot(t,x0,<span class="string">'c'</span>,t,yfl,<span class="string">'o-'</span>,t,yfi,<span class="string">'s-'</span>);
+legend(<span class="string">'Input'</span>,<span class="string">'Floating point'</span>,<span class="string">'Fixed Point'</span>);
+subplot(3,1,3);
+plot(double(yfi(:))-yfl(:),<span class="string">'r'</span>);
+ylabel(<span class="string">'Error'</span>);
+figure(gcf);
+</pre><img vspace="5" hspace="5" src="emlmexbasicsdemo_02.png" alt=""> <h2>Clean up Temporary Files<a name="12"></a></h2><pre class="codeinput">cd(emlcurdir);
+clear <span class="string">emlmexfilterx</span>;
+status = rmdir(emlmexdir,<span class="string">'s'</span>);
+</pre><p class="footer">Copyright 1984-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Fixed-Point Lowpass Filtering Using Embedded MATLAB(R) MEX
+% This is a demonstration of some aspects of the Embedded MATLAB(R) C-MEX
+% generation (emlmex). You will generate a C-MEX function from MATLAB(R) code, run
+% the generated C-MEX function, and display the results.
+%
+% Copyright 1984-2010 The MathWorks, Inc.
+
+%% Description of the Demonstration
+% In this example, you take the weighted average of a signal.  By choosing
+% the weights, or coefficients, in a certain way, you can average out
+% only high frequencies and retain low frequencies.  Because you are
+% allowing the low frequencies to pass through without modification, this
+% is called a "lowpass filter".  A filter of this kind can be used to
+% remove high-frequency hiss from a telephone, for example. A different
+% choice of coefficients would allow you to filter out different frequency
+% bands.  
+%% Copy Required File
+% There is a MATLAB-file that is needed to run this demonstration. Copy it to a 
+% temporary directory. This step requires write-permission to the system's 
+% temporary directory.
+emlmexdir = [tempdir filesep 'emlmexdir'];
+if ~exist(emlmexdir,'dir')
+    mkdir(emlmexdir);
+end
+emlmexsrc = ...
+    fullfile(matlabroot,'toolbox','fixedpoint','fidemos','emlmexfilter.m');
+copyfile(emlmexsrc,emlmexdir,'f');
+%% Inspect the MATLAB Weighted Average Filter Function Code
+% The MATLAB function that performs the weighted average is in the file
+% |emlmexfilter.m|. This code simply calls the |FILTER| function, which
+% implements a Direct Form II Transposed FIR filter:
+type(fullfile(emlmexdir,'emlmexfilter.m'))
+%%
+% The following variables are use in this function:
+% 
+% * |b| is the filter coefficients vector.
+% * |x| is the input signal vector.
+% * |y| is the output signal vector.
+%
+% So that you can see the effect of the filter, you use a chirp signal for
+% the input |x|.  If played, this chirp sounds like a bird's chirp, going
+% from low frequency to high frequency.  In the plot of the output, you can
+% see the low frequencies passing through unchanged (but delayed a little 
+% bit), and the higher frequencies are attenuated.
+
+%% Create the Lowpass Coefficients
+% Create FIR filter coefficients using Signal Processing Toolbox(TM).
+%
+%  % [L,fo,mo,w] = firpmord([1500 2000],[1 0], [0.01 01.], 8000 );
+%  % b = firpm(L,fo,mo,w);
+%
+b = [  -0.0204578867332896
+        0.0086603954613574
+        0.1068667619076360
+       -0.2187706460534480
+        0.0730546552429822
+        0.3153037876114750
+        0.4649509557016000
+        0.3153037876114750
+        0.0730546552429822
+       -0.2187706460534480
+        0.1068667619076360
+        0.0086603954613574
+       -0.0204578867332896]';
+
+stem(b)
+title('Filter coefficients')
+%% Create the Chirp Input Signal
+Fs = 256;      % Sampling frequency
+Ts = 1/Fs;     % Sample time
+t = 0:Ts:1-Ts; % Time vector from 0 to 1 second
+f1 = Fs/2;     % Target frequency of chirp set to Nyquist
+gain = (1 - 2^-15);          % Scale the input to be in the range [-1, +1)
+x0 = gain * sin(pi*f1*t.^2); % Linear chirp from 0 to Fs/2 Hz in 1 second.
+
+%% Run the Filter with Floating-Point Data Types
+emlcurdir = pwd;
+cd(emlmexdir);
+yfl = emlmexfilter(b, x0);
+
+%% Define Fixed-Point Parameters
+% Define signed, best precision fixed-point input arguments with 12-bit
+% word length:
+reset(fipref);
+bfi = sfi(b,  12);
+xfi = sfi(x0, 12);
+
+%% Compile the MATLAB-File into a MEX File and Generate the Compilation Report
+emlmex emlmexfilter -report -eg {bfi, xfi} -o emlmexfilterx
+
+%% Run the Filter with Fixed-Point Data Types
+yfi = emlmexfilterx(bfi, xfi);
+
+%% Plot the Results
+t = 1:length(x0);
+subplot(3,1,[1 2]);
+plot(t,x0,'c',t,yfl,'o-',t,yfi,'s-');
+legend('Input','Floating point','Fixed Point');
+subplot(3,1,3);
+plot(double(yfi(:))-yfl(:),'r');
+ylabel('Error');
+figure(gcf);
+
+%% Clean up Temporary Files
+cd(emlcurdir);
+clear emlmexfilterx;
+status = rmdir(emlmexdir,'s');
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

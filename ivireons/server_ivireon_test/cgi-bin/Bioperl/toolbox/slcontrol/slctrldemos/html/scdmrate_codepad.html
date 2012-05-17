@@ -1,0 +1,136 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Linearization of Multirate Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdmrate_codepad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdmrate_codepad">Open scdmrate_codepad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdmrate_codepad">Run in the Command Window</a></div></div><div class="content"><h1>Linearization of Multirate Models</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">Example Problem</a></li><li><a href="#6">Step 1: Linearizing the Blocks in the Model</a></li><li><a href="#7">Step 2: Rate Conversions</a></li><li><a href="#13">Linearizing the Model using Simulink&reg; Control Design&#8482; Commands</a></li></ul></div><p>This example illustrates the process that the command linearize uses when extracting a linear model of a nonlinear multirate Simulink&reg; model. To illustrate the concepts, the process is first performed using functions from the Control System Toolbox&#8482; before it is repeated using the linearize command.</p><h2>Example Problem<a name="2"></a></h2><p>In the Simulink model <tt>scdmrate.mdl</tt> there are three different sample rates specified in five blocks. These blocks are:</p><div><ul><li><tt>sysC</tt> - a continuous linear block,</li><li><tt>Integrator</tt> - a continuous integrator,</li><li><tt>sysTs1</tt> - a block that has a sample time of 0.01 seconds,</li><li><tt>sysTs2</tt> - a block that has a sample time of 0.025 seconds, and</li><li><tt>Zero-Order Hold</tt> - a block that samples the incoming signal at 0.01 seconds.</li></ul></div><pre class="codeinput">sysC = zpk(-2,-10,0.1);
+Integrator = zpk([],0,1);
+sysTs1 = zpk(-0.7463,[0.4251 0.9735],0.2212,0.01);
+sysTs2 = zpk([],0.7788,0.2212,0.025);
+</pre><p>The model below shows how the blocks are connected.</p><pre class="codeinput">scdmrate
+</pre><img vspace="5" hspace="5" src="scdmrate_codepad_01.png" alt=""> <p>In this example we linearize the model between the output of the Constant block and the output of the block <tt>sysTs2</tt>.</p><h2>Step 1: Linearizing the Blocks in the Model<a name="6"></a></h2><p>The first step of the linearization is to linearize each block in the model.  The linearization of the Saturation and Zero-Order Hold blocks is 1. The LTI blocks are already linear and therefore remain the same. The new model with linearized blocks is shown below.</p><pre class="codeinput">scdmratestep1
+</pre><img vspace="5" hspace="5" src="scdmrate_codepad_02.png" alt=""> <h2>Step 2: Rate Conversions<a name="7"></a></h2><p>Because the blocks in the model contain different sample rates, it is not possible to create a single-rate linearized model for the system without first using rate conversion functions to convert the various sample rates to a representative single rate. The rate conversion functions use an iterative method. The iterations begin with a least common multiple of the sample times in the model. In this example the sample times are 0, 0.01, and 0.025 seconds which yields a least common multiple of 0.05.  The rate conversion functions then take the combination of blocks with the fastest sample rate and resample them at the next fastest sample rate. In this example the first iteration converts the combination of the linearized continuous time blocks, <tt>sysC</tt> and <tt>integrator</tt> to a sample time of 0.01 using a zero order hold continuous to discrete conversion.</p><pre class="codeinput">sysC_Ts1 = c2d(sysC*Integrator,0.01);
+</pre><p>The blocks <tt>sysC</tt> and <tt>Integrator</tt> are now replaced by <tt>sysC_Ts1</tt>.</p><pre class="codeinput">scdmratestep2
+</pre><img vspace="5" hspace="5" src="scdmrate_codepad_03.png" alt=""> <p>The next iteration converts all the blocks with a sample time of 0.01 to a sample time of 0.025. First, the following command represents the combination of these blocks by closing the feedback loop.</p><pre class="codeinput">sysCL = feedback(sysTs1*sysC_Ts1,1);
+</pre><p>Next, a zero-order hold method converts the closed loop system, sysCL, from a sample rate of 0.01 to 0.025.</p><pre class="codeinput">sysCL_Ts2 = d2d(sysCL,0.025);
+</pre><p>The system <tt>sysCL_Ts2</tt> then replaces the feedback loop in the model.</p><pre class="codeinput">scdmratestep3
+</pre><img vspace="5" hspace="5" src="scdmrate_codepad_04.png" alt=""> <p>The final iteration resamples the combination of the closed loop system and the block <tt>sysTs2</tt> from a rate of 0.025 seconds to a rate of 0.05 seconds.</p><pre class="codeinput">sys_L = d2d(sysCL_Ts2*sysTs2,0.05)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+ 0.0001057 (z+22.76) (z+0.912) (z-0.9048) (z+0.06495)
+-------------------------------------------------------
+(z-0.01373) (z-0.6065) (z-0.6386) (z-0.8588) (z-0.9754)
+ 
+Sampling time: 0.05
+</pre><h2>Linearizing the Model using Simulink&reg; Control Design&#8482; Commands<a name="13"></a></h2><p>We can reproduce these results using the command line interface of Simulink&reg; Control Design&#8482;.</p><pre class="codeinput">model = <span class="string">'scdmrate'</span>;
+io(1) = linio(<span class="string">'scdmrate/Constant'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'scdmrate/sysTs2'</span>,1,<span class="string">'out'</span>,<span class="string">'on'</span>);
+sys = zpk(linearize(model,io))
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input "Constant" to output "sysTs2":
+ 0.0001057 (z+22.76) (z+0.912) (z-0.9048) (z+0.06495)
+-------------------------------------------------------
+(z-0.6065) (z-0.6386) (z-0.8588) (z-0.9754) (z-0.01373)
+ 
+Sampling time: 0.05
+</pre><p class="footer">Copyright 2005-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Linearization of Multirate Models
+% Copyright 2005-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.5 $ $Date: 2009/05/23 08:20:29 $
+
+%%
+% This example illustrates the process that the command linearize uses
+% when extracting a linear model of a nonlinear multirate Simulink(R) model. 
+% To illustrate the concepts, the process is first performed using 
+% functions from the Control System Toolbox(TM) 
+% before it is repeated using the linearize command.
+
+%% Example Problem
+%% 
+% In the Simulink model |scdmrate.mdl| there are three different sample
+% rates specified in five blocks. These blocks are:
+%
+% * |sysC| - a continuous linear block, 
+% * |Integrator| - a continuous integrator,
+% * |sysTs1| - a block that has a sample time of 0.01 seconds,
+% * |sysTs2| - a block that has a sample time of 0.025 seconds, and
+% * |Zero-Order Hold| - a block that samples the incoming signal at 0.01 seconds.
+%
+sysC = zpk(-2,-10,0.1);
+Integrator = zpk([],0,1);
+sysTs1 = zpk(-0.7463,[0.4251 0.9735],0.2212,0.01);
+sysTs2 = zpk([],0.7788,0.2212,0.025);
+
+%%
+% The model below shows how the blocks are connected.
+scdmrate
+
+%% 
+% In this example we linearize the model between the output of the Constant
+% block and the output of the block |sysTs2|.
+
+%% Step 1: Linearizing the Blocks in the Model 
+% The first step of the linearization is to linearize each block in the
+% model.  The linearization of the Saturation and Zero-Order Hold blocks is 1.  
+% The LTI blocks are already linear and therefore remain the same. The new
+% model with linearized blocks is shown below.
+scdmratestep1
+
+%% Step 2: Rate Conversions
+% Because the blocks in the model contain different sample rates, it is not
+% possible to create a single-rate linearized model for the system without 
+% first using rate conversion functions to convert the various sample rates 
+% to a representative single rate. The rate conversion functions use an
+% iterative method. The
+% iterations begin with a least common multiple of the sample times in the
+% model. In this example the sample times are 0, 0.01, and 0.025
+% seconds which yields a least common multiple of 0.05.  The rate conversion 
+% functions then take the combination of blocks with the fastest sample rate 
+% and resample them at the next fastest sample rate. In this example the 
+% first iteration converts the combination of the linearized continuous 
+% time blocks, |sysC| and |integrator| to a sample time of 0.01 using a 
+% zero order hold continuous to discrete conversion.  
+sysC_Ts1 = c2d(sysC*Integrator,0.01);
+
+%% 
+% The blocks |sysC| and |Integrator| are now replaced by |sysC_Ts1|.
+scdmratestep2
+
+%%
+% The next iteration converts all the blocks with a sample
+% time of 0.01 to a sample time of 0.025. First, the following command 
+% represents the combination of these blocks by closing the feedback loop.
+sysCL = feedback(sysTs1*sysC_Ts1,1);
+
+%%
+% Next, a zero-order hold method converts the closed loop system, sysCL,
+% from a sample rate of 0.01 to 0.025.
+sysCL_Ts2 = d2d(sysCL,0.025);
+
+%% 
+% The system |sysCL_Ts2| then replaces the feedback loop in the model.
+scdmratestep3
+
+%% 
+% The final iteration resamples the combination of the closed loop system 
+% and the block |sysTs2| from a rate of 0.025 seconds to a rate of 0.05 
+% seconds.
+sys_L = d2d(sysCL_Ts2*sysTs2,0.05)
+
+%% Linearizing the Model using Simulink(R) Control Design(TM) Commands
+% We can reproduce these results using the command line interface of 
+% Simulink(R) Control Design(TM).
+model = 'scdmrate';
+io(1) = linio('scdmrate/Constant',1,'in'); 
+io(2) = linio('scdmrate/sysTs2',1,'out','on'); 
+sys = zpk(linearize(model,io))
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

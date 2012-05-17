@@ -1,0 +1,24 @@
+%implements "sfun_cppcount_cpp" "C"
+
+%function Start(block, system) Output
+  DoubleAdder *da  = new DoubleAdder();
+  %<LibBlockPWork(0, "", "", 0)> = da;
+%endfunction
+
+%function Outputs(block, system) Output
+  %assign pwork = LibBlockPWork(0, "", "", 0)
+  %assign pu    = LibBlockInputSignalAddr(0, "", "", 0)
+  %assign y     = LibBlockOutputSignal(0, "", "", 0)
+  DoubleAdder *da = (DoubleAdder *)%<pwork>;
+  %<y> = da->AddTo(*%<pu>);
+%endfunction
+
+%function Terminate(block, system) Output
+  %switch SFunctionType
+    %case "TLC"
+      %assign u = LibBlockPWork(0, "", "", 0)
+      DoubleAdder *da = (DoubleAdder *)%<u>;
+      delete da;
+      %break
+  %endswitch
+%endfunction

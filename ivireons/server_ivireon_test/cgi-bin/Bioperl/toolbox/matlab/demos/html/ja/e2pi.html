@@ -1,0 +1,50 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>不等式を解くためのグラフィカルなアプローチ</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="e2pi.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit e2pi">エディターで e2pi.m を開く</a></div><div class="right"><a href="matlab:echodemo e2pi">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>不等式を解決するためのグラフィカルなアプローチ</h1><!--introduction--><p>ここでは、e^pi が pi^e よりも大きいかどうかを確認するための興味深いグラフィカルなアプローチを示します。</p><!--/introduction--><p>問題:e^pi と pi^e はどちらが大きいでしょうか。これを知る簡単な方法は、MATLAB&reg; コマンド プロンプト上で直接これを入力してみることです。しかし、これはもっと興味深い問題を考えるきっかけとなります。関数 z=x^y-y^x はどのような形でしょうか。z のプロットを行います。</p><pre class="codeinput"><span class="comment">%Define the mesh</span>
+x=0:0.16:5;
+y=0:0.16:5;
+[xx,yy]=meshgrid(x,y);
+
+<span class="comment">%The plot</span>
+zz=xx.^yy-yy.^xx;
+h=surf(x,y,zz);
+
+<span class="comment">%Set the properties of the plot</span>
+set(h,<span class="string">'EdgeColor'</span>,[0.7 0.7 0.7]);
+view(20,50);
+colormap(hsv);
+title(<span class="string">'z=x^y-y^x'</span>); xlabel(<span class="string">'x'</span>); ylabel(<span class="string">'y'</span>);
+hold <span class="string">on</span>;
+</pre><img vspace="5" hspace="5" src="../e2pi_01.png" alt=""> <p>方程式 x^y-y^x=0 の解は、とても面白い形になることがわかります。e と pi 付近で興味深いことが起きているため、元々の問題は見ただけでは簡単に解けないことがわかります。この図では、その方程式のプロットを黒で表しています。</p><pre class="codeinput">c=contourc(x,y,zz,[0 0]);
+list1Len=c(2,1);
+xContour=[c(1,2:1+list1Len) NaN c(1,3+list1Len:size(c,2))];
+yContour=[c(2,2:1+list1Len) NaN c(2,3+list1Len:size(c,2))];
+<span class="comment">% Note that the NAN above prevents the end of the first contour line from being</span>
+<span class="comment">% connected to the beginning of the second line</span>
+line(xContour,yContour,<span class="string">'Color'</span>,<span class="string">'k'</span>);
+</pre><img vspace="5" hspace="5" src="../e2pi_02.png" alt=""> <p>これは、方程式 x^y-y^x=0 の整数解を表したプロットです。2^4=4^2 のみが x~=y における唯一の整数解です。また、x^y=y^x の位置を定義した 2 つの曲線の交点は何を表すでしょうか。</p><pre class="codeinput">plot([0:5 2 4],[0:5 4 2],<span class="string">'r.'</span>,<span class="string">'MarkerSize'</span>,25);
+</pre><img vspace="5" hspace="5" src="../e2pi_03.png" alt=""> <p>最終的に、図の表面上にこれらの点をプロットすることによって、e^pi が pi^e よりも (それほどではありませんが) 大きいことがわかります。</p><pre class="codeinput">e=exp(1);
+plot([e pi],[pi e],<span class="string">'r.'</span>,<span class="string">'MarkerSize'</span>,25);
+plot([e pi],[pi e],<span class="string">'y.'</span>,<span class="string">'MarkerSize'</span>,10);
+text(e,3.3,<span class="string">'(e,pi)'</span>,<span class="string">'Color'</span>,<span class="string">'k'</span>, <span class="keyword">...</span>
+    <span class="string">'HorizontalAlignment'</span>,<span class="string">'left'</span>,<span class="string">'VerticalAlignment'</span>,<span class="string">'bottom'</span>);
+text(3.3,e,<span class="string">'(pi,e)'</span>,<span class="string">'Color'</span>,<span class="string">'k'</span>,<span class="string">'HorizontalAlignment'</span>,<span class="string">'left'</span>,<span class="keyword">...</span>
+    <span class="string">'VerticalAlignment'</span>,<span class="string">'bottom'</span>);
+hold <span class="string">off</span>;
+</pre><img vspace="5" hspace="5" src="../e2pi_04.png" alt=""> <p>この事実を確認しましょう。</p><pre class="codeinput">e=exp(1);
+e^pi
+pi^e
+</pre><pre class="codeoutput">
+ans =
+
+   23.1407
+
+
+ans =
+
+   22.4592
+
+</pre><p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Graphical Approach to Solving Inequalities % Here is an interesting graphical approach to find out whether e^pi is greater % than pi^e or not. % % Copyright 1984-2007 The MathWorks, Inc. % $Revision: 1.1.6.10.2.1 $ $Date: 2010/07/29 21:28:52 $  %% % The question is: which is greater, e^pi or pi^e? The easy way to find out is % to type it directly at the MATLAB(R) command prompt.  But it motivates a more % interesting question.  What is the shape of the function z=x^y-y^x?  Here is a % plot of z.  %Define the mesh x=0:0.16:5; y=0:0.16:5; [xx,yy]=meshgrid(x,y);  %The plot zz=xx.^yy-yy.^xx; h=surf(x,y,zz);  %Set the properties of the plot set(h,'EdgeColor',[0.7 0.7 0.7]); view(20,50); colormap(hsv); title('z=x^y-y^x'); xlabel('x'); ylabel('y'); hold on;  %% % It turns out that the solution of the equation x^y-y^x=0 has a very % interesting shape.  Because interesting things happen near e and pi, our % original question is not easily solved by inspection.  Here is a plot of that % equation shown in black.  c=contourc(x,y,zz,[0 0]); list1Len=c(2,1); xContour=[c(1,2:1+list1Len) NaN c(1,3+list1Len:size(c,2))]; yContour=[c(2,2:1+list1Len) NaN c(2,3+list1Len:size(c,2))]; % Note that the NAN above prevents the end of the first contour line from being % connected to the beginning of the second line line(xContour,yContour,'Color','k');  %% % Here is a plot of the integer solutions to the equation x^y-y^x=0.  Notice % 2^4=4^2 is the ONLY integer solution where x~=y.  So, what is the intersection % point of the two curves that define where x^y=y^x?  plot([0:5 2 4],[0:5 4 2],'r.','MarkerSize',25);  %% % Finally, we can see that e^pi is indeed larger than pi^e (though not by much) % by plotting these points on our surface.  e=exp(1); plot([e pi],[pi e],'r.','MarkerSize',25); plot([e pi],[pi e],'y.','MarkerSize',10); text(e,3.3,'(e,pi)','Color','k', ...     'HorizontalAlignment','left','VerticalAlignment','bottom'); text(3.3,e,'(pi,e)','Color','k','HorizontalAlignment','left',...     'VerticalAlignment','bottom'); hold off;  %% % Here is a verification of this fact.  e=exp(1); e^pi pi^e   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

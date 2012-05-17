@@ -1,0 +1,199 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>リミット サイクルを使用した固定小数点の状態空間システムの解析</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="filimitcycledemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit filimitcycledemo">エディターで filimitcycledemo.m を開く</a></div><div class="right"><a href="matlab:echodemo filimitcycledemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>リミット サイクルを使用した固定小数点の状態空間システムの解析</h1><!--introduction--><p>これは、有限精度を使用して実装した場合の 2 次型再帰システムのための状態空間表現を使用したリミット サイクル検出ルーチンのデモです。</p><p>このデモでは、ゼロ入力によるオーバーフローのために行う大規模なリミット サイクル検出や、そのような振動を防ぐのに十分な条件を主に取り上げます。</p><p>参考文献: </p><p>[1] Richard A. Roberts and Clifford T. Mullis, &quot;Digital Signal Processing&quot;, Addison-Wesley, Reading, Massachusetts, 1987, ISBN 0-201-16350-0, Section 9.3.</p><p>[2] S. K. Mitra, &quot;Digital Signal Processing:A Computer Based Approach&quot;, McGraw-Hill, New York, 1998, ISBN 0-07-042953-7.</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">システムの状態空間表現の選択</a></li><li><a href="#2">フィルター実装</a></li><li><a href="#3">浮動小数点フィルター</a></li><li><a href="#4">時間経過に伴うランダム初期状態</a></li><li><a href="#5">状態軌跡</a></li><li><a href="#6">固定小数点フィルターの作成</a></li><li><a href="#7">固定小数点での四角投影のプロット</a></li><li><a href="#8">固定小数点フィルターの実行</a></li><li><a href="#10">オーバーフローによるリミット サイクルを防ぐのに十分な条件</a></li><li><a href="#11">相似変換を適用して正準型 A を作成</a></li><li><a href="#13">変換システムでのリミット サイクルの確認</a></li><li><a href="#14">正準型システムの四角投影のプロット</a></li><li><a href="#15">状態シーケンスのプロット</a></li></ul></div><h2>システムの状態空間表現の選択<a name="1"></a></h2><p>状態変換行列 A の固有値の振幅が 1 より小さいことを確認することにより、システムが安定していることを確認します。</p><pre class="codeinput">format
+A = [0 1; -.5 1]; B = [0; 1]; C = [1 0]; D = 0;
+eig(A)
+</pre><pre class="codeoutput">
+ans =
+
+   0.5000 + 0.5000i
+   0.5000 - 0.5000i
+
+</pre><h2>フィルター実装<a name="2"></a></h2><pre class="codeinput">type <span class="string">fisisostatespacefilter.m</span>
+</pre><pre class="codeoutput">
+function [y,z] = fisisostatespacefilter(A,B,C,D,x,z)
+%FISISOSTATESPACEFILTER Single-input, single-output statespace filter
+% [Y,Zf] = FISISOSTATESPACEFILTER(A,B,C,D,X,Zi) filters data X with
+% initial conditions Zi with the state-space filter defined by matrices
+% A, B, C, D.  Output Y and final conditions Zf are returned.
+
+%   Copyright 2004 The MathWorks, Inc.
+%   $Revision: 1.1.4.2.2.1 $
+
+y = x; 
+z(:,2:length(x)+1) = 0;
+for k=1:length(x)
+  y(k)     = C*z(:,k) + D*x(k);
+  z(:,k+1) = A*z(:,k) + B*x(k);
+end
+</pre><h2>浮動小数点フィルター<a name="3"></a></h2><p>浮動小数点フィルターを作成し、状態の軌跡を観察します。</p><p>まず、単位正方形内でランダム状態を選択して、状態変換行列 A によって乗算された 1 ステップの後でそれらがどこに投影されるかを観察します。</p><pre class="codeinput">rand(<span class="string">'state'</span>,0);
+clf
+x1 = [-1 1 1 -1 -1];
+y1 = [-1 -1 1 1 -1];
+plot(x1,y1,<span class="string">'c'</span>)
+axis([-1.5 1.5 -1.5 1.5]); axis <span class="string">square</span>; grid;
+hold <span class="string">on</span>
+
+<span class="comment">% Plot the projection of the square</span>
+p = A*[x1;y1];
+plot(p(1,:),p(2,:),<span class="string">'r'</span>)
+
+r = 2*rand(2,1000)-1;
+pr = A*r;
+plot(pr(1,:),pr(2,:),<span class="string">'.'</span>)
+</pre><img vspace="5" hspace="5" src="../filimitcycledemo_01.png" alt=""> <h2>時間経過に伴うランダム初期状態<a name="4"></a></h2><p>入力がすべてゼロの、単位正方形内にあるように正規化されたランダム初期状態のフィルターを駆動して、フィルター処理を実行します。</p><p>状態によっては、単位正方形の外側に出るものもあり、最終的にそれらは原点 z=[0;0] でゼロ状態となります。</p><pre class="codeinput">x = zeros(10,1);
+zi = [0;0];
+q = quantizer([16 15]);
+<span class="keyword">for</span> k=1:20
+  y = x;
+  zi(:) = randquant(q,size(A,1),1);
+  [y,zf] = fisisostatespacefilter(A,B,C,D,x,zi);
+  plot(zf(1,:), zf(2,:),<span class="string">'go-'</span>,<span class="string">'markersize'</span>,8);
+<span class="keyword">end</span>
+title(<span class="string">'Double-Precision State Sequence Plot'</span>);
+xlabel(<span class="string">'z1'</span>); ylabel(<span class="string">'z2'</span>)
+</pre><img vspace="5" hspace="5" src="../filimitcycledemo_02.png" alt=""> <h2>状態軌跡<a name="5"></a></h2><p>固有値の振幅が 1 より小さいため、システムは安定しており、すべての初期状態はゼロ入力の原点となります。しかし、状態が縮小され始める前にまず外側に投影されたこの例のように、固有値によって状態の軌跡のすべてがわかるわけではありません。</p><p>A の特異値により、全体的な状態軌跡がより明確になります。最大の特異値は約 1.46 で、これは対応する特異ベクトルに整合された状態が原点から投影されることを示しています。</p><pre class="codeinput">svd(A)
+</pre><pre class="codeoutput">
+ans =
+
+    1.4604
+    0.3424
+
+</pre><h2>固定小数点フィルターの作成<a name="6"></a></h2><p>固定小数点フィルターを作成し、リミット サイクルを確認します。</p><p>フィルターの MATLAB&reg; コードはそのままです。  それは、固定小数点入力で駆動するため、固定小数点フィルターとなります。</p><p>オーバーフロー振動を描くため、オーバーフローになる積データ型と和データ型を選択します。</p><pre class="codeinput">randn(<span class="string">'state'</span>,0);
+F = fimath(<span class="string">'OverflowMode'</span>,<span class="string">'wrap'</span>,<span class="keyword">...</span>
+           <span class="string">'ProductMode'</span>,<span class="string">'SpecifyPrecision'</span>,<span class="keyword">...</span>
+           <span class="string">'ProductWordLength'</span>,16,<span class="string">'ProductFractionLength'</span>,15,<span class="keyword">...</span>
+           <span class="string">'SumMode'</span>,<span class="string">'SpecifyPrecision'</span>,<span class="keyword">...</span>
+           <span class="string">'SumWordLength'</span>,16,<span class="string">'SumFractionLength'</span>,15);
+
+A = fi(A,<span class="string">'fimath'</span>,F)
+B = fi(B,<span class="string">'fimath'</span>,F)
+C = fi(C,<span class="string">'fimath'</span>,F)
+D = fi(D,<span class="string">'fimath'</span>,F)
+</pre><pre class="codeoutput"> 
+A =
+ 
+         0    1.0000
+   -0.5000    1.0000
+
+          DataTypeMode: Fixed-point: binary point scaling
+            Signedness: Signed
+            WordLength: 16
+        FractionLength: 14
+
+             RoundMode: nearest
+          OverflowMode: wrap
+           ProductMode: SpecifyPrecision
+     ProductWordLength: 16
+ ProductFractionLength: 15
+               SumMode: SpecifyPrecision
+         SumWordLength: 16
+     SumFractionLength: 15
+         CastBeforeSum: true
+ 
+B =
+ 
+     0
+     1
+
+          DataTypeMode: Fixed-point: binary point scaling
+            Signedness: Signed
+            WordLength: 16
+        FractionLength: 14
+
+             RoundMode: nearest
+          OverflowMode: wrap
+           ProductMode: SpecifyPrecision
+     ProductWordLength: 16
+ ProductFractionLength: 15
+               SumMode: SpecifyPrecision
+         SumWordLength: 16
+     SumFractionLength: 15
+         CastBeforeSum: true
+ 
+C =
+ 
+     1     0
+
+          DataTypeMode: Fixed-point: binary point scaling
+            Signedness: Signed
+            WordLength: 16
+        FractionLength: 14
+
+             RoundMode: nearest
+          OverflowMode: wrap
+           ProductMode: SpecifyPrecision
+     ProductWordLength: 16
+ ProductFractionLength: 15
+               SumMode: SpecifyPrecision
+         SumWordLength: 16
+     SumFractionLength: 15
+         CastBeforeSum: true
+ 
+D =
+ 
+     0
+
+          DataTypeMode: Fixed-point: binary point scaling
+            Signedness: Signed
+            WordLength: 16
+        FractionLength: 15
+
+             RoundMode: nearest
+          OverflowMode: wrap
+           ProductMode: SpecifyPrecision
+     ProductWordLength: 16
+ ProductFractionLength: 15
+               SumMode: SpecifyPrecision
+         SumWordLength: 16
+     SumFractionLength: 15
+         CastBeforeSum: true
+</pre><h2>固定小数点での四角投影のプロット<a name="7"></a></h2><p>再び単位正方形内でランダム状態を選択して、状態変換行列 A によって乗算された 1 ステップの後でそれらがどこに投影されるかを観察します。違いは今回の行列 A は固定小数点である点です。</p><p>浮動小数点で以前に四角投影した三角形は四角形内に戻りました。</p><pre class="codeinput">clf
+r = 2*rand(2,1000)-1;
+pr = A*r;
+plot([-1 1 1 -1 -1],[-1 -1 1 1 -1],<span class="string">'c'</span>)
+axis([-1.5 1.5 -1.5 1.5]); axis <span class="string">square</span>; grid;
+hold <span class="string">on</span>
+plot(pr(1,:),pr(2,:),<span class="string">'.'</span>)
+</pre><img vspace="5" hspace="5" src="../filimitcycledemo_03.png" alt=""> <h2>固定小数点フィルターの実行<a name="8"></a></h2><p>今回と前回のコードの唯一の違いは、固定小数点データ型で駆動している点です。</p><pre class="codeinput">x = fi(zeros(10,1),1,16,15,<span class="string">'fimath'</span>,F);
+zi = fi([0;0],1,16,15,<span class="string">'fimath'</span>,F);
+q = assignmentquantizer(zi);
+e = double(eps(zi));
+rand(<span class="string">'state'</span>,0);
+<span class="keyword">for</span> k=1:20
+  y = x;
+  zi(:) = randquant(q,size(A,1),1);
+  [y,zf] = fisisostatespacefilter(A,B,C,D,x,zi);
+  <span class="keyword">if</span> abs(double(zf(end)))&gt;0.5, c=<span class="string">'ro-'</span>; <span class="keyword">else</span>, c=<span class="string">'go-'</span>; <span class="keyword">end</span>
+  plot(zf(1,:), zf(2,:),c,<span class="string">'markersize'</span>,8);
+<span class="keyword">end</span>
+title(<span class="string">'Fixed-Point State Sequence Plot'</span>);
+xlabel(<span class="string">'z1'</span>); ylabel(<span class="string">'z2'</span>)
+</pre><img vspace="5" hspace="5" src="../filimitcycledemo_04.png" alt=""> <p>他のランダムに選択された初期状態のためにこれを入力すると、状態が三角形領域の 1 つに入ると別の三角形領域に投影されて行き来し、エスケープすることがないことを示します。</p><h2>オーバーフローによるリミット サイクルを防ぐのに十分な条件<a name="10"></a></h2><p>システム内でのオーバーフローによるリミット サイクルを防ぐのに十分な条件は 2 つあります。</p><div><ul><li>システムが安定していること、つまり、abs(eig(A))&lt;1</li><li>行列 A が正規であること、つまり、A'*A = A*A'</li></ul></div><p>現在の表現については、2番目の条件は適用されないことに注意してください。</p><h2>相似変換を適用して正準型 A を作成<a name="11"></a></h2><p>正規状態変換行列 A2 を作成する元のシステムへの相似変換を適用しましょう。</p><pre class="codeinput">T = [-2 0;-1 1];
+Tinv = [-.5 0;-.5 1];
+A2 = Tinv*A*T; B2 = Tinv*B; C2 = C*T; D2 = D;
+</pre><p>変換されたシステムのシステム伝達関数が以前と同じという結果なら、相似変換によって固有値は保持されます。ただし、変換された状態変換行列 A2 は正規です。</p><h2>変換システムでのリミット サイクルの確認<a name="13"></a></h2><h2>正準型システムの四角投影のプロット<a name="14"></a></h2><p>これで、単位正方形内のランダム初期状態の投影はすべて均一に縮小しました。これは、状態変換行列 A2 が正規であるためです。また、状態は反時計回りに 90 度回転します。</p><pre class="codeinput">clf
+r = 2*rand(2,1000)-1;
+pr = A2*r;
+plot([-1 1 1 -1 -1],[-1 -1 1 1 -1],<span class="string">'c'</span>)
+axis([-1.5 1.5 -1.5 1.5]); axis <span class="string">square</span>; grid;
+hold <span class="string">on</span>
+plot(pr(1,:),pr(2,:),<span class="string">'.'</span>)
+</pre><img vspace="5" hspace="5" src="../filimitcycledemo_05.png" alt=""> <h2>状態シーケンスのプロット<a name="15"></a></h2><p>前述と同じ初期状態にて再び状態シーケンスをプロットすると、出力が原点に対して螺旋状であることがわかります。</p><pre class="codeinput">x = fi(zeros(10,1),1,16,15,<span class="string">'fimath'</span>,F);
+zi = fi([0;0],1,16,15,<span class="string">'fimath'</span>,F);
+q = assignmentquantizer(zi);
+e = double(eps(zi));
+rand(<span class="string">'state'</span>,0);
+<span class="keyword">for</span> k=1:20
+  y = x;
+  zi(:) = randquant(q,size(A,1),1);
+  [y,zf] = fisisostatespacefilter(A2,B2,C2,D2,x,zi);
+  <span class="keyword">if</span> abs(double(zf(end)))&gt;0.5, c=<span class="string">'ro-'</span>; <span class="keyword">else</span>, c=<span class="string">'go-'</span>; <span class="keyword">end</span>
+  plot(zf(1,:), zf(2,:),c,<span class="string">'markersize'</span>,8);
+<span class="keyword">end</span>
+title(<span class="string">'Normal-Form Fixed-Point State Sequence Plot'</span>);
+xlabel(<span class="string">'z1'</span>); ylabel(<span class="string">'z2'</span>)
+</pre><img vspace="5" hspace="5" src="../filimitcycledemo_06.png" alt=""> <p>他のランダムに選択された初期状態のためにこれを入力すると、フィルターが復元できない領域はないことが示されます。</p><p class="footer">Copyright 1999-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Analysis of a Fixed-Point State-Space System with Limit Cycles % This is a demonstration of a limit cycle detection routine using the % state-space representation for a second-order recursive system when implemented % using finite precision. % % The demonstration focuses on detecting large scale limit cycles due to overflow % with zero inputs and highlights the conditions that are sufficient to prevent % such oscillations. %     % References: % % [1] Richard A. Roberts and Clifford T. Mullis, "Digital Signal Processing", % Addison-Wesley, Reading, Massachusetts, 1987, ISBN 0-201-16350-0, Section 9.3. %  % [2] S. K. Mitra, "Digital Signal Processing: A Computer Based Approach", % McGraw-Hill, New York, 1998, ISBN 0-07-042953-7. % % Copyright 1999-2010 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:47 $  %% Select a State-Space Representation of the System. % We observe that the system is stable by observing that the eigenvalues % of the state-transition matrix A have magnitudes less than 1. format A = [0 1; -.5 1]; B = [0; 1]; C = [1 0]; D = 0; eig(A)  %% Filter Implementation type fisisostatespacefilter.m  %% Floating-Point Filter % Create a floating-point filter and observe the trajectory of the states. % % First, we choose random states within the unit square and observe % where they are projected after one step of being multiplied by the % state-transition matrix A. rand('state',0); clf x1 = [-1 1 1 -1 -1]; y1 = [-1 -1 1 1 -1]; plot(x1,y1,'c') axis([-1.5 1.5 -1.5 1.5]); axis square; grid; hold on  % Plot the projection of the square p = A*[x1;y1]; plot(p(1,:),p(2,:),'r')  r = 2*rand(2,1000)-1; pr = A*r; plot(pr(1,:),pr(2,:),'.')  %% Random Initial States Followed Through Time % Drive the filter with a random initial state, normalized to be inside the % unit square, with the input all zero, and run the filter. % % Note that some of the states wander outside the unit square, and that % they eventually wind down to the zero state at the origin, z=[0;0].  x = zeros(10,1); zi = [0;0]; q = quantizer([16 15]); for k=1:20   y = x;   zi(:) = randquant(q,size(A,1),1);   [y,zf] = fisisostatespacefilter(A,B,C,D,x,zi);   plot(zf(1,:), zf(2,:),'go-','markersize',8); end title('Double-Precision State Sequence Plot'); xlabel('z1'); ylabel('z2')  %% State Trajectory % Because the eigenvalues are less than one in magnitude, the system is % stable, and all initial states wind down to the origin with zero input. % However, the eigenvalues don't tell the whole story about the trajectory % of the states, as in this example, where the states were projected % outward first, before they start to contract.   % % The singular values of A give us a better indication of the overall % state trajectory.  The largest singular value is about 1.46, which % indicates that states aligned with the corresponding singular vector will % be projected away from the origin. svd(A)  %% Fixed-Point Filter Creation % Create a fixed-point filter and check for limit cycles. % % The MATLAB(R) code for the filter remains the same.  It becomes a fixed-point % filter because we drive it with fixed-point inputs. % % For the sake of illustrating overflow oscillation, we are choosing % product and sum data types that will overflow. randn('state',0); F = fimath('OverflowMode','wrap',...            'ProductMode','SpecifyPrecision',...            'ProductWordLength',16,'ProductFractionLength',15,...            'SumMode','SpecifyPrecision',...            'SumWordLength',16,'SumFractionLength',15);  A = fi(A,'fimath',F) B = fi(B,'fimath',F) C = fi(C,'fimath',F) D = fi(D,'fimath',F)  %% Plot the Projection of the Square in Fixed-Point % Again, we choose random states within the unit square and observe % where they are projected after one step of being multiplied by the % state-transition matrix A.  The difference is that this time matrix A % is fixed-point. % % Note that the triangles that projected out of the square before in % floating-point, are now wrapped back into the interior of the square. clf r = 2*rand(2,1000)-1; pr = A*r; plot([-1 1 1 -1 -1],[-1 -1 1 1 -1],'c') axis([-1.5 1.5 -1.5 1.5]); axis square; grid; hold on plot(pr(1,:),pr(2,:),'.')  %% Execute the Fixed-Point Filter. % The only difference between this and the previous code is that we are % driving it with fixed-point data types.  x = fi(zeros(10,1),1,16,15,'fimath',F); zi = fi([0;0],1,16,15,'fimath',F); q = assignmentquantizer(zi); e = double(eps(zi)); rand('state',0); for k=1:20   y = x;   zi(:) = randquant(q,size(A,1),1);   [y,zf] = fisisostatespacefilter(A,B,C,D,x,zi);   if abs(double(zf(end)))>0.5, c='ro-'; else, c='go-'; end   plot(zf(1,:), zf(2,:),c,'markersize',8); end title('Fixed-Point State Sequence Plot'); xlabel('z1'); ylabel('z2')  %%  % Trying this for other randomly chosen initial states illustrates that % once a state enters one of the triangular regions, then it is % projected into the other triangular region, and back and forth, and % never escapes.  %% Sufficient Conditions for Preventing Overflow Limit Cycles % There are two sufficient conditions to prevent overflow limit cycles in a % system: % % * the system is stable i.e., abs(eig(A))<1, % * the matrix A is normal i.e., A'*A = A*A'. %  % Note that for the current representation, the second condition does not hold.  %% Apply Similarity Transform to Create a Normal A % % We now apply a similarity transformation to the original system that % will create a normal state-transition matrix A2.  T = [-2 0;-1 1]; Tinv = [-.5 0;-.5 1]; A2 = Tinv*A*T; B2 = Tinv*B; C2 = C*T; D2 = D;  %% % Similarity transformations preserve eigenvalues, as a result of which % the system transfer function of the transformed system remains same as % before.  However, the transformed state transformation matrix A2 is % normal.    %% Check for Limit Cycles on the Transformed System.  %% Plot the Projection of the Square of the Normal-Form System % Now the projection of random initial states inside the unit square all % contract uniformly.  This is the result of the state transition matrix A2 % being normal.  The states are also rotated by 90 degrees % counterclockwise. clf r = 2*rand(2,1000)-1; pr = A2*r; plot([-1 1 1 -1 -1],[-1 -1 1 1 -1],'c') axis([-1.5 1.5 -1.5 1.5]); axis square; grid; hold on plot(pr(1,:),pr(2,:),'.')  %% Plot the State Sequence % Plotting the state sequences again for the same initial states as before we % see that the outputs now spiral towards the origin. x = fi(zeros(10,1),1,16,15,'fimath',F); zi = fi([0;0],1,16,15,'fimath',F); q = assignmentquantizer(zi); e = double(eps(zi)); rand('state',0); for k=1:20   y = x;   zi(:) = randquant(q,size(A,1),1);   [y,zf] = fisisostatespacefilter(A2,B2,C2,D2,x,zi);   if abs(double(zf(end)))>0.5, c='ro-'; else, c='go-'; end   plot(zf(1,:), zf(2,:),c,'markersize',8); end title('Normal-Form Fixed-Point State Sequence Plot'); xlabel('z1'); ylabel('z2')  %% % Trying this for other randomly chosen initial states illustrates that % there is no region from which the filter is unable to recover.   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

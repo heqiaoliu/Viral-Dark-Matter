@@ -1,0 +1,63 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Vehicle Dynamics Visualization with Graphs</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="vr_octavia_graphs.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">vr_octavia_graphs.mdl</div><div class="right"><a href="matlab:vr_octavia_graphs">Open this model</a></div></div><div class="content"><h1>Vehicle Dynamics Visualization with Graphs</h1><p>This example extends the vr_octavia example and shows how combine virtual reality canvas in one figure with other graphical user interface objects. In this case, three graphs are displayed under the virtual scene and updated in each major simulation time step.</p><p>The 'VR Visualization with Graphs' subsystem contains the 'octavia_graphs' S-Function that provides this functionality.</p><img vspace="5" hspace="5" src="vr_octavia_graphs_01.png" alt=""> <img vspace="5" hspace="5" src="vr_octavia_graphs_02.png" alt=""> <p class="footer">Copyright 1998-2010 HUMUSOFT s.r.o. and The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Vehicle Dynamics Visualization with Graphs
+%
+% This example extends the vr_octavia example and shows how combine virtual 
+% reality canvas in one figure with other graphical user interface objects. 
+% In this case, three graphs are displayed under the virtual scene and updated
+% in each major simulation time step.
+%
+% The 'VR Visualization with Graphs' subsystem contains the 'octavia_graphs'
+% S-Function that provides this functionality.
+
+% the above text is taken from the "Description" property of the model
+% when the property is updated, this text should be updated as well
+
+%   Copyright 1998-2010 HUMUSOFT s.r.o. and The MathWorks, Inc.
+%   $Revision: 1.1.6.1 $  $Date: 2010/02/08 23:02:34 $  $Author: batserve $
+
+
+% clean up
+clear all
+close all
+bdclose all
+
+% open the model
+mdl = 'vr_octavia_graphs';
+open_system(mdl);
+
+% simulate the model until simulation time 110 to show nice graphs
+sim(mdl, [0 110],[]);
+vrdrawnow;
+
+% replace vr.canvas objects that do not print by their snapshots
+f = findall(0, 'Type', 'figure', 'Tag', 'octavia_graphs_fig');
+cc = findobj(f, 'Type', 'hgjavacomponent', 'UserData', ...
+             'com.mathworks.toolbox.sl3d.vrcanvas.VRGLCanvas');
+posprop = {'Units', 'Position'};
+for i=1:numel(cc)
+  posval = get(cc(i), posprop);
+  delfcn = get(cc(i), 'DeleteFcn');
+  img = capture(delfcn{2}); % HACK - vr.canvas is the second element of DeleteFcn
+  delete(cc(i));
+  ax = axes('Parent', f, ...
+            'Visible', 'off', ...
+            'YDir', 'reverse', ...
+            'XLim', [0 size(img, 2)], ...
+            'YLim', [0 size(img, 1)], ...
+            posprop, posval);
+  image('Parent', ax, 'CData', img);
+end
+drawnow;
+
+##### SOURCE END #####
+--></body></html>

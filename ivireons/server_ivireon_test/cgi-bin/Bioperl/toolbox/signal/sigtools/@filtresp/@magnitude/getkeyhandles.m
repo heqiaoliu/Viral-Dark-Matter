@@ -1,0 +1,21 @@
+function h = geth(this)
+%GETh   Returns the "key" handles.
+
+%   Author(s): J. Schickler
+%   Copyright 1988-2004 The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2004/12/26 22:18:50 $
+
+h = get(this, 'Handles');
+if isfield(h, 'masks')
+    h = rmfield(h, 'masks');
+end
+if isfield(h, 'legend')
+    h = rmfield(h, 'legend');
+end
+if isfield(h, 'userdefinedmask')
+    h = rmfield(h, 'userdefinedmask');
+end
+
+h = convert2vector(h);
+
+% [EOF]

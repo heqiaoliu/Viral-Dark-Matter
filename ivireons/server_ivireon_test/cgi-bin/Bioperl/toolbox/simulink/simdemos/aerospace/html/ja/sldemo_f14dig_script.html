@@ -1,0 +1,421 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Designing an F-14 High Angle of Attack Pitch Mode Control</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-03"><meta name="m-file" content="sldemo_f14dig_script"><link rel="stylesheet" type="text/css" href="../../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sldemo_f14dig_script">Open sldemo_f14dig_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo sldemo_f14dig_script">Run in the Command Window</a></div></div><div class="content"><h1>Designing an F-14 High Angle of Attack Pitch Mode Control</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Control Design Using Simulink&reg;</a></li><li><a href="#4">Trim and Linearization</a></li><li><a href="#7">Linear Time-Invariant (LTI) Systems</a></li><li><a href="#8">Discretized Controller Using Zero-Order Hold</a></li><li><a href="#10">Tustin (Bilinear) Discretization</a></li><li><a href="#12">Selecting a Sample Time</a></li><li><a href="#14">Real-World Considerations</a></li><li><a href="#17">Implementation of the Full Design</a></li><li><a href="#20">Configurable Subsystems for Design Variants</a></li><li><a href="#23">Code Generation</a></li><li><a href="#26">Behavior of the First Pass Design</a></li><li><a href="#28">Summary</a></li></ul></div><h2>Control Design Using Simulink&reg;<a name="1"></a></h2><p>This demonstration illustrates how to use the Control System Toolbox&#8482; and Simulink&reg; Control Design&#8482; to interact with Simulink to design a digital pitch control for the U.S. Navy's F-14 Tomcat aircraft.  In this example, we will design the controller to permit the aircraft to operate at a high angle of attack with minimal pilot workload.</p><p>Our example takes you through the first pass at designing a digital autopilot for a high angle of attack controller.  To run everything in this demo you must have the Control System Toolbox, Simulink Control Design, Simulink, and Real-Time Workshop&reg;.  If you don't have all of these products, you can still run portions of the demo using cell execution mode of the MATLAB&reg; editor.</p><p>Below is a Simulink model of the F-14.  The control systems in the Controllers block can be switched in the model to allow you to see the analog response and then to switch to a design created using the Control System Toolbox's Linear Time Invariant (LTI) objects.  A controller is also included that is a discrete implementation of the analog design that is similar to the algorithm that would go into an on-board flight computer.  Take a few moments to explore the model.</p><p><a href="matlab:open_system('f14_digital')">Open the f14_digital model</a></p><pre class="codeinput">f14dat_digital;
+f14_digital
+sim(<span class="string">'f14_digital'</span>);
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_01.png" alt=""> <img vspace="5" hspace="5" src="../sldemo_f14dig_script_02.png" alt=""> <p><b>Figure 1:</b> Simulink model of the F-14 flight control system.</p><h2>Trim and Linearization<a name="4"></a></h2><p>The model can be linearized in the Control and Estimation Tools Manager launched from f14autopilot Simulink model.  In the Tools menu, select Control Design &gt; Linear Analysis.</p><p>When the Control and Estimation Tools Manager opens, select an operating point and click the Linearize Model button.  An LTI Viewer can be created showing a step plot of the linearization.  To browse around the LTI Viewer, right click on the graph window to see your options.</p><p>For help type help slcontrol or help ltiview or look at the Control System Toolbox and Simulink Control Design product documentation.</p><p><a href="matlab:open_system('f14autopilot')">Open the f14autopilot model</a></p><pre class="codeinput">apmdl = <span class="string">'f14autopilot'</span>;
+open_system(apmdl)
+op = operpoint(apmdl);
+io = getlinio(apmdl);
+contap = linearize(apmdl,op,io)
+</pre><pre class="codeoutput"> 
+a = 
+                 Alpha-sensor  Pitch Rate L  Proportional  Stick Prefil
+   Alpha-sensor        -2.526             0             0             0
+   Pitch Rate L             0        -4.144             0             0
+   Proportional         -1.71        0.9567             0            10
+   Stick Prefil             0             0             0           -10
+ 
+b = 
+                        Stick  Alpha Sensed      q Sensed
+   Alpha-sensor             0             1             0
+   Pitch Rate L             0             0             1
+   Proportional             0             0       -0.8156
+   Stick Prefil             1             0             0
+ 
+c = 
+        Alpha-sensor  Pitch Rate L  Proportional  Stick Prefil
+   Sum         2.986         -1.67        -3.864        -17.46
+ 
+d = 
+               Stick  Alpha Sensed      q Sensed
+   Sum             0             0         1.424
+ 
+Continuous-time model.
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_03.png" alt=""> <p><b>Figure 2:</b> Original analog autopilot.</p><h2>Linear Time-Invariant (LTI) Systems<a name="7"></a></h2><p>There are three types of LTI objects you can use to develop a linear model:</p><p>State Space (SS), Transfer Function (TF), and Zero-Pole-Gain (ZPG) objects.</p><p>The variable contap is a State Space object.  You can then get one of the other types with the other commands.  When you create the object in MATLAB, you can manipulate it using operations such as *, +, -, etc.  This is called "overloading" the MATLAB operators.  Try creating an object of your own and see what happens when adding, multiplying, etc. with the contap object.</p><p>To see exactly what is stored in the LTI object, type get(contap) or contap.InputName for example.</p><pre class="codeinput">contap = tf(contap);
+contap = zpk(contap)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input "Stick" to output "Sum":
+-17.46 (s+2.213)
+----------------
+    s (s+10)
+ 
+Zero/pole/gain from input "Alpha Sensed" to output "Sum":
+2.9857 (s+2.213)
+----------------
+  s (s+2.526)
+ 
+Zero/pole/gain from input "q Sensed" to output "Sum":
+1.424 (s+2.971) (s+2.213)
+-------------------------
+       s (s+4.144)
+ 
+</pre><h2>Discretized Controller Using Zero-Order Hold<a name="8"></a></h2><p>Now the LTI object will be used to design the digital autopilot that will replace the analog autopilot.  The analog system is coded into the LTI object called contap (CONtinuous AutoPilot).</p><p>The first attempt at creating a digital autopilot will use a zero-order hold with a sample time of 0.1 seconds.  Note that the discrete object maintains the type (ss, tf, or zpk).</p><p>It is clear from Bode plot below that the systems do not match in phase from 3 rad/sec to the half sample frequency (the vertical black line) for the pilot stick input and the angle of attack sensor.  This design has poorer response than the analog system.  Go to the Simulink model and start the simulation (make sure you can see the scope windows).  While the simulation is running, double-click the manual switch labeled Analog or Digital.</p><p>Does the simulation verify the conclusion reached by interpreting the Bode diagram?</p><pre class="codeinput">discap = c2d(contap, 0.1, <span class="string">'zoh'</span>);
+get(discap)
+bode(contap,discap)
+</pre><pre class="codeoutput">               z: {1x3 cell}        
+               p: {1x3 cell}        
+               k: [-1.25 0.294 1.42]
+         ioDelay: [0 0 0]           
+   DisplayFormat: 'roots'           
+        Variable: 'z'               
+              Ts: 0.1               
+      InputDelay: [3x1 double]      
+     OutputDelay: 0                 
+       InputName: {3x1 cell}        
+      OutputName: {'Sum'}           
+      InputGroup: [1x1 struct]      
+     OutputGroup: [1x1 struct]      
+            Name: ''                
+           Notes: {}                
+        UserData: []                
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_04.png" alt=""> <p><b>Figure 3:</b> Bode diagram comparing analog and ZOH controllers.</p><h2>Tustin (Bilinear) Discretization<a name="10"></a></h2><p>Now try different conversion techniques.  You can use the Tustin transformation. In the command window type the commands above.</p><p>It should be clear that the systems still do not match in phase from 3 rad/sec to the half sample frequency, the Tustin transformation does better. The simulation uses the LTI object as it is designed. To see how the object is used look in the Controllers subsystem by using the browser or by double clicking the icon.  The LTI block picks up an LTI object from the workspace. You can change the object name used in the block to any LTI object in the workspace.  Try using "discap1", the Tustin discretization of the analog design:</p><pre class="codeinput">discap1 = c2d(contap,0.1,<span class="string">'tustin'</span>);
+bode(contap,discap,discap1)
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_05.png" alt=""> <p><b>Figure 4:</b> Bode diagram comparing analog and 0.1 sec Tustin controllers.</p><h2>Selecting a Sample Time<a name="12"></a></h2><p>The Tustin transform performs better than the zero-order hold from the analysis so far.  The sample time of 0.1 second appears to be too slow for the discrete system to track the performance of the analog system at half the sample frequency.</p><p>Now transform the analog design using the Tustin transform with a 0.05 second sample period.</p><pre class="codeinput">discap = c2d(contap,0.05,<span class="string">'tustin'</span>)
+bode(contap,discap)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input "Stick" to output "Sum":
+-0.36852 (z-0.8951) (z+1)
+-------------------------
+      (z-1) (z-0.6)
+ 
+Zero/pole/gain from input "Alpha Sensed" to output "Sum":
+0.074094 (z-0.8951) (z+1)
+-------------------------
+    (z-1) (z-0.8812)
+ 
+Zero/pole/gain from input "q Sensed" to output "Sum":
+1.4629 (z-0.8617) (z-0.8951)
+----------------------------
+      (z-1) (z-0.8123)
+ 
+Sampling time: 0.05
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_06.png" alt=""> <p><b>Figure 5:</b> Bode diagram comparing analog and 0.05 sec Tustin controllers.</p><h2>Real-World Considerations<a name="14"></a></h2><p>Now that we have what appears to be a workable design, we need to implement it in a form that will include some of the necessary elements that were ignored in the linear analysis.  For example, if you look at the analog autopilot that is in the Controllers subsystem, you will see some logic that stops the integrator from winding up when the actuator saturates:</p><p><a href="matlab:load_system('f14_digital');open_system('f14_digital/Controllers/AnalogControl')">Open the AnalogControl subsystem</a></p><pre class="codeinput">open_system(<span class="string">'f14_digital/Controllers/AnalogControl'</span>);
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_07.png" alt=""> <p><b>Figure 6:</b> AnalogControl subsystem.</p><h2>Implementation of the Full Design<a name="17"></a></h2><p>The integrator wind-up is only one of the practical issues that needs to be addressed.  Another is the need to eliminate aliased high frequency signals that could enter at  measurement points.  These aliased signals can be prevented by specifying analog filters in front of the sample and hold (ZOH) blocks that model the analog-to-digital converter (ADC) devices typically used for measuring signals in an embedded application.  Additionally, the filters in the digital section of the autopilot operate at a higher sampling rate than the compensator to provide a conditioned signal to the compensator.  The analog filters are necessary because once a signal is aliased, there is no way to separate the valid in-band frequency content from aliased content.</p><p>This new controller is called Digital Control.  The filters have a sample time of deltat1 (set to be 1/10 of deltat).  The zero-order hold blocks specify these sample times for various downstream blocks through sample time inheritance.</p><p>The switches in the f14_digital model are set up so you can switch between the analog autopilot, the digital LTI object, and the digital autopilot that could be implemented using software.</p><p>Try simulating the system again and switch among the three autopliot designs. You should see that the designs are not significantly affected by which autopilot is active.  You can also increase the amplitude of the wind gust and verify that the anti-aliasing filters are working satisfactorily.  To increase the gust amplitude, open the Dryden Wind Gust subsystem and change (by double clicking the icon) the noise variance of the White Noise that drives the gust simulation.</p><p><a href="matlab:load_system('f14_digital');open_system('f14_digital/Controllers/DigitalControl')">Open the DigitalControl subsystem:</a></p><pre class="codeinput">open_system(<span class="string">'f14_digital/Controllers/DigitalControl'</span>);
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_08.png" alt=""> <p><b>Figure 7:</b> DigitalControl subsystem.</p><h2>Configurable Subsystems for Design Variants<a name="20"></a></h2><p>The actuators in the Simulink model use a feature of Simulink called Configurable Subsystems to access a library of actuators.  This library was opened by the command shown in the window above.</p><p>To make the simulation change, use the nonlinear actuator instead of the linear one, double click the actuator block in the f14_digtal model, and follow the instructions.</p><p>Note that Simulink must be stopped in order to reconfigure the actuator selection.  You should also note that the nonlinear actuator has saturations on position and rate.</p><p><a href="matlab:open_system('f14actuator')">Open the f14actuator model:</a></p><pre class="codeinput">f14actuator
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_09.png" alt=""> <p><b>Figure 8:</b> The f14actuator model.</p><h2>Code Generation<a name="23"></a></h2><p>The autopilot design can be transformed into embeddable code using Real-Time Workshop.  A separate model of the digital autopilot, f14_dap, is open below; it was coded into a host-based standalone program using Real-Time Workshop and the compiler specified using the mex -setup configuration. The simulation results can be used as a validation baseline for the functional correctness of the generated code.</p><p>The executable file resulting from code generation and compilation is f14_dap.exe. If you create it, it can be run from the OS shell (DOS) command line directly or from MATLAB by typing:</p><p>&gt;&gt; !f14_dap.exe</p><p>The executable program creates a file called f14_dap.mat that you can load by typing load f14_dap.</p><p>Two variables called rt_tout and rt_yout will be in the workspace and their variance against the simulation baseline  can be plotted.  Note that the variance is effectively zero for this model on this host.  Some small numeric variance is to be expected in more complex calculations due to differing compiler optimizations and use of intermediate register variables having higher precision than the 64-bit storage format of a double.  Significant variances should be examined as they could indicate a numerical stability problem in your model's algorithms, a compiler or run-time library bug, or other problems.</p><p><a href="matlab:open_system('f14_dap')">Open the f14_dap model:</a></p><pre class="codeinput">f14_dap
+load <span class="string">f14_dap</span>
+sim(<span class="string">'f14_dap'</span>)
+f1 = figure;
+subplot(211); plot(tout,yout,<span class="string">'r-'</span>,rt_tout,rt_yout,<span class="string">'b-'</span>); grid
+title(<span class="string">'Comparison of simulation and code generation results'</span>)
+
+yvar = rt_yout - yout;
+subplot(212); plot(tout,yvar); grid
+title(<span class="string">'Variance of code generation results vs. simulation baseline'</span>)
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_10.png" alt=""> <img vspace="5" hspace="5" src="../sldemo_f14dig_script_11.png" alt=""> <p><b>Figure 9:</b> Comparison of simulation and code generation results.</p><h2>Behavior of the First Pass Design<a name="26"></a></h2><p>Here is the time response of the high angle of attack mode digital pitch controller design:</p><pre class="codeinput">close(f1)
+f2 = figure;
+plot(tout,yout); grid
+title(<span class="string">'Response of the F-14 Digital Pitch Control Design'</span>)
+</pre><img vspace="5" hspace="5" src="../sldemo_f14dig_script_12.png" alt=""> <p><b>Figure 10:</b> Response of the F-14 Digital Pitch Control Design.</p><h2>Summary<a name="28"></a></h2><p>Further work on this design might include incorporating and analyzing more of the real-world effects on the compensator such as the effect of the anti-aliasing filter dynamics  and computational delay of the embedded digital computer on the overall "plant" seen by the digital computations. The combination of the real plant, the computational delay, the anti-aliasing filters, and the sample-and-hold delay are just a few of the additional items that might affect the design of the digital compensator parameters.</p><pre class="codeinput">bdclose(<span class="string">'f14_digital'</span>)
+bdclose(<span class="string">'f14autopilot'</span>)
+bdclose(<span class="string">'f14actuator'</span>)
+bdclose(<span class="string">'f14_dap'</span>)
+</pre><p class="footer">Copyright 1990-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Designing an F-14 High Angle of Attack Pitch Mode Control
+
+% Copyright 1990-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.1.4.1 $  $Date: 2010/06/21 18:03:45 $
+
+%% Control Design Using Simulink(R)
+%
+% This demonstration illustrates how to use the Control System Toolbox(TM) and 
+% Simulink(R) Control Design(TM) to interact with Simulink to design a digital pitch 
+% control for the U.S. Navy's F-14 Tomcat aircraft.  In this example, we will
+% design the controller to permit the aircraft to operate at a high angle of 
+% attack with minimal pilot workload.
+% 
+% Our example takes you through the first pass at designing a digital 
+% autopilot for a high angle of attack controller.  To run everything in this 
+% demo you must have the Control System Toolbox, Simulink Control Design, 
+% Simulink, and Real-Time Workshop(R).  If you don't have all of these products, 
+% you can still run portions of the demo using cell execution mode of the 
+% MATLAB(R) editor.
+%
+% Below is a Simulink model of the F-14.  The control systems in the Controllers
+% block can be switched in the model to allow you to see the analog response 
+% and then to switch to a design created using the Control System Toolbox's
+% Linear Time Invariant (LTI) objects.  A controller is also included that 
+% is a discrete implementation of the analog design that is similar to the 
+% algorithm that would go into an on-board flight computer.  Take a few 
+% moments to explore the model. 
+%%
+% <matlab:open_system('f14_digital') Open the f14_digital model>
+
+f14dat_digital;
+f14_digital
+sim('f14_digital');
+   
+%%
+% *Figure 1:* Simulink model of the F-14 flight control system.
+
+%% Trim and Linearization 
+%
+% The model can be linearized in the Control and Estimation Tools Manager
+% launched from f14autopilot Simulink model.  In the Tools menu, select
+% Control Design > Linear Analysis.
+% 
+% When the Control and Estimation Tools Manager opens, select an operating 
+% point and click the Linearize Model button.  An LTI Viewer can be created 
+% showing a step plot of the linearization.  To browse around the LTI Viewer, 
+% right click on the graph window to see your options.
+% 
+% For help type help slcontrol or help ltiview or look at the Control
+% System Toolbox and Simulink Control Design product documentation.
+%%
+% <matlab:open_system('f14autopilot') Open the f14autopilot model>
+
+apmdl = 'f14autopilot';
+open_system(apmdl)
+op = operpoint(apmdl);
+io = getlinio(apmdl);
+contap = linearize(apmdl,op,io)
+
+%%
+% *Figure 2:* Original analog autopilot.
+
+%% Linear Time-Invariant (LTI) Systems
+%
+% There are three types of LTI objects you can use to develop a linear
+% model:
+% 
+% State Space (SS), Transfer Function (TF), and Zero-Pole-Gain (ZPG) objects.
+% 
+% The variable contap is a State Space object.  You can then get one of the
+% other types with the other commands.  When you create the object in MATLAB,
+% you can manipulate it using operations such as *, +, -, etc.  This is called
+% "overloading" the MATLAB operators.  Try creating an object of your own and
+% see what happens when adding, multiplying, etc. with the contap object.
+% 
+% To see exactly what is stored in the LTI object, type get(contap) or
+% contap.InputName for example.
+
+contap = tf(contap);
+contap = zpk(contap)
+
+%% Discretized Controller Using Zero-Order Hold
+%
+% Now the LTI object will be used to design the digital autopilot that 
+% will replace the analog autopilot.  The analog system is coded into 
+% the LTI object called contap (CONtinuous AutoPilot).
+% 
+% The first attempt at creating a digital autopilot will use a zero-order hold
+% with a sample time of 0.1 seconds.  Note that the discrete object maintains 
+% the type (ss, tf, or zpk).
+%
+% It is clear from Bode plot below that the systems do not match in phase 
+% from 3 rad/sec to the half sample frequency (the vertical black line) 
+% for the pilot stick input and the angle of attack sensor.  This design has 
+% poorer response than the analog system.  Go to the Simulink model and start
+% the simulation (make sure you can see the scope windows).  While the
+% simulation is running, double-click the manual switch labeled 
+% Analog or Digital.
+%
+% Does the simulation verify the conclusion reached by interpreting the Bode
+% diagram?
+
+discap = c2d(contap, 0.1, 'zoh');
+get(discap)
+bode(contap,discap)
+
+%%
+% *Figure 3:* Bode diagram comparing analog and ZOH controllers.
+
+%% Tustin (Bilinear) Discretization
+%
+% Now try different conversion techniques.  You can use the Tustin transformation.
+% In the command window type the commands above.
+%
+% It should be clear that the systems still do not match in phase from 3
+% rad/sec to the half sample frequency, the Tustin transformation does better.  
+% The simulation uses the LTI object as it is designed. To see how the object 
+% is used look in the Controllers subsystem by using the browser or by double 
+% clicking the icon.  The LTI block picks up an LTI object from the workspace.  
+% You can change the object name used in the block to any LTI object in the 
+% workspace.  Try using "discap1", the Tustin discretization of the analog 
+% design:
+%
+
+discap1 = c2d(contap,0.1,'tustin');
+bode(contap,discap,discap1)
+
+%%
+% *Figure 4:* Bode diagram comparing analog and 0.1 sec Tustin controllers.
+
+%% Selecting a Sample Time
+%
+% The Tustin transform performs better than the zero-order hold from the 
+% analysis so far.  The sample time of 0.1 second appears to be too slow for 
+% the discrete system to track the performance of the analog system at half 
+% the sample frequency. 
+%
+% Now transform the analog design using the Tustin transform with a 0.05 second
+% sample period.
+%
+
+discap = c2d(contap,0.05,'tustin')
+bode(contap,discap)
+
+%%
+% *Figure 5:* Bode diagram comparing analog and 0.05 sec Tustin controllers.
+
+%% Real-World Considerations
+%
+% Now that we have what appears to be a workable design, we need to implement 
+% it in a form that will include some of the necessary elements that were 
+% ignored in the linear analysis.  For example, if you look at the analog autopilot 
+% that is in the Controllers subsystem, you will see some logic that stops 
+% the integrator from winding up when the actuator saturates:
+% 
+%%
+% <matlab:load_system('f14_digital');open_system('f14_digital/Controllers/AnalogControl') Open the AnalogControl subsystem>
+
+open_system('f14_digital/Controllers/AnalogControl');
+
+%%
+% *Figure 6:* AnalogControl subsystem.
+
+%% Implementation of the Full Design 
+%
+% The integrator wind-up is only one of the practical issues that needs to be
+% addressed.  Another is the need to eliminate aliased high frequency signals
+% that could enter at  measurement points.  These aliased signals can be 
+% prevented by specifying analog filters in front of the sample and hold (ZOH)
+% blocks that model the analog-to-digital converter (ADC) devices typically
+% used for measuring signals in an embedded application.  Additionally, the 
+% filters in the digital section of the autopilot operate at a higher 
+% sampling rate than the compensator to provide a conditioned signal to 
+% the compensator.  The analog filters are necessary because once a signal is
+% aliased, there is no way to separate the valid in-band frequency content 
+% from aliased content.
+% 
+% This new controller is called Digital Control.  The filters have a sample 
+% time of deltat1 (set to be 1/10 of deltat).  The zero-order hold blocks 
+% specify these sample times for various downstream blocks through sample time 
+% inheritance.
+%
+% The switches in the f14_digital model are set up so you can switch between the
+% analog autopilot, the digital LTI object, and the digital autopilot that 
+% could be implemented using software.
+%
+% Try simulating the system again and switch among the three autopliot designs.
+% You should see that the designs are not significantly affected by which 
+% autopilot is active.  You can also increase the amplitude of the wind gust 
+% and verify that the anti-aliasing filters are working satisfactorily.  To 
+% increase the gust amplitude, open the Dryden Wind Gust subsystem and change 
+% (by double clicking the icon) the noise variance of the White Noise that 
+% drives the gust simulation.
+%%
+% <matlab:load_system('f14_digital');open_system('f14_digital/Controllers/DigitalControl') Open the DigitalControl subsystem:>
+
+open_system('f14_digital/Controllers/DigitalControl');
+  
+%%
+% *Figure 7:* DigitalControl subsystem.
+
+%% Configurable Subsystems for Design Variants
+%
+% The actuators in the Simulink model use a feature of Simulink called
+% Configurable Subsystems to access a library of actuators.  This library
+% was opened by the command shown in the window above.
+%
+% To make the simulation change, use the nonlinear actuator instead of the
+% linear one, double click the actuator block in the f14_digtal model, 
+% and follow the instructions.
+%
+% Note that Simulink must be stopped in order to reconfigure the actuator 
+% selection.  You should also note that the nonlinear actuator has saturations 
+% on position and rate.
+%%
+% <matlab:open_system('f14actuator') Open the f14actuator model:>
+
+f14actuator
+      
+%%
+% *Figure 8:* The f14actuator model.
+
+%% Code Generation
+%
+% The autopilot design can be transformed into embeddable code using Real-Time
+% Workshop.  A separate model of the digital autopilot, f14_dap, is open 
+% below; it was coded into a host-based standalone program using Real-Time 
+% Workshop and the compiler specified using the mex -setup configuration.  
+% The simulation results can be used as a validation baseline for the 
+% functional correctness of the generated code.
+%
+% The executable file resulting from code generation and compilation is 
+% f14_dap.exe. If you create it, it can be run from the OS shell (DOS) command 
+% line directly or from MATLAB by typing:
+%
+% >> !f14_dap.exe
+%
+% The executable program creates a file called f14_dap.mat that you can load
+% by typing load f14_dap.  
+%
+% Two variables called rt_tout and rt_yout will be in the workspace and 
+% their variance against the simulation baseline  can be plotted.  Note that 
+% the variance is effectively zero for this model on this host.  Some small numeric 
+% variance is to be expected in more complex calculations due to differing 
+% compiler optimizations and use of intermediate register variables having higher 
+% precision than the 64-bit storage format of a double.  Significant variances 
+% should be examined as they could indicate a numerical stability problem in your 
+% model's algorithms, a compiler or run-time library bug, or other problems.
+%%
+% <matlab:open_system('f14_dap') Open the f14_dap model:>
+
+f14_dap
+load f14_dap
+sim('f14_dap')
+f1 = figure;
+subplot(211); plot(tout,yout,'r-',rt_tout,rt_yout,'b-'); grid
+title('Comparison of simulation and code generation results')
+
+yvar = rt_yout - yout;
+subplot(212); plot(tout,yvar); grid
+title('Variance of code generation results vs. simulation baseline')
+
+%%
+% *Figure 9:* Comparison of simulation and code generation results.
+
+%% Behavior of the First Pass Design
+%
+% Here is the time response of the high angle of attack mode 
+% digital pitch controller design:
+%
+
+close(f1)
+f2 = figure;
+plot(tout,yout); grid
+title('Response of the F-14 Digital Pitch Control Design')
+
+%%
+% *Figure 10:* Response of the F-14 Digital Pitch Control Design.
+
+%% Summary
+%
+% Further work on this design might include incorporating and analyzing
+% more of the real-world effects on the compensator such as the effect of 
+% the anti-aliasing filter dynamics  and computational delay of the embedded 
+% digital computer on the overall "plant" seen by the digital computations.
+% The combination of the real plant, the computational delay, the 
+% anti-aliasing filters, and the sample-and-hold delay are just a few of
+% the additional items that might affect the design of the digital
+% compensator parameters.
+
+bdclose('f14_digital')
+bdclose('f14autopilot')
+bdclose('f14actuator')
+bdclose('f14_dap')
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

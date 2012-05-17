@@ -1,0 +1,76 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling a CD Player/Radio Using Enumerated Data Types</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_cdplayer.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_cdplayer.mdl</div><div class="right"><a href="matlab:sf_cdplayer">Open this model</a></div></div><div class="content"><h1>Modeling a CD Player/Radio Using Enumerated Data Types</h1><p>This example is a simple model of a CD Player/Radio logic that uses enumerated data types in Simulink&reg; and Stateflow&reg; (new in R2008b).</p><img vspace="5" hspace="5" src="sf_cdplayer_01.png" alt=""> <img vspace="5" hspace="5" src="sf_cdplayer_02.png" alt=""> <p>The heart of the logic for controlling the CD Player/Radio is in the "CdPlayerModeManager" chart. This chart receives user inputs, such as whether a disk has been inserted and the choice for the radio mode (FM, AM, or CD).  Then the chart determines the mechanical command to output. For example, this chart is responsible for making sure that a Rewind command is not issued in the absence of a disk in the player. Notice that the data types of input data "RadioReqMode" and "CdReqMode" as well as the output data "CurrentRadioMode" and "MechCmd" are defined as enumerated data types.  These types are defined in the M-files <tt>CdRequestMode.m</tt> and <tt>RadioRequestMode.m</tt>. Notice that the enumeration strings such as "CD" or "FM" are accessed directly in the chart for comparisons and assignments.</p><p>The output command from the "CdPlayerModeManager" is processed by the chart "CdPlayerBehaviorModel" which models the behavior of the CD Player mechanism.</p><img vspace="5" hspace="5" src="sf_cdplayer_03.png" alt=""> <p>The inputs to "CdPlayerModeManager" are provided by the chart "UserRequestChart" which is woken up at a periodic rate by Simulink and calls an external M-file named <tt>sfcdplayerhelper.m</tt>. This M-file acts as an intermediary between the Handle Graphics&reg; panel and Simulink.</p><img vspace="5" hspace="5" src="sf_cdplayer_04.png" alt=""> <img vspace="5" hspace="5" src="sf_cdplayer_05.png" alt=""> <p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling a CD Player/Radio Using Enumerated Data Types
+% 
+% This example is a simple model of a CD Player/Radio logic that uses 
+% enumerated data types in Simulink(R) and Stateflow(R) (new in R2008b).
+%   Copyright 2007-2009 The MathWorks, Inc.
+
+mdl = 'sf_cdplayer';
+open_system(mdl);
+
+rt = sfroot;
+
+machine = rt.find('-isa','Stateflow.Machine','Name','sf_cdplayer');
+userRequestChart = machine.find('-isa','Stateflow.Chart','Name','UserRequest');
+
+cdPlayerModeManagerChart = machine.find('-isa','Stateflow.Chart','Name','CdPlayerModeManager');
+
+cdPlayerBehaviorModelChart = machine.find('-isa','Stateflow.Chart','Name','CdPlayerBehaviorModel');
+
+%% 
+%
+% The heart of the logic for controlling the CD Player/Radio is in the 
+% "CdPlayerModeManager" chart. This chart receives user inputs, such as 
+% whether a disk has been inserted and the choice for the radio mode (FM,
+% AM, or CD).  Then the chart determines the mechanical command to output.
+% For example, this chart is responsible for making sure that a 
+% Rewind command is not issued in the absence of a disk in the player.
+% Notice that the data types of input data "RadioReqMode" and "CdReqMode"
+% as well as the output data "CurrentRadioMode" and "MechCmd"
+% are defined as enumerated data types.  These types are defined in the 
+% M-files |CdRequestMode.m| and |RadioRequestMode.m|. Notice that the 
+% enumeration strings such as "CD" or "FM" are accessed directly in the 
+% chart for comparisons and assignments.
+
+cdPlayerModeManagerChart.visible = 1;
+
+
+%% 
+%
+% The output command from the "CdPlayerModeManager" is processed
+% by the chart "CdPlayerBehaviorModel" which models the behavior 
+% of the CD Player mechanism. 
+
+cdPlayerModeManagerChart.visible = 0;
+cdPlayerBehaviorModelChart.visible = 1;
+
+
+%% 
+%
+% The inputs to "CdPlayerModeManager" are provided by 
+% the chart "UserRequestChart" which is woken up at a 
+% periodic rate by Simulink and calls an external
+% M-file named |sfcdplayerhelper.m|.
+% This M-file acts as an intermediary
+% between the Handle Graphics(R) panel and Simulink.
+
+cdPlayerBehaviorModelChart.visible = 0;
+userRequestChart.visible = 1;
+sfcdplayergui;
+
+
+
+
+
+##### SOURCE END #####
+--></body></html>

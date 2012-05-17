@@ -1,0 +1,206 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using Data Stores Across Multiple Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_mdlref_dsm.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_mdlref_dsm.mdl</div><div class="right"><a href="matlab:sldemo_mdlref_dsm">Open this model</a></div></div><div class="content"><h1>Using Data Stores Across Multiple Models</h1><!--introduction--><p>This demo explains how to use and log local data stores. It also shows  how to define, use and log global data stores to share global data among referenced models.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">Open the Demo Models</a></li><li><a href="#6">Define a Global Data Store Using a Simulink&reg; Signal Object</a></li><li><a href="#7">Logging a Global Data Store</a></li><li><a href="#8">Simulate the Model</a></li><li><a href="#9">View Logged Results</a></li></ul></div><h2>Open the Demo Models<a name="2"></a></h2><p>Open the demo models. The top model <tt>sldemo_mdlref_dsm</tt> references models <tt>sldemo_mdlref_dsm_bot</tt> and <tt>sldemo_mdlref_dsm_bot2</tt>. Logging of data stores is turned on for <tt>sldemo_mdlref_dsm</tt> on the Data Import/Export pane of the Configuration Parameters dialog.</p><p>Reference model <tt>sldemo_mdlref_dsm_bot</tt> amplifies the incoming signal by 5 if the signal is positive or by 2 if the signal is negative and writes the value of this signal to local data store <tt>RefSignalVal</tt>. This local data store is configured to log all written values to the workspace after simulation. The logging parameters for this local data store are controlled by the Logging tab of the block parameters dialog.</p><p>Reference model <tt>sldemo_mdlref_dsm_bot2</tt> sets the value of a global boolean data store named ErrorCond to true if the value of its incoming signal is outside of the range (-0.8, 0.8). The top model also monitors the data store ErrorCond and switches between the outputs of the two referenced models, depending on the value of that data store.</p><img vspace="5" hspace="5" src="sldemo_mdlref_dsm_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_mdlref_dsm_02.png" alt=""> <img vspace="5" hspace="5" src="sldemo_mdlref_dsm_03.png" alt=""> <img vspace="5" hspace="5" src="sldemo_mdlref_dsm_04.png" alt=""> <img vspace="5" hspace="5" src="sldemo_mdlref_dsm_05.png" alt=""> <h2>Define a Global Data Store Using a Simulink&reg; Signal Object<a name="6"></a></h2><p>To specify to Simulink that the top model and both of the referenced models use the same memory for the Data Store named ErrorCond in each model, create an instance of a <tt>Simulink.Signal</tt> object named ErrorCond in the base workspace.  Since this object is visible to each model, its scope encompasses the individual models and implies that there is one global data store of that name that is shared among the models. Note that none of the three models contains a Data Store Memory block with a data store name of ErrorCond.  If any model contained such a block, that block would define a data store local to the model, which would shadow the global data store.</p><p>Since the object ErrorCond defines a global data store, it must explicitly define the <tt>DataType</tt>, <tt>Complexity</tt>, <tt>Dimensions</tt>, and <tt>SamplingMode</tt> properties to non-inherited settings.  <tt>SampleTime</tt> and <tt>StorageClass</tt> may be left as their inherited values, or explicitly set.</p><p>The demo includes a MAT-file named <tt>sldemo_mdlref_dsm_data.mat</tt> that contains the <tt>Simulink.Signal</tt> object ErrorCond. The preload function of the model <tt>sldemo_mdlref_dsm</tt> loads this MAT-file causing the object to be loaded in the base workspace. You can view this object by selecting the base workspace in the Model Explorer (<a href="matlab:daexplr">matlab:daexplr</a>).  You can also create this object from the MATLAB&reg; command prompt.  The following commands define the object used in this demo:</p><pre>   ErrorCond = Simulink.Signal;
+   ErrorCond.Description = 'Use to signal that subsystem output is invalid';
+   ErrorCond.DataType = 'boolean';
+   ErrorCond.Complexity = 'real';
+   ErrorCond.Dimensions = 1;
+   ErrorCond.SamplingMode='Sample based';
+   ErrorCond.SampleTime = 0.1;
+   ErrorCond.LoggingInfo.DataLogging = true;</pre><h2>Logging a Global Data Store<a name="7"></a></h2><p>To log all the values written to the global data store, set the <tt>DataLogging</tt> property of the <tt>LoggingInfo</tt> property of the <tt>Simulink.Signal</tt> object. The <tt>LoggingInfo</tt> property also allows specification of other logging parameters such as decimation and maximum points.</p><pre>   Simulink.LoggingInfo (handle)
+           DataLogging: 1
+              NameMode: 0
+           LoggingName: ''
+          DecimateData: 0
+            Decimation: 2
+       LimitDataPoints: 0
+             MaxPoints: 5000</pre><h2>Simulate the Model<a name="8"></a></h2><p>Now you can simulate <tt>sldemo_mdlref_dsm</tt> to see the output.  The reference model <tt>sldemo_mdlref_dsm_bot</tt> writes to the data store ErrorCond while the top model <tt>sldemo_mdlref_dsm</tt> reads from the data store. The blue line represents the input to <tt>sldemo_mdlref_dsm_bot</tt>; the green line represents the output of the Switch block.  Note that the output switches when the magnitude of the input signal falls outside of the range.</p><img vspace="5" hspace="5" src="sldemo_mdlref_dsm_06.png" alt=""> <h2>View Logged Results<a name="9"></a></h2><p>Both the global data store ErrorCond and the local data store RefSignalVal are configured to log all written values after simulation. These logged results are stored in the base workspace in the <tt>dsmout</tt> variable.</p><pre class="codeoutput">
+dsmout = 
+
+  Simulink.SimulationData.Dataset
+  Package: Simulink.SimulationData
+
+  Characteristics:
+              Name: 'dsmout'
+    Total Elements: 2
+
+  Elements:
+    1: 'ErrorCond'
+    2: 'RefSignalVal'
+
+  Use getElement to access elements by index or 
+  find to access elements by name.
+</pre><p>To access the data stored for the local data store, use the <tt>find</tt> function to get the correct data store element based on the name RefSignalVal.</p><pre>   &gt;&gt; dsmout.find('RefSignalVal')</pre><pre class="codeoutput">
+ans = 
+
+  Simulink.SimulationData.DataStoreMemory
+  Package: Simulink.SimulationData
+
+  Properties:
+                   Name: 'RefSignalVal'
+              BlockPath: [1x1 Simulink.SimulationData.BlockPath]
+                  Scope: 'local'
+    DSMWriterBlockPaths: [1x2 Simulink.SimulationData.BlockPath]
+             DSMWriters: [101x1 uint32]
+                 Values: [1x1 timeseries]
+
+</pre><p>Data is stored in a <tt>timeseries</tt> within the <tt>Values</tt> field.</p><pre>   &gt;&gt; plot(dsmout.find('RefSignalVal').Values);</pre><img vspace="5" hspace="5" src="sldemo_mdlref_dsm_07.png" alt=""> <p>To determine which block wrote to the data store at a given time, use the <tt>DSMWriters</tt> property. This array contains a list of indices into the <tt>DSMWriterBlockPaths</tt> array.  For example, the block path of the Data Store Write block that wrote the 5th value to the data store can be obtained as follows:</p><pre>   &gt;&gt; dsm = dsmout.find('RefSignalVal');
+   &gt;&gt; dsm.DSMWriterBlockPaths(dsm.DSMWriters(5))</pre><pre class="codeoutput">
+ans = 
+
+  Simulink.SimulationData.BlockPath
+  Package: Simulink.SimulationData
+
+  Block Path:
+    'sldemo_mdlref_dsm/A'
+      'sldemo_mdlref_dsm_bot/PositiveSS/DSW'
+</pre><p class="footer">Copyright 1990-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using Data Stores Across Multiple Models
+% This demo explains how to use and log local data stores. It also shows 
+%  how to define, use and log global data stores to share global data among 
+% referenced models.
+
+%   Copyright 1990-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.5 $  $Date: 2009/11/13 05:06:32 $
+
+%%
+origdir = sldemo_mdlref_util('sldemo_mdlref_dsm', 'setup');
+
+%% Open the Demo Models
+% Open the demo models. The top model |sldemo_mdlref_dsm| references 
+% models |sldemo_mdlref_dsm_bot| and |sldemo_mdlref_dsm_bot2|. 
+% Logging of data stores is turned on for |sldemo_mdlref_dsm| on the 
+% Data Import/Export pane of the Configuration Parameters dialog.
+% 
+% Reference model |sldemo_mdlref_dsm_bot| amplifies the incoming signal by 
+% 5 if the signal is positive or by 2 if the signal is negative and writes  
+% the value of this signal to local data store |RefSignalVal|. This local 
+% data store is configured to log all written values to the workspace after
+% simulation. The logging parameters for this local data store are controlled
+% by the Logging tab of the block parameters dialog.
+%
+% Reference model |sldemo_mdlref_dsm_bot2| sets the value of a global 
+% boolean data store named ErrorCond to true if the value of its incoming 
+% signal is outside of the range (-0.8, 0.8). The top model also monitors 
+% the data store ErrorCond and switches between the outputs of the two 
+% referenced models, depending on the value of that data store.
+%
+open_system('sldemo_mdlref_dsm');
+
+%%
+open_system('sldemo_mdlref_dsm_bot2');
+
+%%
+open_system('sldemo_mdlref_dsm_bot');
+
+%%
+open_system('sldemo_mdlref_dsm_bot/PositiveSS');
+open_system('sldemo_mdlref_dsm_bot/NegativeSS');
+
+%% Define a Global Data Store Using a Simulink(R) Signal Object
+% To specify to Simulink that the top model and both of the
+% referenced models use the same memory for the Data Store named ErrorCond 
+% in each model, create an instance of a |Simulink.Signal| object named 
+% ErrorCond in the base workspace.  Since this object is visible to each 
+% model, its scope encompasses the individual models and implies that there 
+% is one global data store of that name that is shared among the models.  
+% Note that none of the three models contains a Data Store Memory block with a
+% data store name of ErrorCond.  If any model contained such a block, that
+% block would define a data store local to the model, which would shadow the
+% global data store.
+%
+% Since the object ErrorCond defines a global data store, it must explicitly 
+% define the |DataType|, |Complexity|, |Dimensions|, and |SamplingMode|
+% properties to non-inherited settings.  |SampleTime| and |StorageClass| may 
+% be left as their inherited values, or explicitly set. 
+%
+% The demo includes a MAT-file named |sldemo_mdlref_dsm_data.mat| that 
+% contains the |Simulink.Signal| object ErrorCond.
+% The preload function of the model |sldemo_mdlref_dsm| loads this MAT-file 
+% causing the object to be loaded in the base workspace. You can view
+% this object by selecting the base workspace in the Model Explorer
+% (<matlab:daexplr>).  You can also create this object from the MATLAB(R)
+% command prompt.  The following commands define the object used in
+% this demo:
+%
+%     ErrorCond = Simulink.Signal;
+%     ErrorCond.Description = 'Use to signal that subsystem output is invalid';
+%     ErrorCond.DataType = 'boolean';
+%     ErrorCond.Complexity = 'real';
+%     ErrorCond.Dimensions = 1;
+%     ErrorCond.SamplingMode='Sample based';
+%     ErrorCond.SampleTime = 0.1;
+%     ErrorCond.LoggingInfo.DataLogging = true;
+
+%% Logging a Global Data Store
+% To log all the values written to the global data store, set the
+% |DataLogging| property of the |LoggingInfo| property of the
+% |Simulink.Signal| object. The |LoggingInfo| property also allows
+% specification of other logging parameters such as decimation and maximum
+% points.
+%
+%     Simulink.LoggingInfo (handle)
+%             DataLogging: 1
+%                NameMode: 0
+%             LoggingName: ''
+%            DecimateData: 0
+%              Decimation: 2
+%         LimitDataPoints: 0
+%               MaxPoints: 5000
+
+%% Simulate the Model
+% Now you can simulate |sldemo_mdlref_dsm| to see the output.  The reference
+% model |sldemo_mdlref_dsm_bot| writes to the data store ErrorCond 
+% while the top model |sldemo_mdlref_dsm| reads from the data store.  
+% The blue line represents the 
+% input to |sldemo_mdlref_dsm_bot|; the green line represents the output of the 
+% Switch block.  Note that the output switches when the magnitude of the 
+% input signal falls outside of the range.
+
+sldemo_mdlref_util('sldemo_mdlref_dsm', 'sim');
+
+%% View Logged Results
+% Both the global data store ErrorCond and the local data store
+% RefSignalVal are configured to log all written values after simulation.
+% These logged results are stored in the base workspace in the |dsmout|
+% variable.
+display(dsmout);
+
+%% 
+% To access the data stored for the local data store, use the |find|
+% function to get the correct data store element based on the name 
+% RefSignalVal. 
+%
+%     >> dsmout.find('RefSignalVal')
+display(dsmout.find('RefSignalVal'));
+
+%%
+% Data is stored in a |timeseries| within the |Values| field.
+%
+%     >> plot(dsmout.find('RefSignalVal').Values);
+plot(dsmout.find('RefSignalVal').Values);
+
+%%
+% To determine which block wrote to the data store at a given time, use the
+% |DSMWriters| property. This array contains a list of indices into the
+% |DSMWriterBlockPaths| array.  For example, the block path of the Data Store
+% Write block that wrote the 5th value to the data store can be obtained as
+% follows:
+%
+%     >> dsm = dsmout.find('RefSignalVal');
+%     >> dsm.DSMWriterBlockPaths(dsm.DSMWriters(5))
+display(dsmout.find('RefSignalVal').DSMWriterBlockPaths(dsmout.find('RefSignalVal').DSMWriters(5)));
+
+%%
+sldemo_mdlref_util('sldemo_mdlref_dsm', 'close', origdir);
+
+##### SOURCE END #####
+--></body></html>

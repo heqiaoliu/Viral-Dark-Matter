@@ -1,0 +1,62 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Vectorizing a Scalar Algorithm with For Each Subsystem</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_foreach_vectorized.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_foreach_vectorized.mdl</div><div class="right"><a href="matlab:sldemo_foreach_vectorized">Open this model</a></div></div><div class="content"><h1>Vectorizing a Scalar Algorithm with For Each Subsystem</h1><!--introduction--><p>The purpose of this demo is to introduce you to the usage of the For Each Subsystem. In this demo the operations are performed on vector for simplicity.</p><!--/introduction--><p>Open the demo model <a href="matlab:open_system('sldemo_foreach_vectorized')"><tt>sldemo_foreach_vectorized</tt></a>. This model contains a For Each Subsystem that processes the input signals one by one.</p><p>The inputs to the For Each Subsystem are: the signals to process, the coefficients of the FIR filter to use with each of these signals, and the common gain.</p><p>Each signal is scalar and needs to be processed individually. Consequently, the For Each Block that controls the partition dimension is set to partition the input signal along dimension 1, by slicing through a partition width of 1. For each input signal, a corresponding set of coefficients must also be partitioned using the same criterion. The gain is common to all the signals, thus this input is not partitioned.</p><p>Since the output signal dimension is expected to match the input signal dimension, the concatenation dimension is set equal to the partition dimension. If you prefer to change the signal dimension (a transpose in this case), you can choose 2 as the concatenation dimension.</p><p>For the For Each Subsystem, you must set the partition dimension and width, but not the input signal size. A check then ensures that this size is a multiple of the partition width. If no error is detected, the subsystem then calculates the number of independent executions that the enclosed subsystem will perform. These executions are independent, in that, the state associated with a given contained block has a unique value in each of the respective executions.</p><p>To see a non-vectorized implementation for this model, double-click on the subsystem in the left corner of the model. This implementation does not use the For Each Subsystem. It mimics its functionality by replicating the subsystem as many times as necessary and also by selecting and concatenating the signals appropriately. This replication process is prone to error and is not scalable- changing the input signal size would require changing the model accordingly.</p><img vspace="5" hspace="5" src="sldemo_foreach_vectorized_01.png" alt=""> <p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Vectorizing a Scalar Algorithm with For Each Subsystem
+% The purpose of this demo is to introduce you to the usage
+% of the For Each Subsystem. In this demo the operations are
+% performed on vector for simplicity. 
+
+% Copyright 2009 The MathWorks, Inc.
+% $Revision: 1.1.6.2 $  $Date: 2009/12/28 04:39:03 $
+
+%%
+% Open the demo model <matlab:open_system('sldemo_foreach_vectorized')
+% |sldemo_foreach_vectorized|>. This model contains a For Each Subsystem 
+% that processes the input signals one by one.
+%
+% The inputs to the For Each Subsystem are: the signals to process,
+% the coefficients of the FIR filter to use with each of these
+% signals, and the common gain.
+%
+% Each signal is scalar and needs to be processed individually. Consequently,
+% the For Each Block that controls the partition dimension is set to partition 
+% the input signal along dimension 1, by slicing through a partition width of 1.
+% For each input signal, a corresponding set of coefficients must also
+% be partitioned using the same criterion. The gain is common to all the signals,
+% thus this input is not partitioned.
+% 
+% Since the output signal dimension is expected to match the input signal 
+% dimension, the concatenation dimension is set equal to the partition
+% dimension. If you prefer to change the signal dimension (a 
+% transpose in this case), you can choose 2 as the concatenation dimension.
+%
+% For the For Each Subsystem, you must set the partition dimension and width, but
+% not the input signal size. A check then ensures that this size is a multiple of
+% the partition width. If no error is detected, the subsystem then calculates the 
+% number of independent executions that the enclosed subsystem will perform.
+% These executions are independent, in that, the state associated with a given 
+% contained block has a unique value in each of the respective executions.
+%
+% To see a non-vectorized implementation for this model, double-click 
+% on the subsystem in the left corner of the model.
+% This implementation does not use the For Each Subsystem. It mimics
+% its functionality by replicating the subsystem as many times as necessary
+% and also by selecting and concatenating the signals appropriately. This
+% replication process is prone to error and is not scalable- 
+% changing the input signal size would require changing the model accordingly.
+
+
+model = 'sldemo_foreach_vectorized';
+open_system(model);
+evalc('sim(model)');
+
+##### SOURCE END #####
+--></body></html>

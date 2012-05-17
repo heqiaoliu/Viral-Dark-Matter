@@ -1,0 +1,436 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling a Foucault Pendulum</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_foucault.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_foucault.mdl</div><div class="right"><a href="matlab:sldemo_foucault">Open this model</a></div></div><div class="content"><h1>Modeling a Foucault Pendulum</h1><!--introduction--><p>This demo shows how to model a Foucault pendulum. The Foucault pendulum was the brainchild of the French physicist Leon Foucault. It was intended to prove that Earth rotates around its axis. The oscillation plane of a Foucault pendulum rotates throughout the day as a result of axial rotation of the Earth. The plane of oscillation completes a whole circle in a time interval T, which depends on the geographical latitude.</p><p>Foucault's most famous pendulum was installed inside the Paris Pantheon. This was a 28kg metallic sphere attached to a 67 meter long wire. This demo simulates a 67 meter long pendulum at the geographic latitude of Paris.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Simulink&reg; Model</a></li><li><a href="#2">Opening the Model</a></li><li><a href="#4">Initial Conditions</a></li><li><a href="#5">Running the Simulation</a></li><li><a href="#7">Results</a></li><li><a href="#10">Closing the Model</a></li><li><a href="#11">Analysis and Physics</a></li><li><a href="#22">Characteristic Differential Equations</a></li><li><a href="#23">Analytic Solution (Approximate)</a></li><li><a href="#24">Actual Differential Equation System is Asymmetric</a></li></ul></div><h2>Simulink&reg; Model<a name="1"></a></h2><p>The simplest way to solve the Foucault pendulum problem in Simulink&reg; is to build a model that solves the coupled differential equations for the system. This model is shown in Figure 1. The equations that describe the Foucault pendulum are given below. For details on the physics of the model and the derivation of these equations, see <a href="#11">Analysis and Physics</a>.</p><p><img src="sldemo_foucault_eq81196.png" alt="$$&#xA;\ddot{x} = 2\Omega \sin{\lambda} \dot{y} - \frac{g}{L} x&#xA;$$"></p><p><img src="sldemo_foucault_eq79643.png" alt="$$&#xA;\ddot{y} = - 2\Omega\sin{\lambda} \dot{x} - \frac{g}{L} y&#xA;$$"></p><p><img src="sldemo_foucault_eq80931.png" alt="$$ x, y = \mbox{ pendulum bob coordinates as seen by an observer on Earth}$$"></p><p><img src="sldemo_foucault_eq01858.png" alt="$$ \Omega = \mbox{ Earth's angular speed of revolution about its axis } (rad/sec)$$"></p><p><img src="sldemo_foucault_eq78336.png" alt="$$ g = \mbox{ acceleration of gravity } (m/sec^2)$$"></p><p><img src="sldemo_foucault_eq62428.png" alt="$$ L = \mbox{ length of the pendulum string } (m)$$"></p><p><img src="sldemo_foucault_eq98236.png" alt="$$ \lambda = \mbox{ geographic latitude } (rad)$$"></p><h2>Opening the Model<a name="2"></a></h2><p>Type <tt>sldemo_foucault</tt> in MATLAB&reg; Command Window to <a href="matlab:open_system('sldemo_foucault')">open this model</a>. This model logs relevant data to MATLAB workspace in a structure called <tt>sldemo_foucault_output</tt>. Logged signals have a blue indicator. Read more about <a href="matlab:helpview(fullfile(docroot,'mapfiles','simulink.map'),'logging_signals')">signal logging</a> in Simulink Help.</p><img vspace="5" hspace="5" src="sldemo_foucault_01.png" alt=""> <p><b>Figure 1:</b> The Foucault pendulum model</p><h2>Initial Conditions<a name="4"></a></h2><p>This model loads the constants and initial conditions from the <tt>sldemo_foucault_data.m</tt> file. The contents of this file are shown in Table 1 below. You can modify simulation parameters directly in MATLAB workspace. The initial amplitude of the pendulum must be small compared to pendulum length, because the differential equations are valid only for small oscillations.</p><p><b>Table 1:</b> Initial conditions</p><pre>g = 9.83;          % acceleration of gravity (m/sec^2)
+L = 67;            % pendulum length (m)
+initial_x = L/100; % initial x coordinate (m)
+initial_y = 0;     % initial y coordinate (m)
+initial_xdot = 0;  % initial x velocity (m/sec)
+initial_ydot = 0;  % initial y velocity (m/sec)
+Omega=2*pi/86400;  % Earth's angular velocity of rotation about its axis (rad/sec)
+lambda=49/180*pi;  % latitude in (rad)</pre><h2>Running the Simulation<a name="5"></a></h2><p>Press the "Play" button on the toolbar in the model window to run the simulation. The simulation will use a variable step stiff solver, ode23t. It will simulate a Foucault pendulum for 3600 seconds (you can change the simulation time). The model uses a default relative tolerance <tt>RelTol = 1e-6</tt>.</p><img vspace="5" hspace="5" src="sldemo_foucault_02.png" alt=""> <p><b>Figure 2:</b> Foucault pendulum simulation results (simulation time of 3600 sec)</p><h2>Results<a name="7"></a></h2><p>The simulation results are shown in Figure 2 above. The simulation calculates the pendulum x and y coordinates, and the x and y velocity components of the pendulum.</p><p>The pendulum oscillation plane completes a 360 degree sweep in more than 24 hours. The sweep period is a function of geographic latitude <tt>lambda</tt> (see derivation in <a href="#11">Analysis and Physics</a> ).</p><p><img vspace="5" hspace="5" src="sldemo_foucault_figure1.png" alt=""> </p><p><b>Figure 3:</b> The Animation block shows how much the pendulum oscillation plane rotates in an hour</p><p>After you run the simulation, double click the animation block to <a href="matlab:sldemo_foucault_animate">animate the results</a>.</p><div><ul><li>Note: The "Animate Results" portion of the demo requires Signal Processing Toolbox&#8482;. Double-clicking on the animation block will cause an error if it is not installed. All other parts of the demo will function correctly without the Signal Processing Toolbox.</li></ul></div><p>The <tt>sldemo_foucault_animate.m</tt> file plots the position of the pendulum bob at different points in time. You can clearly see how the pendulum oscillation plane rotates.</p><div><ul><li>Note: If you are running the simulation at a large relative tolerance, the result will be numerically unstable over a long period of time. Make sure that you are using a stiff variable-step solver. Read more about numerical instability of stiff problems and solver performance in the "Exploring Variable-Step Solvers Using a Stiff Model" <a href="matlab:showdemo('sldemo_solvers')">demo</a>.</li></ul></div><h2>Closing the Model<a name="10"></a></h2><p>Close the model. Clear generated data.</p><h2>Analysis and Physics<a name="11"></a></h2><p>This section analyzes the Foucault pendulum and describes the physics behind it.  The pendulum can be modeled as a point mass suspended on a wire of length <tt>L</tt>. The pendulum is located at the geographical latitude <tt>lambda</tt>. It is convenient to use the reference frames shown in Figure 4: the inertial frame I (relative to the center of the Earth), and the non-inertial frame N (relative to an observer on Earth's surface). The non-inertial frame accelerates as a result of rotation.</p><p><img vspace="5" hspace="5" src="sldemo_foucault_figure2.png" alt=""> </p><p><b>Figure 4:</b> The Inertial and Non-Inertial Frames for the Problem</p><p>Point O is the origin of the non-inertial frame N. It is the point on the surface of the earth beneath the point of suspension of the pendulum. The non inertial frame is chosen such that the z-axis points away from the center of the Earth and is perpendicular to Earth's surface. The x-axis points south and the y-axis points west.</p><p>As mentioned in the introduction, the oscillation plane of a Foucault pendulum rotates. The oscillation plane completes a full rotation in time <tt>Trot</tt> given by the following formula, where <tt>Tday</tt> is the duration of one day (i.e. the time it takes the Earth to revolve around its axis once).</p><p><img src="sldemo_foucault_eq02361.png" alt="$$T_{rot}=T_{day} \cdot \sin \lambda $$"></p><p>The sine factor requires further discussion. It is often incorrectly assumed that the oscillation plane of the pendulum is fixed in the inertial frame relative to the center of the Earth. This is only true at the north and south poles. To eliminate this confusion, think about the point S (see Figure 4), where the pendulum is suspended. In the inertial frame I, point S moves on a circle. The pendulum bob is suspended on a wire of constant length. For simplicity ignore the air friction. In the inertial frame I, there are only two forces that act on the bob - the wire tension <tt>T</tt> and the gravitational force <tt>Fg</tt>.</p><p>The vector <tt>r</tt> gives the position of the pendulum bob, B (see Figure 4). Newton's second law states that the sum of all forces acting on a body equals the mass times the acceleration of the body.</p><p><img src="sldemo_foucault_eq61282.png" alt="$$ m \ddot{\overrightarrow{r}} = \overrightarrow{T} + \overrightarrow{F_g} $$"></p><p>Throughout this proof, the dots denote time derivatives, arrows denote vectors, caps denote unitary vectors (i, j, and k along x, y, and z axes). A dot above the vector arrow indicated the time derivative of the vector. An arrow above the dot indicated the vector of the time derivative. See the difference between total acceleration and radial acceleration below.</p><p>Total Acceleration:</p><p><img src="sldemo_foucault_eq36995.png" alt="$$&#xA;\ddot{\overrightarrow{r}} = \frac{d^2 \overrightarrow{r}}{d t^2}=&#xA;\frac{d^2}{d t^2} \left( x\mathbf{\hat{i}} + y\mathbf{\hat{j}} + z\mathbf{\hat{k}} \right)&#xA;$$"></p><p>Radial Acceleration:</p><p><img src="sldemo_foucault_eq58160.png" alt="$$&#xA;\overrightarrow{ \ddot{r} } = \overrightarrow{ \left( \frac{d^2 r}{dt^2}\right)}=&#xA;\ddot{x} \mathbf{\hat{i}}+&#xA;\ddot{y} \mathbf{\hat{j}}+&#xA;\ddot{z} \mathbf{\hat{k}}&#xA;$$"></p><p>The acceleration of gravity points towards the center of the earth (negative z-direction).</p><p><img src="sldemo_foucault_eq06689.png" alt="$$g=9.83 m/sec^2$$"></p><p><img src="sldemo_foucault_eq94418.png" alt="$$\overrightarrow{g} = -g\mathbf{\hat{k}}$$"></p><p><img src="sldemo_foucault_eq63394.png" alt="$$&#xA;m \ddot{\overrightarrow{r}} =&#xA;\overrightarrow{T} - mg\mathbf{\hat{k}}&#xA;$$"></p><p>Decompose the acceleration term:</p><p><img src="sldemo_foucault_eq03792.png" alt="$$&#xA;\overrightarrow{r}=&#xA;r_x \mathbf{\hat{i}}+&#xA;r_y \mathbf{\hat{j}}+&#xA;r_z \mathbf{\hat{k}}&#xA;$$"></p><p><img src="sldemo_foucault_eq78912.png" alt="$$&#xA;\dot{\overrightarrow{r}}=&#xA;\left(&#xA;\dot{r}_x \mathbf{\hat{i}}+&#xA;\dot{r}_y \mathbf{\hat{j}}+&#xA;\dot{r}_z \mathbf{\hat{k}}&#xA;\right) +&#xA;r_x \dot{ \mathbf{\hat{i}} } +&#xA;r_y \dot{ \mathbf{\hat{j}} } +&#xA;r_z \dot{ \mathbf{\hat{k}} }&#xA;$$"></p><p>The time derivatives of unit vectors appear because the non-inertial reference frame N is rotating in space. This means that the unitary vectors i, j, and k rotate in space. Their time derivatives are given below. Omega is Earth's angular velocity of revolution around its axis. The scalar Omega is the value of the angular velocity. The vectorial Omega is the vector angular velocity. Its direction is determined by the right hand rule.</p><p><img src="sldemo_foucault_eq81384.png" alt="$$&#xA;\dot{\mathbf{\hat{i}}}=\overrightarrow{\Omega} \times \mathbf{\hat{i}}&#xA;$$"></p><p><img src="sldemo_foucault_eq22047.png" alt="$$&#xA;\dot{\mathbf{\hat{j}}}=\overrightarrow{\Omega} \times \mathbf{\hat{j}}&#xA;$$"></p><p><img src="sldemo_foucault_eq21152.png" alt="$$&#xA;\dot{\mathbf{\hat{k}}}=\overrightarrow{\Omega} \times \mathbf{\hat{k}}&#xA;$$"></p><p>Rewrite the time derivative of the vector r relative to Omega.</p><p><img src="sldemo_foucault_eq70711.png" alt="$$&#xA;\dot{\overrightarrow{r}}=&#xA;\left(&#xA;\dot{r}_x \mathbf{\hat{i}}+&#xA;\dot{r}_y \mathbf{\hat{j}}+&#xA;\dot{r}_z \mathbf{\hat{k}}&#xA;\right) +&#xA;\overrightarrow{\Omega} \times \overrightarrow{r}=&#xA;\overrightarrow{\dot{r}}+&#xA;\overrightarrow{\Omega} \times \overrightarrow{r}&#xA;$$"></p><p>Similarly, express the second time derivative of the vector r.</p><p><img src="sldemo_foucault_eq11017.png" alt="$$&#xA;\ddot{\overrightarrow{r}}=&#xA;\overrightarrow{\ddot{r}} +&#xA;2 \overrightarrow{\Omega} \times \overrightarrow{\dot{r}} +&#xA;\overrightarrow{\Omega} \times&#xA;\left( \overrightarrow{\Omega} \times \overrightarrow{r} \right)&#xA;$$"></p><p><img src="sldemo_foucault_eq06110.png" alt="$$\overrightarrow{\dot{r}} = \mbox{ acceleration in the non-inertial frame N (x, y, z components)}$$"></p><p><img src="sldemo_foucault_eq60778.png" alt="$$ 2 \overrightarrow{\Omega} \times \overrightarrow{\dot{r}} = \mbox{ Coriolis acceleration}$$"></p><p><img src="sldemo_foucault_eq46608.png" alt="$$ \overrightarrow{\Omega} \times&#xA;\left( \overrightarrow{\Omega} \times \overrightarrow{r} \right)&#xA;= \mbox{ additional term due to rotation of non-inertial frame N}&#xA;$$"></p><p>To simplify this equation, assume that Omega for Earth is very small. This allows us to ignore the third term in the equation above. In fact, the second term (which is already much smaller than the first term) is four orders of magnitude greater than the third term. This reduces the equation to the following form:</p><p><img src="sldemo_foucault_eq46450.png" alt="$$&#xA;\ddot{\overrightarrow{r}} \simeq&#xA;\overrightarrow{\ddot{r}} +&#xA;2 \overrightarrow{\Omega} \times \overrightarrow{\dot{r}}&#xA;$$"></p><p>Newton's Second Law can be written and decomposed into x,y, and z components as follows:</p><p><img src="sldemo_foucault_eq50769.png" alt="$$&#xA;m \overrightarrow{\ddot{r}} =&#xA;\overrightarrow{T} - mg\mathbf{\hat{k}} -&#xA;2 m \overrightarrow{\Omega} \times \overrightarrow{\dot{r}}&#xA;$$"></p><p><img src="sldemo_foucault_eq66934.png" alt="$$&#xA;m \ddot{x} = T_x + 2m\Omega \dot{y} \sin{\lambda}&#xA;$$"></p><p><img src="sldemo_foucault_eq04913.png" alt="$$&#xA;m \ddot{y} = T_y - 2m\Omega \left(\dot{x} \sin{\lambda}+\dot{z}\cos{\lambda}\right)&#xA;$$"></p><p><img src="sldemo_foucault_eq27030.png" alt="$$&#xA;m \ddot{z} = T_z - mg + 2m \Omega \dot{y} \cos{\lambda}&#xA;$$"></p><p>The angular amplitude of oscillations is small. Therefore, we can ignore the vertical velocity and vertical acceleration (z-dot and z-double-dot). The string tension components can be expressed using small angle approximations, which also considerably simplify the problem, making it two-dimensional (see below).</p><p><img src="sldemo_foucault_eq30343.png" alt="$$T_z = mg - 2m\Omega \dot{y} \cos{\lambda} \simeq mg$$"></p><p><img src="sldemo_foucault_eq81294.png" alt="$$T_x= -T\frac{x}{L}$$"></p><p><img src="sldemo_foucault_eq99300.png" alt="$$T_y= -T\frac{y}{L}$$"></p><p><img src="sldemo_foucault_eq29812.png" alt="$$T_z= T\frac{L-z}{L}\simeq T$$"></p><h2>Characteristic Differential Equations<a name="22"></a></h2><p>Finally the physics of the problem can be described by the system of coupled equations given below. The x and y coordinates specify the position of the pendulum bob as seen by an observer on Earth.</p><p><img src="sldemo_foucault_eq49806.png" alt="$$&#xA; \ddot{x} - 2\Omega \sin{\lambda} \dot{y} + \frac{g}{L} x =0&#xA;$$"></p><p><img src="sldemo_foucault_eq72880.png" alt="$$&#xA; \ddot{y} + 2\Omega\sin{\lambda} \dot{x} + \frac{g}{L} y =0&#xA;$$"></p><h2>Analytic Solution (Approximate)<a name="23"></a></h2><p>The following is an analytic solution to the Foucault pendulum problem. Unfortunately, it is not exact. If you try to substitute the analytic solution into the differential equations, uncanceled terms of the order Omega squared will remain. However, because Omega is very small, we can ignore the uncanceled terms for practical purposes.</p><p><img src="sldemo_foucault_eq52623.png" alt="$$ \eta = x+ i\cdot y \mbox{ (complex number)}$$"></p><p><img src="sldemo_foucault_eq18937.png" alt="$$ \ddot{\eta}+(2i\Omega \sin{\lambda})\dot{\eta} + \frac{g}{L} \eta = 0 $$"></p><p><img src="sldemo_foucault_eq52484.png" alt="$$\eta = \left( C_1 e^{i\sqrt{g/L}t} + C_2 e^{-i\sqrt{g/L}t}\right)&#xA;e^{-i\Omega t \sin{\lambda}}$$"></p><p><img src="sldemo_foucault_eq32427.png" alt="$$ C_1, C_2 \mbox{ are complex integration&#xA;constants} $$"></p><h2>Actual Differential Equation System is Asymmetric<a name="24"></a></h2><p>During the derivation, terms involving Omega squared were ignored. This resulted in xy symmetry in the differential equations. If the Omega squared terms are taken into consideration, the differential equation system becomes asymmetric (see below).</p><p><img src="sldemo_foucault_eq81189.png" alt="$$&#xA;\ddot{x} - 2\Omega \sin{\lambda} \dot{y} + (\frac{g}{L}-\Omega^2 \sin^2{\lambda}) x =0&#xA;$$"></p><p><img src="sldemo_foucault_eq48068.png" alt="$$&#xA;\ddot{y} + 2\Omega\sin{\lambda} \dot{x} + (\frac{g}{L} - \Omega^2) y =0&#xA;$$"></p><p>You can easily modify the current Foucault pendulum model to account for asymmetric differential equations. Simply edit the corresponding Gain blocks that contain <tt>g/L</tt> and add the necessary expression. This change will introduce a very small overall correction to the numerical result.</p><p class="footer">Copyright 2006-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling a Foucault Pendulum
+%
+% This demo shows how to model a Foucault pendulum. The Foucault pendulum was
+% the brainchild of the French physicist Leon Foucault. It was intended to prove
+% that Earth rotates around its axis. The oscillation plane of a Foucault
+% pendulum rotates throughout the day as a result of axial rotation of the
+% Earth. The plane of oscillation completes a whole circle in a time interval T,
+% which depends on the geographical latitude.
+%
+% Foucault's most famous pendulum was installed inside the Paris Pantheon. This
+% was a 28kg metallic sphere attached to a 67 meter long wire. This demo
+% simulates a 67 meter long pendulum at the geographic latitude of Paris. 
+
+% Copyright 2006-2010 The MathWorks, Inc.
+
+%% Simulink(R) Model
+%
+% The simplest way to solve the Foucault pendulum problem in Simulink(R) is to
+% build a model that solves the coupled differential equations for the
+% system. This model is shown in Figure 1. The equations that describe the
+% Foucault pendulum are given below. For details on the physics of the model and
+% the derivation of these equations, see <#11 Analysis and Physics>.
+%
+% $$
+% \ddot{x} = 2\Omega \sin{\lambda} \dot{y} - \frac{g}{L} x
+% $$
+%
+% $$
+% \ddot{y} = - 2\Omega\sin{\lambda} \dot{x} - \frac{g}{L} y
+% $$
+%
+% $$ x, y = \mbox{ pendulum bob coordinates as seen by an observer on Earth}$$
+%
+% $$ \Omega = \mbox{ Earth's angular speed of revolution about its axis } (rad/sec)$$
+%
+% $$ g = \mbox{ acceleration of gravity } (m/sec^2)$$
+%
+% $$ L = \mbox{ length of the pendulum string } (m)$$
+%
+% $$ \lambda = \mbox{ geographic latitude } (rad)$$
+
+%% Opening the Model
+%
+% Type |sldemo_foucault| in MATLAB(R) Command Window to
+% <matlab:open_system('sldemo_foucault') open this model>. This model logs
+% relevant data to MATLAB workspace in a structure called
+% |sldemo_foucault_output|. Logged signals have a blue indicator. Read more about
+% <matlab:helpview(fullfile(docroot,'mapfiles','simulink.map'),'logging_signals')
+% signal logging> in Simulink Help.
+
+mdl='sldemo_foucault';
+open_system(mdl);
+scp = [mdl,'/Scope'];
+close_system(scp,0); %close the scope so it doesn't appear empty in the HTML
+
+%%
+%
+% *Figure 1:* The Foucault pendulum model
+
+%% Initial Conditions
+%
+% This model loads the constants and initial conditions from the
+% |sldemo_foucault_data.m| file. The contents of this file are shown in Table 1
+% below. You can modify simulation parameters directly in MATLAB workspace. The
+% initial amplitude of the pendulum must be small compared to pendulum length,
+% because the differential equations are valid only for small oscillations.
+%
+% *Table 1:* Initial conditions
+%
+%  g = 9.83;          % acceleration of gravity (m/sec^2)
+%  L = 67;            % pendulum length (m)
+%  initial_x = L/100; % initial x coordinate (m)
+%  initial_y = 0;     % initial y coordinate (m)
+%  initial_xdot = 0;  % initial x velocity (m/sec)
+%  initial_ydot = 0;  % initial y velocity (m/sec)
+%  Omega=2*pi/86400;  % Earth's angular velocity of rotation about its axis (rad/sec)
+%  lambda=49/180*pi;  % latitude in (rad)
+
+%% Running the Simulation
+%
+% Press the "Play" button on the toolbar in the model window to run the simulation. 
+% The simulation will use a variable step stiff solver, ode23t. It will
+% simulate a Foucault pendulum for 3600 seconds (you can change the
+% simulation time). The model uses a default relative tolerance |RelTol =
+% 1e-6|.
+
+ModelHandle = get_param(mdl,'handle');
+set(ModelHandle,'SolverName','ode23t', ...
+                'StartTime','0', ...
+                'StopTime', '3600' , ...
+                'RelTol','1e-6', ...
+                'AbsTol','auto');
+open_system(scp); %open the scope now
+evalc('sim(mdl)'); % simulate but don't display any messages from MATLAB
+
+%%
+%
+% *Figure 2:* Foucault pendulum simulation results (simulation time of 3600 sec)
+
+%% Results
+% 
+% The simulation results are shown in Figure 2 above. The simulation calculates
+% the pendulum x and y coordinates, and the x and y velocity components of the
+% pendulum.  
+%
+% The pendulum oscillation plane completes a 360 degree sweep in more
+% than 24 hours. The sweep period is a function of geographic latitude |lambda|
+% (see derivation in <#11 Analysis and Physics> ).
+
+%%
+%
+% <<sldemo_foucault_figure1.png>>
+%
+% *Figure 3:* The Animation block shows how much the pendulum oscillation plane
+% rotates in an hour
+
+%% 
+% 
+% After you run the simulation, double click the animation block to
+% <matlab:sldemo_foucault_animate animate the results>. 
+% 
+% * Note: The "Animate Results" portion of the demo requires Signal Processing Toolbox(TM). 
+% Double-clicking on the animation block will cause an
+% error if it is not installed. All other parts of the demo will function
+% correctly without the Signal Processing Toolbox.
+%
+% The |sldemo_foucault_animate.m| file plots the position of the pendulum bob at
+% different points in time. You can clearly see how the pendulum oscillation
+% plane rotates.
+%
+% * Note: If you are running the simulation at a large relative
+% tolerance, the result will be numerically unstable over
+% a long period of time. Make sure that you are using a stiff variable-step
+% solver. Read more about numerical instability of stiff problems and solver
+% performance in the "Exploring Variable-Step Solvers Using a Stiff Model"
+% <matlab:showdemo('sldemo_solvers') demo>.
+
+%% Closing the Model
+%
+% Close the model. Clear generated data.
+close_system(mdl,0);
+clear mdl scp g L lambda Omega initial_x initial_y ...
+      initial_xdot initial_ydot sldemo_foucault_output ModelHandle;
+
+
+%% Analysis and Physics
+%
+% This section analyzes the Foucault pendulum and describes the physics behind
+% it.  The pendulum can be modeled as a point mass suspended on a wire of length
+% |L|. The pendulum is located at the geographical latitude |lambda|. It is
+% convenient to use the reference frames shown in Figure 4: the inertial frame I
+% (relative to the center of the Earth), and the non-inertial frame N (relative
+% to an observer on Earth's surface). The non-inertial frame accelerates as a
+% result of rotation.
+
+%%
+% <<sldemo_foucault_figure2.png>>
+%
+% *Figure 4:* The Inertial and Non-Inertial Frames for the Problem
+
+%%
+%
+% Point O is the origin of the non-inertial frame N. It is the point on
+% the surface of the earth beneath the point of suspension of the pendulum.
+% The non inertial frame is chosen such that the z-axis points away from the
+% center of the Earth and is perpendicular to Earth's surface. The x-axis
+% points south and the y-axis points west.
+%
+% As mentioned in the introduction, the oscillation plane of a Foucault pendulum
+% rotates. The oscillation plane completes a full rotation in time |Trot| given
+% by the following formula, where |Tday| is the duration of one day (i.e. the
+% time it takes the Earth to revolve around its axis once).
+%
+% $$T_{rot}=T_{day} \cdot \sin \lambda $$
+%
+% The sine factor requires further discussion. It is often incorrectly assumed
+% that the oscillation plane of the pendulum is fixed in the inertial frame
+% relative to the center of the Earth. This is only true at the north and south
+% poles. To eliminate this confusion, think about the point S (see Figure 4),
+% where the pendulum is suspended. In the inertial frame I, point S moves on a
+% circle. The pendulum bob is suspended on a wire of constant length. For
+% simplicity ignore the air friction. In the inertial frame I, there are only two
+% forces that act on the bob - the wire tension |T| and the gravitational force
+% |Fg|.
+%
+% The vector |r| gives the position of the pendulum bob, B (see Figure
+% 4). Newton's second law states that the sum of all forces acting on a body
+% equals the mass times the acceleration of the body.
+%
+% $$ m \ddot{\overrightarrow{r}} = \overrightarrow{T} + \overrightarrow{F_g} $$
+
+%%
+%
+% Throughout this proof, the dots denote time derivatives, arrows denote
+% vectors, caps denote unitary vectors (i, j, and k along x, y, and z axes). A dot above the
+% vector arrow indicated the time derivative of the vector. An arrow above the
+% dot indicated the vector of the time derivative. See the difference between
+% total acceleration and radial acceleration below.
+%
+% Total Acceleration:
+%
+% $$ 
+% \ddot{\overrightarrow{r}} = \frac{d^2 \overrightarrow{r}}{d t^2}=
+% \frac{d^2}{d t^2} \left( x\mathbf{\hat{i}} + y\mathbf{\hat{j}} + z\mathbf{\hat{k}} \right)
+% $$
+%
+% Radial Acceleration:
+%
+% $$ 
+% \overrightarrow{ \ddot{r} } = \overrightarrow{ \left( \frac{d^2 r}{dt^2}\right)}=
+% \ddot{x} \mathbf{\hat{i}}+
+% \ddot{y} \mathbf{\hat{j}}+
+% \ddot{z} \mathbf{\hat{k}}
+% $$
+
+%%
+%
+% The acceleration of gravity points towards the center of the earth (negative
+% z-direction).
+%
+% $$g=9.83 m/sec^2$$
+%
+% $$\overrightarrow{g} = -g\mathbf{\hat{k}}$$
+%
+% $$ 
+% m \ddot{\overrightarrow{r}} = 
+% \overrightarrow{T} - mg\mathbf{\hat{k}}
+% $$
+
+%%
+% 
+% Decompose the acceleration term:
+%
+% $$
+% \overrightarrow{r}=
+% r_x \mathbf{\hat{i}}+
+% r_y \mathbf{\hat{j}}+
+% r_z \mathbf{\hat{k}}
+% $$
+%
+% $$
+% \dot{\overrightarrow{r}}=
+% \left(
+% \dot{r}_x \mathbf{\hat{i}}+
+% \dot{r}_y \mathbf{\hat{j}}+
+% \dot{r}_z \mathbf{\hat{k}}
+% \right) +
+% r_x \dot{ \mathbf{\hat{i}} } +
+% r_y \dot{ \mathbf{\hat{j}} } +
+% r_z \dot{ \mathbf{\hat{k}} }
+% $$
+
+%% 
+%
+% The time derivatives of unit vectors appear because the non-inertial
+% reference frame N is rotating in space. This means that the unitary vectors
+% i, j, and k rotate in space. Their time derivatives are given below. Omega
+% is Earth's angular velocity of revolution around its axis. The scalar Omega is
+% the value of the angular velocity. The vectorial Omega is the vector angular
+% velocity. Its direction is determined by the right hand rule.
+%
+% $$
+% \dot{\mathbf{\hat{i}}}=\overrightarrow{\Omega} \times \mathbf{\hat{i}}
+% $$
+%
+% $$
+% \dot{\mathbf{\hat{j}}}=\overrightarrow{\Omega} \times \mathbf{\hat{j}}
+% $$
+%
+% $$
+% \dot{\mathbf{\hat{k}}}=\overrightarrow{\Omega} \times \mathbf{\hat{k}}
+% $$
+
+%%
+% 
+% Rewrite the time derivative of the vector r relative to Omega.
+%
+% $$
+% \dot{\overrightarrow{r}}=
+% \left(
+% \dot{r}_x \mathbf{\hat{i}}+
+% \dot{r}_y \mathbf{\hat{j}}+
+% \dot{r}_z \mathbf{\hat{k}}
+% \right) +
+% \overrightarrow{\Omega} \times \overrightarrow{r}=
+% \overrightarrow{\dot{r}}+
+% \overrightarrow{\Omega} \times \overrightarrow{r}
+% $$ 
+%
+% Similarly, express the second time derivative of the vector r.
+%
+% $$
+% \ddot{\overrightarrow{r}}=
+% \overrightarrow{\ddot{r}} +
+% 2 \overrightarrow{\Omega} \times \overrightarrow{\dot{r}} +
+% \overrightarrow{\Omega} \times 
+% \left( \overrightarrow{\Omega} \times \overrightarrow{r} \right)
+% $$
+%
+% $$\overrightarrow{\dot{r}} = \mbox{ acceleration in the non-inertial frame N (x, y, z components)}$$
+%
+% $$ 2 \overrightarrow{\Omega} \times \overrightarrow{\dot{r}} = \mbox{ Coriolis acceleration}$$
+%
+% $$ \overrightarrow{\Omega} \times 
+% \left( \overrightarrow{\Omega} \times \overrightarrow{r} \right)
+% = \mbox{ additional term due to rotation of non-inertial frame N}
+% $$
+
+%% 
+%
+% To simplify this equation, assume that Omega for Earth is very small. This
+% allows us to ignore the third term in the equation above. In fact, the second
+% term (which is already much smaller than the first term) is four orders of
+% magnitude greater than the third term. This reduces the equation to the
+% following form:
+%
+% $$
+% \ddot{\overrightarrow{r}} \simeq 
+% \overrightarrow{\ddot{r}} +
+% 2 \overrightarrow{\Omega} \times \overrightarrow{\dot{r}}
+% $$
+
+%%
+%
+% Newton's Second Law can be written and decomposed into x,y, and z components
+% as follows:
+%
+% $$ 
+% m \overrightarrow{\ddot{r}} = 
+% \overrightarrow{T} - mg\mathbf{\hat{k}} - 
+% 2 m \overrightarrow{\Omega} \times \overrightarrow{\dot{r}}
+% $$
+%
+% $$
+% m \ddot{x} = T_x + 2m\Omega \dot{y} \sin{\lambda} 
+% $$
+%
+% $$
+% m \ddot{y} = T_y - 2m\Omega \left(\dot{x} \sin{\lambda}+\dot{z}\cos{\lambda}\right) 
+% $$
+%
+% $$
+% m \ddot{z} = T_z - mg + 2m \Omega \dot{y} \cos{\lambda} 
+% $$
+
+%%
+%
+% The angular amplitude of oscillations is small. Therefore, we can ignore the
+% vertical velocity and vertical acceleration (z-dot and z-double-dot). The
+% string tension components can be expressed using small angle approximations,
+% which also considerably simplify the problem, making it two-dimensional (see
+% below).
+%
+% $$T_z = mg - 2m\Omega \dot{y} \cos{\lambda} \simeq mg$$
+%
+% $$T_x= -T\frac{x}{L}$$
+%
+% $$T_y= -T\frac{y}{L}$$
+%
+% $$T_z= T\frac{L-z}{L}\simeq T$$
+
+%% Characteristic Differential Equations 
+%
+% Finally the physics of the problem can be described by the system of coupled
+% equations given below. The x and y coordinates specify the position of the
+% pendulum bob as seen by an observer on Earth.
+%
+% $$
+%  \ddot{x} - 2\Omega \sin{\lambda} \dot{y} + \frac{g}{L} x =0
+% $$
+%
+% $$
+%  \ddot{y} + 2\Omega\sin{\lambda} \dot{x} + \frac{g}{L} y =0
+% $$
+
+%% Analytic Solution (Approximate)
+%
+% The following is an analytic solution to the Foucault pendulum problem.
+% Unfortunately, it is not exact. If you try to substitute the analytic solution
+% into the differential equations, uncanceled terms of the order Omega squared
+% will remain. However, because Omega is very small, we can ignore the
+% uncanceled terms for practical purposes.
+%
+% $$ \eta = x+ i\cdot y \mbox{ (complex number)}$$
+%
+% $$ \ddot{\eta}+(2i\Omega \sin{\lambda})\dot{\eta} + \frac{g}{L} \eta = 0 $$
+%
+% $$\eta = \left( C_1 e^{i\sqrt{g/L}t} + C_2 e^{-i\sqrt{g/L}t}\right)
+% e^{-i\Omega t \sin{\lambda}}$$
+%
+% $$ C_1, C_2 \mbox{ are complex integration
+% constants} $$
+
+
+
+%% Actual Differential Equation System is Asymmetric
+%
+% During the derivation, terms involving Omega squared were ignored. This
+% resulted in xy symmetry in the differential equations. If the Omega squared
+% terms are taken into consideration, the differential equation system becomes
+% asymmetric (see below).
+%
+% $$
+% \ddot{x} - 2\Omega \sin{\lambda} \dot{y} + (\frac{g}{L}-\Omega^2 \sin^2{\lambda}) x =0
+% $$
+%
+% $$
+% \ddot{y} + 2\Omega\sin{\lambda} \dot{x} + (\frac{g}{L} - \Omega^2) y =0
+% $$
+%
+% You can easily modify the current Foucault pendulum model to account for
+% asymmetric differential equations. Simply edit the corresponding Gain blocks
+% that contain |g/L| and add the necessary expression. This change will
+% introduce a very small overall correction to the numerical result.
+
+
+##### SOURCE END #####
+--></body></html>

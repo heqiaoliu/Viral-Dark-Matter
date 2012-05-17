@@ -1,0 +1,424 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling Engine Timing Using Triggered Subsystems</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_engine.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_engine.mdl</div><div class="right"><a href="matlab:sldemo_engine">Open this model</a></div></div><div class="content"><h1>Modeling Engine Timing Using Triggered Subsystems</h1><!--introduction--><p>This example presents a model of a four-cylinder spark ignition engine and demonstrates Simulink&reg; capabilities to model an internal combustion engine from the throttle to the crankshaft output. We used well-defined physical principles supplemented, where appropriate, with empirical relationships that describe the system's dynamic behavior without introducing unnecessary complexity.</p><p>*Note: See the <a href="matlab:open_system('sldemo_enginewc')">closed-loop engine model</a> (an enhanced version of the this model).</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analysis and Physics</a></li><li><a href="#2">Throttle</a></li><li><a href="#4">Intake Manifold</a></li><li><a href="#6">Intake Mass Flow Rate</a></li><li><a href="#9">Compression Stroke</a></li><li><a href="#10">Torque Generation and Acceleration</a></li><li><a href="#14">Open-Loop Model</a></li><li><a href="#15">Opening and Running the Simulation</a></li><li><a href="#18">Throttle/Manifold</a></li><li><a href="#21">Intake and Compression</a></li><li><a href="#22">Combustion</a></li><li><a href="#23">Plotting Simulation Results</a></li><li><a href="#27">Closing Model</a></li><li><a href="#28">Conclusions</a></li><li><a href="#29">References</a></li></ul></div><h2>Analysis and Physics<a name="1"></a></h2><p>This example describes the concepts and details surrounding the creation of engine models with emphasis on important Simulink modeling techniques.  The basic model uses the enhanced capabilities of Simulink to capture time-based events with high fidelity. Within this simulation, a triggered subsystem models the transfer of the air-fuel mixture from the intake manifold to the cylinders via discrete valve events. This takes place concurrently with the continuous-time processes of intake flow, torque generation and acceleration. A second model adds an additional triggered subsystem that provides closed-loop engine speed control via a throttle actuator. These models can be used as standalone engine simulations. Or, they can be used within a larger system model, such as an integrated vehicle and powertrain simulation, in the development of a traction control system.</p><p>This model is based on published results by Crossley and Cook (1991).  It describes the simulation of a four-cylinder spark ignition internal combustion engine. The Crossley and Cook work also shows how a simulation based on this model was validated against dynamometer test data. The ensuing sections (listed below) analyze the key elements of the engine model that were identified by Crossley and Cook:</p><p>1) Throttle</p><p>2) Intake manifold</p><p>3) Mass flow rate</p><p>4) Compression stroke</p><p>5) Torque generation and acceleration</p><div><ul><li>Note: Additional components can be added to the model to provide greater accuracy in simulation and to more closely replicate the behavior of the system.</li></ul></div><h2>Throttle<a name="2"></a></h2><p>The first element of the model is the throttle body. The control input is the angle of the throttle plate. The rate at which the model introduces air into the intake manifold can be expressed as the product of two functions &#8212; one, an empirical function of the throttle plate angle only; and the other, a function of the atmospheric and manifold pressures. In cases of lower manifold pressure (greater vacuum), the flow rate through the throttle body is sonic and is only a function of the throttle angle. This model accounts for this low pressure behavior with a switching condition in the compressibility equations shown in Equation 1.</p><p><b>Equation 1</b></p><p><img src="sldemo_engine_eq95017.png" alt="$$\dot{m}_{ai} = f(\theta)\cdot g(P_m) = \mbox{mass flow rate into manifold (g/s)}$$"></p><p><img src="sldemo_engine_eq80621.png" alt="$$f(\theta) = 2.821 - 0.05231\cdot\theta + 0.10299\cdot\theta^2 - 0.00063\cdot\theta^3$$"></p><p><img src="sldemo_engine_eq70243.png" alt="$$g(P_m) = 1; \mbox{ if } P_m \le P_{amb}/2 $$"></p><p><img src="sldemo_engine_eq97372.png" alt="$$g(P_m) = \frac{2}{P_{amb}} \sqrt{P_mP_{amb} - P^2_m}; \mbox{ if } P_{amb}/2 \le P_m \le P_{amb} $$"></p><p><img src="sldemo_engine_eq95712.png" alt="$$g(P_m) = -\frac{2}{P_m} \sqrt{P_m P_{amb} - P^2_{amb}}; \mbox{ if } P_{amb} \le P_m \le 2P_{amb} $$"></p><p><img src="sldemo_engine_eq75417.png" alt="$$g(P_m) = 1; \mbox{ if } P_m \ge 2P_{amb} $$"></p><p><img src="sldemo_engine_eq94555.png" alt="$$\dot{m}_{ai} \rightarrow \mbox{mass flow rate into manifold (g/s); } $$"></p><p><img src="sldemo_engine_eq87293.png" alt="$$ \theta \rightarrow \mbox{throttle angle (deg);}$$"></p><p><img src="sldemo_engine_eq27685.png" alt="$$ P_m \rightarrow \mbox{manifold pressure (bar); } $$"></p><p><img src="sldemo_engine_eq86299.png" alt="$$P_{amb} \rightarrow \mbox{ambient (atmospheric) pressure (bar);}$$"></p><h2>Intake Manifold<a name="4"></a></h2><p>The simulation models the intake manifold as a differential equation for the manifold pressure. The difference in the incoming and outgoing mass flow rates represents the net rate of change of air mass with respect to time. This quantity, according to the ideal gas law, is proportional to the time derivative of the manifold pressure (see Equation 2). Note that, unlike the model of Crossley and Cook (see also references 3 through 5), this model doesn't incorporate exhaust gas recirculation (EGR), although this can easily be added.</p><p><b>Equation 2</b></p><p><img src="sldemo_engine_eq58347.png" alt="$$\dot{P}_m = \frac{RT}{V_m}\left( \dot{m}_{ai} - \dot{m}_{ao} \right)$$"></p><p><img src="sldemo_engine_eq99545.png" alt="$$&#xA;R \rightarrow \mbox{specific gas constant; }&#xA;$$"></p><p><img src="sldemo_engine_eq66574.png" alt="$$&#xA;T \rightarrow \mbox{temperature (K); }&#xA;$$"></p><p><img src="sldemo_engine_eq07821.png" alt="$$&#xA;V_m \rightarrow \mbox{manifold volume } (m^3) \mbox{; }&#xA;$$"></p><p><img src="sldemo_engine_eq87690.png" alt="$$&#xA;\dot{m}_{ao} \rightarrow \mbox{mass flow rate of air out of the manifold (g/s); }&#xA;$$"></p><p><img src="sldemo_engine_eq09592.png" alt="$$&#xA;\dot{P}_m \rightarrow \mbox{rate of change of manifold pressure (bar/s);}&#xA;$$"></p><h2>Intake Mass Flow Rate<a name="6"></a></h2><p>The mass flow rate of air that the model pumps into the cylinders from the manifold is described in Equation 3 by an empirically derived equation. This mass rate is a function of the manifold pressure and the engine speed.</p><p><b>Equation 3</b></p><p><img src="sldemo_engine_eq58217.png" alt="$$&#xA;\dot{m}_{ao} = -0.366 + 0.08979\cdot N\cdot P_m - 0.0337\cdot N\cdot P^2_m&#xA;+ 0.0001\cdot N^2 \cdot P_m&#xA;$$"></p><p><img src="sldemo_engine_eq28145.png" alt="$$ N \rightarrow \mbox{engine angular speed (rad/s); } $$"></p><p><img src="sldemo_engine_eq27685.png" alt="$$ P_m \rightarrow \mbox{manifold pressure (bar); } $$"></p><p>To determine the total air charge pumped into the cylinders, the simulation integrates the mass flow rate from the intake manifold and samples it at the end of each intake stroke event. This determines the total air mass that is present in each cylinder after the intake stroke and before compression.</p><h2>Compression Stroke<a name="9"></a></h2><p>In an inline four-cylinder four-stroke engine, 180&deg; of crankshaft revolution separate the ignition of each successive cylinder. This results in each cylinder firing on every other crank revolution. In this model, the intake, compression, combustion, and exhaust strokes occur simultaneously (at any given time, one cylinder is in each phase). To account for compression, the combustion of each intake charge is delayed by 180&deg; of crank rotation from the end of the intake stroke.</p><h2>Torque Generation and Acceleration<a name="10"></a></h2><p>The final element of the simulation describes the torque developed by the engine. An empirical relationship dependent upon the mass of the air charge, the air/fuel mixture ratio, the spark advance, and the engine speed is used for the torque computation (see Equation 4).</p><p><b>Equation 4</b></p><p><img src="sldemo_engine_eq46077.png" alt="$$&#xA;Torque_{eng} = -181.3 + 379.36\cdot m_a + 21.91\cdot \left( \frac{A}{F} \right) -&#xA;0.85 \cdot \left( \frac{A}{F} \right)^2 + 0.26\cdot \sigma - 0.0028\cdot \sigma^2 +&#xA;$$"></p><p><img src="sldemo_engine_eq49539.png" alt="$$&#xA;+ 0.027 \cdot N - 0.000107 \cdot N^2 + 0.00048 \cdot N \cdot \sigma +&#xA;2.55 \cdot \sigma \cdot m_a - 0.05 \cdot \sigma ^2 \cdot m_a&#xA;$$"></p><p><img src="sldemo_engine_eq25260.png" alt="$$ m_a \rightarrow \mbox{mass of air in cylinder for combustion (g); } $$"></p><p><img src="sldemo_engine_eq37137.png" alt="$$ \left( \frac{A}{F} \right) \rightarrow \mbox{air to fuel ratio; } $$"></p><p><img src="sldemo_engine_eq71686.png" alt="$$&#xA;\sigma \rightarrow \mbox{spark advance (degrees before top - dead - center); }&#xA;$$"></p><p><img src="sldemo_engine_eq29247.png" alt="$$ Torque_{eng} \rightarrow \mbox{torque produced by the engine (Nm); } $$"></p><p>Calculate the engine angular acceleration using Equation 5</p><p><b>Equation 5</b></p><p><img src="sldemo_engine_eq99304.png" alt="$$ J \dot{N} = Torque_{eng} - Torque_{load}$$"></p><p><img src="sldemo_engine_eq43828.png" alt="$$ J \rightarrow \mbox{engine rotational moment of inertia } (kg\cdot m^2) \mbox{; }$$"></p><p><img src="sldemo_engine_eq88280.png" alt="$$ \dot{N} \rightarrow \mbox{engine angular acceleration } (rad/s^2) \mbox{; }$$"></p><h2>Open-Loop Model<a name="14"></a></h2><p>We incorporated the model elements described above into an engine model using Simulink. The following sections describe the decisions we made for this implementation and the key Simulink elements  used. This section shows how to implement a complex nonlinear engine model easily and quickly in Simulink environment. We developed this model in conjunction with Ken Butts, Ford Motor Company&reg; (2).</p><p>Figure 1 shows the top level of the model. Note that, in general, the major blocks correspond to the high-level list of functions given in the model description in the preceding summary. Taking advantage of Simulink's hierarchical modeling capabilities, most of the blocks in Figure 1 are made up of smaller blocks. The following paragraphs describe these smaller blocks.</p><h2>Opening and Running the Simulation<a name="15"></a></h2><p>To <a href="matlab:open_system('sldemo_engine')">open the model</a> type <tt>sldemo_engine</tt> in MATLAB&reg; terminal (click on the hyperlink if you are using MATLAB Help).</p><p>Press the "Play" button on the model toolbar to run the simulation.</p><img vspace="5" hspace="5" src="sldemo_engine_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_engine_02.png" alt=""> <img vspace="5" hspace="5" src="sldemo_engine_03.png" alt=""> <p><b>Figure 1:</b> The top level of the engine model and simulation results</p><div><ul><li>Note: The model logs relevant data to MATLAB workspace in a structure called <tt>sldemo_engine_output</tt>. Logged signals have a blue indicator (<a href="matlab:open_system('sldemo_engine')">see the model</a>). Read more about Signal Logging in Simulink Help.</li></ul></div><h2>Throttle/Manifold<a name="18"></a></h2><p>In the model, double click on the 'Throttle &amp; Intake Manifold' subsystem to open it. It contains two other subsystems - the 'Throttle' and the 'Intake Manifold' subsystems. Open the 'Throttle' and 'Intake Manifold' to see their components.</p><img vspace="5" hspace="5" src="sldemo_engine_04.png" alt=""> <img vspace="5" hspace="5" src="sldemo_engine_05.png" alt=""> <img vspace="5" hspace="5" src="sldemo_engine_06.png" alt=""> <p><b>Figure 2:</b> The 'Throttle' and 'Intake Manifold' subsystems</p><p>Simulink models for the throttle and intake manifold subsystems are shown in Figure 2. The throttle valve behaves in a nonlinear manner and is modeled as a subsystem with three inputs. Simulink implements the individual equations, given in Equation 1, as function blocks. These provide a convenient way to describe a nonlinear equation of several variables. A 'Switch' block determines whether the flow is sonic by comparing the pressure ratio to its switch threshold, which is set at one half (Equation 1). In the sonic regime, the flow rate is a function of the throttle position only. The direction of flow is from the higher to lower pressure, as determined by the Sign block. With this in mind, the 'Min' block ensures that the pressure ratio is always unity or less.</p><p>The differential equation from Equation 2 models the intake manifold pressure. A Simulink function block computes the mass flow rate into the cylinder, a function of manifold pressure and engine speed (see Equation 3).</p><h2>Intake and Compression<a name="21"></a></h2><p>An integrator accumulates the cylinder mass air flow in the 'Intake' block (located inside the 'Throttle &amp; Manifold' subsystem).  The 'Valve Timing' block issues pulses that correspond to specific rotational positions in order to manage the intake and compression timing. Valve events occur each cam rotation, or every 180&deg; of crankshaft rotation. Each event triggers a single execution of the 'Compression' subsystem. The output of the trigger block within the 'Compression' subsystem then feeds back to reset the Intake integrator. In this way, although both triggers conceptually occur at the same instant in time, the integrator output is processed by the 'Compression' block immediately prior to being reset. Functionally, the 'Compression' subsystem uses a 'Unit Delay' block to insert 180&deg; (one event period) of delay between the intake and combustion of each air charge.</p><p>Consider a complete four-stroke cycle for one cylinder. During the intake stroke, the 'Intake' block integrates the mass flow rate from the manifold. After 180&deg; of crank rotation, the intake valve closes and the 'Unit Delay' block in the 'Compression' subsystem samples the integrator state. This value, the accumulated mass charge, is available at the output of the 'Compression' subsystem 180&deg; later for use in combustion. During the combustion stroke, the crank accelerates due to the generated torque. The final 180&deg;, the exhaust stroke, ends with a reset of the Intake integrator, prepared for the next complete 720&deg; cycle of this particular cylinder.</p><p>For four cylinders, we could use four 'Intake' blocks, four 'Compression' subsystems, etc., but each would be idle 75% of the time. We've made the implementation more efficient by performing the tasks of all four cylinders with one set of blocks. This is possible because, at the level of detail we've modeled, each function applies to only one cylinder at a time.</p><h2>Combustion<a name="22"></a></h2><p>Engine torque is a function of four variables. The model uses a 'Mux' block to combine these variables into a vector that provides input to the 'Torque Gen' block. A function block computes the engine torque (described empirically in Equation 4). The torque which loads the engine, computed by step functions in the Drag Torque block, is subtracted in the Engine Dynamics subsystem. The difference divided by the inertia yields the acceleration, which is integrated to arrive at the engine crankshaft speed.</p><h2>Plotting Simulation Results<a name="23"></a></h2><p>We used the following default inputs for the simulation:</p><p><img src="sldemo_engine_eq03000.png" alt="$$Throttle  = 8.97\mbox{ (deg) if } t < 5 $$"></p><p><img src="sldemo_engine_eq71786.png" alt="$$Throttle  = 11.93\mbox{ (deg) if } t \ge 5 $$"></p><p><img src="sldemo_engine_eq08051.png" alt="$$Load  = 25 \mbox{ (Nm) if } t \le 2 \mbox{ or } t\ge 8 $$"></p><p><img src="sldemo_engine_eq86645.png" alt="$$Load  = 20 \mbox{ (Nm) if } 2 < t \le 8 $$"></p><p>Try adjusting the throttle to compensate for the load torque. Figure 3 shows the simulated engine speed, the throttle commands which drive the simulation, and the load torque which disturbs it.</p><img vspace="5" hspace="5" src="sldemo_engine_07.png" alt=""> <p><b>Figure 3a:</b> Open-loop simulation inputs</p><img vspace="5" hspace="5" src="sldemo_engine_08.png" alt=""> <p><b>Figure 3b:</b> Open-loops simulation results</p><h2>Closing Model<a name="27"></a></h2><p>Close the model. Clear generated data.</p><h2>Conclusions<a name="28"></a></h2><p>The ability to model nonlinear, complex systems, such as the engine model described here, is one of Simulink's key features. The power of the simulation is evident in the presentation of the models above. Simulink retains model fidelity, including precisely timed cylinder intake events, which is critical in creating a model of this type. The basic engine model demonstrates the flexibility of Simulink.</p><p>*Note: See the <a href="matlab:open_system('sldemo_enginewc')">closed-loop engine model</a> (an enhanced version of the this model).</p><h2>References<a name="29"></a></h2><p>[1] P.R. Crossley and J.A. Cook, IEE International Conference 'Control 91', Conference Publication 332, vol. 2, pp. 921-925, 25-28 March, 1991, Edinburgh, U.K.</p><p>[2] The Simulink Model. Developed by Ken Butts, Ford Motor Company. Modified by Paul Barnard, Ted Liefeld and Stan Quinn, MathWorks&reg;, 1994-7.</p><p>[3] J. J. Moskwa and J. K. Hedrick, "Automotive Engine Modeling for Real Time Control Application," Proc.1987 ACC, pp. 341-346.</p><p>[4] B. K. Powell and J. A. Cook, "Nonlinear Low Frequency Phenomenological Engine Modeling and Analysis," Proc. 1987 ACC, pp. 332-340.</p><p>[5] R. W. Weeks and J. J. Moskwa, "Automotive Engine Modeling for Real-Time Control Using Matlab/Simulink," 1995 SAE Intl. Cong. paper 950417.</p><p class="footer">Copyright 2006-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling Engine Timing Using Triggered Subsystems
+%
+% This example presents a model of a four-cylinder spark ignition engine and
+% demonstrates Simulink(R) capabilities to model an internal combustion engine
+% from the throttle to the crankshaft output. We used well-defined physical
+% principles supplemented, where appropriate, with empirical relationships that
+% describe the system's dynamic behavior without introducing unnecessary
+% complexity.
+%
+% *Note: See the
+% <matlab:open_system('sldemo_enginewc') closed-loop engine model>
+% (an enhanced version of the this model).
+
+% Copyright 2006-2009 The MathWorks, Inc.
+
+%% Analysis and Physics
+%
+% This example describes the concepts and details surrounding the creation of
+% engine models with emphasis on important Simulink modeling techniques.  The
+% basic model uses the enhanced capabilities of Simulink to capture time-based
+% events with high fidelity. Within this simulation, a triggered subsystem
+% models the transfer of the air-fuel mixture from the intake manifold to the
+% cylinders via discrete valve events. This takes place concurrently with the
+% continuous-time processes of intake flow, torque generation and
+% acceleration. A second model adds an additional triggered subsystem that
+% provides closed-loop engine speed control via a throttle actuator. These
+% models can be used as standalone engine simulations. Or, they can be used
+% within a larger system model, such as an integrated vehicle and powertrain
+% simulation, in the development of a traction control system.
+%
+% This model is based on published results by Crossley and Cook (1991).  It
+% describes the simulation of a four-cylinder spark ignition internal combustion
+% engine. The Crossley and Cook work also shows how a simulation based on this
+% model was validated against dynamometer test data. The ensuing sections
+% (listed below) analyze the key elements of the engine model that were
+% identified by Crossley and Cook:
+%
+% 1) Throttle
+%
+% 2) Intake manifold
+%
+% 3) Mass flow rate
+%
+% 4) Compression stroke
+%
+% 5) Torque generation and acceleration
+%
+% * Note: Additional components can be added to the model to provide
+% greater accuracy in simulation and to more closely replicate the behavior
+% of the system.
+% 
+
+
+
+%% Throttle
+%
+% The first element of the model is the throttle body. The control input is the
+% angle of the throttle plate. The rate at which the model introduces air into
+% the intake manifold can be expressed as the product of two functions — one,
+% an empirical function of the throttle plate angle only; and the other, a
+% function of the atmospheric and manifold pressures. In cases of lower manifold
+% pressure (greater vacuum), the flow rate through the throttle body is sonic
+% and is only a function of the throttle angle. This model accounts for this low
+% pressure behavior with a switching condition in the compressibility equations
+% shown in Equation 1.
+
+%% 
+% *Equation 1*
+%
+% $$\dot{m}_{ai} = f(\theta)\cdot g(P_m) = \mbox{mass flow rate into manifold (g/s)}$$
+%
+% $$f(\theta) = 2.821 - 0.05231\cdot\theta + 0.10299\cdot\theta^2 - 0.00063\cdot\theta^3$$
+%
+% $$g(P_m) = 1; \mbox{ if } P_m \le P_{amb}/2 $$
+%
+% $$g(P_m) = \frac{2}{P_{amb}} \sqrt{P_mP_{amb} - P^2_m}; \mbox{ if } P_{amb}/2 \le P_m \le P_{amb} $$
+% 
+% $$g(P_m) = -\frac{2}{P_m} \sqrt{P_m P_{amb} - P^2_{amb}}; \mbox{ if } P_{amb} \le P_m \le 2P_{amb} $$
+%
+% $$g(P_m) = 1; \mbox{ if } P_m \ge 2P_{amb} $$
+%
+% $$\dot{m}_{ai} \rightarrow \mbox{mass flow rate into manifold (g/s); } $$
+%
+% $$ \theta \rightarrow \mbox{throttle angle (deg);}$$
+%
+% $$ P_m \rightarrow \mbox{manifold pressure (bar); } $$
+%
+% $$P_{amb} \rightarrow \mbox{ambient (atmospheric) pressure (bar);}$$
+
+%% Intake Manifold
+%
+% The simulation models the intake manifold as a differential equation for
+% the manifold pressure. The difference in the incoming and outgoing mass
+% flow rates represents the net rate of change of air mass with respect to
+% time. This quantity, according to the ideal gas law, is proportional to
+% the time derivative of the manifold pressure (see Equation 2). Note that,
+% unlike the model of Crossley and Cook (see also references 3 through 5), this
+% model doesn't incorporate exhaust gas recirculation (EGR), although this
+% can easily be added.  
+
+%%
+% *Equation 2*
+%
+% $$\dot{P}_m = \frac{RT}{V_m}\left( \dot{m}_{ai} - \dot{m}_{ao} \right)$$
+%
+% $$
+% R \rightarrow \mbox{specific gas constant; } 
+% $$
+%
+% $$
+% T \rightarrow \mbox{temperature (K); }
+% $$ 
+%
+% $$
+% V_m \rightarrow \mbox{manifold volume } (m^3) \mbox{; }
+% $$
+%
+% $$
+% \dot{m}_{ao} \rightarrow \mbox{mass flow rate of air out of the manifold (g/s); }
+% $$
+%
+% $$
+% \dot{P}_m \rightarrow \mbox{rate of change of manifold pressure (bar/s);}
+% $$
+
+%% Intake Mass Flow Rate
+%
+% The mass flow rate of air that the model pumps into the cylinders from
+% the manifold is described in Equation 3 by an empirically derived
+% equation. This mass rate is a function of the manifold pressure and the
+% engine speed.  
+
+%%
+% *Equation 3*
+%
+% $$
+% \dot{m}_{ao} = -0.366 + 0.08979\cdot N\cdot P_m - 0.0337\cdot N\cdot P^2_m
+% + 0.0001\cdot N^2 \cdot P_m
+% $$
+%
+% $$ N \rightarrow \mbox{engine angular speed (rad/s); } $$
+%
+% $$ P_m \rightarrow \mbox{manifold pressure (bar); } $$
+% 
+
+%%
+%
+% To determine the total air charge pumped into the cylinders, the
+% simulation integrates the mass flow rate from the intake manifold and
+% samples it at the end of each intake stroke event. This determines the
+% total air mass that is present in each cylinder after the intake stroke
+% and before compression. 
+
+%% Compression Stroke
+%
+% In an inline four-cylinder four-stroke engine, 180° of crankshaft
+% revolution separate the ignition of each successive cylinder. This
+% results in each cylinder firing on every other crank revolution. In this
+% model, the intake, compression, combustion, and exhaust strokes occur
+% simultaneously (at any given time, one cylinder is in each phase). To
+% account for compression, the combustion of each intake charge is delayed
+% by 180° of crank rotation from the end of the intake stroke. 
+
+%% Torque Generation and Acceleration
+%
+% The final element of the simulation describes the torque developed by the
+% engine. An empirical relationship dependent upon the mass of the air
+% charge, the air/fuel mixture ratio, the spark advance, and the engine
+% speed is used for the torque computation (see Equation 4). 
+
+%% 
+% *Equation 4*
+%
+% $$ 
+% Torque_{eng} = -181.3 + 379.36\cdot m_a + 21.91\cdot \left( \frac{A}{F} \right) -
+% 0.85 \cdot \left( \frac{A}{F} \right)^2 + 0.26\cdot \sigma - 0.0028\cdot \sigma^2 +
+% $$
+%
+% $$
+% + 0.027 \cdot N - 0.000107 \cdot N^2 + 0.00048 \cdot N \cdot \sigma + 
+% 2.55 \cdot \sigma \cdot m_a - 0.05 \cdot \sigma ^2 \cdot m_a
+% $$
+%
+% $$ m_a \rightarrow \mbox{mass of air in cylinder for combustion (g); } $$
+%
+% $$ \left( \frac{A}{F} \right) \rightarrow \mbox{air to fuel ratio; } $$
+%
+% $$ 
+% \sigma \rightarrow \mbox{spark advance (degrees before top - dead - center); }
+% $$
+%
+% $$ Torque_{eng} \rightarrow \mbox{torque produced by the engine (Nm); } $$
+%
+
+%%
+% 
+% Calculate the engine angular acceleration using Equation 5
+
+%% 
+% *Equation 5*
+%
+% $$ J \dot{N} = Torque_{eng} - Torque_{load}$$
+%
+% $$ J \rightarrow \mbox{engine rotational moment of inertia } (kg\cdot m^2) \mbox{; }$$
+%
+% $$ \dot{N} \rightarrow \mbox{engine angular acceleration } (rad/s^2) \mbox{; }$$
+
+%% Open-Loop Model 
+%
+% We incorporated the model elements described above into an engine model
+% using Simulink. The following sections describe the decisions we made for
+% this implementation and the key Simulink elements  used. This section
+% shows how to implement a complex nonlinear engine model easily and
+% quickly in Simulink environment. We developed this model in
+% conjunction with Ken Butts, Ford Motor Company(R) (2). 
+%
+% Figure 1 shows the top level of the model. Note that, in general, the major blocks
+% correspond to the high-level list of functions given in the model
+% description in the preceding summary. Taking advantage of Simulink's
+% hierarchical modeling capabilities, most of the blocks in Figure 1 are
+% made up of smaller blocks. The following paragraphs describe these
+% smaller blocks.    
+%
+
+%% Opening and Running the Simulation
+%
+% To <matlab:open_system('sldemo_engine') open the model> type
+% |sldemo_engine| in MATLAB(R) terminal (click on the hyperlink if you are
+% using MATLAB Help).
+%
+% Press the "Play" button on the model toolbar to run the simulation.
+%
+
+open_system('sldemo_engine');    %code is hidden, not shown in HTML demo
+evalc('sim(''sldemo_engine'')'); %simulate but hide simulation output
+
+%%
+% *Figure 1:* The top level of the engine model and simulation results
+
+%%
+%
+% * Note:
+% The model logs relevant data to MATLAB workspace in a structure called
+% |sldemo_engine_output|. Logged signals have a blue indicator
+% (<matlab:open_system('sldemo_engine') see the model>). 
+% Read more about Signal Logging in Simulink Help.
+% 
+
+%% Throttle/Manifold
+%
+% In the model, double click on the 'Throttle & Intake Manifold' subsystem to
+% open it. It contains two other subsystems - the 'Throttle' and the 'Intake
+% Manifold' subsystems. Open the 'Throttle' and 'Intake Manifold' to see their
+% components.
+
+open_system('sldemo_engine/Throttle & Manifold');     % hidden code
+open_system('sldemo_engine/Throttle & Manifold/Throttle');
+open_system('sldemo_engine/Throttle & Manifold/Intake Manifold');
+
+%%
+% *Figure 2:* The 'Throttle' and 'Intake Manifold' subsystems
+
+%%
+%
+% Simulink models for the throttle and intake manifold subsystems are shown
+% in Figure 2. The throttle valve behaves in a nonlinear manner and is
+% modeled as a subsystem with three inputs. Simulink implements the
+% individual equations, given in Equation 1, as function blocks. These
+% provide a convenient way to describe a nonlinear equation of several
+% variables. A 'Switch' block determines whether the flow is sonic by
+% comparing the pressure ratio to its switch threshold, which is set at one
+% half (Equation 1). In the sonic regime, the flow rate is a function of
+% the throttle position only. The direction of flow is from the higher to
+% lower pressure, as determined by the Sign block. With this in mind, the
+% 'Min' block ensures that the pressure ratio is always unity or less.   
+%
+% The differential equation from Equation 2 models the intake manifold
+% pressure. A Simulink function block computes the mass flow rate into the
+% cylinder, a function of manifold pressure and engine speed (see Equation 3).
+
+
+
+%% Intake and Compression
+%
+% An integrator accumulates the cylinder mass air flow in the 'Intake' block
+% (located inside the 'Throttle & Manifold' subsystem).  The 'Valve Timing'
+% block issues pulses that correspond to specific rotational positions in order
+% to manage the intake and compression timing. Valve events occur each cam
+% rotation, or every 180° of crankshaft rotation. Each event triggers a single
+% execution of the 'Compression' subsystem. The output of the trigger block
+% within the 'Compression' subsystem then feeds back to reset the Intake
+% integrator. In this way, although both triggers conceptually occur at the same
+% instant in time, the integrator output is processed by the 'Compression' block
+% immediately prior to being reset. Functionally, the 'Compression' subsystem
+% uses a 'Unit Delay' block to insert 180° (one event period) of delay between
+% the intake and combustion of each air charge.
+%
+% Consider a complete four-stroke cycle for one cylinder. During the intake
+% stroke, the 'Intake' block integrates the mass flow rate from the
+% manifold. After 180° of crank rotation, the intake valve closes and the 'Unit
+% Delay' block in the 'Compression' subsystem samples the integrator state. This
+% value, the accumulated mass charge, is available at the output of the
+% 'Compression' subsystem 180° later for use in combustion. During the combustion
+% stroke, the crank accelerates due to the generated torque. The final 180°, the
+% exhaust stroke, ends with a reset of the Intake integrator, prepared for the
+% next complete 720° cycle of this particular cylinder.
+%
+% For four cylinders, we could use four 'Intake' blocks, four 'Compression'
+% subsystems, etc., but each would be idle 75% of the time. We've made the
+% implementation more efficient by performing the tasks of all four cylinders
+% with one set of blocks. This is possible because, at the level of detail we've
+% modeled, each function applies to only one cylinder at a time.
+
+%% Combustion
+%
+% Engine torque is a function of four variables. The model uses a 'Mux' block to
+% combine these variables into a vector that provides input to the 'Torque Gen'
+% block. A function block computes the engine torque (described
+% empirically in Equation 4). The torque which loads the engine, computed by step
+% functions in the Drag Torque block, is subtracted in the Engine Dynamics
+% subsystem. The difference divided by the inertia yields the acceleration,
+% which is integrated to arrive at the engine crankshaft speed.
+
+%% Plotting Simulation Results
+%
+% We used the following default inputs for the simulation:
+
+%%
+% $$Throttle  = 8.97\mbox{ (deg) if } t < 5 $$
+%
+% $$Throttle  = 11.93\mbox{ (deg) if } t \ge 5 $$
+% 
+% $$Load  = 25 \mbox{ (Nm) if } t \le 2 \mbox{ or } t\ge 8 $$
+% 
+% $$Load  = 20 \mbox{ (Nm) if } 2 < t \le 8 $$
+%
+% Try adjusting the throttle to compensate for the load torque. Figure 3 shows
+% the simulated engine speed, the throttle commands which drive the simulation,
+% and the load torque which disturbs it.
+
+PlotHandle=plot(sldemo_engine_output.LoadTorque.Time,sldemo_engine_output.LoadTorque.Data, 'y', ...
+                sldemo_engine_output.ThrottleAngle.Time, sldemo_engine_output.ThrottleAngle.Data, 'b'  );
+title('Open-Loop Simulation Inputs: Load Torque and Throttle Angle vs Time');
+xlabel('Time (sec)'); ylabel('Engine Speed (rad/sec)');
+set(gca,'Color','k','XGrid','On','XColor',[0.3 0.3 0.3],...
+                    'YGrid','On','YColor',[0.3 0.3 0.3]);
+axis([0 10 5 30]);
+h= legend('Load Torque (Nm)','Throttle Angle (deg)','Location','SouthEast');
+set(h,'TextColor','w','Color','none'); clear h;
+
+
+%%
+% *Figure 3a:* Open-loop simulation inputs
+% 
+
+PlotHandle = plot(sldemo_engine_output.EngineSpeed.Time, ...
+                  sldemo_engine_output.EngineSpeed.Data,'y'  );
+title('Open-Loop Simulation Results: Engine Speed Control');
+xlabel('Time (sec)'); ylabel('Engine Speed (rad/sec)');
+set(gca,'Color','k','XGrid','On','XColor',[0.3 0.3 0.3],...
+                    'YGrid','On','YColor',[0.3 0.3 0.3]);
+axis([0 10 1500 3500]);
+h = legend('Engine Speed (rpm)','Location','SouthEast');
+set(h,'TextColor','w','Color','none'); clear h;
+
+%%
+%
+% *Figure 3b:* Open-loops simulation results
+ 
+
+
+%% Closing Model
+%
+% Close the model. Clear generated data.
+
+close_system('sldemo_engine', 0); % close without saving the model
+clear sldemo_engine_output PlotHandle;       % clear logged data
+
+%% Conclusions 
+%
+% The ability to model nonlinear, complex systems, such as the engine model
+% described here, is one of Simulink's key features. The power of the
+% simulation is evident in the presentation of the models above. Simulink
+% retains model fidelity, including precisely timed cylinder intake events,
+% which is critical in creating a model of this type. The basic engine
+% model demonstrates the flexibility of Simulink. 
+%
+% *Note: See the
+% <matlab:open_system('sldemo_enginewc') closed-loop engine model>
+% (an enhanced version of the this model).
+
+%% References
+%
+% [1] P.R. Crossley and J.A. Cook, IEE International Conference 'Control
+% 91', Conference Publication 332, vol. 2, pp. 921-925, 25-28 March, 1991,
+% Edinburgh, U.K. 
+%
+% [2] The Simulink Model. Developed by Ken Butts, Ford Motor Company.
+% Modified by Paul Barnard, Ted Liefeld and Stan Quinn, MathWorks(R), 1994-7. 
+%
+% [3] J. J. Moskwa and J. K. Hedrick, "Automotive Engine
+% Modeling for Real Time Control Application," Proc.1987 ACC, pp. 341-346.
+% 
+% [4] B. K. Powell and J. A. Cook, "Nonlinear Low Frequency
+% Phenomenological Engine Modeling and Analysis," Proc. 1987 ACC, pp.
+% 332-340. 
+%
+% [5] R. W. Weeks and J. J. Moskwa, "Automotive Engine Modeling for
+% Real-Time Control Using Matlab/Simulink," 1995 SAE Intl. Cong. paper
+% 950417.  
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,170 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Four Hydraulic Cylinder Simulation</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_hydcyl4.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_hydcyl4.mdl</div><div class="right"><a href="matlab:sldemo_hydcyl4">Open this model</a></div></div><div class="content"><h1>Four Hydraulic Cylinder Simulation</h1><!--introduction--><p>This demo uses Simulink&reg; to create a model with four hydraulic cylinders. See two related demos that use the same basic components: <a href="matlab:open_system('sldemo_hydcyl')">single cylinder model</a> and <a href="matlab:open_system('sldemo_hydrod')">model with two cylinders and load constraints</a>.</p><div><ul><li>Note: This is a basic hydraulics demo. You can more easily build hydraulic and automotive models using SimDriveline&#8482; and SimHydraulics&reg;.</li></ul></div><div><ul><li><b>SimHydraulics</b> extends Simulink with tools for modeling and simulating hydraulic power and control systems. It enables you to describe multi-domain systems containing connected hydraulic and mechanical components as physical networks.</li></ul></div><div><ul><li><b>SimDriveline</b> extends Simulink with tools for modeling and simulating the mechanics of driveline (drivetrain) systems. These tools include components such as gears, rotating shafts, and clutches; standard transmission templates; engine and tire models.</li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Modeling</a></li><li><a href="#2">Opening the Model and Running the Simulation</a></li><li><a href="#4">Model Description</a></li><li><a href="#7">Results</a></li><li><a href="#11">Closing the Model</a></li></ul></div><h2>Modeling<a name="1"></a></h2><p>Figure 1 shows the top level diagram of the model. This model has a single pump and four actuators. The same pump pressure (<tt>p1</tt>) drives each cylinder assembly and the sum of their flows loads the pump. Although each of the four control valves could be controlled independently, as in an active suspension system, in this case all four receive the same commands, a linear ramp in orifice area from zero to <tt>0.002 sq.m.</tt>.</p><h2>Opening the Model and Running the Simulation<a name="2"></a></h2><p>To <a href="matlab:open_system('sldemo_hydcyl4')">open this model</a>, type <tt>sldemo_hydcyl4</tt> at MATLAB&reg; terminal (click on the hyperlink if you are using MATLAB Help). Press the "Play" button on the model toolbar to run the simulation.</p><div><ul><li>Note: The model logs relevant data to MATLAB workspace in a structure called <tt>sldemo_hydcyl4_output</tt>. Logged signals have a blue indicator (<a href="matlab:open_system('sldemo_hydcyl4')">see the model</a>). Read more about Signal Logging in Simulink Help.</li></ul></div><img vspace="5" hspace="5" src="sldemo_hydcyl4_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_hydcyl4_02.png" alt=""> <img vspace="5" hspace="5" src="sldemo_hydcyl4_03.png" alt=""> <p><b>Figure 1:</b> Four cylinder model and simulation results</p><h2>Model Description<a name="4"></a></h2><p>The pump flow begins at <tt>0.005 m3/sec</tt> (just like in the single cylinder model), then it drops to <tt>0.0025 m3/sec</tt> at <tt>t=0.05 sec</tt>. The parameters <tt>C1</tt>, <tt>C2</tt>, <tt>Cd</tt>, <tt>rho</tt>, and <tt>V30</tt> are identical to those in the <a href="matlab:open_system('sldemo_hydcyl')">single cylinder model</a>. However, by assuming individual values for <tt>K</tt>, <tt>A</tt>, and <tt>beta</tt>, each one of the four cylinders exhibit distinctive transient responses. The table below gives the characteristics of the four actuators.</p><pre> ----------------------------------------------------------------
+ Parameter       |  Actuator1   Actuator2   Actuator3   Actuator4
+ ----------------|-----------------------------------------------
+ Spring Constant |  K           K/4         4K          K
+ Piston Area     |  Ac          Ac/4        4Ac         Ac
+ Bulk Modulus    |  Beta        Beta        Beta        Beta/1000
+ ----------------------------------------------------------------
+ Beta = 7e8  Pa  [fluid bulk modulus]
+ K    = 5e4  N/m [spring constant]
+ Ac   = 1e-3 m^2 [cylinder cross-sectional area]</pre><p>The ratio of area and spring constant is the same for all pistons, so they should have the same steady state output. The dominant time constant for each actuator subsystem is proportional to</p><p><img src="sldemo_hydcyl4_eq28472.png" alt="$$\frac{A_c^2}{K}$$"></p><p>(result obtained from dimensional analysis), so we can expect the piston assembly 2 to be somewhat faster than assembly 1. The piston assembly 3 is expected to be slower than 1 or 2. The piston assembly 4 has a significantly lower bulk modulus beta (as would be the case with air), thus we expect piston 4 to respond more sluggishly than piston 1.</p><h2>Results<a name="7"></a></h2><img vspace="5" hspace="5" src="sldemo_hydcyl4_04.png" alt=""> <p><b>Figure 2:</b> Piston positions in four cylinder example</p><img vspace="5" hspace="5" src="sldemo_hydcyl4_05.png" alt=""> <p><b>Figure 3:</b> Pump Supply Pressure, <tt>p1</tt></p><p>The initial jolt of flow at <tt>t=0</tt> is seen by the four actuators as a pressure impulse. The pump pressure (<tt>p1</tt>), which is initially high, drops rapidly because there is a high flow demand from the four loads. During the initial transient (about <tt>4 msec</tt>), distinct responses identify the individual dynamic characteristics of each assembly unit.</p><p>As predicted by the parameter values, actuator 2 responds much faster than actuator 1. The third and fourth pistons are much slower because they require more working fluid to move the same distance.  In case 3, the piston displaces more volume due to its larger cross-sectional area. In case 4, although the displaced volume is the same as in case 1, the device requires more fluid because it is subsequently compressed.</p><p>As the pump pressure falls to the level within the cylinders, the distinctions in behavior are blurred. The individual responses blend into an overall system response which maintains the flow balance between the components. At <tt>t=0.05 sec</tt>, the pump flow drops to a level that is close to the equilibrium and the actuator flows are nearly zero. The individual steady state piston positions are equal, as predicted by the design.</p><h2>Closing the Model<a name="11"></a></h2><p>Close the model. Clear generated data.</p><p class="footer">Copyright 2006-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Four Hydraulic Cylinder Simulation
+% 
+% This demo uses Simulink(R) to create a model with four hydraulic cylinders. See
+% two related demos that use the same basic components:
+% <matlab:open_system('sldemo_hydcyl') single cylinder model> and
+% <matlab:open_system('sldemo_hydrod') model with two cylinders and load
+% constraints>.
+%
+% * Note: This is a basic hydraulics demo. You can more easily build hydraulic
+% and automotive models using SimDriveline(TM) and SimHydraulics(R).
+%
+% * *SimHydraulics* extends Simulink with tools for modeling and simulating
+% hydraulic power and control systems. It enables you to describe multi-domain
+% systems containing connected hydraulic and mechanical components as physical
+% networks.
+%
+% * *SimDriveline* extends Simulink with tools for modeling and simulating the
+% mechanics of driveline (drivetrain) systems. These tools include components
+% such as gears, rotating shafts, and clutches; standard transmission templates;
+% engine and tire models.
+
+% Copyright 2006-2009 The MathWorks, Inc.
+
+%% Modeling
+%
+% Figure 1 shows the top level diagram of the model. This model has a single
+% pump and four actuators. The same pump pressure (|p1|) drives each cylinder
+% assembly and the sum of their flows loads the pump. Although each of the four
+% control valves could be controlled independently, as in an active suspension
+% system, in this case all four receive the same commands, a linear ramp in
+% orifice area from zero to |0.002 sq.m.|.
+%
+
+%% Opening the Model and Running the Simulation 
+%
+% To <matlab:open_system('sldemo_hydcyl4') open this model>, type
+% |sldemo_hydcyl4| at MATLAB(R) terminal (click on the hyperlink if you are
+% using MATLAB Help). Press the "Play" button on the model toolbar to run
+% the simulation. 
+%
+% * Note: The model logs relevant data to MATLAB workspace in a structure
+% called |sldemo_hydcyl4_output|. Logged signals have a blue indicator
+% (<matlab:open_system('sldemo_hydcyl4') see 
+% the model>). Read more about Signal Logging in Simulink Help.    
+
+open_system('sldemo_hydcyl4');     % hidden code, not displayed in HTML demo page
+evalc('sim(''sldemo_hydcyl4'')');  % run simulation, don't display output
+
+%% 
+% *Figure 1:* Four cylinder model and simulation results
+
+%% Model Description
+%
+% The pump flow begins at |0.005 m3/sec| (just like in the single cylinder model),
+% then it drops to |0.0025 m3/sec| at |t=0.05 sec|. The parameters |C1|, |C2|, |Cd|, |rho|,
+% and |V30| are identical to those in the
+% <matlab:open_system('sldemo_hydcyl') single cylinder model>.   
+% However, by assuming individual values for |K|, |A|, and |beta|,
+% each one of the four cylinders exhibit distinctive transient responses. The
+% table below gives the characteristics of the four actuators.
+
+%%
+%   REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH
+%   Parameter       |  Actuator1   Actuator2   Actuator3   Actuator4
+%   REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH|REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH-
+%   Spring Constant |  K           K/4         4K          K
+%   Piston Area     |  Ac          Ac/4        4Ac         Ac
+%   Bulk Modulus    |  Beta        Beta        Beta        Beta/1000
+%   REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH
+%   Beta = 7e8  Pa  [fluid bulk modulus] 
+%   K    = 5e4  N/m [spring constant]
+%   Ac   = 1e-3 m^2 [cylinder cross-sectional area]
+
+%%
+% The ratio of area and spring constant is the same for all pistons, so
+% they should have the same steady state output. The dominant time constant
+% for each actuator subsystem is proportional to
+%
+% $$\frac{A_c^2}{K}$$
+%
+% (result obtained from dimensional analysis), so we can expect the piston assembly 2 to be
+% somewhat faster than assembly 1. The piston assembly 3 is expected to be
+% slower than 1 or 2. The piston assembly 4 has a significantly lower bulk
+% modulus beta (as would be the case with air), thus we expect piston 4 to
+% respond more sluggishly than piston 1.
+
+%% Results
+%
+
+% plot piston positions, code hidden
+plot(sldemo_hydcyl4_output.Positions.x1.Time, sldemo_hydcyl4_output.Positions.x1.Data, 'w', ...
+     sldemo_hydcyl4_output.Positions.x2.Time, sldemo_hydcyl4_output.Positions.x2.Data, 'r', ...
+     sldemo_hydcyl4_output.Positions.x3.Time, sldemo_hydcyl4_output.Positions.x3.Data, 'y', ...
+     sldemo_hydcyl4_output.Positions.x4.Time, sldemo_hydcyl4_output.Positions.x4.Data, 'b');
+set(gca,'Color','k','XGrid','On','XColor',[0.3 0.3 0.3],...
+                    'YGrid','On','YColor',[0.3 0.3 0.3]);
+h = legend('x_1','x_2','x_3','x_4','Location','best');
+set(h,'TextColor','w','Color','none'); clear h;
+xlabel('Time (sec)');
+ylabel('Piston Position (m)');
+title('Simulation Results: Piston Positions');
+
+%%
+% *Figure 2:* Piston positions in four cylinder example
+
+
+% Plot the pressures, hidden code
+plot(sldemo_hydcyl4_output.SupplyPressure.Time, sldemo_hydcyl4_output.SupplyPressure.Data,'y');
+set(gca,'Color','k','XGrid','On','XColor',[0.3 0.3 0.3],...
+                    'YGrid','On','YColor',[0.3 0.3 0.3]);
+xlabel('Time (sec)');
+ylabel('Pump Pressure p_1 (sec)');
+title('Pump Supply pressure');
+%%
+%
+% *Figure 3:* Pump Supply Pressure, |p1|
+
+%%
+%
+% The initial jolt of flow at |t=0| is seen by the four actuators as a pressure
+% impulse. The pump pressure (|p1|), which is initially high, drops rapidly because
+% there is a high flow demand from the four loads. During the initial transient
+% (about |4 msec|), distinct responses identify the individual dynamic
+% characteristics of each assembly unit.
+%
+% As predicted by the parameter values, actuator 2 responds much faster than
+% actuator 1. The third and fourth pistons are much slower because they require
+% more working fluid to move the same distance.  In case 3, the piston displaces
+% more volume due to its larger cross-sectional area. In case 4, although the
+% displaced volume is the same as in case 1, the device requires more fluid
+% because it is subsequently compressed.
+%
+% As the pump pressure falls to the level within the cylinders, the distinctions
+% in behavior are blurred. The individual responses blend into an overall system
+% response which maintains the flow balance between the components. At |t=0.05
+% sec|, the pump flow drops to a level that is close to the equilibrium and the
+% actuator flows are nearly zero. The individual steady state piston positions
+% are equal, as predicted by the design.
+
+%% Closing the Model
+%
+% Close the model. Clear generated data.
+close_system('sldemo_hydcyl4', 0);
+clear sldemo_hydcyl4_output;
+
+displayEndOfDemoMessage(mfilename)
+
+
+##### SOURCE END #####
+--></body></html>

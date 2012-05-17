@@ -1,0 +1,93 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>確定的周期信号のパワーの測定</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="deterministicsignalpower.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit deterministicsignalpower">エディターで deterministicsignalpower.m を開く</a></div><div class="right"><a href="matlab:echodemo deterministicsignalpower">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>確定的周期信号のパワーの測定</h1><!--introduction--><p>このデモは、信号のパワー、特に確定的な周期信号に注目します。時間は連続ですが、周期的で確定的な信号は離散のパワー スペクトルを生成します。この理由は、特定の周波数で信号のパワーを測定するために、二乗平均 (パワー) を利用するためです。</p><p>信号の平均パワーを測定する方法の 2 つの例を示します。例では正弦波を使用し、1 オームの負荷インピーダンスであると仮定します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">信号分類</a></li><li><a href="#2">単一正弦波の理論的なパワー</a></li><li><a href="#6">単一正弦波のパワーの測定</a></li><li><a href="#8">PSD を使用した単一正弦波のパワーの推定</a></li><li><a href="#12">複数正弦波の理論的なパワー</a></li><li><a href="#15">複数正弦波のパワーの測定</a></li><li><a href="#16">PSD を使用した複数正弦波のパワーの推定</a></li></ul></div><h2>信号分類<a name="1"></a></h2><p>通常、信号は、パワー信号、エネルギー信号、その他の信号の 3 つのカテゴリに分類されます。正弦波から生成される確定的な信号は、エネルギーが無限で平均パワーが有限のパワー信号の例です。ランダム信号の平均パワーも有限で、パワー信号に分類されます。過渡信号は、ゼロ振幅で開始および終了するエネルギー信号の例です。その他の信号には、パワー信号またはエネルギー信号の特徴がありません。</p><h2>単一正弦波の理論的なパワー<a name="2"></a></h2><p>最初の例では、1 V のピーク振幅と 128Hz の周波数成分を持つ正弦波信号の平均パワーを推定します。</p><pre class="codeinput">Fs = 1024;
+t  = 0:1/Fs:1-(1/Fs);
+A  = 1;   <span class="comment">% Vpeak</span>
+F1 = 128; <span class="comment">% Hz</span>
+x  = A*sin(2*pi*t*F1);
+</pre><p>時間領域で信号の一部を見てみましょう。</p><pre class="codeinput">idx = 1:128;
+plot(t(idx),x(idx)); grid; ylabel(<span class="string">'Amplitude'</span>); xlabel(<span class="string">'Time (sec)'</span>);
+axis <span class="string">tight</span>;
+</pre><img vspace="5" hspace="5" src="../deterministicsignalpower_01.png" alt=""> <p>各複素正弦波の理論的な平均パワー (平均二乗) は A^2/4 で、この例では 0.25 または -6.02dB です。したがって、正の周波数と負の周波数のパワーを考慮すると、平均パワーは (A^2/4)*2 になります。</p><pre class="codeinput">power_theoretical = (A^2/4)*2
+</pre><pre class="codeoutput">
+power_theoretical =
+
+    0.5000
+
+</pre><p>dB 単位で、正の周波数のみに含まれるパワーは次のとおりです。</p><pre class="codeinput">10*log10(power_theoretical/2)
+</pre><pre class="codeoutput">
+ans =
+
+   -6.0206
+
+</pre><h2>単一正弦波のパワーの測定<a name="6"></a></h2><p>信号の平均パワーを測定するために、ピリオドグラム スペクトル オブジェクトを作成し、その msspectrum メソッドを呼び出して、信号の平均二乗 (パワー) スペクトルを計算してプロットします。</p><pre class="codeinput">h = spectrum.periodogram(<span class="string">'hamming'</span>);
+hopts = psdopts(h,x);  <span class="comment">% Default options</span>
+set(hopts,<span class="string">'Fs'</span>,Fs,<span class="string">'SpectrumType'</span>,<span class="string">'twosided'</span>,<span class="string">'centerdc'</span>,true);
+msspectrum(h,x,hopts);
+v = axis; axis([v(1) v(2) -10 -5.5]); <span class="comment">% Zoom in Y.</span>
+set(gcf,<span class="string">'Color'</span>,[1 1 1])
+</pre><img vspace="5" hspace="5" src="../deterministicsignalpower_02.png" alt=""> <p>プロットの拡大部分からわかるように、各複素正弦波の平均パワーは約 -6dB です。</p><h2>PSD を使用した単一正弦波のパワーの推定<a name="8"></a></h2><p>PSD 曲線の下の面積を積分しても、信号の平均パワーを計算できます。このためには、スペクトル オブジェクト (上記で定義した h) で psd メソッドを呼び出し、PSD データ オブジェクトを取得し、PSD データ オブジェクトで avgpower メソッドを呼び出します。</p><pre class="codeinput">hpsd = psd(h,x,hopts);
+plot(hpsd);
+set(gcf, <span class="string">'Color'</span>, [1 1 1])
+</pre><img vspace="5" hspace="5" src="../deterministicsignalpower_03.png" alt=""> <p>このプロットでは、スペクトル プロットのピークの高さは、平均二乗スペクトル (MSS) のプロット時と異なることに注意してください。その理由は、パワー スペクトル密度 (PSD) の測定時に、曲線の下の面積 (平均パワーの測定値) が重要であるためです。これは、長方形近似を使用する avgpower メソッドを呼び出して、曲線の下の面積を積分し、平均パワーを計算することで検証できます。</p><pre class="codeinput">power_freqdomain = avgpower(hpsd)
+</pre><pre class="codeoutput">
+power_freqdomain =
+
+    0.5000
+
+</pre><p>パーセルの定理によると、正弦波の合計平均パワーは、時間領域で算出された場合と周波数領域で算出された場合で等しくなければならないため、時間領域の信号を合計して信号の推定合計平均パワーを検証できます。</p><pre class="codeinput">power_timedomain = sum(abs(x).^2)/length(x)
+</pre><pre class="codeoutput">
+power_timedomain =
+
+    0.5000
+
+</pre><h2>複数正弦波の理論的なパワー<a name="12"></a></h2><p>2 番目の例では、複数の周波数成分 (DC、100Hz、および 200Hz) のエネルギーを含んでいる信号の合計平均パワーを推定します。</p><pre class="codeinput">Fs = 1024;
+t  = 0:1/Fs:1-(1/Fs);
+Ao = 1.5; <span class="comment">% Vpeak @ DC</span>
+A1 = 4;   <span class="comment">% Vpeak</span>
+A2 = 3;   <span class="comment">% Vpeak</span>
+F1 = 100; <span class="comment">% Hz</span>
+F2 = 200; <span class="comment">% Hz</span>
+x  = Ao + A1*sin(2*pi*t*F1) + A2*sin(2*pi*t*F2);
+
+<span class="comment">% Let's look at a portion of our signal.</span>
+idx = 1:128;
+plot(t(idx),x(idx)); grid; ylabel(<span class="string">'Amplitude'</span>); xlabel(<span class="string">'Time (sec)'</span>);
+set(gcf, <span class="string">'Color'</span>, [1 1 1])
+</pre><img vspace="5" hspace="5" src="../deterministicsignalpower_04.png" alt=""> <p>前の例と同様に、各複素正弦波の論理的平均パワーは A^2/4 です。信号の DC 平均パワーは、一定で、Ao^2 で求められるため、ピーク パワーと等しくなります。正の周波数および負の周波数のパワーを考慮すると、信号の合計平均パワー (各高調波成分の平均パワーの合計) は Ao^2 + (A1^2/4)*2 + (A2^2/4)*2 になります。</p><pre class="codeinput">power_theoretical = Ao^2 + (A1^2/4)*2 + (A2^2/4)*2
+</pre><pre class="codeoutput">
+power_theoretical =
+
+   14.7500
+
+</pre><p>dB 単位で各固有周波数成分の平均パワーを計算すると、理論上の結果と以下の平均二乗スペクトル プロットが一致します。</p><pre class="codeinput">[10*log10(Ao^2)  10*log10(A1^2/4)  10*log10(A2^2/4)]
+</pre><pre class="codeoutput">
+ans =
+
+    3.5218    6.0206    3.5218
+
+</pre><h2>複数正弦波のパワーの測定<a name="15"></a></h2><p>信号の平均パワーを測定するために、ピリオドグラム スペクトル オブジェクトを再度作成し、msspectrum メソッドを呼び出して、信号の平均二乗 (パワー) スペクトルを計算してプロットします。</p><pre class="codeinput">h = spectrum.periodogram(<span class="string">'hamming'</span>);
+hopts = msspectrumopts(h,x);
+set(hopts,<span class="string">'Fs'</span>,Fs,<span class="string">'SpectrumType'</span>,<span class="string">'twosided'</span>,<span class="string">'centerdc'</span>,true);
+msspectrum(h,x,hopts);
+v = axis; axis([v(1) v(2) 0 7]); <span class="comment">% Zoom in Y</span>
+set(gcf, <span class="string">'Color'</span>, [1 1 1])
+</pre><img vspace="5" hspace="5" src="../deterministicsignalpower_05.png" alt=""> <h2>PSD を使用した複数正弦波のパワーの推定<a name="16"></a></h2><p>最初の例と同様に、取得した PSD 曲線の下の面積を積分し、信号の合計平均パワーを推定します。</p><pre class="codeinput">hpsd = psd(h,x,hopts);
+plot(hpsd);
+set(gcf, <span class="string">'Color'</span>, [1 1 1])
+</pre><img vspace="5" hspace="5" src="../deterministicsignalpower_06.png" alt=""> <p>特定の周波数成分のスペクトル プロットのピークの高さは、最初の例で示した理由で、平均二乗スペクトルのプロットと一致しない場合があります。</p><pre class="codeinput">power_freqdomain = avgpower(hpsd)
+</pre><pre class="codeoutput">
+power_freqdomain =
+
+   14.7500
+
+</pre><p>また、信号の推定平均パワーを検証するには、パーセルの定理を呼び出し、時間領域で信号を合計します。</p><pre class="codeinput">power_timedomain = sum(abs(x).^2)/length(x)
+</pre><pre class="codeoutput">
+power_timedomain =
+
+   14.7500
+
+</pre><p class="footer">Copyright 1988-2005 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Measuring the Power of Deterministic Periodic Signals % This demonstration will focus on power signals, specifically % deterministic periodic signals.  Although continuous in time, periodic % deterministic signals produce discrete power spectrums.  For this reason % we will use mean-square (power) to measure the signal's power at a % specific frequency.   % % We will provide two examples of how to measure a signal's average power. % The examples will use sine waves and assume a load impedance of 1 Ohm.   %   Copyright 1988-2005 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:29:04 $  %% Signal Classification % In general signals can be classified into three broad categories, power % signals, energy signals, or neither.  Deterministic signals which are % made up of sinusoids is an example of power signals which have infinite % energy but finite average power.  Random signals also have finite average % power and fall into the category of power signals. Transient signals is % an example of energy signals which start and end with zero amplitude. % There are still other signals which can't be characterized as either a % power or energy signal.  %% Theoretical Power of a Single Sinusoid % In our first example we'll estimate the average power of a sinusoidal % signal with a peak amplitude of 1 volt and a frequency component at % 128Hz. Fs = 1024; t  = 0:1/Fs:1-(1/Fs); A  = 1;   % Vpeak F1 = 128; % Hz x  = A*sin(2*pi*t*F1); %% % Let's look at a portion of our signal in the time domain. idx = 1:128; plot(t(idx),x(idx)); grid; ylabel('Amplitude'); xlabel('Time (sec)'); axis tight; %% % The theoretical average power (mean-square) of each complex sinusoid is % A^2/4, which in our example is 0.25 or -6.02dB.  So, accounting for the % power in the positive and negative frequencies results in an average % power of (A^2/4)*2. power_theoretical = (A^2/4)*2  %% % in dB the power contained in the positive frequencies only is:  10*log10(power_theoretical/2)  %% Measuring the Power of a Single Sinusoid % To measure the signal's average power we create a periodogram % spectrum object, and call its msspectrum method to calculate and plot % the mean-square (power) spectrum of the signal. h = spectrum.periodogram('hamming'); hopts = psdopts(h,x);  % Default options set(hopts,'Fs',Fs,'SpectrumType','twosided','centerdc',true); msspectrum(h,x,hopts); v = axis; axis([v(1) v(2) -10 -5.5]); % Zoom in Y. set(gcf,'Color',[1 1 1])  %% % As we can see from the zoomed-in portion of the plot each complex % sinusoid has an average power of roughly -6dB.  %% Estimating the Power of a Single Sinusoid via PSD % Another way to calculate a signal's average power is by "integrating" the % area under the PSD curve.  We can accomplish this by calling the psd % method on the spectrum object (h which we defined above) to get the PSD % data object, and then calling the avgpower method on our PSD data object. hpsd = psd(h,x,hopts); plot(hpsd);  set(gcf, 'Color', [1 1 1])  %% % One thing to notice in this plot is that the peaks of the spectrum plot % do not have the same height has when we plotted the Mean-square % Spectrum (MSS).  The reason is because when taking Power Spectral Density % (PSD) measurements it's the area under the curve (which is the measure of % the average power) that matters.  We can verify that by calling the % avgpower method which uses rectangle approximation to integrate under the % curve to calculate the average power.  %% power_freqdomain = avgpower(hpsd)  %% % Since according to Parseval's theorem the total average power in a % sinusoid must be equal whether it's computed in the time domain or the % frequency domain, we can verify our signal's estimated total average % power by summing up the signal in the time domain. power_timedomain = sum(abs(x).^2)/length(x)  %% Theoretical Power of Multiple Sinusoids % For the second example we'll estimate the total average power of a signal % containing energy at multiple frequency components: one at DC, one at  % 100Hz, and another at 200Hz. Fs = 1024; t  = 0:1/Fs:1-(1/Fs); Ao = 1.5; % Vpeak @ DC  A1 = 4;   % Vpeak A2 = 3;   % Vpeak F1 = 100; % Hz F2 = 200; % Hz x  = Ao + A1*sin(2*pi*t*F1) + A2*sin(2*pi*t*F2);  % Let's look at a portion of our signal. idx = 1:128; plot(t(idx),x(idx)); grid; ylabel('Amplitude'); xlabel('Time (sec)'); set(gcf, 'Color', [1 1 1])   %%  % Like the previous example, the theoretical average power of each complex % sinusoid is A^2/4.  The signal's DC average power is equal to its peak % power since it's constant and therefore is given by Ao^2.  Accounting for % the power in the positive and negative frequencies results in a signal's % total average power (sum of the average power of each harmonic component) % of Ao^2 + (A1^2/4)*2 + (A2^2/4)*2.  power_theoretical = Ao^2 + (A1^2/4)*2 + (A2^2/4)*2  %% % By calculating the average power of each unique frequency component in dB % we'll see that the theoretical results match the mean-square spectrum % plot below.  [10*log10(Ao^2)  10*log10(A1^2/4)  10*log10(A2^2/4)]   %% Measuring the Power of Multiple Sinusoids % To measure the signal's average power we will once again create a % periodogram spectrum object, and call the msspectrum method to calculate % and plot the mean-square (power) spectrum of the signal.  h = spectrum.periodogram('hamming'); hopts = msspectrumopts(h,x); set(hopts,'Fs',Fs,'SpectrumType','twosided','centerdc',true); msspectrum(h,x,hopts); v = axis; axis([v(1) v(2) 0 7]); % Zoom in Y set(gcf, 'Color', [1 1 1])   %% Estimating the Power of Multiple Sinusoids via PSD  % As in the first example, estimating the signal's total average power by % "integrating" under the PSD curve we get: hpsd = psd(h,x,hopts); plot(hpsd); set(gcf, 'Color', [1 1 1])  %% % Note that once again the height of the peaks of the spectrum plot at a % specific frequency component may not match the ones of the plot of the % Mean-square Spectrum for reasons noted in the first example.  %% power_freqdomain = avgpower(hpsd)  %% % Again, we can verify the signal's estimated average power by invoking % Parseval's theorem and summing up the signal in the time domain. power_timedomain = sum(abs(x).^2)/length(x)   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,84 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>FFT for Spectral Analysis</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="fftdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit fftdemo">Open fftdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo fftdemo">Run in the Command Window</a></div></div><div class="content"><h1>FFT for Spectral Analysis</h1><!--introduction--><p>This example shows the use of the FFT function for spectral  analysis.  A common use of FFT's is to find the frequency components of a signal buried in a noisy time domain signal.</p><!--/introduction--><p>First create some data.  Consider data sampled at 1000 Hz.  Start by forming a time axis for our data, running from t=0 until t=.25 in steps of 1 millisecond.  Then form a signal, x, containing sine waves at 50 Hz and 120 Hz.</p><pre class="codeinput">t = 0:.001:.25;
+x = sin(2*pi*50*t) + sin(2*pi*120*t);
+</pre><p>Add some random noise with a standard deviation of 2 to  produce a noisy signal y.  Take a look at this noisy  signal y by plotting it.</p><pre class="codeinput">y = x + 2*randn(size(t));
+plot(y(1:50))
+title(<span class="string">'Noisy time domain signal'</span>)
+</pre><img vspace="5" hspace="5" src="fftdemo_01.png" alt=""> <p>Clearly, it is difficult to identify the frequency components from looking at this signal; that's why spectral analysis is so popular.</p><p>Finding the discrete Fourier transform of the noisy signal y is easy; just take the fast-Fourier transform (FFT).</p><pre class="codeinput">Y = fft(y,251);
+</pre><p>Compute the power spectral density, a measurement of the energy at various frequencies, using the complex conjugate (CONJ).  Form a  frequency axis for the first 127 points and use it to plot the result.  (The remainder of the points are symmetric.)</p><pre class="codeinput">Pyy = Y.*conj(Y)/251;
+f = 1000/251*(0:127);
+plot(f,Pyy(1:128))
+title(<span class="string">'Power spectral density'</span>)
+xlabel(<span class="string">'Frequency (Hz)'</span>)
+</pre><img vspace="5" hspace="5" src="fftdemo_02.png" alt=""> <p>Zoom in and plot only up to 200 Hz.  Notice the peaks at 50 Hz and  120 Hz. These are the frequencies of the original signal.</p><pre class="codeinput">plot(f(1:50),Pyy(1:50))
+title(<span class="string">'Power spectral density'</span>)
+xlabel(<span class="string">'Frequency (Hz)'</span>)
+</pre><img vspace="5" hspace="5" src="fftdemo_03.png" alt=""> <p class="footer">Copyright 1984-2005 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% FFT for Spectral Analysis
+% This example shows the use of the FFT function for spectral  analysis.  A
+% common use of FFT's is to find the frequency components of a signal buried in
+% a noisy time domain signal.
+%
+% Copyright 1984-2005 The MathWorks, Inc. 
+% $Revision: 5.8.4.2 $  $Date: 2009/04/03 21:23:24 $
+
+%%
+% First create some data.  Consider data sampled at 1000 Hz.  Start by forming a
+% time axis for our data, running from t=0 until t=.25 in steps of 1
+% millisecond.  Then form a signal, x, containing sine waves at 50 Hz and 120
+% Hz.
+
+t = 0:.001:.25;
+x = sin(2*pi*50*t) + sin(2*pi*120*t);
+
+%%
+% Add some random noise with a standard deviation of 2 to  produce a noisy
+% signal y.  Take a look at this noisy  signal y by plotting it.
+
+y = x + 2*randn(size(t));
+plot(y(1:50))
+title('Noisy time domain signal')
+
+%%
+% Clearly, it is difficult to identify the frequency components from looking at
+% this signal; that's why spectral analysis is so popular.
+%
+% Finding the discrete Fourier transform of the noisy signal y is easy; just
+% take the fast-Fourier transform (FFT).
+
+Y = fft(y,251);
+
+%%
+% Compute the power spectral density, a measurement of the energy at various
+% frequencies, using the complex conjugate (CONJ).  Form a  frequency axis for
+% the first 127 points and use it to plot the result.  (The remainder of the
+% points are symmetric.)
+
+Pyy = Y.*conj(Y)/251;
+f = 1000/251*(0:127);
+plot(f,Pyy(1:128))
+title('Power spectral density')
+xlabel('Frequency (Hz)')
+
+%%
+% Zoom in and plot only up to 200 Hz.  Notice the peaks at 50 Hz and  120 Hz.
+% These are the frequencies of the original signal.
+
+plot(f(1:50),Pyy(1:50))
+title('Power spectral density')
+xlabel('Frequency (Hz)')
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,194 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
+<html xmlns:mwsh="http://www.mathworks.com/namespace/mcode/v1/syntaxhighlight.dtd">
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      -->
+      <title>Writing Task Functions</title>
+      <meta name="generator" content="MATLAB 7.6">
+      <meta name="date" content="2007-11-29">
+      <meta name="m-file" content="paralleltutorial_taskfunctions">
+      <link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css">
+   </head>
+   <body>
+      <div class="header">
+         <div class="left"><a href="matlab:edit paralleltutorial_taskfunctions">Open paralleltutorial_taskfunctions.m in the Editor</a></div>
+         <div class="right"><a href="matlab:echodemo paralleltutorial_taskfunctions">Run in the Command Window</a></div>
+      </div>
+      <div class="content">
+         <h1>Writing Task Functions</h1>
+         <introduction>
+            <p>In this demo, we look at two common cases when we might want to write a wrapper function for the Parallel Computing Toolbox&#8482;.
+               Those wrapper functions will be our task functions and will allow us to use the toolbox in an efficient manner.  The particular
+               cases are:
+            </p>
+            <div>
+               <ul>
+                  <li>We want one task to consist of calling a nonvectorized function multiple times.</li>
+                  <li>We want to reduce the amount of data returned by a task.</li>
+               </ul>
+            </div>
+            <p>Prerequisites:</p>
+            <div>
+               <ul>
+                  <li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a></li>
+                  <li><a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB&reg; Computations into Tasks</a></li>
+               </ul>
+            </div>
+            <p>For further reading, see:</p>
+            <div>
+               <ul>
+                  <li><a href="paralleltutorial_network_traffic.html">Minimizing Network Traffic</a></li>
+                  <li><a href="paralleltutorial_callbacks.html">Using Callback Functions</a></li>
+               </ul>
+            </div>
+         </introduction>
+         <h2>Contents</h2>
+         <div>
+            <ul>
+               <li><a href="#1">Calling a Nonvectorized Function Multiple Times in a Task</a></li>
+               <li><a href="#4">Reducing the Data Returned by a Task</a></li>
+            </ul>
+         </div>
+         <h2>Calling a Nonvectorized Function Multiple Times in a Task<a name="1"></a></h2>
+         <p>The <a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB Computations into Tasks</a> demo discusses how inefficient it would be to construct a large number of tasks where each task performs only a small amount
+            of work.  Instead, each task should perform a reasonable amount of work, so that the overhead of a task does not dwarf its
+            run time.  Consequently, we often find ourselves in the situation where each task should do the following:
+         </p>
+         <p>Given a vector <tt>x</tt>, return a vector <tt>y</tt> such that <tt>y(i) = f(x(i))</tt>.  If the function <tt>f</tt> is vectorized, the MATLAB statement <tt>y = f(x)</tt> does exactly that, so we let <tt>f</tt> be our task function.  However, if <tt>f</tt> is not vectorized, we have to write a task function that calls <tt>f</tt> inside a for-loop.  That is, we want the task function to look like the following:
+         </p><pre> function y = mytaskfnc(x)
+ len = numel(x);
+ y = zeros(1, len);
+ for i = 1:len
+  y(i) = f(x(i));
+ end</pre><p>As an example, let's look at the problem of minimizing the Rosenbrock test function from multiple starting points.  Suppose
+            that we want the starting point to be of the form <tt>[-d, d]</tt> and that we want to use the <tt>fminsearch</tt> method to perform the minimization.  We easily arrive at the following task function:
+         </p><pre class="codeinput">type <span class="string">pctdemo_task_tutorial_taskfunction</span>;
+</pre><pre class="codeoutput">
+function xmin = pctdemo_task_tutorial_taskfunction(x)
+%pctdemo_task_tutorial_taskfunction Minimize the Rosenbrock function.
+%   xmin = pctdemo_task_tutorial_taskfunctions(x) returns the minimum of the 
+%   Rosenbrock function that is found by starting at [-x(i), x(i)].
+%   The output vector xmin is of the same length as the input vector x.
+    
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.2 $  $Date: 2007/12/10 21:30:54 $
+    
+    xmin = zeros(numel(x), 2);
+    for i = 1:numel(x)
+        xmin(i, :) = fminsearch(@iRosenbrock, [-x(i), x(i)]);
+    end
+end % End of pctdemo_task_tutorial_taskfunction.
+
+function y = iRosenbrock(x)
+% The well-known optimization test function, the Rosenbrock function.
+    y = 100*(x(2)-x(1)^2)^2+(1-x(1))^2;
+end 
+
+</pre><p>We can create a job that is composed of several tasks, where each task can handle as many different starting points as we
+            need.
+         </p>
+         <h2>Reducing the Data Returned by a Task<a name="4"></a></h2>
+         <p>Our tasks might invoke some MATLAB functions that generate more data than we are interested in.  Since there is considerable
+            overhead in transmitting the return data over the network, we would like to minimize such data transfers. Thus, the task function
+            might look something like the following:
+         </p><pre> function d = mytaskfnc(x)
+ % Only return the last output argument from f.  Drop the rest.
+ [a, b, c, d] = f(x);</pre><p>There are of course numerous other possibilities: We might want to return only the sum of a vector instead of the entire vector,
+            the last point of a time series instead of the entire time series, etc.
+         </p>
+         <p class="footer">Copyright 2007 The MathWorks, Inc.<br>
+            Published with MATLAB&reg; 7.6
+         </p>
+         <p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks
+            of their respective owners.
+         </p>
+      </div>
+      <!--
+##### SOURCE BEGIN #####
+%% Writing Task Functions
+% In this demo, we look at two common cases when we might want to write a  
+% wrapper function for the Parallel Computing Toolbox(TM).  Those wrapper 
+% functions will be our task functions and will allow us to use the toolbox in 
+% an efficient manner.  The particular cases are:
+% 
+% * We want one task to consist of calling a nonvectorized function
+% multiple times.
+% * We want to reduce the amount of data returned by a task.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox>
+% * <paralleltutorial_dividing_tasks.html
+% Dividing MATLAB(R) Computations into Tasks>
+%
+% For further reading, see: 
+%
+% * <paralleltutorial_network_traffic.html Minimizing Network Traffic>
+% * <paralleltutorial_callbacks.html Using Callback Functions>
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.2 $  $Date: 2007/12/10 21:30:54 $
+
+%% Calling a Nonvectorized Function Multiple Times in a Task
+% The <paralleltutorial_dividing_tasks.html
+% Dividing MATLAB Computations into Tasks> 
+% demo discusses how inefficient it would be to construct a large number of
+% tasks where each task performs only a small amount of work.  Instead, each
+% task should perform a reasonable amount of work, so that the overhead of a
+% task does not dwarf its run time.  Consequently, we often find ourselves in
+% the situation where each task should do the following:
+%
+% Given a vector |x|, return a vector |y| such that |y(i) = f(x(i))|.  If the
+% function |f| is vectorized, the MATLAB statement |y = f(x)| does exactly
+% that, so we let |f| be our task function.  However, if |f| is not
+% vectorized, we have to write a task function that calls |f| inside a
+% for-loop.  That is, we want the task function to look like the 
+% following: 
+%
+%   function y = mytaskfnc(x)
+%   len = numel(x);
+%   y = zeros(1, len);
+%   for i = 1:len
+%    y(i) = f(x(i));
+%   end
+
+%%
+% As an example, let's look at the problem of minimizing the Rosenbrock test
+% function from multiple starting points.  Suppose that we want the starting
+% point to be of the form |[-d, d]| and that we want to use the |fminsearch|
+% method to perform the minimization.  We easily arrive at the following task
+% function:
+type pctdemo_task_tutorial_taskfunction;
+
+%%
+% We can create a job that is composed of several tasks, where each task can 
+% handle as many different starting points as we need.
+
+%% Reducing the Data Returned by a Task
+% Our tasks might invoke some MATLAB functions that generate more data than we
+% are interested in.  Since there is considerable overhead in transmitting the
+% return data over the network, we would like to minimize such data transfers.
+% Thus, the task function might look something like the following:
+%
+%   function d = mytaskfnc(x)
+%   % Only return the last output argument from f.  Drop the rest.
+%   [a, b, c, d] = f(x);
+%
+% There are of course numerous other possibilities: We might want to return only
+% the sum of a vector instead of the entire vector, the last point of a time
+% series instead of the entire time series, etc.
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+-->
+   </body>
+</html>

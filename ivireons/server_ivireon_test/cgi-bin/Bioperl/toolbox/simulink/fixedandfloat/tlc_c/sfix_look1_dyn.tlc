@@ -1,0 +1,303 @@
+%% $RCSfile: sfix_look1_dyn.tlc,v $
+%% $Revision: 1.9.2.8 $
+%% $Date: 2010/04/21 21:54:50 $
+%%
+%% Copyright 1994-2010 The MathWorks, Inc.
+%%
+%% Abstract:
+%%   Dynamic look up 1D Block
+
+%implements sfix_look1_dyn "C"
+
+%include "fixptlook_support.tlc"
+%include "fixptlook_search.tlc"
+%include "fixptlook1D.tlc"
+
+%% Function: BlockInstanceSetup ===============================================
+%% Abstract:
+%%   Pre-code generation work
+%%
+%function BlockInstanceSetup(block, system) void
+    %%
+    %<FixPt_Setup(block, system)>
+    %%
+%endfunction
+
+
+
+%% Function: Outputs ==========================================================
+%% Abstract:
+%%
+%function Outputs(block, system) Output
+    %%
+    %assign y0IsComplex   = LibBlockOutputSignalIsComplex(0)
+    %%
+    %% if input (and Output) are complex then two cases to handle
+    %% otherwise only one
+    %%
+    %assign casesToHandle = 1 + y0IsComplex
+    %%
+    %% Get input data type
+    %%
+    %assign u0DT  = FixPt_GetInputDataTypeWithBoolReplace(0)
+    %assign u1InvariantStuff = fxpPrivateInputIsInvariant(1)
+    %assign xdataDT  = FixPt_GetInputDataTypeWithBoolReplace(1)
+    %assign ydataDT  = FixPt_GetInputDataTypeWithBoolReplace(2)
+    %%
+    %% Get output data type
+    %%
+    %assign y0DT  = FixPt_GetOutputDataType(0)
+    %%
+    %% create header comment
+    %%
+    /* Dynamic Look-Up Table Block: %<MaskBlockName>
+    %%
+    %% add general comments
+    %%
+    %<FixPt_GeneralComments()>\
+    %%
+    %% comment on modes
+    %%
+     * Lookup Method: %<FixPtLookUpMethodStr>
+     *
+    %%
+    %% determine if the XData is inlined and evenly spaced
+    %%
+    %if TYPE(u1InvariantStuff) != "String"
+        %assign xDataEvenSpaceInfo = FixPt_GetBreakPointInfo(u1InvariantStuff)
+    %else
+        %assign xDataEvenSpaceInfo = FixPt_BreakPointInfoDefault()
+    %endif
+    %%
+    %% optimize trivial interpolation case
+    %%
+    %assign lookUpMethodStr = FixPtLookUpMethodStr
+    %%
+    %if lookUpMethodStr == "Linear_Endpoint"
+        %%
+        %if !FixPt_DataTypeIsFloat(u0DT) && !FixPt_DataTypeIsFloat(xdataDT) && ...
+            ISEQUAL(xDataEvenSpaceInfo.spacingValue,1) && ( u0DT.FixedExp == xdataDT.FixedExp )
+            %assign lookUpMethodStr = "Below"
+            %%
+             * X table is inlined, evenly space, and the spacing of the stored
+             * integers is the trivial case of plus one.  Therefore, interpolation
+             * can be replaced by a simple indexing operation.
+             *
+        %endif
+        %%
+    %endif
+    %%
+    %% END: header comment
+    %%
+     */
+    %%
+    %% declare local variables as needed
+    %%
+    %if     lookUpMethodStr == "Linear_Endpoint"
+        %%
+      %assign searchMethod = "Below"
+      %assign iLeftLabel = ""
+            %assign iRghtLabel = ""
+      %%
+    %elseif lookUpMethodStr == "Below"
+      %%
+      %assign searchMethod = "Below"
+      %assign iLeftLabel = "iLeft"
+        %assign iRghtLabel = ""
+      %assign iToUseForOutput = iLeftLabel
+      %%
+    %elseif lookUpMethodStr == "Above"
+      %%
+        %assign searchMethod = "Above"
+        %assign iLeftLabel = ""
+      %assign iRghtLabel = "iRght"
+        %assign iToUseForOutput = iRghtLabel
+      %%
+    %elseif lookUpMethodStr == "Nearest"
+      %%
+        %assign searchMethod = "Near"
+      %assign iLeftLabel = "iLeft"
+        %assign iRghtLabel = ""
+      %assign iToUseForOutput = iLeftLabel
+      %%
+    %else
+      %openfile errTxt
+
+        The lookup method: %<lookUpMethodStr> is not supported
+        for code generation.
+
+        Block: %<MaskBlockName>
+
+      %closefile errTxt
+      %exit %<errTxt>
+      %%
+    %endif
+    %%
+    %if iLeftLabel != "" || iRghtLabel != ""
+      {
+    %endif
+    %%
+    %if iLeftLabel != ""
+        %%
+        %<FixPt_uint_label> %<iLeftLabel>;
+
+    %endif
+    %%
+    %if iRghtLabel != ""
+        %%
+        %<FixPt_uint_label> %<iRghtLabel>;
+
+    %endif
+    %%
+    %% Roll around signal width
+    %%
+    %assign rollVars = ["u0", "Y"]
+    %assign rollRegions = DataInputPort[0].RollRegions
+    %%
+    %roll sigIdx = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+        %%
+        %% Get input
+        %%
+        %assign u0Label = LibBlockInputSignal(0, "", lcv, sigIdx)
+        %%
+        %% lookup method Linear_Endpoint
+        %%
+        %if lookUpMethodStr == "Linear_Endpoint"
+            %%
+            %% Get output (if complex, get the whole structure)
+            %%
+            %assign y0Label = LibBlockOutputSignal(0, "", lcv, sigIdx)
+            %%
+            %<FixPt_SearchAndInterpolate(...
+                             y0Label,y0DT,...
+                             u0Label,u0DT,...
+                             "",  ydataDT, 2,...
+                             "",  xdataDT, 1, xDataEvenSpaceInfo,...
+                             FixPtRoundingMode,FixPtSaturationMode)>\
+        %%
+        %% lookup method BELOW
+        %% lookup method ABOVE
+        %% lookup method NEAREST
+        %%
+        %else
+            %%
+            %% find indices
+            %%
+            %<FixPt_IndexSearch(iLeftLabel,iRghtLabel,...
+                            u0Label,u0DT,...
+              "",xdataDT, xDataEvenSpaceInfo,1,...
+                            searchMethod)>\
+
+            %foreach iCase = casesToHandle
+                %%
+                %if iCase == 0
+                    %%
+                    %assign riSigIdx  = tRealPart + STRING(sigIdx)
+                    %assign riParmIdx = "re0"
+                %else
+                    %assign riSigIdx  = tImagPart + STRING(sigIdx)
+                    %assign riParmIdx = "im0"
+                %endif
+                %%
+                %assign y0Label = LibBlockOutputSignal(0, "", lcv, riSigIdx)
+                %%
+                %assign yDataLabel = LibBlockInputSignal(2, iToUseForOutput, "", riParmIdx)
+                %%
+                %if FixPt_DataTypesSame(y0DT,ydataDT)
+                    %<y0Label> = %<yDataLabel>;
+                %else
+                    %<FixPt_Fix2FixAlwaysOutput(y0Label,   y0DT,...
+                                                yDataLabel,ydataDT,...
+                                                FixPtRoundingMode,FixPtSaturationMode)>\
+                %endif
+                %%
+            %endforeach
+        %endif
+    %endroll
+    %%
+    %if iLeftLabel != "" || iRghtLabel != ""
+    }
+    %endif
+    %%
+    %% blank line for formating
+
+%endfunction
+
+
+
+%function fxpPrivateInputIsInvariant(portIdx) void
+    %%
+    %% get the appropriate (either DataInput or Control) input port record
+    %%
+    %assign ip = FcnGetInputPortRecord(portIdx)
+    %%
+    %% idNum[0] is B (BlockOutputsMap), X (StatesMap), U (ExternalInputsMap),
+    %% or G (Ground), and idNum[1] is the index into the respective map.
+    %%
+    %assign sigRec = SLibGetSourceRecord(ip, 0)
+    %%
+    %if !ISEMPTY(sigRec) && sigRec.RecordType == "BlockOutput"
+        %assign retVal = sigRec.Invariant
+        %if sigRec.Invariant == "yes"
+            %if ISFIELD(sigRec,"InitialValue") && SIZE(sigRec.InitialValue,1) > 0
+                %assign retVal = sigRec.InitialValue
+            %elseif ISFIELD(sigRec,"CustomInitialValue")
+                %assign retVal = sigRec.CustomInitialValue
+            %else 
+              %assign mapSource = IDNUM(ip.SignalSrc[0])[0]
+              %%
+              %if (mapSource == "I" || mapSource == "C")
+                %assign portWidth = LibBlockInputSignalWidth(portIdx)
+                %assign retVal = []
+                %foreach idx = portWidth
+                  %assign curVal = FEVAL("eval",LibBlockInputSignal(portIdx,"","",idx),"'no'")
+                   %if TYPE(curVal) == "String"
+                     %assign retVal = "no"
+                     %break
+                   %else
+                     %assign uDT  = FixPt_GetInputDataType(portIdx)
+                     %%
+                     %if FixPt_DataTypeIsFloat(uDT)
+                       %%
+                       %if FixPt_DataTypeIsSingle(uDT)
+                         %%
+                         %assign curVal = CAST("Real32",curVal)
+                         %%
+                       %else
+                         %%
+                         %assign curVal = CAST("Real",curVal)
+                         %%
+                       %endif
+                     %else
+                       %%
+                       %if uDT.IsSigned
+                         %%
+                         %assign curVal = CAST("Number",curVal)
+                         %%
+                       %else
+                         %%
+                         %assign curVal = CAST("Unsigned",curVal)
+                         %%
+                       %endif
+                     %endif
+                     %assign retVal = retVal + curVal
+                   %endif
+                %endforeach
+              %else
+                %assign retVal = "no"
+              %endif
+            %endif
+        %else
+            %assign retVal= "no"
+        %endif
+    %else
+        %assign retVal = "no"
+    %endif
+    %%
+    %return retVal
+    %%
+%endfunction %% LibBlockInputIsInvariant
+
+
+
+%% [EOF] sfix_look1.tlc

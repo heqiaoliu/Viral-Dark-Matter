@@ -1,0 +1,214 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>累積確率を使用する一変量分布での近似</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="cdffitdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit cdffitdemo">エディターで cdffitdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo cdffitdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>累積確率を使用する一変量分布での近似</h1><!--introduction--><p>データを一変量分布で近似する最も一般的な方法は、最尤法です。しかし、あらゆるケースで最尤法がうまくいくわけではありません。モーメント法など、他の推定法が必要になることもあります。このデモでは、一変量分布で近似するために一般的に使用できる別の方法について説明します。この方法は最尤法ではうまくいかない場合、たとえば、しきい値パラメーターが関係するモデルなどに便利です。最尤法は、該当する場合には優れた方法です。効率性が高いことが多いからです。しかし、ここで説明する方法では、必要に応じて使用できる別のツールを使用します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">最小二乗法を使用する指数分布での近似</a></li><li><a href="#9">ワイブル分布の近似</a></li><li><a href="#13">しきい値パラメーターの例</a></li><li><a href="#19">非 location-scale ファミリー</a></li><li><a href="#25">モデルの指定ミス</a></li><li><a href="#28">対数正規しきい値パラメーターの例</a></li><li><a href="#31">精度の尺度</a></li><li><a href="#37">まとめ</a></li></ul></div><h2>最小二乗法を使用する指数分布での近似<a name="1"></a></h2><p>「最小二乗法」という用語は、回帰直線または回帰曲面で近似して、応答変数を 1 つ以上の予測変数の関数としてモデル化する際によく使用されます。ここでは、最小二乗法をこれとは非常に異なる仕方で適用する方法を説明します。つまり、変数が 1 つしかない一変量分布近似という方法です。</p><p>実例を示すために、最初にいくつかのサンプル データをシミュレートします。指数分布を使用してデータを生成します。この例では、実際の場合と同様に、データが特定のモデルに由来することは知られていないものとします。</p><pre class="codeinput">rand(<span class="string">'state'</span>,0); randn(<span class="string">'state'</span>,0);
+n = 100;
+x = exprnd(2,n,1);
+</pre><p>次に、データの経験累積分布関数 (ECDF) を計算します。これは、各データ ポイント x で 1/n の累積確率 p に不連続がある単純なステップ関数です。</p><pre class="codeinput">x = sort(x);
+p = ((1:n)-0.5)' ./ n;
+stairs(x,p,<span class="string">'k-'</span>);
+xlabel(<span class="string">'x'</span>);
+ylabel(<span class="string">'Cumulative probability (p)'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_01.png" alt=""> <p>指数分布を使用してこれらのデータを近似します。その 1 つの方法は、累積分布関数 (CDF) がデータの ECDF を (後で説明する意味において) 最もよく近似する指数分布を見つけることです。指数 CDF は、 p = Pr{X &lt;= x} = 1 - exp(-x/mu) です。これを -log(1-p)*mu = x に変換すると、-log(1-p) と x との間の線形関係が得られます。データが指数分布に由来する場合、ECDF から計算した x と p の値をその式に代入すると、少なくとも近似的には線形関係が認められるはずです。最小二乗法を使用して、原点から x 対 -log(1-p) まで直線で近似すると、その近似直線はデータに &quot;最も近い&quot; 指数分布を表すことになります。直線の傾きは、パラメーター mu の推定値です。</p><p>同様に、y = -log(1-p) を標準の (平均値 1) 指数分布の &quot;理想化された標本&quot; と見なすことができます。これらの理想化された値は、確率のスケール上で正確に等間隔に配置されます。データが指数分布に由来する場合には、x と y の Q-Q プロットは、ほぼ線形になるはずです。したがって、最小二乗法直線で原点からx 対 y までを近似します。</p><pre class="codeinput">y = -log(1 - p);
+muHat = y \ x
+</pre><pre class="codeoutput">
+muHat =
+
+    1.8911
+
+</pre><p>データと近似直線をプロットします。</p><pre class="codeinput">plot(x,y,<span class="string">'+'</span>, y*muHat,y,<span class="string">'r--'</span>);
+xlabel(<span class="string">'x'</span>);
+ylabel(<span class="string">'y = -log(1-p)'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_02.png" alt=""> <p>この線形近似により、水平つまり &quot;x 軸&quot; 方向の残差平方和が最小になることに注意してください。これは、 y = -log(1-p) の値が決定性の値であり、無作為なのは x の値だからです。また、y 対 x の回帰推定を行ったり、他の種類の線形近似を使用したりすることもできます。たとえば、加重回帰、直交回帰、さらにはロバスト回帰などです。ただし、ここではこれらの可能性は調べません。</p><p>比較のため、最尤法でデータを近似します。</p><pre class="codeinput">muMLE = expfit(x)
+</pre><pre class="codeoutput">
+muMLE =
+
+    1.8314
+
+</pre><p>いよいよここで、2 つの推定分布を未変換の累積確率スケール上にプロットします。</p><pre class="codeinput">stairs(x,p,<span class="string">'k-'</span>);
+hold <span class="string">on</span>
+xgrid = linspace(0,1.1*max(x),100)';
+plot(xgrid,expcdf(xgrid,muHat),<span class="string">'r--'</span>, xgrid,expcdf(xgrid,muMLE),<span class="string">'b--'</span>);
+hold <span class="string">off</span>
+xlabel(<span class="string">'x'</span>); ylabel(<span class="string">'Cumulative Probability (p)'</span>);
+legend({<span class="string">'Data'</span>,<span class="string">'LS Fit'</span>,<span class="string">'ML Fit'</span>},<span class="string">'location'</span>,<span class="string">'southeast'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_03.png" alt=""> <p>この 2 つの方法で非常によく似た分布が得られます。もっとも、LS 近似は分布の裾での観測の影響をより強く受けています。</p><h2>ワイブル分布の近似<a name="9"></a></h2><p>もう少し複雑な例として、ワイブル分布のサンプル データをシミュレートし、x の ECDF を計算します。</p><pre class="codeinput">n = 100;
+x = wblrnd(2,1,n,1);
+x = sort(x);
+p = ((1:n)-0.5)' ./ n;
+</pre><p>これらのデータをワイブル分布で近似するには、ワイブル分布の CDF が p = Pr{X &lt;= x} = 1 - exp(-(x/a)^b) であることに注意してください。これを log(a) + log(-log(1-p))*(1/b) = log(x) に変換すると、線形関係が再度得られますが、今回は log(-log(1-p)) と log(x) との間の線形関係になります。最小二乗法を使用して、ECDF の x と p を使用して変換されたスケール上に直線で近似することができます。すると、直線の傾きと切片から a と b の推定値を得ることができます。</p><pre class="codeinput">logx = log(x);
+logy = log(-log(1 - p));
+poly = polyfit(logy,logx,1);
+paramHat = [exp(poly(2)) 1/poly(1)]
+</pre><pre class="codeoutput">
+paramHat =
+
+    2.2789    1.0682
+
+</pre><p>データと近似直線を変換されたスケール上にプロットします。</p><pre class="codeinput">plot(logx,logy,<span class="string">'+'</span>, log(paramHat(1)) + logy/paramHat(2),logy,<span class="string">'r--'</span>);
+xlabel(<span class="string">'log(x)'</span>);
+ylabel(<span class="string">'log(-log(1-p))'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_04.png" alt=""> <p>比較のため、最尤法でデータを近似します。そして、2 つの推定分布を変換されていないスケール上にプロットします。</p><pre class="codeinput">paramMLE = wblfit(x)
+stairs(x,p,<span class="string">'k'</span>);
+hold <span class="string">on</span>
+xgrid = linspace(0,1.1*max(x),100)';
+plot(xgrid,wblcdf(xgrid,paramHat(1),paramHat(2)),<span class="string">'r--'</span>, <span class="keyword">...</span>
+     xgrid,wblcdf(xgrid,paramMLE(1),paramMLE(2)),<span class="string">'b--'</span>);
+hold <span class="string">off</span>
+xlabel(<span class="string">'x'</span>); ylabel(<span class="string">'Cumulative Probability (p)'</span>);
+legend({<span class="string">'Data'</span>,<span class="string">'LS Fit'</span>,<span class="string">'ML Fit'</span>},<span class="string">'location'</span>,<span class="string">'southeast'</span>);
+</pre><pre class="codeoutput">
+paramMLE =
+
+    2.2712    1.0709
+
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_05.png" alt=""> <h2>しきい値パラメーターの例<a name="13"></a></h2><p>しきい値パラメーターが 1 つあるワイブル分布や対数正規分布などの正の分布で近似しなければならないことがあります。たとえば、あるワイブル確率変数が (0,Inf) を超える値を取り、あるしきい値パラメーター c がその範囲を (c,Inf) に移すとします。このしきい値パラメーターが既知である場合は、話は簡単です。ところが、未知の場合には推定しなければなりません。これらのモデルは、最尤法で近似するのは困難です。尤度に複数のモードが存在したり、データにとって理にかなっていないパラメーター値に対しては、不定になることもあるからです。そのため、最尤法は適さないことがよくあります。しかし、最小二乗法の手順にさらに手順を少し加えるだけで、安定した推定値を得ることができます。</p><p>実例を示すため、しきい値が 1 つある 3 パラメーター ワイブル分布のデータをシミュレートします。前の例と同様に、データが特定のモデルに由来することは知られておらず、しきい値も未知であるとします。</p><pre class="codeinput">n = 100;
+x = wblrnd(4,2,n,1) + 4;
+hist(x,20); xlim([0 16]);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_06.png" alt=""> <p>これらのデータを 3 パラメーター ワイブル分布で近似するにはどうすればよいでしょうか。しきい値がたとえば 1 であることがわかっていれば、データからその値を引いてから最小二乗法の手順を使用して、ワイブル分布の形状とスケール パラメーターを推定することができます。</p><pre class="codeinput">x = sort(x);
+p = ((1:n)-0.5)' ./ n;
+logy = log(-log(1-p));
+logxm1 = log(x-1);
+poly1 = polyfit(log(-log(1-p)),log(x-1),1);
+paramHat1 = [exp(poly1(2)) 1/poly1(1)]
+plot(logxm1,logy,<span class="string">'b+'</span>, log(paramHat1(1)) + logy/paramHat1(2),logy,<span class="string">'r--'</span>);
+xlabel(<span class="string">'log(x-1)'</span>);
+ylabel(<span class="string">'log(-log(1-p))'</span>);
+</pre><pre class="codeoutput">
+paramHat1 =
+
+    6.8871    4.8760
+
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_07.png" alt=""> <p>これは、あまり良い近似ではありません。log(x-1) と log(-log(1-p)) には線形関係がありません。もちろんこれは、正確なしきい値を知らないからです。しきい値をさまざまに変えて引き算すると、それに応じてさまざまなプロットとパラメーター推定値を得ることができます。</p><pre class="codeinput">logxm2 = log(x-2);
+poly2 = polyfit(log(-log(1-p)),log(x-2),1);
+paramHat2 = [exp(poly2(2)) 1/poly2(1)]
+</pre><pre class="codeoutput">
+paramHat2 =
+
+    5.8601    4.0069
+
+</pre><pre class="codeinput">logxm4 = log(x-4);
+poly4 = polyfit(log(-log(1-p)),log(x-4),1);
+paramHat4 = [exp(poly4(2)) 1/poly4(1)]
+</pre><pre class="codeoutput">
+paramHat4 =
+
+    3.8036    1.9522
+
+</pre><pre class="codeinput">plot(logxm1,logy,<span class="string">'b+'</span>, logxm2,logy,<span class="string">'r+'</span>, logxm4,logy,<span class="string">'g+'</span>, <span class="keyword">...</span>
+     log(paramHat1(1)) + logy/paramHat1(2),logy,<span class="string">'b--'</span>, <span class="keyword">...</span>
+     log(paramHat2(1)) + logy/paramHat2(2),logy,<span class="string">'r--'</span>, <span class="keyword">...</span>
+     log(paramHat4(1)) + logy/paramHat4(2),logy,<span class="string">'g--'</span>);
+xlabel(<span class="string">'log(x - c)'</span>);
+ylabel(<span class="string">'log(-log(1 - p))'</span>);
+legend({<span class="string">'Threshold = 1'</span> <span class="string">'Threshold = 2'</span> <span class="string">'Threshold = 4'</span>}, <span class="string">'location'</span>,<span class="string">'northwest'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_08.png" alt=""> <p>log(x-4) と log(-log(1-p)) との間の関係は、ほぼ線形に見えます。正しいしきい値パラメーターを引き算するとほぼ線形プロットになるはずなので、これは、しきい値は 4 であると考えるのが理にかなっていることの証拠です。一方、しきい値を 2 および 3 とした場合のプロットは、線形からのズレが一貫して大きくなります。これは、これらの値ではデータとの整合性が取れないことの証拠です。</p><p>この引数を形式化することができます。しきい値パラメーターの各暫定値の場合、対応する暫定ワイブル近似値を変換された変数  log(x-c) と log(-log(1-p)) 上で線形回帰の R^2 値を最大化するパラメーター値と見なすことができます。しきい値パラメーターを推定するには、その 1 手順をさらに実行して、しきい値すべてに対して R^2 値を最大化します。</p><pre class="codeinput">r2 = @(x,y) 1 - norm(y - polyval(polyfit(x,y,1),x)).^2 / norm(y - mean(y)).^2;
+threshObj = @(c) -r2(log(-log(1-p)),log(x-c));
+cHat = fminbnd(threshObj,.75*min(x), .9999*min(x));
+poly = polyfit(log(-log(1-p)),log(x-cHat),1);
+paramHat = [exp(poly(2)) 1/poly(1) cHat]
+logx = log(x-cHat);
+logy = log(-log(1-p));
+plot(logx,logy,<span class="string">'b+'</span>, log(paramHat(1)) + logy/paramHat(2),logy,<span class="string">'r--'</span>);
+xlabel(<span class="string">'log(x - cHat)'</span>);
+ylabel(<span class="string">'log(-log(1 - p))'</span>);
+</pre><pre class="codeoutput">
+paramHat =
+
+    4.0724    2.3401    3.7241
+
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_09.png" alt=""> <h2>非 location-scale ファミリー<a name="19"></a></h2><p>指数分布は scale ファミリーの一種であり、対数スケールではワイブル分布は location-scale ファミリーの一種なので、この最小二乗法はこの 2 つのケースでは明快でした。location-scale 分布で近似する一般的な手順は、次のとおりです。</p><div><ul><li>観測データの ECDF を計算します。</li><li>分布の CDF を変換して、データの関数と累積確率の関数との間の線形関係を得ます。この 2 つの関数には分布パラメーターは関係していませんが、直線の傾きと切片には関係しています。</li><li>ECDF の p と x の値をその変換された CDF に代入し、最小二乗法を使用して直線で近似します。</li><li>直線の傾きと切片に関して、分布パラメーターを解きます。</li></ul></div><p>追加のしきい値パラメーターが 1 つある location-scale ファミリーである分布で近似することが、ほんのわずかに難しいことを知りました。</p><p>しかし、location-scale ファミリーでない他の分布 (ガンマ分布など) は、少し面倒です。線形関係が得られる CDF の変換はありません。ただし、同じような考えを適用することはできます。今回は、未変換の累積確率スケールを改良します。その近似手順を可視化するには、P-P プロットが適切な方法です。</p><p>ECDF の経験的確率が、パラメトリック モデルの近似確率にプロットされる場合、0 から 1 に向かって 1:1 直線上の狭い範囲でばらつきます。これは、パラメーター値が観測データをよく説明する分布を定義することを示しています。なぜなら、近似された CDF は経験的 CDF をよく近似するからです。考え方は、確率プロットを 1:1 直線にできるだけ近づけるパラメーター値を見つける、ということです。分布がデータの良いモデルではない場合、これはそもそも不可能かもしれません。P-P プロットが 1:1 直線から一貫して離れる場合には、モデルに疑問の余地があるかもしれません。ただし、これらのプロットの点は独立しているわけではないので、解釈は回帰残差プロットとまったく同じにはならないことを忘れないでください。</p><p>たとえば、データをシミュレートして、ガンマ分布で近似します。</p><pre class="codeinput">n = 100;
+x = gamrnd(2,1,n,1);
+</pre><p>x の ECDF を計算します。</p><pre class="codeinput">x = sort(x);
+pEmp = ((1:n)-0.5)' ./ n;
+</pre><p>ガンマ分布のパラメーターの初期推定値、たとえば a=1 と b=1 を使用して、確率プロットを作成することができます。この推定値はあまり良いものではありません。パラメトリックな CDF の確率は、ECDF の確率に近くありません。a と b の値を変えて試すと、P-P プロット上のばらつき具合および 1:1 直線との相違の程度もそれに応じて変わります。この例では a と b の正しい値がわかっているので、その値を試してみましょう。</p><pre class="codeinput">a0 = 1; b0 = 1;
+p0Fit = gamcdf(x,a0,b0);
+a1 = 2; b1 = 1;
+p1Fit = gamcdf(x,a1,b1);
+plot([0 1],[0 1],<span class="string">'k--'</span>, pEmp,p0Fit,<span class="string">'b+'</span>, pEmp,p1Fit,<span class="string">'r+'</span>);
+xlabel(<span class="string">'Empirical Probabilities'</span>);
+ylabel(<span class="string">'(Provisionally) Fitted Gamma Probabilities'</span>);
+legend({<span class="string">'1:1 Line'</span>,<span class="string">'a=1, b=1'</span>, <span class="string">'a=2, b=1'</span>}, <span class="string">'location'</span>,<span class="string">'southeast'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_10.png" alt=""> <p>a と b の値の 2 番目の集合だと、プロットがはるかに良くなるので、P-P プロットがどれほど直線に近いのかで &quot;適合性&quot; を判定している場合には、データにより適合していると言えます。</p><p>ばらつき具合を 1:1 直線にできるだけ一致させるには、1:1 直線との距離の重み付き二乗和を最小にする a と b の値を見つけます。重みは経験的確率に関して定義され、プロットの中央で最低、端点で最高になります。これらの重みは、近似確率の分散を埋め合わせます。分散は、中央付近で最高、裾で最低になります。この重み付き最小二乗法により、a と b の推定量が決まります。</p><pre class="codeinput">wgt = 1 ./ sqrt(pEmp.*(1-pEmp));
+gammaObj = @(params) sum(wgt.*(gamcdf(x,exp(params(1)),exp(params(2)))-pEmp).^2);
+paramHat = fminsearch(gammaObj,[log(a1),log(b1)]);
+paramHat = exp(paramHat)
+</pre><pre class="codeoutput">
+paramHat =
+
+    2.5161    0.8080
+
+</pre><pre class="codeinput">pFit = gamcdf(x,paramHat(1),paramHat(2));
+plot([0 1],[0 1],<span class="string">'k--'</span>, pEmp,pFit,<span class="string">'b+'</span>);
+xlabel(<span class="string">'Empirical Probabilities'</span>);
+ylabel(<span class="string">'Fitted Gamma Probabilities'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_11.png" alt=""> <p>以前に考慮した location-scale のケースでは、単一の直線近似で分布を近似できたことに注意してください。ここでは、しきい値パラメーターの例と同様に、最適近似パラメーター値を繰り返し見つけなければなりませんでした。</p><h2>モデルの指定ミス<a name="25"></a></h2><p>P-P プロットは、さまざまな分布ファミリーの近似を比較する際にも便利です。これらのデータを対数正規分布で近似するとどうなるでしょうか。</p><pre class="codeinput">wgt = 1 ./ sqrt(pEmp.*(1-pEmp));
+LNobj = @(params) sum(wgt.*(logncdf(x,params(1),exp(params(2)))-pEmp).^2);
+mu0 = mean(log(x)); sigma0 = std(log(x));
+paramHatLN = fminsearch(LNobj,[mu0,log(sigma0)]);
+paramHatLN(2) = exp(paramHatLN(2))
+</pre><pre class="codeoutput">
+paramHatLN =
+
+    0.5447    0.6570
+
+</pre><pre class="codeinput">pFitLN = logncdf(x,paramHatLN(1),paramHatLN(2));
+hold <span class="string">on</span>
+plot(pEmp,pFitLN,<span class="string">'rx'</span>);
+hold <span class="string">off</span>
+ylabel(<span class="string">'Fitted Probabilities'</span>);
+legend({<span class="string">'1:1 Line'</span>, <span class="string">'Fitted Gamma'</span>, <span class="string">'Fitted Lognormal'</span>},<span class="string">'location'</span>,<span class="string">'southeast'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_12.png" alt=""> <p>対数正規近似が裾でガンマ近似からどれほど一貫して離れているのかに注意してください。左側の裾ではよりゆっくり成長し、右側の裾ではよりゆっくり消滅します。ガンマ分布の方がデータの近似度がわずかに高いようです。</p><h2>対数正規しきい値パラメーターの例<a name="28"></a></h2><p>対数正規分布は、最尤法により簡単に近似することができます。いったんデータに対数変換が適用されると、最尤法は正規分布を近似することと等価であるからです。しかし、対数正規モデルでもしきい値パラメーターを推定しなければならないこともあります。そのようなモデルの尤度は有界でないので、最尤法ではうまくいきません。ところが、最小二乗法なら推定することができます。2 パラメーター対数正規分布は、location-scale ファミリーに対数変換することができるので、前述のしきい値パラメーターが 1 つあるワイブル分布で近似する例と同じ手順を踏むことができます。ただしここでは、ガンマ分布で近似した前の例と同様に、累積確率スケール上で推定します。</p><p>実例を示すため、しきい値が 1 つある 3 パラメーター対数正規分布のデータをシミュレートします。</p><pre class="codeinput">n = 200;
+x = lognrnd(0,.5,n,1) + 10;
+hist(x,20); xlim([8 15]);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_13.png" alt=""> <p>x の ECDF を計算し、最適な 3 パラメーター対数正規分布のパラメーターを見つけます。</p><pre class="codeinput">x = sort(x);
+pEmp = ((1:n)-0.5)' ./ n;
+wgt = 1 ./ sqrt(pEmp.*(1-pEmp));
+LN3obj = @(params) sum(wgt.*(logncdf(x-params(3),params(1),exp(params(2)))-pEmp).^2);
+c0 = .99*min(x);
+mu0 = mean(log(x-c0)); sigma0 = std(log(x-c0));
+paramHat = fminsearch(LN3obj,[mu0,log(sigma0),c0]);
+paramHat(2) = exp(paramHat(2))
+</pre><pre class="codeoutput">
+paramHat =
+
+   -0.2443    0.5767   10.1488
+
+</pre><pre class="codeinput">pFit = logncdf(x-paramHat(3),paramHat(1),paramHat(2));
+plot(pEmp,pFit,<span class="string">'b+'</span>, [0 1],[0 1],<span class="string">'k--'</span>);
+xlabel(<span class="string">'Empirical Probabilities'</span>);
+ylabel(<span class="string">'Fitted 3-param Lognormal Probabilities'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_14.png" alt=""> <h2>精度の尺度<a name="31"></a></h2><p>パラメーターの推定は、話の一部にすぎません。モデル近似には推定値、特に標準誤差の精度を評価することも必要です。最尤法では、情報行列と大きい標本の漸近引数を使用して、標本抽出を繰り返して推定量の共分散行列の近似値を求めるのが一般的です。最小二乗法の推定量には、そのような理論はありません。</p><p>ただし、モンテ カルロ シミュレーションには、標準誤差を推定するための別の方法があります。近似モデルを使用してデータセットを多数生成すると、モンテ カルロ標準偏差で推定量の標準誤差の近似値を求めることができます。簡単にするため、近似関数を別のファイル <a href="matlab:edit('logn3fit.m')"><tt>logn3fit.m</tt></a> に定義しておきました。</p><pre class="codeinput">estsSim = zeros(1000,3);
+<span class="keyword">for</span> i = 1:size(estsSim,1)
+    xSim = lognrnd(paramHat(1),paramHat(2),n,1) + paramHat(3);
+    estsSim(i,:) = logn3fit(xSim);
+<span class="keyword">end</span>
+std(estsSim)
+</pre><pre class="codeoutput">
+ans =
+
+    0.1602    0.0914    0.1164
+
+</pre><p>推定値の分布を調べること、近似的正規性の仮定がこの標本サイズにとって理にかなっているかどうかをチェックすること、またはバイアスがないかどうかをチェックすることも役立つかもしれません。</p><pre class="codeinput">subplot(3,1,1), hist(estsSim(:,1),20);
+title(<span class="string">'Log-Location Parameter Bootstrap Estimates'</span>);
+subplot(3,1,2), hist(estsSim(:,2),20);
+title(<span class="string">'Log-Scale Parameter Bootstrap Estimates'</span>);
+subplot(3,1,3), hist(estsSim(:,3),20);
+title(<span class="string">'Threshold Parameter Bootstrap Estimates'</span>);
+</pre><img vspace="5" hspace="5" src="../cdffitdemo_15.png" alt=""> <p>明らかに、しきい値パラメーターの推定量は歪んでいます。これは想定内のことです。推定量は最小データ値によって上に有界だからです。他の 2 つのヒストグラムも、近似的正規性が最初のヒストグラムの  log-location パラメーターにとって疑わしい仮定である可能性があることを示しています。上記で計算した標準誤差を解釈するに当たっては、この点を念頭に置いておく必要があります。そして、log-location パラメーターとしきい値パラメーターについては、信頼区間を通常の方法で構築することは適切ではない可能性があります。</p><p>シミュレートされた推定値の平均値は、シミュレートされたデータを生成するために使用されるパラメーター値に近い値になります。これは、この手順がこの標本サイズで少なくとも推定値に近いパラメーター値に関してはほぼ不偏であることを示しています。</p><pre class="codeinput">[paramHat; mean(estsSim)]
+</pre><pre class="codeoutput">
+ans =
+
+   -0.2443    0.5767   10.1488
+   -0.2363    0.5779   10.1344
+
+</pre><p>最後になりますが、関数 <tt>bootstrp</tt> を使用して、ブートストラップ標準誤差推定値を計算することもできました。この値は、データについて何のパラメーター仮定も行いません。</p><pre class="codeinput">estsBoot = bootstrp(1000,@logn3fit,x);
+std(estsBoot)
+</pre><pre class="codeoutput">
+ans =
+
+    0.1734    0.0946    0.1259
+
+</pre><p>ブートストラップ標準誤差は、モンテ カルロ計算値から大きく外れてはいません。これは当然です。近似モデルがデータ例の生成元モデルと同じであるからです。</p><h2>まとめ<a name="37"></a></h2><p>ここで説明した近似法は、最尤法では役立つパラメーター推定値を得られない場合に一変量分布で近似するために使用できる最尤法の代替方法の 1 つです。1 つの重要な適用法は、しきい値パラメーターが関係する分布 (3 パラメーター対数正規など) で近似することです。最尤法の推定値の場合には、標準誤差の計算がより難しくなります。これは、解析的近似法が存在しないからです。もっとも、シミュレーションにより、実行可能な代替方法を得ることができます。</p><p>近似法を実演で示すためにここで使用した P-P プロットは、一変量分布で近似しようとしても近似が存在しないことを視覚的に示すものとして、それ単独でも便利なものです。</p><p class="footer">Copyright 2005-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Fitting a Univariate Distribution Using Cumulative Probabilities % The most common method for fitting a univariate distribution to data is % maximum likelihood.  But maximum likelihood does not work in all cases, and % other estimation methods, such as the Method of Moments, are sometimes % needed.  This demo describes another generally-applicable method for fitting % univariate distributions that can be useful in cases when maximum likelihood % fails, for example for some models that include a threshold parameter.  When % applicable, maximum likelihood is probably the better choice of methods, % because it is often more efficient.  But the method described here provides % another tool that can be used when needed.  %   Copyright 2005-2009 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:29:28 $   %% Fitting an Exponential Distribution Using Least Squares % The term "least squares" is most commonly used in the context of fitting a % regression line or surface to model a response variable as a function of one % or more predictor variables.  The method described here is a very different % application of least squares: univariate distribution fitting, with only a % single variable. % % To demonstrate, first simulate some sample data.  We'll use an exponential % distribution to generate the data.  For the purposes of this example, as in % practice, we'll assume that the data are not known to have come from a % particular model. rand('state',0); randn('state',0); n = 100; x = exprnd(2,n,1);  %% % Next, compute the empirical cumulative distribution function (ECDF) of the % data. This is simply a step function with a jump in cumulative probability, % p, of 1/n at each data point, x. x = sort(x); p = ((1:n)-0.5)' ./ n; stairs(x,p,'k-'); xlabel('x'); ylabel('Cumulative probability (p)');  %% % We'll fit an exponential distribution to these data.  One way to do that is % to find the exponential distribution whose cumulative distribution function % (CDF) best approximates (in a sense to be explained below) the ECDF of the % data.  The exponential CDF is p = Pr{X <= x} = 1 - exp(-x/mu).  Transforming % that to -log(1-p)*mu = x gives a linear relationship between -log(1-p) and % x.  If the data do come from an exponential, we ought to see, at least % approximately, a linear relationship if we plug the computed x and p values % from the ECDF into that equation.  If we use least squares to fit a straight % line through the origin to x vs. -log(1-p), then that fitted line represents % the exponential distribution that is "closest" to the data.  The slope of % the line is an estimate of the parameter mu. % % Equivalently, we can think of y = -log(1-p) as an "idealized sample" from a % standard (mean 1) exponential distribution. These idealized values are % exactly equally spaced on the probability scale.  A Q-Q plot of x and y % ought to be approximately linear if the data come from an exponential % distribution, and we'll fit the least squares line through the origin to x % vs. y. y = -log(1 - p); muHat = y \ x  %% % Plot the data and the fitted line. plot(x,y,'+', y*muHat,y,'rREPLACE_WITH_DASH_DASH'); xlabel('x'); ylabel('y = -log(1-p)'); %% % Notice that the linear fit we've made minimizes the sum of squared errors in % the horizontal, or "x", direction.  That's because the values for y = % -log(1-p) are deterministic, and it's the x values that are random.  It's % also possible to regress y vs. x, or to use other types of linear fits, for % example, weighted regression, orthogonal regression, or even robust % regression. We will not explore those possibilities here.  %% % For comparison, fit the data by maximum likelihood. muMLE = expfit(x)  %% % Now plot the two estimated distributions on the untransformed cumulative % probability scale. stairs(x,p,'k-'); hold on xgrid = linspace(0,1.1*max(x),100)'; plot(xgrid,expcdf(xgrid,muHat),'rREPLACE_WITH_DASH_DASH', xgrid,expcdf(xgrid,muMLE),'bREPLACE_WITH_DASH_DASH'); hold off xlabel('x'); ylabel('Cumulative Probability (p)'); legend({'Data','LS Fit','ML Fit'},'location','southeast'); %% % The two methods give very similar fitted distributions, although the LS fit % has been influenced more by observations in the tail of the distribution.   %% Fitting a Weibull Distribution % For a slightly more complex example, simulate some sample data from a % Weibull distribution, and compute the ECDF of x. n = 100; x = wblrnd(2,1,n,1); x = sort(x); p = ((1:n)-0.5)' ./ n;  %% % To fit a Weibull distribution to these data, notice that the CDF for the % Weibull is p = Pr{X <= x} = 1 - exp(-(x/a)^b). Transforming that to log(a) + % log(-log(1-p))*(1/b) = log(x) again gives a linear relationship, this time % between log(-log(1-p)) and log(x).  We can use least squares to fit a % straight line on the transformed scale using p and x from the ECDF, and the % slope and intercept of that line lead to estimates of a and b. logx = log(x); logy = log(-log(1 - p)); poly = polyfit(logy,logx,1); paramHat = [exp(poly(2)) 1/poly(1)]  %% % Plot the data and the fitted line on the transformed scale. plot(logx,logy,'+', log(paramHat(1)) + logy/paramHat(2),logy,'rREPLACE_WITH_DASH_DASH'); xlabel('log(x)'); ylabel('log(-log(1-p))');  %% % For comparison, fit the data by maximum likelihood, and plot the two % estimated distributions on the untransformed scale. paramMLE = wblfit(x) stairs(x,p,'k'); hold on xgrid = linspace(0,1.1*max(x),100)'; plot(xgrid,wblcdf(xgrid,paramHat(1),paramHat(2)),'rREPLACE_WITH_DASH_DASH', ...      xgrid,wblcdf(xgrid,paramMLE(1),paramMLE(2)),'bREPLACE_WITH_DASH_DASH'); hold off xlabel('x'); ylabel('Cumulative Probability (p)'); legend({'Data','LS Fit','ML Fit'},'location','southeast');   %% A Threshold Parameter Example % It's sometimes necessary to fit positive distributions like the Weibull or % lognormal with a threshold parameter.  For example, a Weibull random % variable takes values over (0,Inf), and a threshold parameter, c, shifts % that range to (c,Inf).  If the threshold parameter is known, then there is % no difficulty.  But if the threshold parameter is not known, it must instead % be estimated.  These models are difficult to fit with maximum likelihood REPLACE_WITH_DASH_DASH % the likelihood can have multiple modes, or even become infinite for % parameter values that are not reasonable for the data, and so maximum % likelihood is often not a good method.  But with a small addition to the % least squares procedure, we can get stable estimates. % % To illustrate, we'll simulate some data from a three-parameter Weibull % distribution, with a threshold value.  As above, we'll assume for the % purposes of the example that the data are not known to have come from a % particular model, and that the threshold is not known. n = 100; x = wblrnd(4,2,n,1) + 4; hist(x,20); xlim([0 16]);  %% % How can we fit a three-parameter Weibull distribution to these data?  If we % knew what the threshold value was, 1 for example, we could subtract that % value from the data and then use the least squares procedure to estimate the % Weibull shape and scale parameters. x = sort(x); p = ((1:n)-0.5)' ./ n; logy = log(-log(1-p)); logxm1 = log(x-1); poly1 = polyfit(log(-log(1-p)),log(x-1),1); paramHat1 = [exp(poly1(2)) 1/poly1(1)] plot(logxm1,logy,'b+', log(paramHat1(1)) + logy/paramHat1(2),logy,'rREPLACE_WITH_DASH_DASH'); xlabel('log(x-1)'); ylabel('log(-log(1-p))');  %% % That's not a very good fit REPLACE_WITH_DASH_DASH log(x-1) and log(-log(1-p)) do not have a % linear relationship.  Of course, that's because we don't know the correct % threshold value.  If we try subtracting different threshold values, we get % different plots and different parameter estimates. logxm2 = log(x-2); poly2 = polyfit(log(-log(1-p)),log(x-2),1); paramHat2 = [exp(poly2(2)) 1/poly2(1)] %% logxm4 = log(x-4); poly4 = polyfit(log(-log(1-p)),log(x-4),1); paramHat4 = [exp(poly4(2)) 1/poly4(1)] %% plot(logxm1,logy,'b+', logxm2,logy,'r+', logxm4,logy,'g+', ...      log(paramHat1(1)) + logy/paramHat1(2),logy,'bREPLACE_WITH_DASH_DASH', ...      log(paramHat2(1)) + logy/paramHat2(2),logy,'rREPLACE_WITH_DASH_DASH', ...      log(paramHat4(1)) + logy/paramHat4(2),logy,'gREPLACE_WITH_DASH_DASH'); xlabel('log(x - c)'); ylabel('log(-log(1 - p))'); legend({'Threshold = 1' 'Threshold = 2' 'Threshold = 4'}, 'location','northwest');  %% % The relationship between log(x-4) and log(-log(1-p)) appears approximately % linear.  Since we'd expect to see an approximately linear plot if we % subtracted the true threshold parameter, this is evidence that 4 might be a % reasonable value for the threshold.  On the other hand, the plots for 2 and % 3 differ more systematically from linear, which is evidence that those % values are not consistent with the data. % % This argument can be formalized.  For each provisional value of the % threshold parameter, the corresponding provisional Weibull fit can be % characterized as the parameter values that maximize the R^2 value of a % linear regression on the transformed variables log(x-c) and log(-log(1-p)). % To estimate the threshold parameter, we can carry that one step further, and % maximize the R^2 value over all possible threshold values. r2 = @(x,y) 1 - norm(y - polyval(polyfit(x,y,1),x)).^2 / norm(y - mean(y)).^2; threshObj = @(c) -r2(log(-log(1-p)),log(x-c)); cHat = fminbnd(threshObj,.75*min(x), .9999*min(x)); poly = polyfit(log(-log(1-p)),log(x-cHat),1); paramHat = [exp(poly(2)) 1/poly(1) cHat] logx = log(x-cHat); logy = log(-log(1-p)); plot(logx,logy,'b+', log(paramHat(1)) + logy/paramHat(2),logy,'rREPLACE_WITH_DASH_DASH'); xlabel('log(x - cHat)'); ylabel('log(-log(1 - p))');   %% Non-Location-Scale Families % The exponential distribution is a scale family, and on the log scale, the % Weibull distribution is a location-scale family, so this least squares % method was straightforward in those two cases.  The general procedure to % fit a location-scale distribution is % % * Compute the ECDF of the observed data. % * Transform the distribution's CDF to get a linear relationship between % some function of the data and some function of the cumulative % probability.  These two functions do not involve the distribution % parameters, but the slope and intercept of the line do. % * Plug the values of x and p from the ECDF into that transformed CDF, % and fit a straight line using least squares. % * Solve for the distribution parameters in terms of the slope and % intercept of the line. % % We also saw that fitting a distribution that is a location-scale family % with an additional a threshold parameter is only slightly more difficult. % % But other distributions that are not location-scale families, like the % gamma, are a bit trickier.  There's no transformation of the CDF that will % give a relationship that is linear.  However, we can use a similar idea, % only this time working on the untransformed cumulative probability scale.  A % P-P plot is the appropriate way to visualize that fitting procedure. % % If the empirical probabilities from the ECDF are plotted against fitted % probabilities from a parametric model, a tight scatter along the 1:1 line % from zero to one indicates that the parameter values define a distribution % that explains the observed data well, because the fitted CDF approximates % the empirical CDF well.  The idea is to find parameter values that make the % probability plot as close to the 1:1 line as possible.  That may not even be % possible, if the distribution is not a good model for the data.  If the P-P % plot shows a systematic departure from the 1:1 line, then the model may be % questionable.  However, it's important to remember that since the points in % these plots are not independent, interpretation is not exactly the same as a % regression residual plot. % % For example, we'll simulate some data and fit a gamma distribution. n = 100; x = gamrnd(2,1,n,1);  %% % Compute the ECDF of x. x = sort(x); pEmp = ((1:n)-0.5)' ./ n;  %% % We can make a probability plot using any initial guess for the gamma % distribution's parameters, a=1 and b=1, say.  That guess is not very good REPLACE_WITH_DASH_DASH % the probabilities from the parametric CDF are not close to the probabilities % from the ECDF.  If we tried a different a and b, we'd get a different % scatter on the P-P plot, with a different discrepancy from the 1:1 line. % Since we know the true a and b in this example, we'll try those values. a0 = 1; b0 = 1; p0Fit = gamcdf(x,a0,b0); a1 = 2; b1 = 1; p1Fit = gamcdf(x,a1,b1); plot([0 1],[0 1],'kREPLACE_WITH_DASH_DASH', pEmp,p0Fit,'b+', pEmp,p1Fit,'r+'); xlabel('Empirical Probabilities'); ylabel('(Provisionally) Fitted Gamma Probabilities'); legend({'1:1 Line','a=1, b=1', 'a=2, b=1'}, 'location','southeast');  %% % The second set of values for a and b make for a much better plot, and thus % are more compatible with the data, if you are measuring "compatible" by how % straight you can make the P-P plot. % % To make the scatter match the 1:1 line as closely possible, we can find the % values of a and b that minimize a weighted sum of the squared distances to % the 1:1 line.  The weights are defined in terms of the empirical % probabilities, and are lowest in the center of the plot and highest at the % extremes.  These weights compensate for the variance of the fitted % probabilities, which is highest near the median and lowest in the tails. % This weighted least squares procedure defines the estimator for a and b. wgt = 1 ./ sqrt(pEmp.*(1-pEmp)); gammaObj = @(params) sum(wgt.*(gamcdf(x,exp(params(1)),exp(params(2)))-pEmp).^2); paramHat = fminsearch(gammaObj,[log(a1),log(b1)]); paramHat = exp(paramHat)  %% pFit = gamcdf(x,paramHat(1),paramHat(2)); plot([0 1],[0 1],'kREPLACE_WITH_DASH_DASH', pEmp,pFit,'b+'); xlabel('Empirical Probabilities'); ylabel('Fitted Gamma Probabilities'); %% % Notice that in the location-scale cases considered earlier, we could fit the % distribution with a single straight line fit.  Here, as with the threshold % parameter example, we had to iteratively find the best-fit parameter values.   %% Model Misspecification % The P-P plot can also be useful for comparing fits from different % distribution families.  What happens if we try to fit a lognormal % distribution to these data? wgt = 1 ./ sqrt(pEmp.*(1-pEmp)); LNobj = @(params) sum(wgt.*(logncdf(x,params(1),exp(params(2)))-pEmp).^2); mu0 = mean(log(x)); sigma0 = std(log(x)); paramHatLN = fminsearch(LNobj,[mu0,log(sigma0)]); paramHatLN(2) = exp(paramHatLN(2))  %% pFitLN = logncdf(x,paramHatLN(1),paramHatLN(2)); hold on plot(pEmp,pFitLN,'rx'); hold off ylabel('Fitted Probabilities'); legend({'1:1 Line', 'Fitted Gamma', 'Fitted Lognormal'},'location','southeast'); %% % Notice how the lognormal fit differs systematically from the gamma fit in the % tails. It grows more slowly in the left tail, and dies more slowly in the % right tail.  The gamma seems to be a slightly better fit to the data.   %% A Lognormal Threshold Parameter Example % The lognormal distribution is simple to fit by maximum likelihood, because % once the log transformation is applied to the data, maximum likelihood is % identical to fitting a normal.  But it is sometimes necessary to estimate a % threshold parameter in a lognormal model.  The likelihood for such a model % is unbounded, and so maximum likelihood does not work.  However, the least % squares method provides a way to make estimates.  Since the two-parameter % lognormal distribution can be log-transformed to a location-scale family, we % could follow the same steps as in the earlier example that demonstrated % fitting a Weibull distribution with threshold parameter.  Here, however, % we'll do the estimation on the cumulative probability scale, as in the % previous example demonstrating a fit with the gamma distribution. % % To illustrate, we'll simulate some data from a three-parameter lognormal % distribution, with a threshold. n = 200; x = lognrnd(0,.5,n,1) + 10; hist(x,20); xlim([8 15]);  %% % Compute the ECDF of x, and find the parameters for the best-fit % three-parameter lognormal distribution. x = sort(x); pEmp = ((1:n)-0.5)' ./ n; wgt = 1 ./ sqrt(pEmp.*(1-pEmp)); LN3obj = @(params) sum(wgt.*(logncdf(x-params(3),params(1),exp(params(2)))-pEmp).^2); c0 = .99*min(x); mu0 = mean(log(x-c0)); sigma0 = std(log(x-c0)); paramHat = fminsearch(LN3obj,[mu0,log(sigma0),c0]); paramHat(2) = exp(paramHat(2)) %% pFit = logncdf(x-paramHat(3),paramHat(1),paramHat(2)); plot(pEmp,pFit,'b+', [0 1],[0 1],'kREPLACE_WITH_DASH_DASH'); xlabel('Empirical Probabilities'); ylabel('Fitted 3-param Lognormal Probabilities');   %% Measures of Precision % Parameter estimates are only part of the story REPLACE_WITH_DASH_DASH a model fit also needs % some measure of how precise the estimates are, typically standard errors. % With maximum likelihood, the usual method is to use the information matrix % and a large-sample asymptotic argument to approximate the covariance matrix % of the estimator over repeated sampling.  No such theory exists for these % least squares estimators. % % However, Monte-Carlo simulation provides another way to estimate standard % errors.  If we use the fitted model to generate a large number of datasets, % we can approximate the standard error of the estimators with the Monte-Carlo % standard deviation.  For simplicity, we've defined a fitting function in a % separate file, <matlab:edit('logn3fit.m') |logn3fit.m|>.  %% estsSim = zeros(1000,3); for i = 1:size(estsSim,1)     xSim = lognrnd(paramHat(1),paramHat(2),n,1) + paramHat(3);     estsSim(i,:) = logn3fit(xSim); end std(estsSim)  %% % It might also be useful to look at the distribution of the estimates, to % check if the assumption of approximate normality is reasonable for this % sample size, or to check for bias. subplot(3,1,1), hist(estsSim(:,1),20); title('Log-Location Parameter Bootstrap Estimates'); subplot(3,1,2), hist(estsSim(:,2),20); title('Log-Scale Parameter Bootstrap Estimates'); subplot(3,1,3), hist(estsSim(:,3),20); title('Threshold Parameter Bootstrap Estimates'); %% % Clearly, the estimator for the threshold parameter is skewed.  This is to be % expected, since it is bounded above by the minimum data value.  The other % two histograms indicate that approximate normality might be a questionable % assumption for the log-location parameter (the first histogram) as well.  The % standard errors computed above must be interpreted with that in mind, and % the usual construction for confidence intervals might not be appropriate for % the log-location and threshold parameters. % % The means of the simulated estimates are close to the parameter values used % to generate simulated data, indicating that the procedure is approximately % unbiased at this sample size, at least for parameter values near the % estimates. [paramHat; mean(estsSim)]  %% % Finally, we could also have used the function |bootstrp| to compute % bootstrap standard error estimates.  These do not make any parametric % assumptions about the data. estsBoot = bootstrp(1000,@logn3fit,x); std(estsBoot) %% % The bootstrap standard errors are not far off from the Monte-Carlo % calculations. That's not surprising, since the fitted model is the same one % from which the example data were generated.  %% Summary % The fitting method described here is an alternative to maximum likelihood % that can be used to fit univariate distributions when maximum likelihood % fails to provide useful parameter estimates.  One important application is % in fitting distributions involving a threshold parameter, such as the % three-parameter lognormal.  Standard errors are more difficult to compute % than for maximum likelihood estimates, because analytic approximations do % not exist, but simulation provides a feasible alternative. % % The P-P plots used here to illustrate the fitting method are useful in their % own right, as a visual indication of lack of fit when fitting a univariate % distribution.   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

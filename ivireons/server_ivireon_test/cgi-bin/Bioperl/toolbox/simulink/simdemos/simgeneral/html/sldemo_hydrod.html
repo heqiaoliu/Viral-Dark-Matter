@@ -1,0 +1,221 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Two Cylinder Model with Load Constraints</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_hydrod.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_hydrod.mdl</div><div class="right"><a href="matlab:sldemo_hydrod">Open this model</a></div></div><div class="content"><h1>Two Cylinder Model with Load Constraints</h1><!--introduction--><p>In this model, a rigid rod supporting a large mass interconnects two hydraulic actuators. The model eliminates the springs as it applies the piston forces directly to the load. These forces balance the gravitational force and result in both linear and rotational displacement.</p><p>See two related demos that use the same basic components: <a href="matlab:open_system('sldemo_hydcyl4')">four cylinder model</a> and <a href="matlab:open_system('sldemo_hydcyl')">single cylinder model</a>.</p><div><ul><li>Note: This is a basic hydraulics demo. You can more easily build hydraulic and automotive models using SimDriveline&#8482; and SimHydraulics&reg;.</li></ul></div><div><ul><li><b>SimHydraulics</b> extends Simulink&reg; with tools for modeling and simulating hydraulic power and control systems. It enables you to describe multi-domain systems containing connected hydraulic and mechanical components as physical networks.</li></ul></div><div><ul><li><b>SimDriveline</b> extends Simulink with tools for modeling and simulating the mechanics of driveline (drivetrain) systems. These tools include components such as gears, rotating shafts, and clutches; standard transmission templates; engine and tire models.</li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analysis and Physics of the Model</a></li><li><a href="#5">Opening the Model and Running the Simulation</a></li><li><a href="#7">'Mechanical Load' Subsystem</a></li><li><a href="#9">Simulation Parameters</a></li><li><a href="#12">Results</a></li><li><a href="#15">Close Model</a></li><li><a href="#16">Conclusions</a></li></ul></div><h2>Analysis and Physics of the Model<a name="1"></a></h2><p>We assume the rotation angle of the rod is small. The equations of motion for the rod are given below in Equation Block 1. The equations describing the cylinder and pump behavior are the same as in the single cylinder demo.</p><p><b>Equation Block 1:</b></p><p><img src="sldemo_hydrod_eq42144.png" alt="$$M \frac{d^2 z}{d t^2} = F_b + F_a + F_{ext} $$"></p><p><img src="sldemo_hydrod_eq52637.png" alt="$$I \frac{d^2 \theta}{d t^2} = \frac{L}{2}F_b - \frac{L}{2}F_a $$"></p><p><img src="sldemo_hydrod_eq21100.png" alt="$$ z        - \mbox{ displacement at the center } $$"></p><p><img src="sldemo_hydrod_eq45697.png" alt="$$ M        - \mbox{ total mass } $$"></p><p><img src="sldemo_hydrod_eq05465.png" alt="$$ F_a      - \mbox{ piston A force } $$"></p><p><img src="sldemo_hydrod_eq20714.png" alt="$$ F_b      - \mbox{ piston B force } $$"></p><p><img src="sldemo_hydrod_eq24875.png" alt="$$ F_{ext}  - \mbox{ external force at center } $$"></p><p><img src="sldemo_hydrod_eq60068.png" alt="$$ \theta   - \mbox{ clockwise angular displacement } $$"></p><p><img src="sldemo_hydrod_eq02117.png" alt="$$ I        - \mbox{ moment of inertia of the rod } $$"></p><p><img src="sldemo_hydrod_eq28011.png" alt="$$ L        - \mbox{ rod length } $$"></p><p>The positions and velocities of the individual pistons follow directly from the geometry. See the corresponding equations below in Equation Block 2.</p><p><b>Equation Block 2:</b></p><p><img src="sldemo_hydrod_eq57226.png" alt="$$ z_a = z - \theta \frac{L}{2} $$"></p><p><img src="sldemo_hydrod_eq55672.png" alt="$$ z_b = z + \theta \frac{L}{2} $$"></p><p><img src="sldemo_hydrod_eq94887.png" alt="$$ \frac{d z_a}{dt} = \frac{d z}{dt} - \frac{d \theta}{dt} \frac{L}{2} $$"></p><p><img src="sldemo_hydrod_eq27441.png" alt="$$ \frac{d z_b}{dt} = \frac{d z}{dt} + \frac{d \theta}{dt} \frac{L}{2} $$"></p><p><img src="sldemo_hydrod_eq27248.png" alt="$$ z_a - \mbox{ piston A displacement } $$"></p><p><img src="sldemo_hydrod_eq35069.png" alt="$$ z_b - \mbox{ piston B displacement } $$"></p><h2>Opening the Model and Running the Simulation<a name="5"></a></h2><p>To <a href="matlab:open_system('sldemo_hydrod')">open this model</a>, type <tt>sldemo_hydrod</tt> at MATLAB&reg; terminal (click on the hyperlink if you are using MATLAB Help). Press the "Play" button on the model toolbar to run the simulation.</p><div><ul><li>Note: The model logs relevant data to MATLAB workspace in a structure called <tt>sldemo_hydrod_output</tt>. Logged signals have a blue indicator (<a href="matlab:open_system('sldemo_hydrod')">see the model</a>). Read more about Signal Logging in Simulink Help.</li></ul></div><div><ul><li>Note: The model logs all the continuous states of the system to MATLAB workspace in a structure called <tt>xout</tt>. Each state is assigned a name to facilitate data logging. The names of the states are available in the 'stateName' field of <tt>xout.signals</tt>. Read more about state names in Simulink Help.</li></ul></div><img vspace="5" hspace="5" src="sldemo_hydrod_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_hydrod_02.png" alt=""> <img vspace="5" hspace="5" src="sldemo_hydrod_03.png" alt=""> <p><b>Figure 1:</b> Two cylinder model and simulation results</p><h2>'Mechanical Load' Subsystem<a name="7"></a></h2><p>This subsystem is shown in Figure 2. It solves the equations of motion, which we compute directly using standard Simulink blocks. It is assumed that the rotation angle is small. Look under the mask of the 'Mechanical Load' subsystem to see its structure (right click on the subsystem &gt; select "Look Under Mask").</p><img vspace="5" hspace="5" src="sldemo_hydrod_04.png" alt=""> <p><b>Figure 2:</b> 'Mechanical Load' subsystem</p><h2>Simulation Parameters<a name="9"></a></h2><p>The parameters used in this simulation are identical to the parameters used in the <a href="matlab:open_system('sldemo_hydcyl')">single cylinder model</a>, except for the following:</p><pre>L     = 1.5 m
+M     = 2500 kg
+I     = 100 kg/m^2
+Qpump = 0.005 m^3/sec (constant)
+C2    = 3e-10 m^3/sec/Pa
+Fext  = -9.81*M Newtons</pre><p>Although the pump flow is constant, the model controls the valves independently. Initially, at <tt>t = 0</tt>, the cross-section of valve B is zero. It grows linearly to <tt>1.2e-5 m^2</tt> at <tt>t = 0.01 sec</tt>, and then linearly decreases to zero at <tt>t = 0.02 sec</tt>. The cross-section of valve A is <tt>1.2e-5 sq.m.</tt> at <tt>t = 0</tt> and it linearly decreases to zero at <tt>t = 0.01 sec</tt>, then it linearly increases to <tt>1.2e-5 sq.m.</tt> at <tt>t = 0.02 sec</tt>. Then the behavior of the valves A and B repeats periodically with the same pattern. In other words the valves A and B are 180 degrees out of phase.</p><h2>Results<a name="12"></a></h2><p>Figures 3 and 4 show the linear and angular displacements of the rod. The linear displacement response is typical of a type-one integrating system. The relative positions and the angular movement of the rod illustrate the response of the two pistons to the out-of-phase control signals (the cross-section of the valves A and B).</p><img vspace="5" hspace="5" src="sldemo_hydrod_05.png" alt=""> <p><b>Figure 3:</b> Linear displacement of the pistons and the load (load is in the middle of the rod)</p><img vspace="5" hspace="5" src="sldemo_hydrod_06.png" alt=""> <p><b>Figure 4:</b> Angular displacement of the rod</p><h2>Close Model<a name="15"></a></h2><p>Close the model and clear all generated data.</p><h2>Conclusions<a name="16"></a></h2><p>Simulink provides a productive environment for simulating hydraulic systems, offering enhancements that provide enormous productivity in modeling and flexibility in numerical methods. The use of masked subsystems and model libraries facilitates structured modeling with automatic component updates. As users modify library elements, the models that use the elements automatically incorporate the new versions. Simulink can use differential-algebraic equations (DAEs) to model some fluid elements as incompressible and others as compliant, allowing efficient solutions for complex systems of interdependent circuits.</p><p>Models such as this one can ultimately be used as part of overall plant or vehicle systems. The hierarchical nature of Simulink allows independently developed hydraulic actuators to be placed, as appropriate, in larger system models (for example adding controls in the form of sensors or valves). In cases such as these, tools from the MATLAB Control System Toolbox&#8482; can analyze and tune the overall closed-loop system. The MATLAB/Simulink environment can thus support the entire design, analysis, and modeling cycle.</p><p class="footer">Copyright 2006-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Two Cylinder Model with Load Constraints
+%
+% In this model, a rigid rod supporting a large mass interconnects two
+% hydraulic actuators. The model eliminates the springs as it applies the
+% piston forces directly to the load. These forces balance the
+% gravitational force and result in both linear and rotational displacement.
+%
+% See two related demos that use the same basic components:
+% <matlab:open_system('sldemo_hydcyl4') four cylinder model>
+% and <matlab:open_system('sldemo_hydcyl') single cylinder model>.
+%
+% * Note: This is a basic hydraulics demo. You can more easily build hydraulic
+% and automotive models using SimDriveline(TM) and SimHydraulics(R).
+%
+% * *SimHydraulics* extends Simulink(R) with tools for modeling and simulating
+% hydraulic power and control systems. It enables you to describe multi-domain
+% systems containing connected hydraulic and mechanical components as physical
+% networks.
+%
+% * *SimDriveline* extends Simulink with tools for modeling and simulating the
+% mechanics of driveline (drivetrain) systems. These tools include components
+% such as gears, rotating shafts, and clutches; standard transmission templates;
+% engine and tire models.
+
+%   Copyright 2006-2009 The MathWorks, Inc.
+
+%% Analysis and Physics of the Model
+%
+% We assume the rotation angle of the rod is small. The equations of motion
+% for the rod are given below in Equation Block 1. The equations
+% describing the cylinder and pump behavior are the same as in the
+% single cylinder demo.
+
+%%
+% *Equation Block 1:*
+%
+% $$M \frac{d^2 z}{d t^2} = F_b + F_a + F_{ext} $$
+%
+% $$I \frac{d^2 \theta}{d t^2} = \frac{L}{2}F_b - \frac{L}{2}F_a $$
+%
+% $$ z        - \mbox{ displacement at the center } $$
+%
+% $$ M        - \mbox{ total mass } $$
+%
+% $$ F_a      - \mbox{ piston A force } $$
+%
+% $$ F_b      - \mbox{ piston B force } $$
+%
+% $$ F_{ext}  - \mbox{ external force at center } $$
+%
+% $$ \theta   - \mbox{ clockwise angular displacement } $$
+%
+% $$ I        - \mbox{ moment of inertia of the rod } $$
+%
+% $$ L        - \mbox{ rod length } $$
+
+%%
+% The positions and velocities of the individual pistons follow directly
+% from the geometry. See the corresponding equations below in Equation Block 2.  
+
+%%
+% *Equation Block 2:*
+% 
+% $$ z_a = z - \theta \frac{L}{2} $$ 
+%
+% $$ z_b = z + \theta \frac{L}{2} $$ 
+%
+% $$ \frac{d z_a}{dt} = \frac{d z}{dt} - \frac{d \theta}{dt} \frac{L}{2} $$ 
+%
+% $$ \frac{d z_b}{dt} = \frac{d z}{dt} + \frac{d \theta}{dt} \frac{L}{2} $$
+% 
+% $$ z_a - \mbox{ piston A displacement } $$
+%
+% $$ z_b - \mbox{ piston B displacement } $$
+
+
+%% Opening the Model and Running the Simulation 
+%
+% To <matlab:open_system('sldemo_hydrod') open this model>, type
+% |sldemo_hydrod| at MATLAB(R) terminal (click on the hyperlink if you are
+% using MATLAB Help). Press the "Play" button on the model toolbar to run
+% the simulation. 
+%
+% * Note: The model logs relevant data to MATLAB workspace in a structure
+% called |sldemo_hydrod_output|. Logged signals have a blue indicator
+% (<matlab:open_system('sldemo_hydrod') see 
+% the model>). Read more about Signal Logging in Simulink Help.
+%
+% * Note: The model logs all the continuous states of the system to MATLAB
+% workspace in a structure called |xout|. Each state is assigned a name to
+% facilitate data logging. The names of the states are available in the
+% 'stateName' field of |xout.signals|. Read more about state names in Simulink Help.
+
+open_system('sldemo_hydrod');   % hidden code, not displayed in HTML demo page
+evalc('sim(''sldemo_hydrod'')');  % run simulation, don't display output
+
+%%
+% *Figure 1:* Two cylinder model and simulation results
+
+%% 'Mechanical Load' Subsystem 
+%
+% This subsystem is shown in Figure 2. It solves the equations of motion, which
+% we compute directly using standard Simulink blocks. It is assumed that the
+% rotation angle is small. Look under the mask of the 'Mechanical Load'
+% subsystem to see its structure (right click on the subsystem > select "Look
+% Under Mask").
+
+open_system('sldemo_hydrod/Mechanical Load','force');
+
+%%
+% *Figure 2:* 'Mechanical Load' subsystem
+
+%% Simulation Parameters
+%
+% The parameters used in this simulation are identical to the parameters used in
+% the <matlab:open_system('sldemo_hydcyl') single cylinder model>, except
+% for the following:
+
+%%
+%  L     = 1.5 m
+%  M     = 2500 kg
+%  I     = 100 kg/m^2
+%  Qpump = 0.005 m^3/sec (constant)
+%  C2    = 3e-10 m^3/sec/Pa
+%  Fext  = -9.81*M Newtons
+
+%% 
+%
+% Although the pump flow is constant, the model controls the valves
+% independently. Initially, at |t = 0|, the cross-section of valve B is zero.
+% It grows linearly to |1.2e-5 m^2| at |t = 0.01 sec|, and then linearly
+% decreases to zero at |t = 0.02 sec|. The cross-section of valve A is |1.2e-5
+% sq.m.| at |t = 0| and it linearly decreases to zero at |t = 0.01 sec|, then it
+% linearly increases to |1.2e-5 sq.m.| at |t = 0.02 sec|. Then the behavior of the
+% valves A and B repeats periodically with the same pattern. In other words the
+% valves A and B are 180 degrees out of phase.
+
+%% Results
+%
+% Figures 3 and 4 show the linear and angular displacements of the rod. The
+% linear displacement response is typical of a type-one integrating system. The
+% relative positions and the angular movement of the rod illustrate the response
+% of the two pistons to the out-of-phase control signals (the cross-section of
+% the valves A and B).
+%
+
+% Plot Linear and Angular Displacements, hidden code
+plot(sldemo_hydrod_output.LinearDisplacement.za.Time,sldemo_hydrod_output.LinearDisplacement.za.Data,'y',...
+     sldemo_hydrod_output.LinearDisplacement.zb.Time,sldemo_hydrod_output.LinearDisplacement.zb.Data,'r',...
+     sldemo_hydrod_output.LinearDisplacement.z.Time,sldemo_hydrod_output.LinearDisplacement.z.Data,'w');
+set(gca,'Color','k','XGrid','On','XColor',[0.3 0.3 0.3],...
+                    'YGrid','On','YColor',[0.3 0.3 0.3]);
+xlabel('Time (sec)');
+ylabel('Linear Displacement (m)');
+title('Simulation Results: Piston Linear Displacement');
+h = legend('Piston A','Piston B','Load','Location','best');
+set(h,'TextColor','w','Color','none'); clear h;
+
+%%
+% *Figure 3:* Linear displacement of the pistons and the load (load is in the middle of the rod)
+
+plot(sldemo_hydrod_output.theta.Time, sldemo_hydrod_output.theta.Data, 'y');
+set(gca,'Color','k','XGrid','On','XColor',[0.3 0.3 0.3],...
+                    'YGrid','On','YColor',[0.3 0.3 0.3]);
+xlabel('Time (sec)');
+ylabel('Angular Displacement (m)');
+title('Simulation Results: Rod Angular Displacement');
+
+%%
+% *Figure 4:* Angular displacement of the rod
+
+%% Close Model
+%
+% Close the model and clear all generated data.
+
+close_system('sldemo_hydrod', 0);
+clear sldemo_hydrod_output;
+
+%% Conclusions
+%
+% Simulink provides a productive environment for simulating hydraulic
+% systems, offering enhancements that provide enormous productivity in
+% modeling and flexibility in numerical methods. The use of masked
+% subsystems and model libraries facilitates structured modeling with
+% automatic component updates. As users modify library elements,
+% the models that use the elements automatically incorporate the new
+% versions. Simulink can use differential-algebraic equations (DAEs) to
+% model some fluid elements as incompressible and others as compliant,
+% allowing efficient solutions for complex systems of interdependent
+% circuits. 
+%
+% Models such as this one can ultimately be used as part of overall
+% plant or vehicle systems. The hierarchical nature of Simulink allows
+% independently developed hydraulic actuators to be placed, as appropriate,
+% in larger system models (for example adding controls in the form of
+% sensors or valves). In cases such as these, tools from the MATLAB Control System Toolbox(TM)
+% can analyze and tune the overall closed-loop system. The
+% MATLAB/Simulink environment can thus support the entire design, analysis,
+% and modeling cycle.    
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

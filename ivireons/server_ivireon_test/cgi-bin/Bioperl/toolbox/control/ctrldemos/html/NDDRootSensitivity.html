@@ -1,0 +1,123 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Sensitivity of Multiple Roots</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="NDDRootSensitivity.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit NDDRootSensitivity">Open NDDRootSensitivity.m in the Editor</a></div><div class="right"><a href="matlab:echodemo NDDRootSensitivity">Run in the Command Window</a></div></div><div class="content"><h1>Sensitivity of Multiple Roots</h1><!--introduction--><p>This demo shows that high-multiplicity poles have high numerical sensitivity and can shift by significant amounts when switching model representation.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Demo Example</a></li><li><a href="#3">Response Comparison</a></li><li><a href="#8">Cause of Discrepancy</a></li></ul></div><h2>Demo Example<a name="1"></a></h2><p>Poles with high multiplicity and clusters of nearby poles can be very sensitive to rounding errors, which can sometimes have dramatic consequences. This demo uses a 15th-order discrete-time state-space model <tt>Hss</tt> with a cluster of stable poles near <tt>z=1</tt>:</p><pre class="codeinput">load <span class="string">numdemo</span> <span class="string">Hss</span>
+</pre><p>Convert the model to transfer function using <tt>tf</tt>:</p><pre class="codeinput">Htf = tf(Hss);
+</pre><h2>Response Comparison<a name="3"></a></h2><p>Compare the step responses of <tt>Hss</tt> and <tt>Htf</tt> to see how pole sensitivity can affect the stability of the model and cause large variations in the computed time and frequency responses:</p><pre class="codeinput">step(Hss,<span class="string">'b'</span>,Htf,<span class="string">'r'</span>,20)
+legend(<span class="string">'Hss'</span>,<span class="string">'Htf'</span>)
+</pre><img vspace="5" hspace="5" src="NDDRootSensitivity_01.png" alt=""> <p>The step response of <tt>Htf</tt> diverges even though the state-space model <tt>Hss</tt> is stable (all its poles lie in the unit circle). The Bode plot also shows a large discrepancy between the state-space and transfer function models:</p><pre class="codeinput">bode(Hss,<span class="string">'b'</span>,Htf,<span class="string">'r--'</span>)
+legend(<span class="string">'Hss'</span>,<span class="string">'Htf'</span>)
+</pre><img vspace="5" hspace="5" src="NDDRootSensitivity_02.png" alt=""> <p>The algorithm used to convert from state space to transfer function is not causing this discrepancy. If you convert from state space to zero-pole-gain, the first step in any SS to TF conversion, the discrepancies disappear:</p><pre class="codeinput">Hzpk = zpk(Hss);
+
+step(Hss,<span class="string">'b'</span>,Hzpk,<span class="string">'r--'</span>)
+legend(<span class="string">'Hss'</span>,<span class="string">'Hzpk'</span>)
+</pre><img vspace="5" hspace="5" src="NDDRootSensitivity_03.png" alt=""> <pre class="codeinput">bode(Hss,<span class="string">'b'</span>,Hzpk,<span class="string">'r--'</span>)
+</pre><img vspace="5" hspace="5" src="NDDRootSensitivity_04.png" alt=""> <p>This analysis shows that discrepancies arise in the ZPK to TF conversion, which merely involves computing a polynomial from its roots.</p><h2>Cause of Discrepancy<a name="8"></a></h2><p>To understand the cause of these large discrepancies, compare the pole/zero maps of the state-space model and its transfer function:</p><pre class="codeinput">pzplot(Hss,<span class="string">'b'</span>,Htf,<span class="string">'r'</span>)
+legend(<span class="string">'Hss'</span>,<span class="string">'Htf'</span>)
+</pre><img vspace="5" hspace="5" src="NDDRootSensitivity_05.png" alt=""> <p>Note the tightly packed cluster of poles near z=1 in <tt>Hss</tt>.  When these poles are recombined into the transfer function denominator, roundoff errors perturb the pole cluster into an evenly-distributed ring of poles around z=1 (a typical pattern for perturbed multiple roots). Unfortunately, some perturbed poles cross the unit circle and make the transfer function unstable. Zoom in on the plot to see these poles:</p><pre class="codeinput">pzplot(Hss,<span class="string">'b'</span>,Htf,<span class="string">'r'</span>);
+axis([0.5 1.5 -.4 .4])
+</pre><img vspace="5" hspace="5" src="NDDRootSensitivity_06.png" alt=""> <p>You can confirm this explanation with a simple experiment. Construct a polynomial whose roots are the poles <tt>R1</tt> of <tt>Hss</tt>, compute the roots of this polynomial, and compare these roots with <tt>R1</tt>:</p><pre class="codeinput">R1 = pole(Hss);                  <span class="comment">% poles of Hss</span>
+Den = poly(R1);                  <span class="comment">% polynomial with roots R1</span>
+R2 = roots(Den);                 <span class="comment">% roots of this polynomial</span>
+plot(real(R1),imag(R1),<span class="string">'bx'</span>,real(R2),imag(R2),<span class="string">'r*'</span>)
+legend(<span class="string">'R1'</span>,<span class="string">'roots(poly(R1))'</span>);
+</pre><img vspace="5" hspace="5" src="NDDRootSensitivity_07.png" alt=""> <p>This plot shows that <tt>ROOTS(POLY(R1))</tt> is quite different from <tt>R1</tt> because of the clustered roots. As a result, the roots of the transfer function denominator differ significantly from the poles of the original state-space model <tt>Hss</tt>.</p><p>In conclusion, you should avoid converting state-space or zero-pole-gain models to transfer function form because this process can incur significant loss of accuracy.</p><p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Sensitivity of Multiple Roots
+% This demo shows that high-multiplicity poles have high numerical
+% sensitivity and can shift by significant amounts when switching model
+% representation.
+
+%   Copyright 1986-2009 The MathWorks, Inc.
+%   $Revision: 1.1.8.3 $  $Date: 2009/11/09 16:22:08 $
+
+%% Demo Example
+% Poles with high multiplicity and clusters of nearby poles can be very
+% sensitive to rounding errors, which can sometimes have dramatic consequences.
+% This demo uses a 15th-order discrete-time
+% state-space model |Hss| with a cluster of stable poles near |z=1|:
+load numdemo Hss
+
+%% 
+% Convert the model to transfer function using |tf|:
+Htf = tf(Hss);
+
+
+%% Response Comparison
+% Compare the step responses of |Hss| and |Htf| to see how pole sensitivity
+% can affect the stability of the model and cause large variations in the
+% computed time and frequency responses:
+step(Hss,'b',Htf,'r',20)
+legend('Hss','Htf')
+
+%%
+% The step response of |Htf| diverges even though the state-space model
+% |Hss| is stable (all its poles lie in the unit circle). The Bode plot 
+% also shows a large discrepancy between the state-space and transfer
+% function models:
+bode(Hss,'b',Htf,'rREPLACE_WITH_DASH_DASH')
+legend('Hss','Htf')
+
+%%
+% The algorithm used to convert from state space to transfer
+% function is not causing this discrepancy. If you convert from state space to
+% zero-pole-gain, the first step in any SS to TF conversion, the
+% discrepancies disappear:
+Hzpk = zpk(Hss);
+
+step(Hss,'b',Hzpk,'rREPLACE_WITH_DASH_DASH')
+legend('Hss','Hzpk')
+
+%%
+bode(Hss,'b',Hzpk,'rREPLACE_WITH_DASH_DASH')
+
+%%
+% This analysis shows that discrepancies arise in the ZPK to TF conversion, which
+% merely involves computing a polynomial from its roots.
+
+
+%% Cause of Discrepancy
+% To understand the cause of these large discrepancies, compare the pole/zero
+% maps of the state-space model and its transfer function:
+pzplot(Hss,'b',Htf,'r')
+legend('Hss','Htf')
+
+%%
+% Note the tightly packed cluster of poles near z=1 in |Hss|.  When these
+% poles are recombined into the transfer function denominator, roundoff
+% errors perturb the pole cluster into an evenly-distributed ring of poles
+% around z=1 (a typical pattern for perturbed multiple roots).
+% Unfortunately, some perturbed poles cross the unit circle and make
+% the transfer function unstable. Zoom in on the plot to see these poles:
+pzplot(Hss,'b',Htf,'r');
+axis([0.5 1.5 -.4 .4])
+
+%%
+% You can confirm this explanation with a simple experiment. Construct a
+% polynomial whose roots are the poles |R1| of |Hss|, compute the roots 
+% of this polynomial, and compare these roots with |R1|:
+R1 = pole(Hss);                  % poles of Hss
+Den = poly(R1);                  % polynomial with roots R1
+R2 = roots(Den);                 % roots of this polynomial
+plot(real(R1),imag(R1),'bx',real(R2),imag(R2),'r*')
+legend('R1','roots(poly(R1))');
+
+%%
+% This plot shows that |ROOTS(POLY(R1))| is quite different from |R1| because
+% of the clustered roots. As a result, the roots of the transfer function
+% denominator differ significantly from the poles of the original state-space
+% model |Hss|.
+%
+% In conclusion, you should avoid converting state-space or zero-pole-gain models to transfer
+% function form because this process can incur significant loss of accuracy.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

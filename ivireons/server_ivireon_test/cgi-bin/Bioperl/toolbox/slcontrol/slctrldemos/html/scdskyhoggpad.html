@@ -1,0 +1,129 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Linearization Validation in Frequency Domain Using FRESTIMATE</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdskyhoggpad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdskyhoggpad">Open scdskyhoggpad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdskyhoggpad">Run in the Command Window</a></div></div><div class="content"><h1>Linearization Validation in Frequency Domain Using FRESTIMATE</h1><!--introduction--><p>This demo illustrates how to use frequency response estimation in order to validate a block-by-block analytical linearization result obtained with the command LINEARIZE on the lightweight airplane model. Note that to run this demo, you need Aerospace Blockset&#8482;.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Step 1: Opening the Model</a></li><li><a href="#2">Step 2: Performing Analytical Linearization of Lightweight Airplane Model</a></li><li><a href="#3">Step 3: Estimating the Frequency Response</a></li></ul></div><h2>Step 1: Opening the Model<a name="1"></a></h2><p>Open the Simulink&reg; model for lightweight airplane. More information on this model can be found in the demonstration <a href="../../../aeroblks/aerodemos/html/asbSkyHogg.html">"Lightweight Airplane Design"</a> in Aerospace Blockset demos.</p><pre class="codeinput">scdskyhogg
+mdl = <span class="string">'scdskyhogg'</span>;
+</pre><img vspace="5" hspace="5" src="scdskyhoggpad_01.png" alt=""> <h2>Step 2: Performing Analytical Linearization of Lightweight Airplane Model<a name="2"></a></h2><p>You can linearize the lightweight airplane model from the altitude command "AltCmd" to sensed height "h_sensed" using the LINEARIZE command. The linearization I/O points are already marked on the model. The model is pre-configured to use an operating point obtained using simulation snapshot at t=75.</p><pre class="codeinput">io = getlinio(mdl);
+sys = linearize(mdl,io);
+bode(sys)
+</pre><img vspace="5" hspace="5" src="scdskyhoggpad_02.png" alt=""> <h2>Step 3: Estimating the Frequency Response<a name="3"></a></h2><p>You can validate the linearization result using FRESTIMATE to determine whether the linearization results properly capture characteristics of the nonlinear model such as the anti-resonance around 6.28 rad/s (1 Hz).</p><p>First, create a sinestream input signal. Use the linearization result as an input argument to automatically set various parameters of the sinesteam input signal, such as the set of frequencies and the number of periods for each frequency, based on the linear system.</p><pre class="codeinput">in = frest.Sinestream(sys);
+in.Amplitude = 0.5
+</pre><pre class="codeoutput"> 
+The sinestream input signal:
+ 
+      Frequency           : [0.0034143;0.0054345;0.0086502;0.013768 ...] (rad/s)
+      Amplitude           : 0.5
+      SamplesPerPeriod    : [110416;69370;43582;27381 ...]
+      NumPeriods          : [4;4;4;4 ...]
+      RampPeriods         : 0
+      FreqUnits (rad/s,Hz): rad/s
+      SettlingPeriods     : [1;1;1;1 ...]
+      ApplyFilteringInFRESTIMATE (on/off)    : on
+      SimulationOrder (Sequential/OneAtATime): Sequential
+ 
+</pre><p>Notice that 25 frequencies are picked to compute the response for, varying between 0.0034 rad/s and 14.5 rad/s. Note that by design, the frequencies that are automatically picked focus on where interesting dynamics occur (such as the anti-resonance at 6.28 rad/s). The number of periods that it will take for the system to reach steady state is estimated for each of these frequencies and varies between 1 period (for 0.0034 rad/s) and 188 periods (for 14.5 rad/s).</p><p>Then, run the FRESTIMATE command using this input signal. Note that FRESTIMATE simulates the Simulink&reg; model with the input signal. This can take a long time in normal simulation model, but the model is pre-configured to use "Rapid Accelerator" mode to speed up the simulation. FRESTIMATE fully supports rapid accelerator simulations. On a PC with Intel&reg; Core(TM)2 Quad 2.4GHz processor and 4GB of RAM, the simulation with "Rapid Accelerator" mode takes around 6 minutes. The same simulation in "Normal" mode takes more than 3 hours. "Rapid Accelerator" increases the speed of simulation more than 30x for this model. Uncomment the lines below to run the actual FRESTIMATE command with Rapid Accelerator mode, otherwise estimation result will be loaded from the MAT-file.</p><pre class="codeinput">set_param(mdl,<span class="string">'SimulationMode'</span>,<span class="string">'rapid'</span>);
+<span class="comment">% curdir = cd(tempdir);</span>
+<span class="comment">% sysest = frestimate(mdl,in,io);</span>
+<span class="comment">% cd(curdir);</span>
+load(<span class="string">'scdskyhogg_frestresults.mat'</span>);
+</pre><p>Compare the analytical linearization result against the frequency response data from FRESTIMATE. The frequency response data matches well with analytical linearization result validating that anti-resonance between the frequencies 1 and 10 rad/s does exist in the actual nonlinear airplane model.</p><pre class="codeinput">bode(sys,sysest,<span class="string">'r*'</span>);
+</pre><img vspace="5" hspace="5" src="scdskyhoggpad_03.png" alt=""> <p>Close the model:</p><pre class="codeinput">bdclose(<span class="string">'scdskyhogg'</span>);
+</pre><p class="footer">Copyright 2005-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Linearization Validation in Frequency Domain Using FRESTIMATE
+% Copyright 2005-2009 The MathWorks, Inc.
+% $Revision: 1.1.8.3 $ $Date: 2009/11/09 16:35:42 $
+% 
+% This demo illustrates how to use frequency response estimation in order to validate a
+% block-by-block analytical linearization result obtained with the command
+% LINEARIZE on the lightweight airplane model. Note that to run this demo,
+% you need Aerospace Blockset™.
+
+%% Step 1: Opening the Model
+% Open the Simulink(R) model for lightweight airplane. More
+% information on this model can be found in the demonstration
+% <../../../aeroblks/aerodemos/html/asbSkyHogg.html "Lightweight Airplane Design">
+% in Aerospace Blockset demos.
+scdskyhogg
+mdl = 'scdskyhogg';
+
+%% Step 2: Performing Analytical Linearization of Lightweight Airplane Model
+% You can linearize the lightweight airplane model from the
+% altitude command "AltCmd" to sensed height "h_sensed" using the LINEARIZE
+% command. The linearization I/O points are already marked on the model. The model
+% is pre-configured to use an operating point obtained using simulation
+% snapshot at t=75.
+io = getlinio(mdl);
+sys = linearize(mdl,io);
+bode(sys)
+
+%% Step 3: Estimating the Frequency Response
+% You can validate the linearization result using FRESTIMATE to determine
+% whether the linearization results properly capture characteristics of the
+% nonlinear model such as the anti-resonance around 6.28 rad/s (1 Hz). 
+
+%% 
+% First, create a sinestream input signal. Use the
+% linearization result as an input argument to automatically set various
+% parameters of the sinesteam input signal, such as the set of frequencies
+% and the number of periods for each frequency, based on the linear system.
+in = frest.Sinestream(sys);
+in.Amplitude = 0.5
+
+%%
+% Notice that 25 frequencies are picked to compute the response for, varying between
+% 0.0034 rad/s and 14.5 rad/s. Note that by design, the frequencies that
+% are automatically picked focus on where interesting dynamics occur (such as the anti-resonance at
+% 6.28 rad/s). The number of periods that it will take for  
+% the system to reach steady state is estimated for each of these
+% frequencies and varies between 1 period (for 0.0034 rad/s) and 188
+% periods (for 14.5 rad/s).
+
+%%
+% Then, run the FRESTIMATE command using this input signal. Note that
+% FRESTIMATE simulates the Simulink(R) model with the input signal. This
+% can take a long time in normal simulation model, but the
+% model is pre-configured to use "Rapid Accelerator" mode to speed up the
+% simulation. FRESTIMATE fully supports rapid accelerator simulations.
+% On a PC with Intel(R) Core(TM)2 Quad 2.4GHz processor and
+% 4GB of RAM, the simulation with "Rapid Accelerator" mode takes around 6
+% minutes. The same simulation in "Normal" mode takes more than 3 hours.
+% "Rapid Accelerator" increases the speed of simulation more than 30x 
+% for this model. Uncomment the lines below to run the actual FRESTIMATE
+% command with Rapid Accelerator mode, otherwise estimation result will be
+% loaded from the MAT-file.
+set_param(mdl,'SimulationMode','rapid');
+% curdir = cd(tempdir);
+% sysest = frestimate(mdl,in,io);
+% cd(curdir);
+load('scdskyhogg_frestresults.mat');
+
+
+
+%%
+% Compare the analytical linearization result against the frequency
+% response data from FRESTIMATE. The frequency response data matches well
+% with analytical linearization 
+% result validating that anti-resonance between the frequencies 1
+% and 10 rad/s does exist in the actual nonlinear airplane model.
+bode(sys,sysest,'r*');
+
+%%
+% Close the model:
+bdclose('scdskyhogg');
+displayEndOfDemoMessage(mfilename)
+
+
+
+
+
+
+
+##### SOURCE END #####
+--></body></html>

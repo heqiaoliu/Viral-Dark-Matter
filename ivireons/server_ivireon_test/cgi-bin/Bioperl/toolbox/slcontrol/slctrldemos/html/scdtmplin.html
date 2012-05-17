@@ -1,0 +1,250 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Linearization of a Pulp Paper Process</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdtmplin.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdtmplin">Open scdtmplin.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdtmplin">Run in the Command Window</a></div></div><div class="content"><h1>Linearization of a Pulp Paper Process</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#6">Generation of Operating Points</a></li><li><a href="#14">Model Linearization</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>Thermo-mechanical pulping (TMP) is a process used for producing mechanical pulp for newsprint. The Simulink&reg; model scdtmp is of a typical process arrangement for a two stage TMP operation: two pressured refiners operate in sequence, the primary refiner produces a course pulp from a feed of wood chips and water, the secondary refiner further develops the pulp bonding properties so that it is suitable for paper making. The refiners physically consist of two disks (either contra-rotating or one static and the other rotating) with overlaid grooved surfaces. These surfaces physically impact on a three phase flow of wood fibers, steam and water that passes from the center of the refiner disks to their periphery. The physical impact of the disk surfaces on the wood fibers: i.) breaks rigid chemical and physical bonds between them; ii.) microscopically roughens the surface of individual fibers enabling them to mesh together on the paper sheet. The primary objective of controlling the TMP plant is to apply sufficient energy to derive pulp with good physical properties without incurring excess energy costs or fiber damage due imposition of overly high stresses as fibers pass through the refiners. For practical purposes this amounts to controlling the ratio of the total electrical energy applied by the two refiners to the dry mass flow rate of wood fibers, i.e., controlling the estimated specific energy applied to the pulp. A secondary control objective is to control the ratio of dry mass flow rate (fibers) to overall mass flow rate (water &amp; fibers) (known as pulp consistency) to a value which optimizes a trade-off between cost (energy consumed) and pulp quality.</p><p>The process I/O for a TMP system is as follows</p><p>Inputs:</p><div><ul><li>Feed rate of chips (Feed rpm),</li><li>Dilution water flow to each of the refiners (Primary and secondary dilution set points),</li><li>Set points to two regulatory controllers which control the gap between the rotating disks in each set of refiners.</li></ul></div><p>Outputs:</p><div><ul><li>Primary and secondary refiner consistencies,</li><li>Primary and secondary refiner motor loads,</li><li>Vibration monitor measurements on the two refiners.</li></ul></div><p>In this example it is desired to find a linear model of this system at a steady state operating condition for the following input set point conditions:</p><div><ul><li>Feed Rate = 30</li><li>Primary Gap = 0.8</li><li>Primary Diluation = 170</li><li>Secondary Gap = 0.5</li><li>Secondary Dilution = 120</li></ul></div><h2>Generation of Operating Points<a name="6"></a></h2><p>Open the Simulink model</p><pre class="codeinput">open_system(<span class="string">'scdtmp'</span>)
+</pre><img vspace="5" hspace="5" src="scdtmplin_01.png" alt=""> <p>To get operating point specification object use the command</p><pre class="codeinput">opspec = operspec(<span class="string">'scdtmp'</span>)
+</pre><pre class="codeoutput">
+ Operating Specification for the Model scdtmp.
+ (Time-Varying Components Evaluated at time t=0)
+
+States: 
+----------
+(1.) scdtmp/TMP Refining Line/Fiber fill dynamics/Internal
+      spec:  dx = 0,  initial guess:          3.56
+(2.) scdtmp/TMP Refining Line/Fiber water fill dynamics/Internal
+      spec:  dx = 0,  initial guess:          6.83
+(3.) scdtmp/TMP Refining Line/Primary dilution/Internal
+      spec:  dx = 0,  initial guess:           170
+(4.) scdtmp/TMP Refining Line/Primary plate gap/Internal
+      spec:  dx = 0,  initial guess:           0.8
+(5.) scdtmp/TMP Refining Line/Primary refiner motor/LTI System/Internal
+      spec:  dx = 0,  initial guess:           8.5
+(6.) scdtmp/TMP Refining Line/Primary screw feeder/Internal
+      spec:  dx = 0,  initial guess:            30
+(7.) scdtmp/TMP Refining Line/Sec refiner motor/LTI System/Internal
+      spec:  dx = 0,  initial guess:           6.7
+(8.) scdtmp/TMP Refining Line/Secondary dilution/Internal
+      spec:  dx = 0,  initial guess:           0.5
+(9.) scdtmp/TMP Refining Line/Secondary plate gap/Internal
+      spec:  dx = 0,  initial guess:           0.5
+
+Inputs: 
+----------
+(1.) scdtmp/Feed rpm
+      initial guess: 0            
+(2.) scdtmp/Pri gap set point
+      initial guess: 0            
+(3.) scdtmp/Pri dil flow set point
+      initial guess: 0            
+(4.) scdtmp/Sec. gap set point
+      initial guess: 0            
+(5.) scdtmp/Sec. dilution set point
+      initial guess: 0            
+
+Outputs: 
+----------
+(1.) scdtmp/Out1
+      spec:  none
+      spec:  none
+      spec:  none
+      spec:  none
+      spec:  none
+      spec:  none
+
+</pre><p>The Feed Rate set point specification is set by</p><pre class="codeinput">opspec.Inputs(1).Known = 1;
+opspec.Inputs(1).u = 30;
+</pre><p>The Primary Gap set point specification is set by</p><pre class="codeinput">opspec.Inputs(2).Known = 1;
+opspec.Inputs(2).u = 0.8;
+</pre><p>The Primary Dilution set point specification is set by</p><pre class="codeinput">opspec.Inputs(3).Known = 1;
+opspec.Inputs(3).u = 170;
+</pre><p>The Secondary Gap set point specification is set by</p><pre class="codeinput">opspec.Inputs(4).Known = 1;
+opspec.Inputs(4).u = 0.5;
+</pre><p>The Secondary Dilution set point is set by</p><pre class="codeinput">opspec.Inputs(5).Known = 1;
+opspec.Inputs(5).u = 120;
+</pre><p>The steady state operating point that meets this specification is found by</p><pre class="codeinput">op = findop(<span class="string">'scdtmp'</span>,opspec);
+</pre><pre class="codeoutput">
+ Operating Point Search Report:
+---------------------------------
+
+ Operating Report for the Model scdtmp.
+ (Time-Varying Components Evaluated at time t=0)
+
+Operating point specifications were successfully met.
+States: 
+----------
+(1.) scdtmp/TMP Refining Line/Fiber fill dynamics/Internal
+      x:          3.56      dx:             0 (0)
+(2.) scdtmp/TMP Refining Line/Fiber water fill dynamics/Internal
+      x:          6.83      dx:             0 (0)
+(3.) scdtmp/TMP Refining Line/Primary dilution/Internal
+      x:           170      dx:             0 (0)
+(4.) scdtmp/TMP Refining Line/Primary plate gap/Internal
+      x:           0.8      dx:             0 (0)
+(5.) scdtmp/TMP Refining Line/Primary refiner motor/LTI System/Internal
+      x:           8.5      dx:             0 (0)
+(6.) scdtmp/TMP Refining Line/Primary screw feeder/Internal
+      x:            30      dx:             0 (0)
+(7.) scdtmp/TMP Refining Line/Sec refiner motor/LTI System/Internal
+      x:          6.64      dx:     1.74e-012 (0)
+(8.) scdtmp/TMP Refining Line/Secondary dilution/Internal
+      x:           120      dx:             0 (0)
+(9.) scdtmp/TMP Refining Line/Secondary plate gap/Internal
+      x:           0.5      dx:             0 (0)
+
+Inputs: 
+----------
+(1.) scdtmp/Feed rpm
+      u:            30
+(2.) scdtmp/Pri gap set point
+      u:           0.8
+(3.) scdtmp/Pri dil flow set point
+      u:           170
+(4.) scdtmp/Sec. gap set point
+      u:           0.5
+(5.) scdtmp/Sec. dilution set point
+      u:           120
+
+Outputs: 
+----------
+(1.) scdtmp/Out1
+      y:         0.026    [-Inf Inf]
+      y:           0.4    [-Inf Inf]
+      y:         0.568    [-Inf Inf]
+      y:           8.5    [-Inf Inf]
+      y:         0.349    [-Inf Inf]
+      y:          6.64    [-Inf Inf]
+
+</pre><h2>Model Linearization<a name="14"></a></h2><p>The operating points are now ready for linearization. The first step is to specify the input and output points using the commands:</p><pre class="codeinput">io(1) = linio(<span class="string">'scdtmp/Feed rpm'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'scdtmp/Pri gap set point'</span>,1,<span class="string">'in'</span>);
+io(3) = linio(<span class="string">'scdtmp/Pri dil flow set point'</span>,1,<span class="string">'in'</span>);
+io(4) = linio(<span class="string">'scdtmp/Sec. gap set point'</span>,1,<span class="string">'in'</span>);
+io(5) = linio(<span class="string">'scdtmp/Sec. dilution set point'</span>,1,<span class="string">'in'</span>);
+io(6) = linio(<span class="string">'scdtmp/Mux'</span>,1,<span class="string">'out'</span>);
+</pre><p>The model can then be linearized using the command.</p><pre class="codeinput">sys = linearize(<span class="string">'scdtmp'</span>,op,io);
+</pre><p>The Bode plot for the transfer function between the Primary Gap set point and the Primary Consistency can be seen by using the command:</p><pre class="codeinput">bode(sys(2,2))
+</pre><img vspace="5" hspace="5" src="scdtmplin_02.png" alt=""> <p>Close the model.</p><pre class="codeinput">bdclose(<span class="string">'scdtmp'</span>)
+</pre><p class="footer">Copyright 2005-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Linearization of a Pulp Paper Process
+% Copyright 2005-2008 The MathWorks, Inc.
+% $Revision: 1.1.6.6 $ $Date: 2009/05/23 08:20:49 $
+
+%% Introduction
+% Thermo-mechanical pulping (TMP) is a process used for producing
+% mechanical pulp for newsprint. The Simulink(R) model scdtmp is of a typical
+% process arrangement for a two stage TMP operation: two pressured refiners
+% operate in sequence, the primary refiner produces a course pulp from a
+% feed of wood chips and water, the secondary refiner further develops the
+% pulp bonding properties so that it is suitable for paper making. The
+% refiners physically consist of two disks (either contra-rotating or one
+% static and the other rotating) with overlaid grooved surfaces. These
+% surfaces physically impact on a three phase flow of wood fibers, steam
+% and water that passes from the center of the refiner disks to their
+% periphery. The physical impact of the disk surfaces on the wood fibers:
+% i.) breaks rigid chemical and physical bonds between them; ii.)
+% microscopically roughens the surface of individual fibers enabling them
+% to mesh together on the paper sheet. The primary objective of controlling
+% the TMP plant is to apply sufficient energy to derive pulp with good
+% physical properties without incurring excess energy costs or fiber damage
+% due imposition of overly high stresses as fibers pass through the
+% refiners. For practical purposes this amounts to controlling the ratio of
+% the total electrical energy applied by the two refiners to the dry mass
+% flow rate of wood fibers, i.e., controlling the estimated specific energy
+% applied to the pulp. A secondary control objective is to control the
+% ratio of dry mass flow rate (fibers) to overall mass flow rate (water &
+% fibers) (known as pulp consistency) to a value which optimizes a
+% trade-off between cost (energy consumed) and pulp quality. 
+
+%% 
+% The process I/O for a TMP system is as follows
+
+%%
+% Inputs: 
+%
+% * Feed rate of chips (Feed rpm), 
+% * Dilution water flow to each of the refiners (Primary and secondary dilution set points), 
+% * Set points to two regulatory controllers which control the gap between the rotating disks in each set of refiners. 
+
+%% 
+% Outputs: 
+%
+% * Primary and secondary refiner consistencies, 
+% * Primary and secondary refiner motor loads, 
+% * Vibration monitor measurements on the two refiners. 
+
+%%
+% In this example it is desired to find a linear model of this system at a 
+% steady state operating condition for the following input set point conditions: 
+%
+% * Feed Rate = 30 
+% * Primary Gap = 0.8 
+% * Primary Diluation = 170 
+% * Secondary Gap = 0.5 
+% * Secondary Dilution = 120
+
+%% Generation of Operating Points
+% Open the Simulink model
+open_system('scdtmp')
+ 
+%%
+% To get operating point specification object use the command 
+opspec = operspec('scdtmp')
+
+%%
+% The Feed Rate set point specification is set by
+opspec.Inputs(1).Known = 1;
+opspec.Inputs(1).u = 30;
+
+%%
+% The Primary Gap set point specification is set by
+opspec.Inputs(2).Known = 1;
+opspec.Inputs(2).u = 0.8;
+
+%% 
+% The Primary Dilution set point specification is set by
+opspec.Inputs(3).Known = 1;
+opspec.Inputs(3).u = 170;
+
+%%
+% The Secondary Gap set point specification is set by
+opspec.Inputs(4).Known = 1;
+opspec.Inputs(4).u = 0.5;
+
+%%
+% The Secondary Dilution set point is set by
+opspec.Inputs(5).Known = 1;
+opspec.Inputs(5).u = 120;
+
+%%
+% The steady state operating point that meets this specification is found by
+op = findop('scdtmp',opspec);
+
+%% Model Linearization
+% The operating points are now ready for linearization. The first step is to specify the input and output points using the commands: 
+io(1) = linio('scdtmp/Feed rpm',1,'in');
+io(2) = linio('scdtmp/Pri gap set point',1,'in');
+io(3) = linio('scdtmp/Pri dil flow set point',1,'in');
+io(4) = linio('scdtmp/Sec. gap set point',1,'in');
+io(5) = linio('scdtmp/Sec. dilution set point',1,'in');
+io(6) = linio('scdtmp/Mux',1,'out');
+
+%%
+% The model can then be linearized using the command.
+sys = linearize('scdtmp',op,io);
+
+%%
+% The Bode plot for the transfer function between the Primary Gap set point and the Primary Consistency can be seen by using the command: 
+bode(sys(2,2))
+
+%%
+% Close the model.
+bdclose('scdtmp')
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,156 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Spiral Galaxy Formation Simulation Using Embedded MATLAB&reg; Functions</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="sldemo_eml_galaxy_script.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sldemo_eml_galaxy_script">Open sldemo_eml_galaxy_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo sldemo_eml_galaxy_script">Run in the Command Window</a></div></div><div class="content"><h1>Spiral Galaxy Formation Simulation Using Embedded MATLAB&reg; Functions</h1><!--introduction--><p>This model was inspired by the classic paper "Galactic Bridges and Tails" (Toomre &amp; Toomre 1972). The original paper explained how disc shaped galaxies could develop spiral arms. Two disc shape galaxies originally are far apart. They then fly by each other and almost collide. Once the galaxies are close enough, mutual gravitational forces cause spiral arms to form.</p><p>Except for the "PlotAll" visualization block's use of plotting routines, all Embedded MATLAB&reg; function blocks in this model support code generation with Real-Time Workshop&reg; and Real-Time Workshop&reg; Embedded Coder&#8482;.</p><div><ul><li><b>Demo Requirements:</b> During this demonstration, Simulink&reg; generates code for the simulation in a Simulink project directory created in the current working directory (pwd). If you do not want to affect the current directory (or if you cannot generate files in this directory), you should change your working directory.</li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Opening the Model and Running the Simulation</a></li><li><a href="#2">Model Description</a></li><li><a href="#8">Closing the Model</a></li><li><a href="#10">Comments About the Model</a></li><li><a href="#11">References</a></li></ul></div><h2>Opening the Model and Running the Simulation<a name="1"></a></h2><p>Open the model and run the simulation by executing the code below. If you are using MATLAB&reg; Help, select the code you want to execute and press F9 (or select code, right click on selection and select "Evaluate Selection"). The Simulink model will load, compile, and run.</p><pre class="codeinput">model = <span class="string">'sldemo_eml_galaxy'</span>;
+open_system(model);
+sim(model);
+</pre><img vspace="5" hspace="5" src="sldemo_eml_galaxy_script_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_eml_galaxy_script_02.png" alt=""> <h2>Model Description<a name="2"></a></h2><p>This section describes the model in detail and explains the role of each block in the model. The green blocks initialize the simulation, the orange blocks are the core of the simulation, and the yellow block makes the galaxy animation view.</p><p><b>Initial Conditions</b></p><p>The model requires initial conditions for each galaxy. The initial conditions are: galaxy radius in parsecs (rp), galaxy mass in solar mass units (cm), galaxy position in parsecs (pos), and galaxy velocity in m/s (vel).</p><p>In the model, constant blocks specify the initial conditions. The initial conditions have been chosen such that the galaxies will nearly collide at some point in time.</p><p><b>"ConstructGalaxy" Blocks</b></p><p>The initial conditions are passed to the Embedded MATLAB function blocks Construct Galaxy 1 and Construct Galaxy 2. These Embedded MATLAB function blocks contain MATLAB code that builds the galaxy models.</p><p>In a typical galaxy, most of the mass is concentrated in its center as a super-massive black hole and/or star agglomeration. We model the galaxy as a disc with radius r with most of its mass concentrated in the inner circle of radius r/3. In addition to this super-massive nucleus, the "ConstructGalaxy" Embedded MATLAB function block creates 349 random stars with masses ranging from 4 to 24 solar masses. These stars are randomly positioned within distance r/3 and r from the center of the galaxy. The stars initially move in circular orbits around the galaxy core. Every object (star or galaxy core) has mass, position (x, y, z), and velocity (Vx, Vy, Vz).</p><p><b>"Matrix Concatenation" Block</b></p><p>This block joins information about both galaxies. At this point the model has 750 objects: 1 core for each galaxy and 349 stars around each core.  These 750 objects interact according to Newtonian mechanics.</p><p><b>"Partition" Block</b></p><p>This Embedded MATLAB function block separates all 750 objects into two groups: heavy bodies and light bodies. The heavy bodies are the galaxy cores. The light bodies are the stars. Because the galaxy cores are much heavier than individual stars, the model will consider only the heavy-heavy and heavy-light interactions. We can ignore the light-light body interactions. This will save a lot of time since 748 out of 750 bodies in the model are light.</p><p><b>"ApplyGravity" Block</b></p><p>This Embedded MATLAB function block uses Newtonian mechanics to compute the velocities and positions of the bodies at each step.  The "combine" block is also an embedded MATLAB function block. It merges the data about heavy and light objects together.</p><p><b>"PlotAll" Block</b></p><p>This Embedded MATLAB function block plots the bodies in a figure and updates the position of each star at every step in the simulation.</p><h2>Closing the Model<a name="8"></a></h2><p>Close the model without saving any changes. Clear data generated by simulation/demo.</p><pre class="codeinput">close_system(model,0);
+clear <span class="string">model</span> <span class="string">sldemo_eml_galaxy_output</span>;
+</pre><p><b>Note:</b></p><div><ul><li>In this model signal logging is turned on (see the 'GalaxyBodies' signal and the little blue arrow next to it). The model saves output data in a <tt>Simulink.ModelDataLogs</tt> structure. Any other data is saved/modified in the model workspace to avoid cluttering MATLAB workspace.</li></ul></div><div><ul><li>To modify signal logging settings right-click on the signal line and select "Signal Properties". In this demo the signal name is 'GalaxyBodies' and "Log signal data" checkbox is checked.</li></ul></div><div><ul><li>The logged signal is saved to MATLAB workspace as 'sldemo_eml_galaxy_output'. This is a <tt>Simulink.ModelDataLogs</tt> data structure. 'GalaxyBodies' signal can be retrieved from this structure by typing <tt>sldemo_eml_galaxy_output.GalaxyBodies</tt>. See more about working with data structures in MATLAB Help "Accessing Data in Structure Arrays".</li></ul></div><h2>Comments About the Model<a name="10"></a></h2><p>Despite its simplicity, this model provides insight into how our own galaxy evolved. The demo allows the user to maximally simplify the model and run a fast simulation. The user can easily modify the demo by adding more galaxies.</p><h2>References<a name="11"></a></h2><p>Toomre, Alar; Toomre, Juri; "Galactic Bridges and Tails"; Astrophysical Journal, Vol. 178, pp. 623-666 (1972); 12/1972;</p><p class="footer">Copyright 2006-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Spiral Galaxy Formation Simulation Using Embedded MATLAB(R) Functions
+% 
+% This model was inspired by the classic paper "Galactic Bridges and Tails"
+% (Toomre & Toomre 1972). The original paper explained how disc shaped galaxies
+% could develop spiral arms. Two disc shape galaxies originally are far apart.
+% They then fly by each other and almost collide. Once the galaxies are close
+% enough, mutual gravitational forces cause spiral arms to form.
+% 
+% Except for the "PlotAll" visualization block's use of plotting routines, all
+% Embedded MATLAB(R) function blocks in this model support code generation with
+% Real-Time Workshop(R) and Real-Time Workshop(R) Embedded Coder(TM).
+% 
+% * *Demo Requirements:* During this demonstration, Simulink(R) generates code for
+% the simulation in a Simulink project directory created in the current working
+% directory (pwd). If you do not want to affect the current directory (or if you
+% cannot generate files in this directory), you should change your working
+% directory.
+% 
+
+%   Copyright 2006-2009 The MathWorks, Inc.
+
+%% Opening the Model and Running the Simulation
+%
+% Open the model and run the simulation by executing the code below. If you
+% are using MATLAB(R) Help, select the code you want to execute and press F9
+% (or select code, right click on selection and select "Evaluate
+% Selection"). The Simulink model will load, compile, and run.
+
+model = 'sldemo_eml_galaxy';
+open_system(model);  
+sim(model);
+
+%% Model Description
+%
+% This section describes the model in detail and explains the role of each block
+% in the model. The green blocks initialize the simulation, the orange blocks
+% are the core of the simulation, and the yellow block makes the galaxy
+% animation view.
+%
+% *Initial Conditions*
+%
+% The model requires initial conditions for each galaxy. The initial conditions
+% are: galaxy radius in parsecs (rp), galaxy mass in solar mass units (cm),
+% galaxy position in parsecs (pos), and galaxy velocity in m/s (vel).
+%
+% In the model, constant blocks specify the initial conditions. The initial
+% conditions have been chosen such that the galaxies will nearly collide at some
+% point in time.
+
+%%
+% *"ConstructGalaxy" Blocks*
+%
+% The initial conditions are passed to the Embedded MATLAB function blocks
+% Construct Galaxy 1 and Construct Galaxy 2. These Embedded MATLAB function
+% blocks contain MATLAB code that builds the galaxy models.
+%
+% In a typical galaxy, most of the mass is concentrated in its center as a
+% super-massive black hole and/or star agglomeration. We model the galaxy as a
+% disc with radius r with most of its mass concentrated in the inner circle of
+% radius r/3. In addition to this super-massive nucleus, the "ConstructGalaxy"
+% Embedded MATLAB function block creates 349 random stars with masses ranging
+% from 4 to 24 solar masses. These stars are randomly positioned within distance
+% r/3 and r from the center of the galaxy. The stars initially move in circular
+% orbits around the galaxy core. Every object (star or galaxy core) has mass,
+% position (x, y, z), and velocity (Vx, Vy, Vz).
+
+%%
+% *"Matrix Concatenation" Block*
+%
+% This block joins information about both galaxies. At this point the model has
+% 750 objects: 1 core for each galaxy and 349 stars around each core.  These 750
+% objects interact according to Newtonian mechanics.
+%
+
+%%
+% *"Partition" Block*
+%
+% This Embedded MATLAB function block separates all 750 objects into
+% two groups: heavy bodies and light bodies. The heavy bodies are the galaxy cores. 
+% The light bodies are the stars. Because the galaxy cores
+% are much heavier than individual stars, the model will consider only
+% the heavy-heavy and heavy-light interactions. We can ignore the light-light
+% body interactions. This will save a lot of time since 748
+% out of 750 bodies in the model are light.
+
+%%
+% *"ApplyGravity" Block*
+%
+% This Embedded MATLAB function block uses Newtonian mechanics to compute the
+% velocities and positions of the bodies at each step.  The "combine" block is
+% also an embedded MATLAB function block. It merges the data about heavy and
+% light objects together.
+
+%% 
+% *"PlotAll" Block*
+%
+% This Embedded MATLAB function block plots the bodies in a figure and updates
+% the position of each star at every step in the simulation.
+
+%% Closing the Model
+%
+% Close the model without saving any changes. Clear data generated by simulation/demo.
+
+close_system(model,0);
+clear model sldemo_eml_galaxy_output;
+
+%%
+% *Note:* 
+%
+% * In this model signal logging is turned on (see the 'GalaxyBodies'
+% signal and the little blue arrow next to it). The model saves output data
+% in a |Simulink.ModelDataLogs| structure. Any other data is saved/modified
+% in the model workspace to avoid cluttering MATLAB workspace.
+%
+% * To modify signal logging settings right-click on the signal line and
+% select "Signal Properties". In this demo the signal name is
+% 'GalaxyBodies' and "Log signal data" checkbox is checked. 
+%
+% * The logged signal is saved to MATLAB workspace as
+% 'sldemo_eml_galaxy_output'. This is a |Simulink.ModelDataLogs| data
+% structure. 'GalaxyBodies' signal can be retrieved from this structure by
+% typing |sldemo_eml_galaxy_output.GalaxyBodies|. See more about working
+% with data structures in MATLAB Help "Accessing Data in Structure Arrays".
+
+
+%% Comments About the Model
+%
+% Despite its simplicity, this model provides insight into how our own galaxy
+% evolved. The demo allows the user to maximally simplify the model and run a
+% fast simulation. The user can easily modify the demo by adding more galaxies.
+
+%% References
+%
+% Toomre, Alar; Toomre, Juri; "Galactic Bridges and Tails"; Astrophysical
+% Journal, Vol. 178, pp. 623-666 (1972); 12/1972;
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

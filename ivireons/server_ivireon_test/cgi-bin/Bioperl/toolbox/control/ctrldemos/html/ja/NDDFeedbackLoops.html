@@ -1,0 +1,43 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>フィードバック ループを閉じるために FEEDBACK を使用</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="NDDFeedbackLoops.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit NDDFeedbackLoops">エディターで NDDFeedbackLoops.m を開く</a></div><div class="right"><a href="matlab:echodemo NDDFeedbackLoops">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>フィードバック ループを閉じるために FEEDBACK を使用</h1><!--introduction--><p>このデモでは、フィードバック ループを閉じるためになぜ常に FEEDBACK を使用すべきかについて説明します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">フィードバック ループを閉じるための 2 とおりの方法</a></li><li><a href="#4">FEEDBACK を使用することがなぜ好ましいか</a></li></ul></div><h2>フィードバック ループを閉じるための 2 通りの方法<a name="1"></a></h2><p>次のようなフィードバック ループがあるとします。</p><p><img vspace="5" hspace="5" src="../../Figures/NDDFeedbackLoops_Fig01.png" alt=""> </p><p>ここで、</p><pre class="codeinput">K = 2;
+G = tf([1 2],[1 .5 3])
+</pre><pre class="codeoutput"> 
+Transfer function:
+     s + 2
+---------------
+s^2 + 0.5 s + 3
+ 
+</pre><p>r から y への閉ループ伝達関数 <tt>H</tt> は、少なくとも次の 2 通りの方法で計算できます。</p><div><ul><li><tt>feedback</tt> コマンドを使用する</li><li>次の式を使用する</li></ul></div><p><img src="../NDDFeedbackLoops_eq47056.png" alt="$$ H = {G \over 1+GK} $$"></p><p><tt>feedback</tt> を使用して <tt>H</tt> を計算するには、次のように入力します。</p><pre class="codeinput">H = feedback(G,K)
+</pre><pre class="codeoutput"> 
+Transfer function:
+     s 2
+---------------
+s^2 2.5 s 7
+ 
+</pre><p>式を使用して <tt>H</tt> を計算するには、次のように入力します。</p><pre class="codeinput">H2 = G/(1+G*K)
+</pre><pre class="codeoutput"> 
+Transfer function:
+      s^3 + 2.5 s^2 + 4 s + 6
+-----------------------------------
+s^4 + 3 s^3 + 11.25 s^2 + 11 s + 21
+ 
+</pre><h2>FEEDBACK を使用することがなぜ好ましいか<a name="4"></a></h2><p>式を使用して <tt>H</tt> を計算する際に主な問題となるのは、閉ループ伝達関数の次数が上がることです。上記の例では、<tt>H2</tt> の次数が <tt>H</tt> の 2 倍になっています。これは、式 <tt>G/(1+G*K)</tt> が、<tt>G</tt> と <tt>1+G*K</tt> という 2 つの伝達関数の比率として評価されるためです。ここで、</p><p><img src="../NDDFeedbackLoops_eq10391.png" alt="$$ G(s) = {N(s) \over D(s)} $$"></p><p>上記の条件の場合、<tt>G/(1+G*K)</tt> は次のように評価されます。</p><p><img src="../NDDFeedbackLoops_eq09687.png" alt="$${N \over D} \left( \frac{D+KN}{D} \right)^{-1} = \frac{ND}{D(D+KN)}.$$"></p><p>その結果、<tt>G</tt> の極が <tt>H</tt> の分子と分母の両方に追加されます。このことは、次の ZPK 表現を見ることで確認できます。</p><pre class="codeinput">zpk(H2)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+     (s+2) (s^2 + 0.5s + 3)
+---------------------------------
+(s^2 + 0.5s + 3) (s^2 + 2.5s + 7)
+ 
+</pre><p>このように極と零点が余分に追加されると、次の例で示すとおり、高次の伝達関数を処理する際に結果の精度が下がる可能性があります。この例には、17 次の伝達関数 <tt>G</tt> が含まれています。先ほどと同じように、2 通りの方法を両方使って、<tt>K=1</tt> とした場合の閉ループ伝達関数を計算します。</p><pre class="codeinput">load <span class="string">numdemo</span> <span class="string">G</span>
+H1 = feedback(G,1);          <span class="comment">% good</span>
+H2 = G/(1+G);                <span class="comment">% bad</span>
+</pre><p>基準点を設定するため、G の周波数応答が含まれた FRD モデルも計算し、周波数応答データに <tt>feedback</tt> を直接適用します。</p><pre class="codeinput">w = logspace(2,5.1,100);
+H0 = feedback(frd(G,w),1);
+</pre><p>次に、閉ループ応答の振幅を比較します。</p><pre class="codeinput">h = sigmaplot(H0,<span class="string">'b'</span>,H1,<span class="string">'g--'</span>,H2,<span class="string">'r'</span>);
+legend(<span class="string">'Reference H0'</span>,<span class="string">'H1=feedback(G,1)'</span>,<span class="string">'H2=G/(1+G)'</span>,<span class="string">'location'</span>,<span class="string">'southwest'</span>)
+setoptions(h,<span class="string">'YlimMode'</span>,<span class="string">'manual'</span>,<span class="string">'Ylim'</span>,{[-60 0]})
+</pre><img vspace="5" hspace="5" src="../NDDFeedbackLoops_01.png" alt=""> <p><tt>H2</tt> の周波数応答は、周波数が 2e4 rad/sec より低い場合に不正確になります。この不正確性の原因としては、z=1 近傍で追加 (相殺) 的なダイナミクスが導入されていることが考えられます。具体的に言うと、<tt>H2</tt> には、z=1 の近傍に <tt>H1</tt> の約 2 倍の極と零点があります。その結果、<tt>H2(z)</tt> の z=1 近傍における精度が大幅に低くなり、低周波数での応答に歪みが生じます。詳細は、<a href="NDDModelType.html">正しいモデル表現の使用</a>のデモを参照してください。</p><p class="footer">Copyright 1986-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Using FEEDBACK to Close Feedback Loops % This demo shows why you should always use FEEDBACK to close feedback % loops.  %   Copyright 1986-2008 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $  %% Two Ways of Closing Feedback Loops % Consider the following feedback loop % % <<../Figures/NDDFeedbackLoops_Fig01.png>> % % where K = 2; G = tf([1 2],[1 .5 3])  %% % You can compute the closed-loop transfer function |H| from r to y in  % at least two ways: % % * Using the |feedback| command % * Using the formula % % $$ H = {G \over 1+GK} $$ % % To compute |H| using |feedback|, type H = feedback(G,K)  %% % To compute |H| from the formula, type H2 = G/(1+G*K)    %% Why Using FEEDBACK is Better % A major issue with computing |H| from the formula is that it inflates  % the order of the closed-loop transfer function. In the % example above, |H2| has double the order of |H|. This is because  % the expression |G/(1+G*K)| is evaluated as a ratio of the two transfer % functions |G| and |1+G*K|. If % % $$ G(s) = {N(s) \over D(s)} $$ % % then |G/(1+G*K)| is evaluated as: % % $${N \over D} \left( \frac{D+KN}{D} \right)^{-1} = \frac{ND}{D(D+KN)}.$$ %  % As a result, the poles of |G| are added to both the numerator and % denominator of |H|. You can confirm this by looking at the ZPK % representation: zpk(H2)  %% % This excess of poles and zeros can negatively impact the accuracy of your results % when dealing with high-order % transfer functions, as demonstrated in the next example. This example  % involves a 17th-order transfer function |G|. As you did before, use both % approaches to compute the closed-loop transfer function for |K=1|: load numdemo G H1 = feedback(G,1);          % good H2 = G/(1+G);                % bad  %%  % To have a point of reference, also compute an FRD model containing the  % frequency response of G and apply |feedback| to the frequency response % data directly: w = logspace(2,5.1,100); H0 = feedback(frd(G,w),1);  %% % Then compare the magnitudes of the closed-loop responses: h = sigmaplot(H0,'b',H1,'gREPLACE_WITH_DASH_DASH',H2,'r'); legend('Reference H0','H1=feedback(G,1)','H2=G/(1+G)','location','southwest') setoptions(h,'YlimMode','manual','Ylim',{[-60 0]})  %% % The frequency response of |H2| is inaccurate for frequencies below 2e4 % rad/s. This inaccuracy can be traced to the % additional (cancelling) dynamics introduced near z=1. Specifically, |H2| % has about twice as many poles and zeros near z=1 as |H1|.  As a result, % |H2(z)| has much poorer accuracy near z=1, which distorts the response % at low frequencies. See the demo <NDDModelType.html "Using the Right Model Representation">  % for more details.  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,94 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>PARFOR を使用したラピッド アクセラレータ シミュレーション</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="sldemo_parallel_rapid_accel_sims_script.m"><link rel="stylesheet" type="text/css" href="../../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sldemo_parallel_rapid_accel_sims_script">エディターで sldemo_parallel_rapid_accel_sims_script.m を開く</a></div><div class="right"><a href="matlab:echodemo sldemo_parallel_rapid_accel_sims_script">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>PARFOR を使用したラピッド アクセラレータ シミュレーション</h1><!--introduction--><p>このデモでは、ある範囲の入力値およびパラメーター値について並列シミュレーションを実行する必要があるアプリケーションでラピッド アクセラレータを使用する方法を説明します。</p><p>このデモでは、エンジンのアイドル回転数をシミュレートするエンジンのアイドル回転数モデルを使用します。このモデルの入力はバイパス空気弁の電圧、出力はアイドル回転数です。</p><p>2 セットの弁電圧を持つ PARFOR を使用し、2 つの値の範囲にわたって変換関数の 3 つのゲイン パラメーターのうちの 2 つを独立に変化させることによって、並列シミュレーションを実行します。したがって、全部で 8 セットの異なるシミュレーションを実行することになります。</p><p>このデモの作成に使用されたスクリプト ファイルを変更すれば、非常に簡単にこのデモを自分のアプリケーション用にカスタマイズすることができます。スクリプト ファイルを編集するには、このページの左上隅のリンクをクリックしてください。MATLAB&reg; からこのデモを実行するには、右上隅のリンクをクリックしてください。このデモを実行する前に、現在のディレクトリが書き込み可能なディレクトリであることを確認してください。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">手順 1:準備</a></li><li><a href="#2">手順 2:ラピッド アクセラレータ ターゲットの作成</a></li><li><a href="#3">手順 3:パラメーター セットの作成</a></li><li><a href="#4">手順 4:入力セットの作成</a></li><li><a href="#5">手順 5:SIM コマンド引数のセットの作成</a></li><li><a href="#6">手順 6:Matlabpool の起動</a></li><li><a href="#7">手順 7:PARFOR でのシミュレーション</a></li><li><a href="#8">手順 8:結果のプロット</a></li><li><a href="#9">手順 9:Matlabpool を閉じる</a></li></ul></div><h2>手順 1:準備<a name="1"></a></h2><p>まず、シミュレーション モードがラピッド アクセラレータに設定されているモデルを開きます。既定の入力データと必須パラメーターは、モデル ワークスペースに事前に読み込まれています。ラピッド アクセラレータ モードで実行するとファイルが余分に作成されるため、一時ディレクトリに切り替えます。</p><p>パラメーター gain2 と gain3 は、後でユーティリティ関数 Simulink.BlockDiagram.modifyTunableParameters を使用して変更できるように、調整可能なパラメーターとして指定されています。調整可能なパラメーターを選択してそれらのプロパティをグラフィカルに設定する方法の詳細は、以下の <a href="matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'model_param_config_dialog')">[モデル パラメーター設定] ダイアログ ボックス</a>に関するヘルプ ページを参照してください。</p><p>既定の入力データと時間データを、後で変更して SIM コマンドに渡すことができるように、変数にコピーします。</p><pre class="codeinput"><span class="comment">% Open model:</span>
+mdl = <span class="string">'sldemo_raccel_engine_idle_speed'</span>;
+open_system(mdl);
+curDir = pwd;
+cd(tempdir);
+
+<span class="comment">% Copy input data</span>
+inpData = evalin(<span class="string">'base'</span>, <span class="string">'inpData'</span>);
+tData = evalin(<span class="string">'base'</span>, <span class="string">'time'</span>);
+</pre><img vspace="5" hspace="5" src="../sldemo_parallel_rapid_accel_sims_script_01.png" alt=""> <h2>手順 2:ラピッド アクセラレータ ターゲットの作成<a name="2"></a></h2><p>モデル用のラピッド アクセラレータ実行可能ファイルを作成し、既定のランタイム パラメーター セットを取得します。</p><pre class="codeinput">rtp = Simulink.BlockDiagram.buildRapidAcceleratorTarget(mdl);
+close_system(mdl, 0);
+</pre><pre class="codeoutput">### Building the rapid accelerator target for model:sldemo_raccel_engine_idle_speed
+### Successfully built the rapid accelerator target for model:sldemo_raccel_engine_idle_speed
+</pre><h2>手順 3:パラメーター セットの作成<a name="3"></a></h2><p>手順 2 の既定の rtp 構造体を使用して、モデル内の調整可能な変数に異なる値を使用した新しい構造体を作成します。パラメーター gain2 と gain3 の値を変えると、アイドル回転数がどのように変化するのかを確認しようとしています。そのため、gain2 と gain3 の値を変えて異なるパラメーター セットを生成し、その他の調整可能な変数はそれぞれの既定値のままにしておきます。</p><p>ユーティリティ関数 Simulink.BlockDiagram.modifyTunableParameters は、異なるパラメーター値を持つ rtp 構造体を作成するのに便利な手段です。</p><pre class="codeinput">gain2_vals = 25:10:35;
+gain3_vals = 20:10:30;
+
+num_gain2_vals = length(gain2_vals);
+num_gain3_vals = length(gain3_vals);
+numParamSets = num_gain2_vals*num_gain3_vals;
+
+<span class="comment">% Create parameter sets:</span>
+paramSets = cell(1, numParamSets);
+idx = 1;
+<span class="keyword">for</span> iG2 = 1:num_gain2_vals
+<span class="keyword">for</span> iG3 = 1:num_gain3_vals
+paramSets{idx} = <span class="keyword">...</span>
+Simulink.BlockDiagram.modifyTunableParameters(rtp, <span class="keyword">...</span>
+<span class="string">'gain2'</span>,gain2_vals(iG2), <span class="keyword">...</span>
+<span class="string">'gain3'</span>,gain3_vals(iG3));
+idx = idx+1;
+<span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><h2>手順 4:入力セットの作成<a name="4"></a></h2><p>既定の入力値のベクトルを摂動させて、新しい入力値のベクトルを取得します。</p><p>このデモでは、エンジンのアイドル回転数を、異なるパラメーター値の弁電圧の関数としてプロットします。</p><pre class="codeinput">inpSets{1} = inpData;
+rndPertb = 0.5 + rand(length(tData), 1);
+inpSets{2} = inpSets{1}.*rndPertb;
+numInpSets  = length(inpSets);
+</pre><h2>手順 5:SIM コマンド引数のセットの作成<a name="5"></a></h2><p>パラメーター-名前-値の構造体のセル配列を作成します。このセル配列は、PARFOR ループ内から呼び出される SIM コマンドに渡されます。</p><p>SIM コマンドをラピッド アクセラレータ モードで実行するには、[RapidAcceleratorUpToDateCheck] フィールドを [オフ] に設定し、[RapidAcceleratorParameterSets] フィールドを使用してパラメーター セットを渡す必要があります。</p><p>また、セル配列内の外部入力もすべて収集します。後でそれらの各入力に、ワーカーのベース ワークスペース内の変数名として「externalInput」を割り当てます。</p><pre class="codeinput">numSimCmdArgStructs = numParamSets*numInpSets;
+simCmdParamValStructs = cell(1, numSimCmdArgStructs);
+externalInput = cell(1, numSimCmdArgStructs);
+
+paramValStruct.SaveTime = <span class="string">'on'</span>;
+paramValStruct.SaveOutput = <span class="string">'on'</span>;
+paramValStruct.LoadExternalInput = <span class="string">'on'</span>;
+<span class="comment">% 'externalInput' is the name of the base workspace variable of</span>
+<span class="comment">% the MATLAB worker sessions containing the external inputs data</span>
+paramValStruct.ExternalInput = <span class="string">'externalInput'</span>;
+paramValStruct.RapidAcceleratorUpToDateCheck = <span class="string">'off'</span>;
+paramValStruct.RapidAcceleratorParameterSets = [];
+
+idx = 1;
+<span class="keyword">for</span> paramSetsIdx = 1:numParamSets
+<span class="keyword">for</span> inpSetsIdx = 1:numInpSets
+simCmdParamValStructs{idx} = paramValStruct;
+simCmdParamValStructs{idx}.RapidAcceleratorParameterSets = <span class="keyword">...</span>
+paramSets{paramSetsIdx};
+externalInput{idx} = [tData, inpSets{inpSetsIdx}];
+idx = idx + 1;
+<span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><h2>手順 6:Matlabpool の起動<a name="6"></a></h2><p>コードのコメントを解除して、Matlabpool を起動します。以下のコード行により、4 つのワーカー MATLAB セッションが開始されます。その後、PARFOR がこれらの 4 つのワーカー セッションにジョブを分配します。</p><pre class="codeinput"><span class="comment">% matlabpool open 4;</span>
+</pre><h2>手順 7:PARFOR でのシミュレーション<a name="7"></a></h2><p>異なるパラメーター値と入力ベクトルが含まれた異なる引数セットを持つ PARFOR を使用して、モデルを並列にシミュレートします。シミュレーションを実行している MATLAB ワーカー セッションのベース ワークスペースで、シミュレーションに対応する入力ベクトルを割り当てます。PARFOR ループ内で EVALIN(&lsquo;base&rsquo;) と ASSIGNIN(&lsquo;base&rsquo;) を使用するということは、ワーカー マシンのベース ワークスペースが参照されるということなので、一般的には推奨されません。ただし、現在のデモでは、各セッションのベース ワークスペースには変数「externalInputs」が必要です。このため、PARFOR 内で ASSIGNIN(&lsquo;base&rsquo;) を使用することは、ここでは妥当です。</p><pre class="codeinput">out = cell(1, numSimCmdArgStructs);
+
+<span class="keyword">parfor</span>(i = 1:numSimCmdArgStructs)
+assignin(<span class="string">'base'</span>, <span class="string">'externalInput'</span>, externalInput{i}); <span class="comment">%#ok&lt;PFEVB&gt;</span>
+out{i} = sim(mdl, simCmdParamValStructs{i});
+<span class="keyword">end</span>
+</pre><h2>手順 8:結果のプロット<a name="8"></a></h2><p>異なるパラメーター値と入力について、時間に対するエンジンのアイドル回転数をプロットします。変数「out」は、各シミュレーションのシミュレーション データが含まれている Simulink.SimulationOutput オブジェクトのセル配列です。</p><pre class="codeinput"><span class="keyword">for</span> i=1:numSimCmdArgStructs
+t = out{i}.find(<span class="string">'tout'</span>);
+y = out{i}.find(<span class="string">'yout'</span>);
+plot(t, y)
+hold <span class="string">all</span>
+<span class="keyword">end</span>
+
+fprintf(<span class="string">'\n Contents of the out{1}:\n'</span>);
+display(out{1});
+</pre><pre class="codeoutput">
+Contents of the out{1}: 
+
+Simulink.SimulationOutput:
+
+tout:[1041x1 double]
+ScopeData:[1041x2 double]
+valveVoltage:[1041x1 double]
+yout:[1041x1 double]
+
+
+</pre><img vspace="5" hspace="5" src="../sldemo_parallel_rapid_accel_sims_script_02.png" alt=""> <h2>手順 9:Matlabpool を閉じる<a name="9"></a></h2><p>元のディレクトリに戻ります。その前に Matlabpool が起動されていた場合は、それを閉じる必要があります。以下のコードの 2 行目のコメント記号を削除すると、Matlabpool が閉じられ、それに伴ってワーカー セッションが閉じられます。詳細は、PARFOR および MATLABPOOL に関するドキュメンテーションを参照してください。</p><pre class="codeinput">cd(curDir);
+<span class="comment">% matlabpool close</span>
+</pre><p class="footer">Copyright 2005-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Rapid Accelerator Simulations Using PARFOR % In this demo we illustrate the use of Rapid Accelerator in  % applications that require running parallel simulations for a range of  % input and parameter values.  % % We use the engine idle speed model which simulates the idle speed of an  % engine. The input of this model is the voltage of the bypass air valve  % and the output is the idle speed. % % We run parallel simulations using PARFOR with two sets of valve voltages  % and by independently varying two of the three gain parameters of % the transfer functions over a range of two values. Hence, in total, we % will be running eight different sets of simulations. % % It is very easy to customize this demo for your own application by  % modifying the script file used to build this demo. Click the link in  % the top left corner of this page to edit the script file. Click the  % link in the top right corner to run this demo from MATLAB(R).  % Before running this demo, make sure you are in a writable directory.  % % Copyright 2005-2009 The MathWorks, Inc.   %% Step 1: Preparation % First we open the model where the simulation mode has been set to  % Rapid Accelerator. % The default input data and the required parameters are preloaded in the  % models workspace. We change to a temporary directory since running in  % Rapid Accelerator mode creates extra files. % % The parameters gain2 and gain3 have been specified as tunable parameters  % so that they can be modified later using the utility function % Simulink.BlockDiagram.modifyTunableParameters. % To learn how to select tunable parameters and set their properties  % graphically, read the following help page concerning the % <matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'model_param_config_dialog') Model Parameter Configuration Dialog Box>. % % We copy the default input and time data to a variable so that we can  % later modify them and pass them to the SIM command. %  % Open model:  mdl = 'sldemo_raccel_engine_idle_speed'; open_system(mdl); curDir = pwd; cd(tempdir);  % Copy input data inpData = evalin('base', 'inpData'); tData = evalin('base', 'time');  %% Step 2: Build the Rapid Accelerator Target % We now build the Rapid Accelerator executable for the model and get the  % default run-time parameter set. %  rtp = Simulink.BlockDiagram.buildRapidAcceleratorTarget(mdl); close_system(mdl, 0);  %% Step 3: Create Parameter Sets % Using the default rtp structure from step 2, we build a new structure  % with different values for the tunable variables in the model.  % We want to see how the idle speed changes for different values of parameters % gain2 and gain3. Therefore, we generate different parameter sets with  % different values of gain2 and gain3 and leave the other tunable variables  % at their default values. % % The utility function Simulink.BlockDiagram.modifyTunableParameters % is a convenient way to build the rtp structure with different parameter  % values. %  gain2_vals = 25:10:35; gain3_vals = 20:10:30;  num_gain2_vals = length(gain2_vals); num_gain3_vals = length(gain3_vals); numParamSets = num_gain2_vals*num_gain3_vals;  % Create parameter sets: paramSets = cell(1, numParamSets); idx = 1; for iG2 = 1:num_gain2_vals     for iG3 = 1:num_gain3_vals         paramSets{idx} = ...             Simulink.BlockDiagram.modifyTunableParameters(rtp, ...             'gain2',gain2_vals(iG2), ...             'gain3',gain3_vals(iG3));         idx = idx+1;     end end  %% Step 4: Create Input Sets % Here we perturb the default input values vector to obtain a new % input values vector. % % In this demo, we will be plotting the engine idle speed as a function of  % the valve voltage for different parameter values. %  inpSets{1} = inpData; rndPertb = 0.5 + rand(length(tData), 1); inpSets{2} = inpSets{1}.*rndPertb; numInpSets  = length(inpSets);  %% Step 5: Create SIM Command Argument Sets % We now create a cell array of parameter-name-value structures that will be  % passed to the SIM command called from inside of a PARFOR loop. % % To run the SIM command in Rapid Accelerator mode, we need to set the  % field 'RapidAcceleratorUpToDateCheck' to 'off' and pass the parameter sets % by using the 'RapidAcceleratorParameterSets' field. % % We also collect all of the external inputs in a cell array. Later we assign  % each of them with 'externalInput' as the variable name in the base  % workspace of the workers. %  numSimCmdArgStructs = numParamSets*numInpSets; simCmdParamValStructs = cell(1, numSimCmdArgStructs); externalInput = cell(1, numSimCmdArgStructs);  paramValStruct.SaveTime = 'on'; paramValStruct.SaveOutput = 'on'; paramValStruct.LoadExternalInput = 'on'; % 'externalInput' is the name of the base workspace variable of   % the MATLAB worker sessions containing the external inputs data paramValStruct.ExternalInput = 'externalInput'; paramValStruct.RapidAcceleratorUpToDateCheck = 'off'; paramValStruct.RapidAcceleratorParameterSets = [];  idx = 1; for paramSetsIdx = 1:numParamSets     for inpSetsIdx = 1:numInpSets              simCmdParamValStructs{idx} = paramValStruct;         simCmdParamValStructs{idx}.RapidAcceleratorParameterSets = ...             paramSets{paramSetsIdx};         externalInput{idx} = [tData, inpSets{inpSetsIdx}];         idx = idx + 1;     end end  %% Step 6: Start Matlabpool % Uncomment the code to start a matlabpool % The following line of code starts four worker MATLAB sessions. PARFOR    % would then distribute jobs to these four worker sessions.  % matlabpool open 4;  %% Step 7: Simulate in PARFOR % Here we simulate the model in parallel using PARFOR with different argument % sets that contain different parameter values and input vectors.  % We assign the input vectors corresponding to the simulation in the  % base workspace of the MATLAB worker session that is running the simulation. % The use of EVALIN(‘base’) and ASSIGNIN(‘base’) inside of a PARFOR loop  % indicates a reference to the base workspaces of the worker machines,  % and thus is not generally recommended.  % However, in the current demo, the variable ‘externalInputs’ is required by  % the base workspace of each session. Consequently, using ASSIGNIN(‘base’)  % inside of PARFOR is valid here. %   out = cell(1, numSimCmdArgStructs);  parfor(i = 1:numSimCmdArgStructs)         assignin('base', 'externalInput', externalInput{i}); %#ok<PFEVB>     out{i} = sim(mdl, simCmdParamValStructs{i}); end  %% Step 8: Plot Results % We now plot the engine idle speed with respect to time for different % parameter values and inputs. % The variable 'out' is a cell array of Simulink.SimulationOutput objects  % which contains the simulation data for each simulation. %  for i=1:numSimCmdArgStructs     t = out{i}.find('tout');      y = out{i}.find('yout');     plot(t, y)     hold all end  fprintf('\n Contents of the out{1}: \n'); display(out{1});  %% Step 9: Close Matlabpool % We now return to the original directory. % If the matlabpool was started earlier then it must be closed. % The second line of the following code closes the matlabpool, and thus % closes the worker sessions, when the comment symbol is removed. For more  % information, see the documentation on PARFOR and MATLABPOOL. %  cd(curDir); % matlabpool close   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

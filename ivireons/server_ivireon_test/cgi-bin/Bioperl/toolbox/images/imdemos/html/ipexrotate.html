@@ -1,0 +1,159 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Finding the Rotation and Scale of a Distorted Image</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="ipexrotate.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexrotate">Open ipexrotate.m in the Editor</a></div><div class="right"><a href="matlab:echodemo ipexrotate">Run in the Command Window</a></div></div><div class="content"><h1>Finding the Rotation and Scale of a Distorted Image</h1><!--introduction--><p>If you know that one image is distorted relative to another only by a rotation and scale change, you can use <tt>cp2tform</tt> to find the rotation angle and scale factor. You can then transform the distorted image to recover the original image.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Step 1: Read Image</a></li><li><a href="#2">Step 2: Resize the Image</a></li><li><a href="#3">Step 3: Rotate the Image</a></li><li><a href="#4">Step 4: Select Control Points</a></li><li><a href="#7">Step 5: Infer Transform</a></li><li><a href="#9">Step 6: Solve for Scale and Angle</a></li><li><a href="#11">Step 7: Recover Original Image</a></li></ul></div><h2>Step 1: Read Image<a name="1"></a></h2><p>Bring your favorite image into the workspace.</p><pre class="codeinput">I = imread(<span class="string">'cameraman.tif'</span>);
+imshow(I);
+text(size(I,2),size(I,1)+15, <span class="keyword">...</span>
+    <span class="string">'Image courtesy of Massachusetts Institute of Technology'</span>, <span class="keyword">...</span>
+    <span class="string">'FontSize'</span>,7,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>);
+</pre><img vspace="5" hspace="5" src="ipexrotate_01.png" alt=""> <h2>Step 2: Resize the Image<a name="2"></a></h2><pre class="codeinput">scale = 0.6;
+J = imresize(I,scale); <span class="comment">% Try varying the scale factor.</span>
+</pre><h2>Step 3: Rotate the Image<a name="3"></a></h2><pre class="codeinput">theta = 30;
+K = imrotate(J,theta); <span class="comment">% Try varying the angle, theta.</span>
+figure, imshow(K)
+</pre><img vspace="5" hspace="5" src="ipexrotate_02.png" alt=""> <h2>Step 4: Select Control Points<a name="4"></a></h2><p>Use the Control Point Selection Tool to pick at least two pairs of control points.</p><pre class="codeinput">input_points = [129.87  141.25; 112.63 67.75];
+base_points = [135.26  200.15; 170.30 79.30];
+</pre><p>You can run the rest of the demo with these pre-picked points, but try picking your own points to see how the results vary.</p><pre>cpselect(K,I,input_points,base_points);</pre><p>Save control points by choosing the <b>File</b> menu, then the <b>Save Points to Workspace</b> option. Save the points, overwriting variables <tt>input_points</tt> and <tt>base_points</tt>.</p><h2>Step 5: Infer Transform<a name="7"></a></h2><p>Find a <tt>TFORM</tt> structure that is consistent with your control points.</p><pre class="codeinput">t = cp2tform(input_points,base_points,<span class="string">'nonreflective similarity'</span>);
+</pre><p>After you have done Steps 6 and 7, repeat Steps 5 through 7 but try using 'affine' instead of 'nonreflective similarity'. What happens? Are the results as good as they were with 'nonreflective similarity'?</p><h2>Step 6: Solve for Scale and Angle<a name="9"></a></h2><p>The <tt>TFORM</tt> structure, <tt>t</tt>, contains a transformation matrix in <tt>t.tdata.Tinv</tt>. Since you know that the transformation includes only rotation and scaling, the math is relatively simple to recover the scale and angle.</p><pre>Let sc = s*cos(theta)
+Let ss = s*sin(theta)</pre><pre>Then, Tinv = t.tdata.Tinv = [sc -ss  0;
+                             ss  sc  0;
+                             tx  ty  1]</pre><pre>where tx and ty are x and y translations, respectively.</pre><pre class="codeinput">ss = t.tdata.Tinv(2,1);
+sc = t.tdata.Tinv(1,1);
+scale_recovered = sqrt(ss*ss + sc*sc)
+theta_recovered = atan2(ss,sc)*180/pi
+</pre><pre class="codeoutput">
+scale_recovered =
+
+    0.6000
+
+
+theta_recovered =
+
+   29.3699
+
+</pre><p>The value of <tt>scale_recovered</tt> should be <tt>0.6</tt> or whatever <tt>scale</tt> you used in <b>Step 2: Resize the Image</b>. The value of <tt>theta_recovered</tt> should be <tt>30</tt> or whatever <tt>theta</tt> you used in <b>Step 3: Rotate the Image</b>.</p><h2>Step 7: Recover Original Image<a name="11"></a></h2><p>Recover the original image by transforming <tt>K</tt>, the rotated-and-scaled image, using <tt>TFORM</tt> structure <tt>t</tt> and what you know about the size of <tt>I</tt>.</p><p>In the <tt>recovered</tt> image, notice that the resolution is not as good as in the original image <tt>I</tt>. This is due to the sequence which included shrinking-and-rotating then growing-and-rotating. Shrinking reduces the number of pixels in the image <tt>K</tt> so it effectively has less information than the original image <tt>I</tt>.</p><p>The artifacts around the edges are due to the limited accuracy of the transformation. If you were to pick more points in <b>Step 4: Select control points</b>, the transformation would be more accurate.</p><pre class="codeinput">D = size(I);
+recovered = imtransform(K,t,<span class="string">'XData'</span>,[1 D(2)],<span class="string">'YData'</span>,[1 D(1)]);
+
+<span class="comment">% Compare recovered to I.</span>
+figure, imshow(I)
+title(<span class="string">'I'</span>)
+figure, imshow(recovered)
+title(<span class="string">'recovered'</span>)
+</pre><img vspace="5" hspace="5" src="ipexrotate_03.png" alt=""> <img vspace="5" hspace="5" src="ipexrotate_04.png" alt=""> <p class="footer">Copyright 1993-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Finding the Rotation and Scale of a Distorted Image
+% If you know that one image is distorted relative to another only by a
+% rotation and scale change, you can use |cp2tform| to find the rotation
+% angle and scale factor. You can then transform the distorted image to
+% recover the original image.
+
+% Copyright 1993-2007 The MathWorks, Inc. 
+% $Revision: 1.4.4.7 $ $Date: 2007/09/18 02:09:04 $
+
+%% Step 1: Read Image
+% Bring your favorite image into the workspace.
+
+I = imread('cameraman.tif');
+imshow(I);
+text(size(I,2),size(I,1)+15, ...
+    'Image courtesy of Massachusetts Institute of Technology', ...
+    'FontSize',7,'HorizontalAlignment','right');
+
+%% Step 2: Resize the Image
+
+scale = 0.6;
+J = imresize(I,scale); % Try varying the scale factor.
+
+%% Step 3: Rotate the Image
+
+theta = 30;
+K = imrotate(J,theta); % Try varying the angle, theta.
+figure, imshow(K)
+
+%% Step 4: Select Control Points
+% Use the Control Point Selection Tool to pick at least two pairs of
+% control points. 
+
+input_points = [129.87  141.25; 112.63 67.75];
+base_points = [135.26  200.15; 170.30 79.30];
+
+%%
+% You can run the rest of the demo with these pre-picked points, but 
+% try picking your own points to see how the results vary.
+%
+%  cpselect(K,I,input_points,base_points);
+
+%%
+% Save control points by choosing the *File* menu, then the *Save Points to
+% Workspace* option. Save the points, overwriting variables |input_points|
+% and |base_points|.
+
+%% Step 5: Infer Transform
+% Find a |TFORM| structure that is consistent with your control points.
+
+t = cp2tform(input_points,base_points,'nonreflective similarity');
+
+%%
+% After you have done Steps 6 and 7, repeat Steps 5 through 7 but try using
+% 'affine' instead of 'nonreflective similarity'. What happens? Are the results
+% as good as they were with 'nonreflective similarity'?
+
+%% Step 6: Solve for Scale and Angle
+% The |TFORM| structure, |t|, contains a transformation matrix in
+% |t.tdata.Tinv|. Since you know that the transformation includes only
+% rotation and scaling, the math is relatively simple to recover the scale
+% and angle.
+%
+%  Let sc = s*cos(theta)
+%  Let ss = s*sin(theta)
+%
+%  Then, Tinv = t.tdata.Tinv = [sc -ss  0;
+%                               ss  sc  0;
+%                               tx  ty  1]
+%
+%  where tx and ty are x and y translations, respectively.
+
+ss = t.tdata.Tinv(2,1);
+sc = t.tdata.Tinv(1,1);
+scale_recovered = sqrt(ss*ss + sc*sc)
+theta_recovered = atan2(ss,sc)*180/pi
+
+%%
+% The value of |scale_recovered| should be |0.6| or whatever |scale| you used
+% in *Step 2: Resize the Image*. The value of |theta_recovered| should be
+% |30| or whatever |theta| you used in *Step 3: Rotate the Image*.
+
+%% Step 7: Recover Original Image
+% Recover the original image by transforming |K|, the rotated-and-scaled
+% image, using |TFORM| structure |t| and what you know about the size of
+% |I|. 
+%
+% In the |recovered| image, notice that the resolution is not as good as in
+% the original image |I|. This is due to the sequence which included
+% shrinking-and-rotating then growing-and-rotating. Shrinking reduces the
+% number of pixels in the image |K| so it effectively has less information
+% than the original image |I|.
+%
+% The artifacts around the edges are due to the limited accuracy of the
+% transformation. If you were to pick more points in *Step 4: Select
+% control points*, the transformation would be more accurate.
+
+D = size(I);
+recovered = imtransform(K,t,'XData',[1 D(2)],'YData',[1 D(1)]);
+
+% Compare recovered to I.
+figure, imshow(I)
+title('I')
+figure, imshow(recovered) 
+title('recovered')
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

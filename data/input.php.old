@@ -1,0 +1,188 @@
+<?php  
+/*  
+author: Nick Turner
+site: viral_dark_matter data_input
+page: input.php
+last updated: 04/02/2011 by Nick Turner */
+
+require("common.php"); 
+require_authentication();  ?>
+<!DOCTYPE html>
+<html lang="en">
+<head> 
+<?php require "head.html"; ?>
+<script src="input_js.js" type="text/javascript"></script>
+</head>
+<?php echo '<body id="input">';
+require "header.html"; ?>
+<nav>
+  <?php  require "nav.html"; ?>
+</nav>
+<?php
+
+ /* database information */
+$server   = "localhost";
+$user     = "nturner";
+$password = "LOB4steR";
+
+trim($server);
+trim($user);
+trim($password);
+
+function error( $msg )
+{
+  print( "<h2>ERROR: $msg</h2>\n" );
+  exit();
+}
+
+/* Make a connection to the database server: */
+$db = mysql_connect( $server, $user, $password );
+
+if ( ! $db )
+  error( "Cannot open connection to $user@$server" );
+
+/* Choose the database to work with: */
+if (!mysql_select_db( "vdm_joomla", $db )) 
+  error( "Cannot select database 'vdm_users'." );
+
+$result = mysql_query("SELECT name FROM vdm_users WHERE vdm_users.username = '$_SESSION[username]'");
+$row = mysql_fetch_array($result);
+?>
+
+<section id="mainarea">
+  <div id="description" >
+    <p>Please select the file type, the bacterial ID, the plate type and add any additional information.  Plates associated with the viral dark matter project should be "multi-plate reader."</p>
+    <p id="error"></p>
+    <p id="success" style="color: green;"><?php if (isset($_REQUEST['success'])) echo $_REQUEST['success']; ?></p>
+  </div><!-- /#description -->
+  <form action="input_uploader.php" method="post" enctype="multipart/form-data">
+  <div id="leftCol">
+    <table>
+      <colgroup>
+        <col class="col1">
+        <col class="col2">
+      </colgroup>
+      <tr>
+        <input type="hidden" name="MAX_FILE_SIZE" value="9000000" />
+        <td><p>Choose a file to upload: </p></td>
+        <td><input id="uploadedfile" name="uploadedfile" type="file" /></td>
+      </tr>
+      <tr>
+        <!-- THIS HIDDEN FIELD DETERMINES WHETHER THE CURRENT FILE's DATA WILL BE DELETED BEFORE UPLOAD -->
+        <td><input type="hidden" name="overwrite" id="overwrite" value="no" /> </td>
+        <!-- ***************************************************************************** -->
+      </tr>
+      <tr>
+        <td><p class="inputTitle" >Name:</p></td>
+        <td><input name="name" disable="disable" value="<? echo $row['name'] ?>" onfocus="if(this.value==this.defaultValue)this.value='';" onblur="if(this.value=='')this.value=this.defaultValue;"/></td>
+      </tr>
+      <tr>
+        <td><p class="inputTitle" >Select File Type: <em>*</em></p></td>
+        <td><select name="type">
+        <optgroup label="phenotype microarray">
+          <option value="singleplate">single plate reader</option>
+          <option value="multiplate">multi plate reader</option>
+        </optgroup>
+        <!--
+        <optgroup label="Lab2">
+          <option value="mix">mix</option>
+          <option value="exp4">exp4</option>
+        </optgroup>
+        --> 
+        </select></td>
+      </tr>
+      <tr> 
+        <div id="dradio1"><input type="radio" name="radio1" id="radio1" checked="checked" /></div> <div id="dradio2"><input type="radio" name="radio2" id="radio2" /></div>
+        <td><p class="inputTitle" >Bacterial ID: <em>*</em></p></td>
+        <td>
+        <select name="bactid" id="bactid">
+        <optgroup label="Bacterial ID">
+        <?php
+          /* Choose the database to work with: */
+          if (!mysql_select_db( "viral_dark_matter", $db ))
+            error( "Cannot select database 'viral_dark_matter'." );
+
+          $result = mysql_query("SELECT bact_external_id, vc_id FROM bacteria");
+          while ($row = mysql_fetch_array($result)) {
+            echo "<option>".$row['bact_external_id']."</option>";
+          }
+        ?>
+        </optgroup>
+        </select>
+        </td>
+      </tr>
+      <tr>
+        <td><p class="inputTitle" >VCID: <em>*</em></p></td>
+        <!--<td><input name="vcid" id="vcid" placeholder="e.g. 5604 or phoH" required /></td>-->
+        <td>
+        <select name="vcid" id="vcid" disabled="disabled"> <!--disabled="disabled" >-->
+        <optgroup label="VCID">
+        <?php
+          /* Choose the database to work with: */
+          if (!mysql_select_db( "viral_dark_matter", $db ))
+            error( "Cannot select database 'viral_dark_matter'." );
+
+          $result = mysql_query("SELECT bact_external_id, vc_id FROM bacteria");
+          while ($row = mysql_fetch_array($result)) {
+            echo "<option>".$row['vc_id']."</option>";
+          }
+        ?>
+        </optgroup>
+        </select>
+        </td>
+      </tr>
+      <tr>
+        <!-- HERE IS WHERE THE DATA FROM AJAX CALL TO VB_SELECT IS STORED (VCID OR BACTID) -->
+        <td><input type="hidden" name="other" id="other" value="none" /> </td>
+        <!-- ***************************************************************************** -->
+      </tr>
+      <tr>
+        <td><p class="inputTitle" >Plate: <em>*</em></p></td>
+        <td>
+        <select name="plate">
+        <optgroup label="plate name">
+        <?php 
+          /* Choose the database to work with: */
+          if (!mysql_select_db( "viral_dark_matter", $db ))
+            error( "Cannot select database 'viral_dark_matter'." );
+  
+          $result = mysql_query("SELECT plate_name FROM plate");
+          while ($row = mysql_fetch_array($result)) {
+            echo "<option>".$row['plate_name']."</option>";
+          } 
+        ?>
+        </optgroup>
+        </select>
+        </td>
+      </tr>
+  </table>
+  </div> <!-- /#leftCol -->
+  <div id="rightCol">
+  <table>
+    <colgroup>
+      <col class="col1">
+      <col class="col2">
+      </colgroup>
+      <tr>
+        <td><p class="inputTitle" id="addinfo">Additional Information:</p></td>
+        <td><textarea name="additionalInfo" placeholder="Enter any notes here." rows="9" columns="100" ></textarea></td>
+      </tr>
+      <tr>
+        <td><input id="upload" type="submit" value="Upload File" /></td>
+      </tr>
+    </table>
+    </div> <!-- /#rightCol -->
+    
+    </form>
+</section><!-- /#mainarea -->
+<footer>
+    <ul>
+        <li><a href="input.php" id="Ffirst">external link</a></li>
+    </ul>
+</footer>
+</body>
+</html>
+<?php
+/* Close database: */
+mysql_close( $db );
+?>

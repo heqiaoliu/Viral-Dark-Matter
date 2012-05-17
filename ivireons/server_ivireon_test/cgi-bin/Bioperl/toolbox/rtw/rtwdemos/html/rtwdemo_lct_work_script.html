@@ -1,0 +1,146 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Persistent Memory</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_lct_work_script.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_lct_work_script">Open rtwdemo_lct_work_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_lct_work_script">Run in the Command Window</a></div></div><div class="content"><h1>Persistent Memory</h1><!--introduction--><p>This demo shows you how to use the Legacy Code Tool to integrate legacy C functions with instance specific persistent memory.</p><p>The Legacy Code Tool allows you to:</p><div><ul><li>Provide the legacy function specification,</li><li>Generate a C-MEX S-function that is used during simulation to call the legacy code, and</li><li>Generate a block TLC file and optional rtwmakecfg.m file that is used during code generation to call the legacy code.</li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Providing the Legacy Function Specification</a></li><li><a href="#2">Generating S-Functions for Use During Simulation</a></li><li><a href="#3">Compiling the Generated S-Function for Simulation</a></li><li><a href="#4">Generating a TLC Block File for Code Generation</a></li><li><a href="#5">Generating an rtwmakecfg.m File for Code Generation</a></li><li><a href="#6">Generating a masked S-Function block for calling the generated S-Function</a></li><li><a href="#7">Demoing the Generated Integration with Legacy Code</a></li></ul></div><h2>Providing the Legacy Function Specification<a name="1"></a></h2><p>All functions provided with the Legacy Code Tool take a specific data structure or array of structures as the argument. The data structure is initialized by calling the function legacy_code() using 'initialize' as the first input. After initializing the structure, you have to assign its properties to values corresponding to the legacy code being integrated. For detailed help on the properties, call <a href="matlab:legacy_code('help')">legacy_code('help')</a>. The prototype of the legacy functions being called in this demo are:</p><p>void memory_bus_init(COUNTERBUS *mem, int32_T upper_sat, int32_T lower_sat);</p><p>void memory_bus_step(COUNTERBUS *input, COUNTERBUS *mem, COUNTERBUS *output);</p><p>where mem is an instance specific persistent memory for applying a one integration step delay. COUNTERBUS is a struct typedef defined in <a href="matlab:sldemo_lct_util('edit','sldemo_lct_src/counterbus.h')">counterbus.h</a> and implemented with a Simulink.Bus object in the base workspace. The legacy source code is found in the files <a href="matlab:sldemo_lct_util('edit','sldemo_lct_src/memory_bus.h')">memory_bus.h</a>, and <a href="matlab:sldemo_lct_util('edit','sldemo_lct_src/memory_bus.c')">memory_bus.c</a>.</p><pre class="codeinput">evalin(<span class="string">'base'</span>,<span class="string">'load sldemo_lct_data.mat'</span>)
+
+<span class="comment">% rtwdemo_sfun_work</span>
+def = legacy_code(<span class="string">'initialize'</span>);
+def.SFunctionName = <span class="string">'rtwdemo_sfun_work'</span>;
+def.InitializeConditionsFcnSpec = <span class="string">'void memory_bus_init(COUNTERBUS work1[1], int32 p1, int32 p2)'</span>;
+def.OutputFcnSpec = <span class="string">'void memory_bus_step(COUNTERBUS u1[1], COUNTERBUS work1[1], COUNTERBUS y1[1])'</span>;
+def.HeaderFiles   = {<span class="string">'memory_bus.h'</span>};
+def.SourceFiles   = {<span class="string">'memory_bus.c'</span>};
+def.IncPaths      = {<span class="string">'sldemo_lct_src'</span>};
+def.SrcPaths      = {<span class="string">'sldemo_lct_src'</span>};
+</pre><h2>Generating S-Functions for Use During Simulation<a name="2"></a></h2><p>The function legacy_code() is called again with the first input set to 'sfcn_cmex_generate' in order to automatically generate C-MEX S-function according to the description provided by the input argument 'def'. This S-function is used to call the legacy function in simulation. The source code for the S-function is found in the file <a href="matlab:rtwdemo_lct_util('edit','rtwdemo_sfun_work.c')">rtwdemo_sfun_work.c</a>.</p><pre class="codeinput">legacy_code(<span class="string">'sfcn_cmex_generate'</span>, def);
+</pre><h2>Compiling the Generated S-Function for Simulation<a name="3"></a></h2><p>After the C-MEX S-function source files are generated, the function legacy_code() is called again with the first input set to 'compile' in order to compile the S-function for simulation with Simulink&reg;.</p><pre class="codeinput">legacy_code(<span class="string">'compile'</span>, def);
+</pre><pre class="codeoutput">
+### Start Compiling rtwdemo_sfun_work
+    mex('rtwdemo_sfun_work.c', 'B:\matlab\toolbox\simulink\simdemos\simfeatures\sldemo_lct_src\memory_bus.c', '-IB:\matlab\toolbox\simulink\simdemos\simfeatures\sldemo_lct_src', '-IC:\Temp\R2010bd_251_3840\tp0131b8c4_8885_42d9_84ce_432a16cc3511')
+### Finish Compiling rtwdemo_sfun_work
+### Exit
+</pre><h2>Generating a TLC Block File for Code Generation<a name="4"></a></h2><p>After the S-function is compiled and used in simulation, the function legacy_code() can be called again with the first input set to 'sfcn_tlc_generate' in order to generate a TLC block file to support code generation through Real Time Workshop. Code generation will fail if the TLC block file is not created and you try to generate code for a model that includes the S-function. The TLC block file for the S-function is: <a href="matlab:rtwdemo_lct_util('edit','rtwdemo_sfun_work.tlc')">rtwdemo_sfun_work.tlc</a>.</p><pre class="codeinput">legacy_code(<span class="string">'sfcn_tlc_generate'</span>, def);
+</pre><h2>Generating an rtwmakecfg.m File for Code Generation<a name="5"></a></h2><p>After the TLC block file is created, the function legacy_code() can be called again with the first input set to 'rtwmakecfg_generate' in order to generate an rtwmakecfg.m file to support code generation through Real Time Workshop. The file is needed only if the required source and header files for the S-functions are not in the same directory as the S-functions, and you want to add these dependencies in the makefile produced during code generation.</p><pre class="codeinput">legacy_code(<span class="string">'rtwmakecfg_generate'</span>, def);
+</pre><h2>Generating a masked S-Function block for calling the generated S-Function<a name="6"></a></h2><p>After the C-MEX S-function source is compiled, the function legacy_code() can be called again with the first input set to 'slblock_generate' in order to generate a masked S-function block that is configured to call that S-function.  The block is placed in a new model and can be copied to an existing model.</p><pre class="codeinput"><span class="comment">% legacy_code('slblock_generate', def);</span>
+</pre><h2>Demoing the Generated Integration with Legacy Code<a name="7"></a></h2><p>The model <a href="matlab:rtwdemo_lct_work">rtwdemo_lct_work</a> shows integration with the legacy code.  The subsystem memory_bus serves as a harness for the call to the legacy C function.</p><pre class="codeinput">open_system(<span class="string">'rtwdemo_lct_work'</span>)
+open_system(<span class="string">'rtwdemo_lct_work/memory_bus'</span>)
+sim(<span class="string">'rtwdemo_lct_work'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_lct_work_script_01.png" alt=""> <img vspace="5" hspace="5" src="rtwdemo_lct_work_script_02.png" alt=""> <img vspace="5" hspace="5" src="rtwdemo_lct_work_script_03.png" alt=""> <p class="footer">Copyright 1990-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Persistent Memory
+% This demo shows you how to use the Legacy Code Tool to integrate legacy C 
+% functions with instance specific persistent memory.
+%
+% The Legacy Code Tool allows you to:
+%
+% * Provide the legacy function specification,
+% * Generate a C-MEX S-function that is used during simulation to call the legacy code, and
+% * Generate a block TLC file and optional rtwmakecfg.m file that is used during code generation to call the legacy code.
+%
+
+%   Copyright 1990-2008 The MathWorks, Inc.
+%   $Revision: 1.1.8.4 $  $Date: 2008/12/01 07:30:57 $
+
+%% Providing the Legacy Function Specification
+% All functions provided with the Legacy Code Tool take a specific data 
+% structure or array of structures as the argument. The data structure is 
+% initialized by calling the function legacy_code() using 'initialize' as the
+% first input. After initializing the structure, you have to assign its
+% properties to values corresponding to the legacy code being integrated.  
+% For detailed help on the properties, call 
+% <matlab:legacy_code('help') legacy_code('help')>. The 
+% prototype of the legacy functions being called in this demo are:
+%
+% void memory_bus_init(COUNTERBUS *mem, int32_T upper_sat, int32_T lower_sat);
+%
+% void memory_bus_step(COUNTERBUS *input, COUNTERBUS *mem, COUNTERBUS *output);
+%
+% where mem is an instance specific persistent memory for applying a one
+% integration step delay.
+% COUNTERBUS is a struct typedef defined in
+% <matlab:sldemo_lct_util('edit','sldemo_lct_src/counterbus.h') counterbus.h>
+% and implemented with a Simulink.Bus object in the base workspace. The 
+% legacy source code is found in the files
+% <matlab:sldemo_lct_util('edit','sldemo_lct_src/memory_bus.h') memory_bus.h>, and
+% <matlab:sldemo_lct_util('edit','sldemo_lct_src/memory_bus.c') memory_bus.c>.
+
+evalin('base','load sldemo_lct_data.mat')
+
+% rtwdemo_sfun_work
+def = legacy_code('initialize');
+def.SFunctionName = 'rtwdemo_sfun_work';
+def.InitializeConditionsFcnSpec = 'void memory_bus_init(COUNTERBUS work1[1], int32 p1, int32 p2)';
+def.OutputFcnSpec = 'void memory_bus_step(COUNTERBUS u1[1], COUNTERBUS work1[1], COUNTERBUS y1[1])';
+def.HeaderFiles   = {'memory_bus.h'};
+def.SourceFiles   = {'memory_bus.c'};
+def.IncPaths      = {'sldemo_lct_src'}; 
+def.SrcPaths      = {'sldemo_lct_src'}; 
+
+%% Generating S-Functions for Use During Simulation
+% The function legacy_code() is called again with the first input set to 
+% 'sfcn_cmex_generate' in order to automatically generate C-MEX S-function
+% according to the description provided by the input argument 'def'.
+% This S-function is used to call the legacy function in simulation.
+% The source code for the S-function is found in the file
+% <matlab:rtwdemo_lct_util('edit','rtwdemo_sfun_work.c') rtwdemo_sfun_work.c>.
+
+legacy_code('sfcn_cmex_generate', def);
+
+%% Compiling the Generated S-Function for Simulation
+% After the C-MEX S-function source files are generated, the function 
+% legacy_code() is called again with the first input set to 'compile' in order
+% to compile the S-function for simulation with Simulink(R).
+
+legacy_code('compile', def);
+
+%% Generating a TLC Block File for Code Generation
+% After the S-function is compiled and used in simulation, the function
+% legacy_code() can be called again with the first input set to 
+% 'sfcn_tlc_generate' in order to generate a TLC block file to support
+% code generation through Real Time Workshop. Code generation will fail 
+% if the TLC block file is not created and you try to generate code for a model
+% that includes the S-function. The TLC block file for the S-function is:
+% <matlab:rtwdemo_lct_util('edit','rtwdemo_sfun_work.tlc') rtwdemo_sfun_work.tlc>.
+
+legacy_code('sfcn_tlc_generate', def);
+
+%% Generating an rtwmakecfg.m File for Code Generation
+% After the TLC block file is created, the function
+% legacy_code() can be called again with the first input set to 
+% 'rtwmakecfg_generate' in order to generate an rtwmakecfg.m file to support
+% code generation through Real Time Workshop. The file is needed only if 
+% the required source and header files for the S-functions are not in the 
+% same directory as the S-functions, and you want to add these 
+% dependencies in the makefile produced during code generation.
+
+legacy_code('rtwmakecfg_generate', def);
+
+%% Generating a masked S-Function block for calling the generated S-Function
+% After the C-MEX S-function source is compiled, the function 
+% legacy_code() can be called again with the first input set to 'slblock_generate' in order
+% to generate a masked S-function block that is configured to call that
+% S-function.  The block is placed in a new model and can be copied to an
+% existing model.
+
+% legacy_code('slblock_generate', def);
+
+%% Demoing the Generated Integration with Legacy Code
+% The model <matlab:rtwdemo_lct_work rtwdemo_lct_work> 
+% shows integration with the legacy
+% code.  The subsystem memory_bus serves as a harness for the call to the
+% legacy C function.
+
+open_system('rtwdemo_lct_work')
+open_system('rtwdemo_lct_work/memory_bus')
+sim('rtwdemo_lct_work')
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

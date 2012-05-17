@@ -1,0 +1,152 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>カルマン フィルター設計</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="kalmdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit kalmdemo">エディターで kalmdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo kalmdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>カルマン フィルター設計</h1><!--introduction--><p>このデモは、カルマン フィルタリングを行なうための MATLAB&reg; の機能を説明します。以下では定常状態フィルターと時変フィルターの両方を設計し、シミュレートします。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">問題の定義</a></li><li><a href="#3">定常状態カルマン フィルターの設計</a></li><li><a href="#21">時変カルマン フィルターの設計</a></li></ul></div><h2>問題の記述<a name="1"></a></h2><p>次の離散プラントがあるとします。</p><p><img src="../kalmdemo_eq92908.png" alt="$$ x(n+1) = Ax(n) + Bu(n) $$"></p><p><img src="../kalmdemo_eq79148.png" alt="$$ y(n) = Cx(n) + Du(n) $$"></p><p>ここで、</p><pre class="codeinput">A = [1.1269   -0.4940    0.1129,
+     1.0000         0         0,
+          0    1.0000         0];
+
+B = [-0.3832
+      0.5919
+      0.5191];
+
+C = [1 0 0];
+
+D = 0;
+</pre><p>カルマン フィルターを設計し、ノイズの測定量  yv[n] = C x[n] + v[n] に基づいて出力 y を推定します。</p><h2>定常状態カルマン フィルターの設計<a name="3"></a></h2><p>関数 KALMAN を使用すると、定常状態カルマン フィルターを設計できます。この関数は、プロセス ノイズの共分散 Q とセンサー ノイズの共分散 R に基づいて、最適な定常状態フィルターのゲイン M を判定します。</p><p>まず、プラント + ノイズ モデルを指定します。警告: サンプル時間を -1 に設定してプラントを離散系としてマークします。</p><pre class="codeinput">Plant = ss(A,[B B],C,0,-1,<span class="string">'inputname'</span>,{<span class="string">'u'</span> <span class="string">'w'</span>},<span class="string">'outputname'</span>,<span class="string">'y'</span>);
+</pre><p>プロセス ノイズの共分散 (Q) を指定します。</p><pre class="codeinput">Q = 2.3; <span class="comment">% A number greater than zero</span>
+</pre><p>センサー ノイズの共分散 (R) を指定します。</p><pre class="codeinput">R = 1; <span class="comment">% A number greater than zero</span>
+</pre><p>次に、以下の方程式を使用して、定常状態カルマン フィルターを設計します。</p><pre>   時刻の更新: x[n+1|n] = Ax[n|n-1] + Bu[n]</pre><pre>   観測値の更新: x[n|n] = x[n|n-1] + M (yv[n] - Cx[n|n-1])</pre><pre>                        ここで、M = 最適なイノベーション ゲイン
+KALMAN コマンドを使用: </pre><pre class="codeinput">[kalmf,L,P,M,Z] = kalman(Plant,Q,R);
+</pre><p>カルマン フィルター KALMF の最初の出力はプラントの出力推定値  y_e = Cx[n|n] で、残りの出力は状態の推定値です。最初の出力 y_e のみを保持します。</p><pre class="codeinput">kalmf = kalmf(1,:);
+
+M,   <span class="comment">% innovation gain</span>
+</pre><pre class="codeoutput">
+M =
+
+    0.5345
+    0.0101
+   -0.4776
+
+</pre><p>このフィルターの機能を確認するために、データを生成し、フィルターを適用した応答を真のプラント応答と比較します。</p><p><img vspace="5" hspace="5" src="../../Figures/kalmdemofigures_01.png" alt=""> </p><p>上記のシステムをシミュレートするには、各部分の応答を個別に生成するか、両方を一緒に生成できます。各部分を個別にシミュレートするには、まずプラントに LSIM を使用してからフィルターを使用します。次の例では、両方を一緒にシミュレートします。</p><pre class="codeinput"><span class="comment">% First, build a complete plant model with u,w,v as inputs and</span>
+<span class="comment">% y and yv as outputs:</span>
+a = A;
+b = [B B 0*B];
+c = [C;C];
+d = [0 0 0;0 0 1];
+P = ss(a,b,c,d,-1,<span class="string">'inputname'</span>,{<span class="string">'u'</span> <span class="string">'w'</span> <span class="string">'v'</span>},<span class="string">'outputname'</span>,{<span class="string">'y'</span> <span class="string">'yv'</span>});
+</pre><p>次に、u を共有入力として指定して、プラント モデルとカルマン フィルターを並列接続します。</p><pre class="codeinput">sys = parallel(P,kalmf,1,1,[],[]);
+</pre><p>最後に、プラント出力 yv をフィルター入力 yv に接続します。メモ: yv は SYS の 4 番目の入力で、その 2 番目の出力でもあります。</p><pre class="codeinput">SimModel = feedback(sys,1,4,2,1);
+SimModel = SimModel([1 3],[1 2 3]);     <span class="comment">% Delete yv form I/O</span>
+</pre><p>結果として得られるシミュレーション モデルは w、v、u を入力とし、y, y_e を出力とします。</p><pre class="codeinput">SimModel.inputname
+</pre><pre class="codeoutput">
+ans = 
+
+    'w'
+    'v'
+    'u'
+
+</pre><pre class="codeinput">SimModel.outputname
+</pre><pre class="codeoutput">
+ans = 
+
+    'y'
+    'y_e'
+
+</pre><p>これで、フィルターの動作をシミュレートする準備ができました。正弦波入力ベクトル (既知) を生成します。</p><pre class="codeinput">t = [0:100]';
+u = sin(t/5);
+</pre><p>プロセス ノイズ ベクトルとセンサー ノイズ ベクトルを生成します。</p><pre class="codeinput">randn(<span class="string">'seed'</span>,0);
+w = sqrt(Q)*randn(length(t),1);
+v = sqrt(R)*randn(length(t),1);
+</pre><p>次に、LSIM を使用して応答をシミュレートします。</p><pre class="codeinput">clf;
+[out,x] = lsim(SimModel,[w,v,u]);
+
+y = out(:,1);   <span class="comment">% true response</span>
+ye = out(:,2);  <span class="comment">% filtered response</span>
+yv = y + v;     <span class="comment">% measured response</span>
+</pre><p>真の応答をフィルターを適用した応答と比較します。</p><pre class="codeinput">clf
+subplot(211), plot(t,y,<span class="string">'b'</span>,t,ye,<span class="string">'r--'</span>),
+xlabel(<span class="string">'No. of samples'</span>), ylabel(<span class="string">'Output'</span>)
+title(<span class="string">'Kalman filter response'</span>)
+subplot(212), plot(t,y-yv,<span class="string">'g'</span>,t,y-ye,<span class="string">'r--'</span>),
+xlabel(<span class="string">'No. of samples'</span>), ylabel(<span class="string">'Error'</span>)
+</pre><img vspace="5" hspace="5" src="../kalmdemo_01.png" alt=""> <p>2 番目のプロットに示すように、カルマン フィルターは測定ノイズによる誤差 y-yv を低減します。これを確認するために、誤差の共分散を比較します。</p><pre class="codeinput">MeasErr = y-yv;
+MeasErrCov = sum(MeasErr.*MeasErr)/length(MeasErr);
+EstErr = y-ye;
+EstErrCov = sum(EstErr.*EstErr)/length(EstErr);
+</pre><p>フィルター適用前の誤差の共分散 (測定誤差):</p><pre class="codeinput">MeasErrCov
+</pre><pre class="codeoutput">
+MeasErrCov =
+
+    1.1138
+
+</pre><p>フィルター適用後の誤差の共分散 (推定誤差):</p><pre class="codeinput">EstErrCov
+</pre><pre class="codeoutput">
+EstErrCov =
+
+    0.4309
+
+</pre><h2>時変カルマン フィルターの設計<a name="21"></a></h2><p>次に、時変カルマン フィルターを設計し、同じタスクを実行します。  時変カルマン フィルターは、ノイズの共分散が定常的でないときでも良好に動作します。  ただし、このデモでは定常共分散を使用します。</p><p>時変カルマン フィルターには次の更新方程式があります。</p><pre>   時刻の更新:           x[n+1|n] = Ax[n|n] + Bu[n]</pre><pre>                       P[n+1|n] = AP[n|n]A' + B*Q*B'</pre><pre>   観測値の更新: 
+                       x[n|n] = x[n|n-1] + M[n](yv[n] - Cx[n|n-1])
+                                                         -1
+                       M[n] = P[n|n-1] C' (CP[n|n-1]C'+R)</pre><pre>                       P[n|n] = (I-M[n]C) P[n|n-1]</pre><p>まず、ノイズのあるプラント応答を生成します。</p><pre class="codeinput">sys = ss(A,B,C,D,-1);
+y = lsim(sys,u+w);   <span class="comment">% w = process noise</span>
+yv = y + v;          <span class="comment">% v = meas. noise</span>
+</pre><p>次に、FOR ループ内でフィルターの再帰計算を実装します。</p><pre class="codeinput">P=B*Q*B';         <span class="comment">% Initial error covariance</span>
+x=zeros(3,1);     <span class="comment">% Initial condition on the state</span>
+ye = zeros(length(t),1);
+ycov = zeros(length(t),1);
+
+<span class="keyword">for</span> i=1:length(t)
+  <span class="comment">% Measurement update</span>
+  Mn = P*C'/(C*P*C'+R);
+  x = x + Mn*(yv(i)-C*x);  <span class="comment">% x[n|n]</span>
+  P = (eye(3)-Mn*C)*P;     <span class="comment">% P[n|n]</span>
+
+  ye(i) = C*x;
+  errcov(i) = C*P*C';
+
+  <span class="comment">% Time update</span>
+  x = A*x + B*u(i);        <span class="comment">% x[n+1|n]</span>
+  P = A*P*A' + B*Q*B';     <span class="comment">% P[n+1|n]</span>
+<span class="keyword">end</span>
+</pre><p>次に、真の応答をフィルターを適用した応答と比較します。</p><pre class="codeinput">subplot(211), plot(t,y,<span class="string">'b'</span>,t,ye,<span class="string">'r--'</span>),
+xlabel(<span class="string">'No. of samples'</span>), ylabel(<span class="string">'Output'</span>)
+title(<span class="string">'Response with time-varying Kalman filter'</span>)
+subplot(212), plot(t,y-yv,<span class="string">'g'</span>,t,y-ye,<span class="string">'r--'</span>),
+xlabel(<span class="string">'No. of samples'</span>), ylabel(<span class="string">'Error'</span>)
+</pre><img vspace="5" hspace="5" src="../kalmdemo_02.png" alt=""> <p>時変フィルターは、推定中に出力共分散も推定します。フィルターが定常状態に達している (定常入力ノイズで期待されるとおり) かどうかを確認するために、出力共分散をプロットします。</p><pre class="codeinput">subplot(211)
+plot(t,errcov), ylabel(<span class="string">'Error Covar'</span>),
+</pre><img vspace="5" hspace="5" src="../kalmdemo_03.png" alt=""> <p>この共分散プロットから、出力共分散がおよそ 5 つのサンプルで定常状態に達したことを確認できます。それ以降、時変フィルターは定常状態バージョンと同じ性能を維持します。</p><p>共分散誤差の比較: </p><pre class="codeinput">MeasErr = y-yv;
+MeasErrCov = sum(MeasErr.*MeasErr)/length(MeasErr);
+EstErr = y-ye;
+EstErrCov = sum(EstErr.*EstErr)/length(EstErr);
+</pre><p>フィルター適用前の誤差の共分散 (測定誤差):</p><pre class="codeinput">MeasErrCov
+</pre><pre class="codeoutput">
+MeasErrCov =
+
+    1.1138
+
+</pre><p>フィルター適用後の誤差の共分散 (推定誤差):</p><pre class="codeinput">EstErrCov
+</pre><pre class="codeoutput">
+EstErrCov =
+
+    0.4303
+
+</pre><p>カルマン ゲイン行列の定常状態値と最終値が一致することを確認します。</p><pre class="codeinput">M,Mn
+</pre><pre class="codeoutput">
+M =
+
+    0.5345
+    0.0101
+   -0.4776
+
+
+Mn =
+
+    0.5345
+    0.0101
+   -0.4776
+
+</pre><p class="footer">Copyright 1986-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Kalman Filter Design % This demo demonstrates MATLAB(R) ability to perform Kalman filtering.   % Both a steady state filter and a time varying filter are designed % and simulated below.  %   Copyright 1986-2007 The MathWorks, Inc.  %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $  %%  Problem Description % Given the following discrete plant % % $$ x(n+1) = Ax(n) + Bu(n) $$ % % $$ y(n) = Cx(n) + Du(n) $$ % % where A = [1.1269   -0.4940    0.1129,       1.0000         0         0,            0    1.0000         0];  B = [-0.3832       0.5919       0.5191];  C = [1 0 0];  D = 0;  %% % design a Kalman filter to estimate the output y based on the  % noisy measurements  yv[n] = C x[n] + v[n] %  %%  Steady-State Kalman Filter Design % You can use the function KALMAN to design a steady-state Kalman filter.   % This function determines the optimal  % steady-state filter gain M based on the process noise  % covariance Q and the sensor noise covariance R. % % First specify the plant + noise model. % CAUTION: set the sample time to -1 to mark the plant as discrete.  Plant = ss(A,[B B],C,0,-1,'inputname',{'u' 'w'},'outputname','y');  %% % Specify the process noise covariance (Q):  Q = 2.3; % A number greater than zero  %% % Specify the sensor noise covariance (R):  R = 1; % A number greater than zero  %% % Now design the steady-state Kalman filter with the equations %  %     Time update:         x[n+1|n] = Ax[n|n-1] + Bu[n] % %     Measurement update:  x[n|n] = x[n|n-1] + M (yv[n] - Cx[n|n-1])  % %                          where M = optimal innovation gain % using the KALMAN command: [kalmf,L,P,M,Z] = kalman(Plant,Q,R);   %% % The first output of the Kalman filter KALMF is the plant % output estimate  y_e = Cx[n|n], and the remaining outputs % are the state estimates. Keep only the first output y_e:  kalmf = kalmf(1,:);  M,   % innovation gain  %% % To see how this filter works, generate some data and  % compare the filtered response with the true plant response: % % <<../Figures/kalmdemofigures_01.png>>    %% % To simulate the system above, you can generate the response of  % each part separately or generate both together.  To  % simulate each separately, first use LSIM with the plant % and then with the filter. The following example simulates both together.  % First, build a complete plant model with u,w,v as inputs and % y and yv as outputs: a = A; b = [B B 0*B]; c = [C;C]; d = [0 0 0;0 0 1]; P = ss(a,b,c,d,-1,'inputname',{'u' 'w' 'v'},'outputname',{'y' 'yv'});  %% % Next, connect the plant model and the Kalman filter in parallel % by specifying u as a shared input: sys = parallel(P,kalmf,1,1,[],[]);  %% % Finally, connect the plant output yv to the filter input yv. % Note:  yv is the 4th input of SYS and also its 2nd output: SimModel = feedback(sys,1,4,2,1); SimModel = SimModel([1 3],[1 2 3]);     % Delete yv form I/O   %% % The resulting simulation model has w,v,u as inputs and y,y_e as  % outputs: SimModel.inputname  %% SimModel.outputname  %% % You are now ready to simulate the filter behavior. % Generate a sinusoidal input vector (known): t = [0:100]'; u = sin(t/5);  %% % Generate process noise and sensor noise vectors: randn('seed',0); w = sqrt(Q)*randn(length(t),1); v = sqrt(R)*randn(length(t),1);  %% % Now simulate the response using LSIM: clf; [out,x] = lsim(SimModel,[w,v,u]);  y = out(:,1);   % true response ye = out(:,2);  % filtered response yv = y + v;     % measured response  %% % Compare the true response with the filtered response: clf subplot(211), plot(t,y,'b',t,ye,'rREPLACE_WITH_DASH_DASH'),  xlabel('No. of samples'), ylabel('Output') title('Kalman filter response') subplot(212), plot(t,y-yv,'g',t,y-ye,'rREPLACE_WITH_DASH_DASH'), xlabel('No. of samples'), ylabel('Error')  %% % As shown in the second plot, the Kalman filter reduces % the error y-yv due to measurement noise. To confirm this, % compare the error covariances: MeasErr = y-yv; MeasErrCov = sum(MeasErr.*MeasErr)/length(MeasErr); EstErr = y-ye; EstErrCov = sum(EstErr.*EstErr)/length(EstErr);  %% % Covariance of error before filtering (measurement error): MeasErrCov  %% % Covariance of error after filtering (estimation error): EstErrCov  %% Time-Varying Kalman Filter Design % Now, design a time-varying Kalman filter to perform the same % task.  A time-varying Kalman filter can perform well even % when the noise covariance is not stationary.  However for this  % demonstration, we will use stationary covariance. % % The time varying Kalman filter has the following update equations. %   %     Time update:        x[n+1|n] = Ax[n|n] + Bu[n] %                      %                         P[n+1|n] = AP[n|n]A' + B*Q*B' % %                              %     Measurement update:   %                         x[n|n] = x[n|n-1] + M[n](yv[n] - Cx[n|n-1]) %                                                           -1 %                         M[n] = P[n|n-1] C' (CP[n|n-1]C'+R) % %                         P[n|n] = (I-M[n]C) P[n|n-1] % % % First, generate the noisy plant response:  sys = ss(A,B,C,D,-1); y = lsim(sys,u+w);   % w = process noise yv = y + v;          % v = meas. noise  %% % Next, implement the filter recursions in a FOR loop: P=B*Q*B';         % Initial error covariance x=zeros(3,1);     % Initial condition on the state ye = zeros(length(t),1); ycov = zeros(length(t),1);   for i=1:length(t)   % Measurement update   Mn = P*C'/(C*P*C'+R);   x = x + Mn*(yv(i)-C*x);  % x[n|n]   P = (eye(3)-Mn*C)*P;     % P[n|n]    ye(i) = C*x;   errcov(i) = C*P*C';    % Time update   x = A*x + B*u(i);        % x[n+1|n]   P = A*P*A' + B*Q*B';     % P[n+1|n]  end  %% % Now, compare the true response with the filtered response: subplot(211), plot(t,y,'b',t,ye,'rREPLACE_WITH_DASH_DASH'),  xlabel('No. of samples'), ylabel('Output') title('Response with time-varying Kalman filter') subplot(212), plot(t,y-yv,'g',t,y-ye,'rREPLACE_WITH_DASH_DASH'), xlabel('No. of samples'), ylabel('Error')  %% % The time varying filter also estimates the output covariance % during the estimation.  Plot the output covariance to see if the filter  % has reached steady state (as we would expect with stationary input % noise): subplot(211) plot(t,errcov), ylabel('Error Covar'),   %% % From the covariance plot you can see that the output covariance did  % reach a steady state in about 5 samples.  From then on, % the time varying filter has the same performance as the steady  % state version.  %% % Compare covariance errors: MeasErr = y-yv; MeasErrCov = sum(MeasErr.*MeasErr)/length(MeasErr); EstErr = y-ye; EstErrCov = sum(EstErr.*EstErr)/length(EstErr);  %% % Covariance of error before filtering (measurement error): MeasErrCov  %% % Covariance of error after filtering (estimation error): EstErrCov  %% % Verify that the steady-state and final values of the  % Kalman gain matrices coincide: M,Mn   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

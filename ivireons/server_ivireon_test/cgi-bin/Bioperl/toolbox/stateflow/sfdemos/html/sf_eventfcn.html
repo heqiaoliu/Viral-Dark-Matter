@@ -1,0 +1,74 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Driving Function Call Subsystems and Charts from Stateflow&reg; Using Function Call Outputs</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_eventfcn.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_eventfcn.mdl</div><div class="right"><a href="matlab:sf_eventfcn">Open this model</a></div></div><div class="content"><h1>Driving Function Call Subsystems and Charts from Stateflow&reg; Using Function Call Outputs</h1><!--introduction--><p>This demonstration illustrates the use of function call event outputs from a Stateflow&reg; chart to drive other Stateflow&reg; charts as well as Simulink&reg; function call subsystem.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#5">Simulation Output</a></li></ul></div><img vspace="5" hspace="5" src="sf_eventfcn_01.png" alt=""> <p>The chart called <tt>Source</tt> has two output events called <tt>out_fcn</tt> and <tt>out_fcn_two</tt> which are toggled by the two parallel states <tt>One</tt> and <tt>Two</tt> respectively.</p><img vspace="5" hspace="5" src="sf_eventfcn_02.png" alt=""> <p>The <tt>out_fcn</tt> event is connected through Simulink&reg; to drive the Stateflow chart called <tt>Function-Call Chart</tt>. Since <tt>Source</tt> calls the <tt>out_fcn</tt> event every three simulation time steps, therefore, the <tt>Function-Call Chart</tt> toggles state once every three time steps rather than every simulation step.</p><img vspace="5" hspace="5" src="sf_eventfcn_03.png" alt=""> <p>Similarly, the 'Function-call Subsystem' is activated every 2 time steps by receiving the function call signal named 'out_fcn_two'.</p><img vspace="5" hspace="5" src="sf_eventfcn_04.png" alt=""> <h2>Simulation Output<a name="5"></a></h2><p>Notice that in the output plots, the time distance between each sample point is 3 for the 'Function-Call Chart' and 2 for the function-call subsystem. This is easier to view if you zoom into the x-axis of the plots.</p><img vspace="5" hspace="5" src="sf_eventfcn_05.png" alt=""> <img vspace="5" hspace="5" src="sf_eventfcn_06.png" alt=""> <p class="footer">Copyright 2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Driving Function Call Subsystems and Charts from Stateflow(R) Using Function Call Outputs
+% 
+% This demonstration illustrates the use of function call event outputs
+% from a Stateflow(R) chart to drive other Stateflow(R) charts as well as
+% Simulink(R) function call subsystem.
+
+% Copyright 2007 The MathWorks, Inc.
+%% 
+
+mdl = 'sf_eventfcn';
+open_system(mdl);
+close_system([mdl, '/Chart scope']);
+close_system([mdl, '/Subsystem Scope']);
+
+root = sfroot;
+chart1 = find(root, '-isa', 'Stateflow.Chart', 'Name', 'Source');
+chart2 = find(root, '-isa', 'Stateflow.Chart', 'Name', 'Function-Call Chart');
+
+chart1.visible = 0;
+chart2.visible = 0;
+
+%%
+%
+% The chart called |Source| has two output events called |out_fcn| and
+% |out_fcn_two| which are toggled by the two parallel states |One| and
+% |Two| respectively. 
+
+chart1.visible = 1;
+
+%% 
+%
+% The |out_fcn| event is connected through Simulink(R) to drive the Stateflow
+% chart called |Function-Call Chart|. Since |Source| calls the |out_fcn|
+% event every three simulation time steps, therefore, the |Function-Call
+% Chart| toggles state once every three time steps rather than every
+% simulation step.
+
+chart2.visible = 1;
+
+%%
+%
+% Similarly, the 'Function-call Subsystem' is activated every 2 time steps
+% by receiving the function call signal named 'out_fcn_two'.
+
+open_system([mdl, '/Function-Call Subsystem']);
+
+%% Simulation Output
+%
+% Notice that in the output plots, the time distance between each sample
+% point is 3 for the 'Function-Call Chart' and 2 for the function-call
+% subsystem. This is easier to view if you zoom into the x-axis of the
+% plots.
+
+chart1.visible = 0;
+chart2.visible = 0;
+
+open_system([mdl, '/Chart scope']);
+open_system([mdl, '/Subsystem Scope']);
+
+evalc('sim(mdl)');
+
+##### SOURCE END #####
+--></body></html>

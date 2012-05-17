@@ -1,0 +1,90 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>イメージ ファイルの並列バッチ処理</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipexbatch.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexbatch">エディターで ipexbatch.m を開く</a></div><div class="right"><a href="matlab:echodemo ipexbatch">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>イメージ ファイルの並列バッチ処理</h1><!--introduction--><p>共通のイメージ処理作業では、ファイル セットにイメージ処理アルゴリズムを適用します。アルゴリズムが複雑な計算を行う場合、多数のファイルを処理する場合、またはファイルが非常に大きい場合、この手順は時間がかかることがあります。このデモは、イメージ ファイルのセットを並列にバッチ処理する方法を示します。</p><p>Parallel Computing Toolbox™ ソフトウェアを持っている場合、バッチ処理のパフォーマンスが向上します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">処理対象ファイルの名前の取得</a></li><li><a href="#3">各イメージに使用する画像処理アルゴアリズムの定義</a></li><li><a href="#5">イメージのループ</a></li><li><a href="#8">クリーン アップ</a></li><li><a href="#9">結果の表示</a></li></ul></div><h2>処理対象ファイルの名前の取得<a name="1"></a></h2><p>共通の接頭語が付いているファイル名をリストします。この例では、イメージ ファイルはラット前立腺癌細胞の 10 枚 1 組の顕微鏡写真です。これらのファイルは、取得した 100 イメージのうちの最初の 10 枚です。</p><pre class="codeinput">p = which(<span class="string">'AT3_1m4_01.tif'</span>);
+filelist = dir([fileparts(p) filesep <span class="string">'AT3_1m4_*.tif'</span>]);
+fileNames = {filelist.name}'
+</pre><pre class="codeoutput">
+fileNames = 
+
+    'AT3_1m4_01.tif'
+    'AT3_1m4_02.tif'
+    'AT3_1m4_03.tif'
+    'AT3_1m4_04.tif'
+    'AT3_1m4_05.tif'
+    'AT3_1m4_06.tif'
+    'AT3_1m4_07.tif'
+    'AT3_1m4_08.tif'
+    'AT3_1m4_09.tif'
+    'AT3_1m4_10.tif'
+
+</pre><p>いずれかのイメージを表示します。</p><pre class="codeinput">I = imread(fileNames{1});
+imshow(I)
+text(size(I,2),size(I,1)+15, <span class="keyword">...</span>
+    <span class="string">'Image files courtesy of Alan Partin'</span>, <span class="keyword">...</span>
+    <span class="string">'FontSize'</span>,7,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>);
+text(size(I,2),size(I,1)+25, <span class="keyword">...</span>
+    <span class="string">'Johns Hopkins University'</span>, <span class="keyword">...</span>
+    <span class="string">'FontSize'</span>,7,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexbatch_01.png" alt=""> <h2>各イメージに使用する画像処理アルゴリズムの定義<a name="3"></a></h2><p>イメージ内の非接触細胞を区分化するイメージ処理関数を作成します。いずれかのイメージで関数をテストします。</p><pre class="codeinput">segmentedCells = batchDetectCells(I);
+figure, imshow(segmentedCells)
+</pre><img vspace="5" hspace="5" src="../ipexbatch_02.png" alt=""> <p><tt>batchDetectCells</tt> を表示するには、次のコマンドを使用します。</p><pre class="codeinput">type <span class="string">batchDetectCells</span>
+</pre><pre class="codeoutput">
+function segmentedCells = batchDetectCells(I)
+%batchDetectCells Algorithm to detect cells in image.
+%   segmentedCells = batchDetectCells(I) detects cells in the cell
+%   image I and returns the result in segmentedCells.
+%
+%   Supports batch processing demo, ipexbatch. 
+
+%   Copyright 2005-2009 The MathWorks, Inc.
+
+% Use |edge| and the Sobel operator to calculate the threshold
+% value.Tune the threshold value and use |edge| again to obtain a
+% binary mask that contains the segmented cell.
+[~, threshold] = edge(I, 'sobel');
+fudgeFactor = .5;
+BW = edge(I,'sobel', threshold * fudgeFactor);
+
+se90 = strel('line', 3, 90);
+se0 = strel('line', 3, 0);
+BWdilate = imdilate(BW, [se90 se0]);
+BWnobord = imclearborder(BWdilate, 4);
+BWopen = bwareaopen(BWnobord,200);
+BWclose = bwmorph(BWopen,'close');
+BWfill = imfill(BWclose, 'holes');
+BWoutline = bwperim(BWfill);
+segmentedCells = I;
+segmentedCells(BWoutline) = 255;
+</pre><h2>イメージのループ<a name="5"></a></h2><p>関数 <tt>batchProcessFiles</tt> は <tt>parfor</tt> を使用して各イメージを個別に処理します。この関数は通常の <tt>for</tt> ループと同様に機能しますが、以下に説明する Parallel Computing Toolbox ソフトウェアがある場合は、複数のプロセッサーを利用できます。</p><p><tt>batchProcessFiles</tt> を表示するには、次のコマンドを使用します。</p><pre class="codeinput">type <span class="string">batchProcessFiles</span>
+</pre><pre class="codeoutput">
+function segmentedCellSequence = batchProcessFiles(fileNames,fcn)
+%batchProcessFiles Process image files.
+%   SEQUENCE = batchProcessFiles(FILENAMES,FCN) loops over all the files
+%   listed in FILENAMES, calls the function FCN on each of them, and combines
+%   the results in SEQUENCE.FCN is a function handle for a function with
+%   signature:B = FCN(A).
+%
+%   Supports batch processing demo, ipexbatch.
+
+%   Copyright 2007-2009 The MathWorks, Inc.
+
+I = imread(fileNames{1});
+
+[mrows,ncols] = size(I);
+nImages = length(fileNames);
+
+segmentedCellSequence = zeros(mrows,ncols,nImages,class(I));
+
+parfor (k = 1:nImages)    
+
+    I = imread(fileNames{k});
+    segmentedCellSequence(:,:,k) = fcn(I);    
+    
+end
+
+</pre><p>Parallel Computing Toolbox ソフトウェアをインストールしている場合、最大 4 個のローカル ワーカーを使用し各サイクルをループを介して別のワーカーに配布できます。MATLAB&reg; Distributed Computing Server™ もインストールしている場合は、クラスターでバッチ処理ジョブを実行できます。</p><p>このコマンドを使用してワーカーを割り当てることができます。</p><pre>matlabpool open 4</pre><p>ここで <tt>batchProcessFiles</tt> を呼び出して、各ファイルにセル検出アルゴリズムを適用します。</p><pre class="codeinput">segmentedCellSequence = batchProcessFiles(fileNames,@batchDetectCells);
+</pre><h2>クリーン アップ<a name="8"></a></h2><p><tt>matlabpool</tt> を呼び出して一部のワーカーを起動した場合は、必ずワーカーを閉じてください。</p><pre>matlabpool close</pre><h2>結果の表示<a name="9"></a></h2><p>次のコマンドを実行して <tt>implay</tt> のシーケンスを表示します。</p><pre class="codeinput">implay(segmentedCellSequence)
+</pre><img vspace="5" hspace="5" src="../ipexbatch_03.png" alt=""> <p>データがメモリ内に収まらない場合は、区分化されたイメージ データを 1 つの大きな配列に返す代わりに、<tt>parfor</tt> ループの本体を <tt>batchProcessFiles.m</tt> で修正し、区分化された各イメージを新しいファイルに書き込むか、または区分化されたシーケンス全体をマルチメディア ファイルに 1 イメージずつ書き込むことができます。そのため、処理とは別に結果を表示できます。</p><p class="footer">Copyright 2005-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Batch Processing Image Files in Parallel % A common image processing task is to apply an image processing algorithm to a % series of files. This procedure can be time consuming if the algorithm is % computationally intensive, if you are processing a large number of files, or % if the files are very large. This demo shows how to batch process a set of % image files in parallel. % % Batch processing performance can be improved if you have the  % Parallel Computing Toolbox(TM) software.  % Copyright 2005-2010 The MathWorks, Inc.  %% Get the Names of Files to be Processed % List the filenames with a common prefix. In this example, the image files are % a set of 10 microscope images of rat prostate cancer cells. These files are % only the first 10 of 100 images that were acquired.  p = which('AT3_1m4_01.tif'); filelist = dir([fileparts(p) filesep 'AT3_1m4_*.tif']); fileNames = {filelist.name}'  %% % View one of the images.  I = imread(fileNames{1}); imshow(I) text(size(I,2),size(I,1)+15, ...     'Image files courtesy of Alan Partin', ...     'FontSize',7,'HorizontalAlignment','right'); text(size(I,2),size(I,1)+25, ...     'Johns Hopkins University', ...     'FontSize',7,'HorizontalAlignment','right');  %% Define Image Processing Algorithm to Use on Each Image % Create an image processing function that segments non-touching cells in % the microscope images. Test the function on one of your images.    segmentedCells = batchDetectCells(I); figure, imshow(segmentedCells)  %% % To view |batchDetectCells| use this command.  type batchDetectCells  %% Loop over Images % The function |batchProcessFiles| uses |parfor| to process each image % independently. This works like a regular |for| loop but can take advantage of % multiple processors if you have the Parallel Computing Toolbox software as % described below.  %% % To view |batchProcessFiles| use this command.  type batchProcessFiles  %% % If you have the Parallel Computing Toolbox software, you can use up to 4 local % workers to distribute each cycle through the loop to a different worker. If % you also have the MATLAB(R) Distributed Computing Server(TM), you can run your % batch processing job on a cluster. % % You can allocate workers with this command. % %  matlabpool open 4 % % Now call |batchProcessFiles| to apply the cell detection algorithm to each % file.  segmentedCellSequence = batchProcessFiles(fileNames,@batchDetectCells);  %% Clean Up % If you called |matlabpool| to start some workers, be sure to close them. % %  matlabpool close  %% Display Results % Run the following command to see the sequence in |implay|.   implay(segmentedCellSequence)  %% % If you have data that does not all fit in memory, instead of returning the % segmented image data in one large array, you can modify the body of the % |parfor| loop in |batchProcessFiles.m| to either write each segmented % image to a new file or write the whole segmented sequence to a multimedia file % one image at a time. Then, you could review the results separate from the % processing.  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

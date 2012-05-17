@@ -1,0 +1,343 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      -->
+      <title>Simple Benchmarking of Parfor Using Blackjack</title>
+      <meta name="generator" content="MATLAB 7.8">
+      <meta name="date" content="2008-10-21">
+      <meta name="m-file" content="paralleldemo_parfor_bench">
+      <link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css">
+   </head>
+   <body>
+      <div class="header">
+         <div class="left"><a href="matlab:edit paralleldemo_parfor_bench">Open paralleldemo_parfor_bench.m in the Editor</a></div>
+         <div class="right"><a href="matlab:echodemo paralleldemo_parfor_bench">Run in the Command Window</a></div>
+      </div>
+      <div class="content">
+         <h1>Simple Benchmarking of Parfor Using Blackjack</h1>
+         <!--introduction-->
+         <p>This demo benchmarks the <tt>parfor</tt> construct by repeatedly playing the card game of blackjack, also known as 21.  We use <tt>parfor</tt> to play the card game multiple times in parallel, varying the number of MATLAB&reg; workers, but always using the same number
+            of players and hands.
+         </p>
+         <p>Related demos:</p>
+         <div>
+            <ul>
+               <li><a href="paralleldemo_distribjob_bench.html">Benchmarking Distributed Jobs on the Cluster</a></li>
+               <li><a href="paralleldemo_resource_bench.html">Resource Contention in Task Parallel Problems</a></li>
+            </ul>
+         </div>
+         <!--/introduction-->
+         <h2>Contents</h2>
+         <div>
+            <ul>
+               <li><a href="#1">Parallel Version</a></li>
+               <li><a href="#6">Check the Status of the MATLAB&reg; Pool</a></li>
+               <li><a href="#7">Run the Benchmark: Weak Scaling</a></li>
+               <li><a href="#9">Plot the Speedup</a></li>
+               <li><a href="#10">Measure the Speedup Distribution</a></li>
+               <li><a href="#11">Plot the Speedup Distribution</a></li>
+            </ul>
+         </div>
+         <h2>Parallel Version<a name="1"></a></h2>
+         <p>The basic parallel algorithm uses the <tt>parfor</tt> construct to execute independent passes through a loop.  It is a part of the MATLAB&reg; language, but behaves essentially like
+            a regular <tt>for</tt>-loop if you do not have access to the Parallel Computing Toolbox&#8482; product.  Thus, our initial step is to convert a loop of
+            the form
+         </p><pre> for i = 1:numPlayers
+    S(:, i) = playBlackjack();
+ end</pre><p>into the equivalent <tt>parfor</tt> loop:
+         </p><pre> parfor i = 1:numPlayers
+    S(:, i) = playBlackjack();
+ end</pre><p>We modify this slightly by specifying an optional argument to <tt>parfor</tt>, instructing it to limit to <tt>n</tt> the number of workers it uses for the computations.  The actual code is as follows:
+         </p><pre class="codeinput">dbtype <span class="string">pctdemo_aux_parforbench</span>
+</pre><pre class="codeoutput">
+1     function S = pctdemo_aux_parforbench(numHands, numPlayers, n)
+2     %PCTDEMO_AUX_PARFORBENCH Use parfor to play blackjack.
+3     %   S = pctdemo_aux_parforbench(numHands, numPlayers, n) plays 
+4     %   numHands hands of blackjack numPlayers times, and uses no 
+5     %   more than n MATLAB(R) workers for the computations.
+6     
+7     %   Copyright 2007-2009 The MathWorks, Inc.
+8     
+9     S = zeros(numHands, numPlayers);
+10    parfor (i = 1:numPlayers, n)
+11        S(:, i) = pctdemo_task_blackjack(numHands, 1);
+12    end
+
+</pre><h2>Check the Status of the MATLAB&reg; Pool<a name="6"></a></h2>
+         <p>We will use the MATLAB&reg; pool to allow the body of the <tt>parfor</tt> loop to run in parallel, so we start by checking whether the pool is open.  We will then run the benchmark using anywhere
+            between 2 and <tt>poolSize</tt> workers from this pool.
+         </p><pre class="codeinput">poolSize = matlabpool(<span class="string">'size'</span>);
+<span class="keyword">if</span> poolSize == 0
+    error(<span class="string">'distcomp:demo:poolClosed'</span>, <span class="keyword">...</span>
+        <span class="string">'This demo needs an open MATLAB pool to run.'</span>);
+<span class="keyword">end</span>
+</pre><h2>Run the Benchmark: Weak Scaling<a name="7"></a></h2>
+         <p>We time the execution of our benchmark calculations using 2 to <tt>poolSize</tt> workers.  We use weak scaling, that is, we increase the problem size with the number of workers.
+         </p><pre class="codeinput">numHands = 2000;
+numPlayers = 6;
+fprintf(<span class="string">'Simulating each player playing %d hands.\n'</span>, numHands);
+t1 = zeros(1, poolSize);
+<span class="keyword">for</span> n = 2:poolSize
+    tic;
+        pctdemo_aux_parforbench(numHands, n*numPlayers, n);
+    t1(n) = toc;
+    fprintf(<span class="string">'%d workers simulated %d players in %3.2f seconds.\n'</span>, <span class="keyword">...</span>
+            n, n*numPlayers, t1(n));
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Simulating each player playing 2000 hands.
+2 workers simulated 12 players in 6.11 seconds.
+3 workers simulated 18 players in 6.06 seconds.
+4 workers simulated 24 players in 6.10 seconds.
+5 workers simulated 30 players in 6.11 seconds.
+6 workers simulated 36 players in 6.17 seconds.
+7 workers simulated 42 players in 6.12 seconds.
+8 workers simulated 48 players in 6.10 seconds.
+9 workers simulated 54 players in 6.08 seconds.
+10 workers simulated 60 players in 6.10 seconds.
+11 workers simulated 66 players in 6.08 seconds.
+12 workers simulated 72 players in 6.06 seconds.
+13 workers simulated 78 players in 6.17 seconds.
+14 workers simulated 84 players in 6.14 seconds.
+15 workers simulated 90 players in 6.11 seconds.
+16 workers simulated 96 players in 6.16 seconds.
+17 workers simulated 102 players in 6.16 seconds.
+18 workers simulated 108 players in 6.17 seconds.
+19 workers simulated 114 players in 6.21 seconds.
+20 workers simulated 120 players in 6.50 seconds.
+21 workers simulated 126 players in 6.21 seconds.
+22 workers simulated 132 players in 6.18 seconds.
+23 workers simulated 138 players in 6.18 seconds.
+24 workers simulated 144 players in 6.22 seconds.
+25 workers simulated 150 players in 6.27 seconds.
+26 workers simulated 156 players in 6.24 seconds.
+27 workers simulated 162 players in 6.24 seconds.
+28 workers simulated 168 players in 6.32 seconds.
+29 workers simulated 174 players in 6.30 seconds.
+30 workers simulated 180 players in 6.30 seconds.
+31 workers simulated 186 players in 6.33 seconds.
+32 workers simulated 192 players in 6.23 seconds.
+33 workers simulated 198 players in 6.30 seconds.
+34 workers simulated 204 players in 6.27 seconds.
+35 workers simulated 210 players in 6.28 seconds.
+36 workers simulated 216 players in 6.29 seconds.
+37 workers simulated 222 players in 6.28 seconds.
+38 workers simulated 228 players in 6.30 seconds.
+39 workers simulated 234 players in 6.28 seconds.
+40 workers simulated 240 players in 6.28 seconds.
+41 workers simulated 246 players in 6.32 seconds.
+42 workers simulated 252 players in 6.30 seconds.
+43 workers simulated 258 players in 6.36 seconds.
+44 workers simulated 264 players in 6.30 seconds.
+45 workers simulated 270 players in 6.32 seconds.
+46 workers simulated 276 players in 6.27 seconds.
+47 workers simulated 282 players in 6.28 seconds.
+48 workers simulated 288 players in 6.33 seconds.
+49 workers simulated 294 players in 6.29 seconds.
+50 workers simulated 300 players in 6.28 seconds.
+51 workers simulated 306 players in 6.28 seconds.
+52 workers simulated 312 players in 6.29 seconds.
+53 workers simulated 318 players in 6.31 seconds.
+54 workers simulated 324 players in 6.30 seconds.
+55 workers simulated 330 players in 6.25 seconds.
+56 workers simulated 336 players in 6.29 seconds.
+57 workers simulated 342 players in 6.36 seconds.
+58 workers simulated 348 players in 6.29 seconds.
+59 workers simulated 354 players in 6.28 seconds.
+60 workers simulated 360 players in 6.33 seconds.
+61 workers simulated 366 players in 6.29 seconds.
+62 workers simulated 372 players in 6.26 seconds.
+63 workers simulated 378 players in 6.42 seconds.
+64 workers simulated 384 players in 6.29 seconds.
+</pre><p>We compare this against the execution using a regular <tt>for</tt>-loop in MATLAB&reg;.
+         </p><pre class="codeinput">tic;
+    S = zeros(numHands, numPlayers);
+    <span class="keyword">for</span> i = 1:numPlayers
+        S(:, i) = pctdemo_task_blackjack(numHands, 1);
+    <span class="keyword">end</span>
+t1(1) = toc;
+fprintf(<span class="string">'Ran in %3.2f seconds using a sequential for-loop.\n'</span>, t1(1));
+</pre><pre class="codeoutput">Ran in 5.60 seconds using a sequential for-loop.
+</pre><h2>Plot the Speedup<a name="9"></a></h2>
+         <p>We compare the speedup using <tt>parfor</tt> with different numbers of workers to the perfectly linear speedup curve.  The speedup achieved by using <tt>parfor</tt> depends on the problem size as well as the underlying hardware and networking infrastructure.
+         </p><pre class="codeinput">speedup = (1:poolSize).*t1(1)./t1;
+fig = pctdemo_setup_blackjack(1.0);
+set(fig, <span class="string">'Visible'</span>, <span class="string">'on'</span>);
+ax = axes(<span class="string">'parent'</span>, fig);
+x = plot(ax, 1:poolSize, 1:poolSize, <span class="string">'--'</span>, <span class="keyword">...</span>
+    1:poolSize, speedup, <span class="string">'s'</span>, <span class="string">'MarkerFaceColor'</span>, <span class="string">'b'</span>);
+t = get(ax, <span class="string">'XTick'</span>);
+t(t ~= round(t)) = []; <span class="comment">% Remove all non-integer x-axis ticks.</span>
+set(ax, <span class="string">'XTick'</span>, t);
+legend(x, <span class="string">'Linear Speedup'</span>, <span class="string">'Measured Speedup'</span>, <span class="string">'Location'</span>, <span class="string">'NorthWest'</span>);
+xlabel(ax, <span class="string">'Number of MATLAB workers participating in computations'</span>);
+ylabel(ax, <span class="string">'Speedup'</span>);
+</pre><img vspace="5" hspace="5" src="paralleldemo_parfor_bench_01.png" alt=""> <h2>Measure the Speedup Distribution<a name="10"></a></h2>
+         <p>To get reliable benchmark numbers, we need to run the benchmark multiple times.  We therefore run the benchmark multiple times
+            for <tt>poolSize</tt> workers to allow us to look at the spread of the speedup.
+         </p><pre class="codeinput">numIter = 100;
+t2 = zeros(1, numIter);
+<span class="keyword">for</span> i = 1:numIter
+    tic;
+        pctdemo_aux_parforbench(numHands, poolSize*numPlayers, poolSize);
+    t2(i) = toc;
+<span class="keyword">end</span>
+</pre><h2>Plot the Speedup Distribution<a name="11"></a></h2>
+         <p>We take a close look at the speedup of our simple parallel program when using the maximum number of workers.  The histogram
+            of the speedup allows us to distinguish between outliers and the average speedup.
+         </p><pre class="codeinput">speedup = t1(1)./t2*poolSize;
+clf(fig);
+ax = axes(<span class="string">'parent'</span>, fig);
+hist(speedup, 5);
+a = axis(ax);
+a(4) = 5*ceil(a(4)/5); <span class="comment">% Round y-axis to nearest multiple of 5.</span>
+axis(ax, a)
+xlabel(ax, <span class="string">'Speedup'</span>);
+ylabel(ax, <span class="string">'Frequency'</span>);
+title(ax, sprintf(<span class="string">'Speedup of parfor with %d workers'</span>, poolSize));
+m = median(speedup);
+fprintf([<span class="string">'Median speedup is %3.2f, which corresponds to '</span><span class="keyword">...</span>
+    <span class="string">'efficiency of %3.2f.\n'</span>], m, m/poolSize);
+</pre><pre class="codeoutput">Median speedup is 56.61, which corresponds to efficiency of 0.88.
+</pre><img vspace="5" hspace="5" src="paralleldemo_parfor_bench_02.png" alt=""> <p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+            Published with MATLAB&reg; 7.8
+         </p>
+         <p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks
+            of their respective owners.
+         </p>
+      </div>
+      <!--
+##### SOURCE BEGIN #####
+%% Simple Benchmarking of Parfor Using Blackjack
+% This demo benchmarks the |parfor| construct by repeatedly playing the
+% card game of blackjack, also known as 21.  We use |parfor| to play the
+% card game multiple times in parallel, varying the number of MATLAB(R)
+% workers, but always using the same number of players and hands.
+%
+% Related demos:
+%
+% * <paralleldemo_distribjob_bench.html Benchmarking Distributed Jobs on the Cluster> 
+% * <paralleldemo_resource_bench.html Resource Contention in Task Parallel Problems> 
+
+%   Copyright 2007-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2009/11/07 20:53:25 $
+
+%% Parallel Version
+% The basic parallel algorithm uses the |parfor| construct to execute
+% independent passes through a loop.  It is a part of the MATLAB(R)
+% language, but behaves essentially like a regular |for|-loop if you do not
+% have access to the Parallel Computing Toolbox(TM) product.  Thus, our
+% initial step is to convert a loop of the form
+%%
+%   for i = 1:numPlayers
+%      S(:, i) = playBlackjack();
+%   end
+%%
+% into the equivalent |parfor| loop:
+%%
+%   parfor i = 1:numPlayers
+%      S(:, i) = playBlackjack();
+%   end
+%%
+% We modify this slightly by specifying an optional argument to |parfor|,
+% instructing it to limit to |n| the number of workers it uses for the
+% computations.  The actual code is as follows:
+dbtype pctdemo_aux_parforbench
+
+%% Check the Status of the MATLAB(R) Pool
+% We will use the MATLAB(R) pool to allow the body of the |parfor| loop to
+% run in parallel, so we start by checking whether the pool is open.  We
+% will then run the benchmark using anywhere between 2 and |poolSize|
+% workers from this pool.
+poolSize = matlabpool('size');
+if poolSize == 0
+    error('distcomp:demo:poolClosed', ...
+        'This demo needs an open MATLAB pool to run.');
+end
+
+%% Run the Benchmark: Weak Scaling
+% We time the execution of our benchmark calculations using 2 to |poolSize|
+% workers.  We use weak scaling, that is, we increase the problem size with
+% the number of workers.
+numHands = 2000;
+numPlayers = 6;
+fprintf('Simulating each player playing %d hands.\n', numHands);
+t1 = zeros(1, poolSize);
+for n = 2:poolSize
+    tic;
+        pctdemo_aux_parforbench(numHands, n*numPlayers, n);
+    t1(n) = toc;
+    fprintf('%d workers simulated %d players in %3.2f seconds.\n', ...
+            n, n*numPlayers, t1(n));
+end
+%%
+% We compare this against the execution using a regular |for|-loop in
+% MATLAB(R). 
+tic;
+    S = zeros(numHands, numPlayers);
+    for i = 1:numPlayers
+        S(:, i) = pctdemo_task_blackjack(numHands, 1);
+    end
+t1(1) = toc;
+fprintf('Ran in %3.2f seconds using a sequential for-loop.\n', t1(1));
+
+%% Plot the Speedup
+% We compare the speedup using |parfor| with different numbers of workers
+% to the perfectly linear speedup curve.  The speedup achieved by using
+% |parfor| depends on the problem size as well as the underlying hardware
+% and networking infrastructure.
+speedup = (1:poolSize).*t1(1)./t1;
+fig = pctdemo_setup_blackjack(1.0);
+set(fig, 'Visible', 'on');
+ax = axes('parent', fig);
+x = plot(ax, 1:poolSize, 1:poolSize, 'REPLACE_WITH_DASH_DASH', ...
+    1:poolSize, speedup, 's', 'MarkerFaceColor', 'b');
+t = get(ax, 'XTick');
+t(t ~= round(t)) = []; % Remove all non-integer x-axis ticks.
+set(ax, 'XTick', t);
+legend(x, 'Linear Speedup', 'Measured Speedup', 'Location', 'NorthWest');
+xlabel(ax, 'Number of MATLAB workers participating in computations');
+ylabel(ax, 'Speedup');
+
+%% Measure the Speedup Distribution
+% To get reliable benchmark numbers, we need to run the benchmark multiple
+% times.  We therefore run the benchmark multiple times for |poolSize|
+% workers to allow us to look at the spread of the speedup.
+numIter = 100;
+t2 = zeros(1, numIter);
+for i = 1:numIter
+    tic;
+        pctdemo_aux_parforbench(numHands, poolSize*numPlayers, poolSize);
+    t2(i) = toc;
+end
+
+%% Plot the Speedup Distribution
+% We take a close look at the speedup of our simple parallel program when
+% using the maximum number of workers.  The histogram of the speedup allows 
+% us to distinguish between outliers and the average speedup.  
+speedup = t1(1)./t2*poolSize;
+clf(fig);
+ax = axes('parent', fig);
+hist(speedup, 5);
+a = axis(ax); 
+a(4) = 5*ceil(a(4)/5); % Round y-axis to nearest multiple of 5.
+axis(ax, a)
+xlabel(ax, 'Speedup');
+ylabel(ax, 'Frequency');
+title(ax, sprintf('Speedup of parfor with %d workers', poolSize));
+m = median(speedup);
+fprintf(['Median speedup is %3.2f, which corresponds to '...
+    'efficiency of %3.2f.\n'], m, m/poolSize);
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+-->
+   </body>
+</html>

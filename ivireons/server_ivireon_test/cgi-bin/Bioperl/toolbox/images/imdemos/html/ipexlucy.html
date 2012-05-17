@@ -1,0 +1,269 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Deblurring Images Using the Lucy-Richardson Algorithm</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="ipexlucy.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexlucy">Open ipexlucy.m in the Editor</a></div><div class="right"><a href="matlab:echodemo ipexlucy">Run in the Command Window</a></div></div><div class="content"><h1>Deblurring Images Using the Lucy-Richardson Algorithm</h1><!--introduction--><p>The Lucy-Richardson algorithm can be used effectively when the point-spread function PSF (blurring operator) is known, but little or no information is available for the noise. The blurred and noisy image is restored by the iterative, accelerated, damped Lucy-Richardson algorithm. The additional optical system (e.g. camera) characteristics can be used as input parameters to improve the quality of the image restoration.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Step 1: Read Image</a></li><li><a href="#2">Step 2: Simulate a Blur and Noise</a></li><li><a href="#4">Step 3: Restore the Blurred and Noisy Image</a></li><li><a href="#5">Step 4: Iterate to Explore the Restoration</a></li><li><a href="#8">Step 5: Control Noise Amplification by Damping</a></li><li><a href="#11">Step 6: Create Sample Image</a></li><li><a href="#12">Step 7: Simulate a Blur</a></li><li><a href="#15">Step 8: Provide the WEIGHT Array</a></li><li><a href="#16">Step 9: Provide a finer-sampled PSF</a></li></ul></div><h2>Step 1: Read Image<a name="1"></a></h2><p>The example reads in an RGB image and crops it to be 256-by-256-by-3. The <tt>deconvlucy</tt> function can handle arrays of any dimension.</p><pre class="codeinput">I = imread(<span class="string">'board.tif'</span>);
+I = I(50+[1:256],2+[1:256],:);
+figure;imshow(I);title(<span class="string">'Original Image'</span>);
+text(size(I,2),size(I,1)+15, <span class="keyword">...</span>
+    <span class="string">'Image courtesy of courtesy of Alexander V. Panasyuk, Ph.D.'</span>, <span class="keyword">...</span>
+    <span class="string">'FontSize'</span>,7,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>);
+text(size(I,2),size(I,1)+25, <span class="keyword">...</span>
+    <span class="string">'Harvard-Smithsonian Center for Astrophysics'</span>, <span class="keyword">...</span>
+    <span class="string">'FontSize'</span>,7,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_01.png" alt=""> <h2>Step 2: Simulate a Blur and Noise<a name="2"></a></h2><p>Simulate a real-life image that could be blurred (e.g., due to camera motion or lack of focus) and noisy (e.g., due to random disturbances). The example simulates the blur by convolving a Gaussian filter with the true image (using <tt>imfilter</tt>). The Gaussian filter then represents a point-spread function, <tt>PSF</tt>.</p><pre class="codeinput">PSF = fspecial(<span class="string">'gaussian'</span>,5,5);
+Blurred = imfilter(I,PSF,<span class="string">'symmetric'</span>,<span class="string">'conv'</span>);
+figure;imshow(Blurred);title(<span class="string">'Blurred'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_02.png" alt=""> <p>The example simulates the noise by adding a Gaussian noise of variance <tt>V</tt> to the blurred image (using <tt>imnoise</tt>). The noise variance <tt>V</tt> is used later to define a damping parameter of the algorithm.</p><pre class="codeinput">V = .002;
+BlurredNoisy = imnoise(Blurred,<span class="string">'gaussian'</span>,0,V);
+figure;imshow(BlurredNoisy);title(<span class="string">'Blurred &amp; Noisy'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_03.png" alt=""> <h2>Step 3: Restore the Blurred and Noisy Image<a name="4"></a></h2><p>Restore the blurred and noisy image providing the PSF and using only 5 iterations (default is 10). The output is an array of the same type as the input image.</p><pre class="codeinput">luc1 = deconvlucy(BlurredNoisy,PSF,5);
+figure;imshow(luc1);title(<span class="string">'Restored Image, NUMIT = 5'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_04.png" alt=""> <h2>Step 4: Iterate to Explore the Restoration<a name="5"></a></h2><p>The resulting image changes with each iteration. To investigate the evolution of the image restoration, you can do the deconvolution in steps: do a set of iterations, see the result, and then resume the iterations from where they were stopped. To do so, the input image has to be passed as a part of a cell array (e.g., start first set of iterations by passing in <tt>{BlurredNoisy}</tt> instead of <tt>BlurredNoisy</tt> as input image parameter).</p><pre class="codeinput">luc1_cell = deconvlucy({BlurredNoisy},PSF,5);
+</pre><p>In that case the output, <tt>luc1_cell</tt>, becomes a cell array. The cell output consists of four numeric arrays, where the first is the <tt>BlurredNoisy</tt> image, the second is the restored image of class double, the third array is the result of the one-before-last iteration, and the fourth array is an internal parameter of the iterated set. The second numeric array of the output cell-array, image <tt>luc1_cell{2}</tt>, is identical to the output array of the Step 3, image <tt>luc1</tt>, with a possible exception of their class (the cell output always gives the restored image of class double).</p><p>To resume the iterations, take the output from the previous function call, the cell-array <tt>luc1_cell</tt>, and pass it into the <tt>deconvlucy</tt> function. Use the default number of iterations (<tt>NUMIT</tt> = 10). The restored image is the result of a total of 15 iterations.</p><pre class="codeinput">luc2_cell = deconvlucy(luc1_cell,PSF);
+luc2 = im2uint8(luc2_cell{2});
+figure;imshow(luc2);title(<span class="string">'Restored Image, NUMIT = 15'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_05.png" alt=""> <h2>Step 5: Control Noise Amplification by Damping<a name="8"></a></h2><p>The latest image, <tt>luc2</tt>, is the result of 15 iterations. Although it is sharper than the earlier result from 5 iterations, the image develops a "speckled" appearance. The speckles do not correspond to any real structures (compare it to the true image), but instead are the result of fitting the noise in the data too closely.</p><p>To control the noise amplification, use the damping option by specifying the <tt>DAMPAR</tt> parameter. <tt>DAMPAR</tt> has to be of the same class as the input image. The algorithm dampens changes in the model in regions where the differences are small compared with the noise. The <tt>DAMPAR</tt> used here equals 3 standard deviations of the noise. Notice that the image is smoother.</p><pre class="codeinput">DAMPAR = im2uint8(3*sqrt(V));
+luc3 = deconvlucy(BlurredNoisy,PSF,15,DAMPAR);
+figure;imshow(luc3);
+title(<span class="string">'Restored Image with Damping, NUMIT = 15'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_06.png" alt=""> <p>The next part of this demo explores the <tt>WEIGHT</tt> and <tt>SUBSMPL</tt> input parameters of the deconvlucy function, using a simulated star image (for simplicity &amp; speed).</p><h2>Step 6: Create Sample Image<a name="11"></a></h2><p>The example creates a black/white image of four stars.</p><pre class="codeinput">I = zeros(32);I(5,5)=1;I(10,3)=1;I(27,26)=1;I(29,25)=1;
+figure;imshow(1-I,[],<span class="string">'InitialMagnification'</span>,<span class="string">'fit'</span>);
+set(gca,<span class="string">'Visible'</span>,<span class="string">'on'</span>,<span class="string">'XTickLabel'</span>,[],<span class="string">'YTickLabel'</span>,[],<span class="keyword">...</span>
+<span class="string">'XTick'</span>,[7 24],<span class="string">'XGrid'</span>,<span class="string">'on'</span>,<span class="string">'YTick'</span>,[5 28],<span class="string">'YGrid'</span>,<span class="string">'on'</span>);
+title(<span class="string">'Data'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_07.png" alt=""> <h2>Step 7: Simulate a Blur<a name="12"></a></h2><p>The example simulates a blur of the image of the stars by creating a Gaussian filter, <tt>PSF</tt>, and convolving it with the true image.</p><pre class="codeinput">PSF = fspecial(<span class="string">'gaussian'</span>,15,3);
+Blurred = imfilter(I,PSF,<span class="string">'conv'</span>,<span class="string">'sym'</span>);
+</pre><p>Now simulate a camera that can only observe part of the stars' images (only the blur is seen). Create a weighting function array, WEIGHT, that consists of ones in the central part of the Blurred image ("good" pixels, located within the dashed lines) and zeros at the edges ("bad" pixels - those that do not receive the signal).</p><pre class="codeinput">WT = zeros(32);WT(6:27,8:23) = 1;
+CutImage = Blurred.*WT;
+</pre><p>To reduce the ringing associated with borders, apply the edgetaper function with the given PSF.</p><pre class="codeinput">CutEdged = edgetaper(CutImage,PSF);
+figure;imshow(1-CutEdged,[],<span class="string">'InitialMagnification'</span>,<span class="string">'fit'</span>);
+set(gca,<span class="string">'Visible'</span>,<span class="string">'on'</span>,<span class="string">'XTickLabel'</span>,[],<span class="string">'YTickLabel'</span>,[],<span class="keyword">...</span>
+<span class="string">'XTick'</span>,[7 24],<span class="string">'XGrid'</span>,<span class="string">'on'</span>,<span class="string">'YTick'</span>,[5 28],<span class="string">'YGrid'</span>,<span class="string">'on'</span>);
+title(<span class="string">'Observed'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_08.png" alt=""> <h2>Step 8: Provide the WEIGHT Array<a name="15"></a></h2><p>The algorithm weights each pixel value according to the WEIGHT array while restoring the image. In our example, only the values of the central pixels are used (where WEIGHT = 1), while the "bad" pixel values are excluded from the optimization. However, the algorithm can place the signal power into the location of these "bad" pixels, beyond the edge of the camera's view. Notice the accuracy of the resolved star positions.</p><pre class="codeinput">luc4 = deconvlucy(CutEdged,PSF,300,0,WT);
+figure;imshow(1-luc4,[],<span class="string">'InitialMagnification'</span>,<span class="string">'fit'</span>);
+set(gca,<span class="string">'Visible'</span>,<span class="string">'on'</span>,<span class="string">'XTickLabel'</span>,[],<span class="string">'YTickLabel'</span>,[],<span class="keyword">...</span>
+<span class="string">'XTick'</span>,[7 24],<span class="string">'XGrid'</span>,<span class="string">'on'</span>,<span class="string">'YTick'</span>,[5 28],<span class="string">'YGrid'</span>,<span class="string">'on'</span>);
+title(<span class="string">'Restored'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_09.png" alt=""> <h2>Step 9: Provide a finer-sampled PSF<a name="16"></a></h2><p>deconvlucy can restore undersampled image given a finer sampled PSF (finer by SUBSMPL times). To simulate the poorly resolved image and PSF, the example bins the <tt>Blurred</tt> image and the original PSF, two pixels in one, in each dimension.</p><pre class="codeinput">Binned = squeeze(sum(reshape(Blurred,[2 16 2 16])));
+BinnedImage = squeeze(sum(Binned,2));
+Binned = squeeze(sum(reshape(PSF(1:14,1:14),[2 7 2 7])));
+BinnedPSF = squeeze(sum(Binned,2));
+figure;imshow(1-BinnedImage,[],<span class="string">'InitialMagnification'</span>,<span class="string">'fit'</span>);
+set(gca,<span class="string">'Visible'</span>,<span class="string">'on'</span>,<span class="string">'XTick'</span>,[],<span class="string">'YTick'</span>,[]);
+title(<span class="string">'Binned Observed'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_10.png" alt=""> <p>Restore the undersampled image, <tt>BinnedImage</tt>, using the undersampled PSF, <tt>BinnedPSF</tt>. Notice that the <tt>luc5</tt> image distinguishes only 3 stars.</p><pre class="codeinput">luc5 = deconvlucy(BinnedImage,BinnedPSF,100);
+figure;imshow(1-luc5,[],<span class="string">'InitialMagnification'</span>,<span class="string">'fit'</span>);
+set(gca,<span class="string">'Visible'</span>,<span class="string">'on'</span>,<span class="string">'XTick'</span>,[],<span class="string">'YTick'</span>,[]);
+title(<span class="string">'Poor PSF'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_11.png" alt=""> <p>The next example restores the undersampled image (<tt>BinnedImage</tt>), this time using the finer PSF (defined on a SUBSMPL-times finer grid). The reconstructed image (<tt>luc6</tt>) resolves the position of the stars more accurately. Note how it distributes power between the two stars in the lower right corner of the image. This hints at the existence of two bright objects, instead of one, as in the previous restoration.</p><pre class="codeinput">luc6 = deconvlucy(BinnedImage,PSF,100,[],[],[],2);
+figure;imshow(1-luc6,[],<span class="string">'InitialMagnification'</span>,<span class="string">'fit'</span>);
+set(gca,<span class="string">'Visible'</span>,<span class="string">'on'</span>,<span class="string">'XTick'</span>,[],<span class="string">'YTick'</span>,[]);
+title(<span class="string">'Fine PSF'</span>);
+</pre><img vspace="5" hspace="5" src="ipexlucy_12.png" alt=""> <p class="footer">Copyright 2004-2005 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Deblurring Images Using the Lucy-Richardson Algorithm 
+% The Lucy-Richardson algorithm can be used effectively when the
+% point-spread function PSF (blurring operator) is known, but little or no
+% information is available for the noise. The blurred and noisy image is
+% restored by the iterative, accelerated, damped Lucy-Richardson algorithm.
+% The additional optical system (e.g. camera) characteristics can be used
+% as input parameters to improve the quality of the image restoration. 
+
+% Copyright 2004-2005 The MathWorks, Inc.
+
+%% Step 1: Read Image
+% The example reads in an RGB image and crops it to be 256-by-256-by-3. The
+% |deconvlucy| function can handle arrays of any dimension.
+
+I = imread('board.tif');
+I = I(50+[1:256],2+[1:256],:);
+figure;imshow(I);title('Original Image');
+text(size(I,2),size(I,1)+15, ...
+    'Image courtesy of courtesy of Alexander V. Panasyuk, Ph.D.', ...
+    'FontSize',7,'HorizontalAlignment','right');
+text(size(I,2),size(I,1)+25, ...
+    'Harvard-Smithsonian Center for Astrophysics', ...
+    'FontSize',7,'HorizontalAlignment','right');
+
+%% Step 2: Simulate a Blur and Noise
+% Simulate a real-life image that could be blurred (e.g., due to camera
+% motion or lack of focus) and noisy (e.g., due to random disturbances).
+% The example simulates the blur by convolving a Gaussian filter with the
+% true image (using |imfilter|). The Gaussian filter then represents a
+% point-spread function, |PSF|.
+
+PSF = fspecial('gaussian',5,5);
+Blurred = imfilter(I,PSF,'symmetric','conv');
+figure;imshow(Blurred);title('Blurred');
+
+%%
+% The example simulates the noise by adding a Gaussian noise of variance
+% |V| to the blurred image (using |imnoise|). The noise variance |V| is used
+% later to define a damping parameter of the algorithm. 
+
+V = .002;
+BlurredNoisy = imnoise(Blurred,'gaussian',0,V);
+figure;imshow(BlurredNoisy);title('Blurred & Noisy');
+
+%% Step 3: Restore the Blurred and Noisy Image
+% Restore the blurred and noisy image providing the PSF and using only 5
+% iterations (default is 10). The output is an array of the same type as
+% the input image.
+
+luc1 = deconvlucy(BlurredNoisy,PSF,5);
+figure;imshow(luc1);title('Restored Image, NUMIT = 5');
+
+%% Step 4: Iterate to Explore the Restoration
+% The resulting image changes with each iteration. To investigate the
+% evolution of the image restoration, you can do the deconvolution in
+% steps: do a set of iterations, see the result, and then resume the
+% iterations from where they were stopped. To do so, the input image has to
+% be passed as a part of a cell array (e.g., start first set of iterations
+% by passing in |{BlurredNoisy}| instead of |BlurredNoisy| as input image
+% parameter). 
+
+luc1_cell = deconvlucy({BlurredNoisy},PSF,5);
+
+%%
+% In that case the output, |luc1_cell|, becomes a cell array. The cell output
+% consists of four numeric arrays, where the first is the |BlurredNoisy|
+% image, the second is the restored image of class double, the third array
+% is the result of the one-before-last iteration, and the fourth array is
+% an internal parameter of the iterated set. The second numeric array of
+% the output cell-array, image |luc1_cell{2}|, is identical to the output
+% array of the Step 3, image |luc1|, with a possible exception of their class
+% (the cell output always gives the restored image of class double).
+
+%%
+% To resume the iterations, take the output from the previous function
+% call, the cell-array |luc1_cell|, and pass it into the |deconvlucy| function.
+% Use the default number of iterations (|NUMIT| = 10). The restored image is
+% the result of a total of 15 iterations.
+
+luc2_cell = deconvlucy(luc1_cell,PSF);
+luc2 = im2uint8(luc2_cell{2});
+figure;imshow(luc2);title('Restored Image, NUMIT = 15');
+
+%% Step 5: Control Noise Amplification by Damping
+% The latest image, |luc2|, is the result of 15 iterations. Although it is
+% sharper than the earlier result from 5 iterations, the image develops a
+% "speckled" appearance. The speckles do not correspond to any real
+% structures (compare it to the true image), but instead are the result of
+% fitting the noise in the data too closely. 
+
+%%
+% To control the noise amplification, use the damping option by specifying
+% the |DAMPAR| parameter. |DAMPAR| has to be of the same class as the input
+% image. The algorithm dampens changes in the model in regions where the
+% differences are small compared with the noise. The |DAMPAR| used here
+% equals 3 standard deviations of the noise. Notice that the image is
+% smoother.
+
+DAMPAR = im2uint8(3*sqrt(V));
+luc3 = deconvlucy(BlurredNoisy,PSF,15,DAMPAR);
+figure;imshow(luc3);
+title('Restored Image with Damping, NUMIT = 15');
+
+%%
+% The next part of this demo explores the |WEIGHT| and |SUBSMPL| input
+% parameters of the deconvlucy function, using a simulated star image (for
+% simplicity & speed).
+
+%% Step 6: Create Sample Image
+% The example creates a black/white image of four stars. 
+
+I = zeros(32);I(5,5)=1;I(10,3)=1;I(27,26)=1;I(29,25)=1;
+figure;imshow(1-I,[],'InitialMagnification','fit');
+set(gca,'Visible','on','XTickLabel',[],'YTickLabel',[],...
+'XTick',[7 24],'XGrid','on','YTick',[5 28],'YGrid','on');
+title('Data');
+
+%% Step 7: Simulate a Blur
+% The example simulates a blur of the image of the stars by creating a
+% Gaussian filter, |PSF|, and convolving it with the true image.
+
+PSF = fspecial('gaussian',15,3);
+Blurred = imfilter(I,PSF,'conv','sym');
+
+%%
+% Now simulate a camera that can only observe part of the stars' images
+% (only the blur is seen). Create a weighting function array, WEIGHT, that
+% consists of ones in the central part of the Blurred image ("good" pixels,
+% located within the dashed lines) and zeros at the edges ("bad" pixels -
+% those that do not receive the signal).
+
+WT = zeros(32);WT(6:27,8:23) = 1;
+CutImage = Blurred.*WT;
+
+%%
+% To reduce the ringing associated with borders, apply the edgetaper
+% function with the given PSF.
+
+CutEdged = edgetaper(CutImage,PSF);
+figure;imshow(1-CutEdged,[],'InitialMagnification','fit');
+set(gca,'Visible','on','XTickLabel',[],'YTickLabel',[],...
+'XTick',[7 24],'XGrid','on','YTick',[5 28],'YGrid','on');
+title('Observed');
+
+%% Step 8: Provide the WEIGHT Array
+% The algorithm weights each pixel value according to the WEIGHT array
+% while restoring the image. In our example, only the values of the central
+% pixels are used (where WEIGHT = 1), while the "bad" pixel values are
+% excluded from the optimization. However, the algorithm can place the
+% signal power into the location of these "bad" pixels, beyond the edge of
+% the camera's view. Notice the accuracy of the resolved star positions.
+
+luc4 = deconvlucy(CutEdged,PSF,300,0,WT);
+figure;imshow(1-luc4,[],'InitialMagnification','fit');
+set(gca,'Visible','on','XTickLabel',[],'YTickLabel',[],...
+'XTick',[7 24],'XGrid','on','YTick',[5 28],'YGrid','on');
+title('Restored');
+
+%% Step 9: Provide a finer-sampled PSF
+% deconvlucy can restore undersampled image given a finer sampled PSF
+% (finer by SUBSMPL times). To simulate the poorly resolved image and PSF,
+% the example bins the |Blurred| image and the original PSF, two pixels in
+% one, in each dimension. 
+
+Binned = squeeze(sum(reshape(Blurred,[2 16 2 16])));
+BinnedImage = squeeze(sum(Binned,2));
+Binned = squeeze(sum(reshape(PSF(1:14,1:14),[2 7 2 7])));
+BinnedPSF = squeeze(sum(Binned,2));
+figure;imshow(1-BinnedImage,[],'InitialMagnification','fit');
+set(gca,'Visible','on','XTick',[],'YTick',[]);
+title('Binned Observed');
+
+%%
+% Restore the undersampled image, |BinnedImage|, using the undersampled PSF,
+% |BinnedPSF|. Notice that the |luc5| image distinguishes only 3 stars.
+
+luc5 = deconvlucy(BinnedImage,BinnedPSF,100);
+figure;imshow(1-luc5,[],'InitialMagnification','fit');
+set(gca,'Visible','on','XTick',[],'YTick',[]);
+title('Poor PSF');
+
+%%
+% The next example restores the undersampled image (|BinnedImage|), this time
+% using the finer PSF (defined on a SUBSMPL-times finer grid). The
+% reconstructed image (|luc6|) resolves the position of the stars more
+% accurately. Note how it distributes power between the two stars in the
+% lower right corner of the image. This hints at the existence of two
+% bright objects, instead of one, as in the previous restoration. 
+
+luc6 = deconvlucy(BinnedImage,PSF,100,[],[],[],2);
+figure;imshow(1-luc6,[],'InitialMagnification','fit');
+set(gca,'Visible','on','XTick',[],'YTick',[]);
+title('Fine PSF');
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

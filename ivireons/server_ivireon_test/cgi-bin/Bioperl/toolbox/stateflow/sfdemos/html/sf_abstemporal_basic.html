@@ -1,0 +1,87 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using Absolute Time Temporal Logic</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_abstemporal_basic.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_abstemporal_basic.mdl</div><div class="right"><a href="matlab:sf_abstemporal_basic">Open this model</a></div></div><div class="content"><h1>Using Absolute Time Temporal Logic</h1><!--introduction--><p>This model demonstrates the basic semantics of absolute time temporal logic in Stateflow&reg;.</p><p>The basic idea of absolute time temporal logic is simple. Just like the expression <tt>after(10, E)</tt> returns true after 10 occurrences of the event <tt>E</tt> have occurred, the expression <tt>after(10, sec)</tt> returns true after 10 seconds have elapsed since we entered the currently active state.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">With Absolute Time Temporal Logic</a></li><li><a href="#2">With the Implicit Tick Event</a></li><li><a href="#4">Advantages of Using Absolute Time Temporal Logic</a></li></ul></div><h2>With Absolute Time Temporal Logic<a name="1"></a></h2><p>The first chart <tt>WithAbsoluteTime</tt> consists of two states <tt>A</tt> and <tt>B</tt>. The transition from <tt>A</tt> to <tt>B</tt> is guarded by the expression <tt>after(3,sec)</tt>. This means to transition from <tt>A</tt> to <tt>B</tt> three seconds after we enter <tt>A</tt>.</p><img vspace="5" hspace="5" src="sf_abstemporal_basic_01.png" alt=""> <img vspace="5" hspace="5" src="sf_abstemporal_basic_02.png" alt=""> <h2>With the Implicit Tick Event<a name="2"></a></h2><p>The same logic can also be accomplished by using the implicit <tt>tick</tt> event provided by Stateflow. This is shown in the chart <tt>WithTickEvent</tt>. Note that in this case, we need to be careful to divide the time which we wish to remain in <tt>A</tt> by the sample time of the chart. In this case, since the sample rate of the model is 0.1 seconds, we use (3/0.1 = 30).</p><img vspace="5" hspace="5" src="sf_abstemporal_basic_03.png" alt=""> <p>When we simulate the model, we see that the outputs from the two charts are identical.</p><img vspace="5" hspace="5" src="sf_abstemporal_basic_04.png" alt=""> <h2>Advantages of Using Absolute Time Temporal Logic<a name="4"></a></h2><p>There are quite a few advantages of using absolute time temporal logic rather than the implicit <tt>tick</tt> event. Amongst them:</p><div><ol><li>The temporal delay expression is independent of the sample rate of the model. For example, if the sample rate of the model was changed to 0.2 seconds, then in <tt>WithAbsoluteTime</tt>, the transition from <tt>A</tt> to <tt>B</tt> will still happen at t = 3 seconds, while in the case of <tt>WithTickEvent</tt>, the transition will occur at t = 6 seconds.</li><li>Absolute time temporal logic can be used in charts which have function call input events. However, the <tt>tick</tt> event is not available in charts with function call inputs.</li></ol></div><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using Absolute Time Temporal Logic
+% 
+% This model demonstrates the basic semantics of absolute time temporal
+% logic in Stateflow(R).
+% 
+% The basic idea of absolute time temporal logic is simple. Just like the
+% expression |after(10, E)| returns true after 10 occurrences of the event
+% |E| have occurred, the expression |after(10, sec)| returns true after 10
+% seconds have elapsed since we entered the currently active state.
+% 
+%% With Absolute Time Temporal Logic
+% 
+% The first chart |WithAbsoluteTime| consists of two states |A| and |B|.
+% The transition from |A| to |B| is guarded by the expression
+% |after(3,sec)|. This means to transition from |A| to |B| three seconds
+% after we enter |A|.
+
+%   Copyright 2009 The MathWorks, Inc.
+
+bdclose all
+clear all
+close all
+
+model = 'sf_abstemporal_basic';
+open_system(model);
+
+r = sfroot;
+m = r.find('-isa', 'Stateflow.Machine', 'Name', model);
+c_abs = m.find('-isa', 'Stateflow.Chart', 'Name', 'WithAbsoluteTime');
+c_tick = m.find('-isa', 'Stateflow.Chart', 'Name', 'WithTickEvent');
+
+c_abs.Visible = 0;
+c_tick.Visible = 0;
+
+close_system([model '/Scope']);
+
+c_abs.Visible = 1;
+
+%% With the Implicit Tick Event
+% 
+% The same logic can also be accomplished by using the implicit |tick|
+% event provided by Stateflow. This is shown in the chart |WithTickEvent|.
+% Note that in this case, we need to be careful to divide the time which we
+% wish to remain in |A| by the sample time of the chart. In this case,
+% since the sample rate of the model is 0.1 seconds, we use (3/0.1 = 30).
+
+c_tick.Visible = 1;
+
+%% 
+% When we simulate the model, we see that the outputs from the two charts
+% are identical.
+
+evalc('sim(model)');
+open_system([model '/Scope']);
+
+%% Advantages of Using Absolute Time Temporal Logic
+% 
+% There are quite a few advantages of using absolute time temporal logic
+% rather than the implicit |tick| event. Amongst them:
+% 
+% # The temporal delay expression is independent of the sample rate of the
+% model. For example, if the sample rate of the model was changed to 0.2
+% seconds, then in |WithAbsoluteTime|, the transition from |A| to |B| will
+% still happen at t = 3 seconds, while in the case of |WithTickEvent|, the
+% transition will occur at t = 6 seconds.
+% # Absolute time temporal logic can be used in charts which have function
+% call input events. However, the |tick| event is not available in charts
+% with function call inputs.
+
+%% 
+bdclose all
+clear all
+close all
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,193 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Designing Cascade Control System with PI Controllers</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="cascadepiddemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit cascadepiddemo">Open cascadepiddemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo cascadepiddemo">Run in the Command Window</a></div></div><div class="content"><h1>Designing Cascade Control System with PI Controllers</h1><!--introduction--><p>This demo shows how to design two PI controllers in a cascade control loop.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction to Cascade Control</a></li><li><a href="#4">Plant</a></li><li><a href="#5">Designing a Single Loop Control System with a PI Controller</a></li><li><a href="#6">Designing a Cascade Control System with Two PI Controllers</a></li><li><a href="#9">Performance Comparison</a></li></ul></div><h2>Introduction to Cascade Control<a name="1"></a></h2><p>Cascade control is mainly used to achieve fast rejection of disturbance before it propagates to the other parts of the plant.  The simplest cascade control system involves two control loops (inner and outer) as shown in the block diagram below.</p><p><img vspace="5" hspace="5" src="../html/cascadepiddemoscheme.png" alt=""> </p><p>Controller <b>C1</b> in the outer loop is the primary controller that regulates the primary controlled variable <b>y1</b> by setting the set-point of the inner loop. Controller <b>C2</b> in the inner loop is the secondary controller that rejects disturbance <b>d2</b> locally before it propagates to <b>P1</b>. For a cascade control system to function properly, the inner loop must respond much faster than the outer loop.</p><p>In this example, you will design a single loop control system with a PI controller and a cascade control system with two PI controllers. The responses of the two control systems are compared for both reference tracking and disturbance rejection.</p><h2>Plant<a name="4"></a></h2><p>In this example, the inner loop plant P2 is</p><p><img src="cascadepiddemo_eq84045.png" alt="$$ P2(s) = \frac{3}{s+2} $$"></p><p>The outer loop plant P1 is</p><p><img src="cascadepiddemo_eq71043.png" alt="$$ P1(s) = \frac{10}{(s+1)^3} $$"></p><pre class="codeinput">P2 = zpk([],-2,3);
+P1 = zpk([],[-1 -1 -1],10);
+</pre><h2>Designing a Single Loop Control System with a PI Controller<a name="5"></a></h2><p>Use <b>pidtune</b> command to design a PI controller in standard form for the whole plant model P = P1 * P2.</p><p><img vspace="5" hspace="5" src="../html/cascadepiddemoscheme1.png" alt=""> </p><p>The desired open loop bandwidth is 0.2 rad/sec, which roughly corresponds to the response time of 10 seconds.</p><pre class="codeinput"><span class="comment">% The plant model is P = P1*P2</span>
+P = P1*P2;
+<span class="comment">% Use a PID or PIDSTD object to define the desired controller structure</span>
+C = pidstd(1,1);
+<span class="comment">% Use pidtune options to specify performance and robustness targets</span>
+options = pidtuneOptions(<span class="string">'CrossoverFrequency'</span>,0.2);
+<span class="comment">% Design PI controller</span>
+C = pidtune(P,C,options);
+C
+</pre><pre class="codeoutput">Continuous-time PI controller in standard form:
+ 
+           1      1 
+Kp * (1 + ---- * ---)
+           Ti     s 
+ 
+with Kp = 0.0119, Ti = 0.84931
+ 
+</pre><h2>Designing a Cascade Control System with Two PI Controllers<a name="6"></a></h2><p>The best practice is to design the inner loop controller <b>C2</b> first and then design the outer loop controller <b>C1</b> with the inner loop closed. In this example, the inner loop bandwidth is selected as 2 rad/sec, which is ten times higher than the desired outer loop bandwidth. In order to have an effective cascade control system, it is essential that the inner loop responds much faster than the outer loop.</p><p>Design inner loop controller C2 with open loop bandwidth at 2 rad/sec.</p><pre class="codeinput">C2 = pidtune(P2,pidstd(1,1),pidtuneOptions(<span class="string">'CrossoverFrequency'</span>,2));
+C2
+</pre><pre class="codeoutput">Continuous-time PI controller in standard form:
+ 
+           1      1 
+Kp * (1 + ---- * ---)
+           Ti     s 
+ 
+with Kp = 0.24402, Ti = 0.13397
+ 
+</pre><p>Design outer loop controller C1 with the same bandwidth as the single loop system.</p><pre class="codeinput"><span class="comment">% Inner loop system when the control loop is closed first</span>
+clsys = feedback(P2*C2,1);
+<span class="comment">% Plant seen by the outer loop controller C1 is clsys*P1</span>
+C1 = pidtune(clsys*P1,pidstd(1,1),pidtuneOptions(<span class="string">'CrossoverFrequency'</span>,0.2));
+C1
+</pre><pre class="codeoutput">Continuous-time PI controller in standard form:
+ 
+           1      1 
+Kp * (1 + ---- * ---)
+           Ti     s 
+ 
+with Kp = 0.014991, Ti = 0.71582
+ 
+</pre><h2>Performance Comparison<a name="9"></a></h2><p>First, plot the step reference tracking responses for both control systems.</p><pre class="codeinput"><span class="comment">% single loop system for reference tracking</span>
+sys1 = feedback(P*C,1);
+set(sys1,<span class="string">'Name'</span>,<span class="string">'Single Loop'</span>);
+<span class="comment">% cascade system for reference tracking</span>
+sys2 = feedback(clsys*P1*C1,1);
+set(sys2,<span class="string">'Name'</span>,<span class="string">'Cascade'</span>);
+<span class="comment">% plot step response</span>
+figure;step(sys1,<span class="string">'r'</span>,sys2,<span class="string">'b'</span>)
+legend(<span class="string">'show'</span>,<span class="string">'location'</span>,<span class="string">'southeast'</span>)
+title(<span class="string">'Reference Tracking'</span>)
+</pre><img vspace="5" hspace="5" src="cascadepiddemo_01.png" alt=""> <p>Secondly, plot the step disturbance rejection responses of d2 for both control systems.</p><pre class="codeinput"><span class="comment">% single loop system for rejecting d2</span>
+sysd1 = feedback(P1,P2*C);
+set(sysd1,<span class="string">'Name'</span>,<span class="string">'Single Loop'</span>);
+<span class="comment">% cascade system for rejecting d2</span>
+sysd2 = P1/(1+P2*C2+P2*P1*C1*C2);
+set(sysd2,<span class="string">'Name'</span>,<span class="string">'Cascade'</span>);
+<span class="comment">% plot step response</span>
+figure;step(sysd1,<span class="string">'r'</span>,sysd2,<span class="string">'b'</span>)
+legend(<span class="string">'show'</span>)
+title(<span class="string">'Disturbance Rejection'</span>)
+</pre><img vspace="5" hspace="5" src="cascadepiddemo_02.png" alt=""> <p>From the two response plots you can conclude that the cascade control system performs much better in rejecting disturbance d2 while the set-point tracking performances are almost identical.</p><p class="footer">Copyright 2009-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Designing Cascade Control System with PI Controllers
+% This demo shows how to design two PI controllers in a cascade control
+% loop.
+
+%   Copyright 2009-2010 The MathWorks, Inc.
+%   $Revision: 1.1.8.1 $  $Date: 2010/05/10 16:58:26 $
+
+%% Introduction to Cascade Control
+% Cascade control is mainly used to achieve fast rejection of disturbance
+% before it propagates to the other parts of the plant.  The simplest
+% cascade control system involves two control loops (inner and outer) as
+% shown in the block diagram below. 
+%
+% <<../html/cascadepiddemoscheme.png>>
+
+%%
+% Controller *C1* in the outer loop is the primary controller that
+% regulates the primary controlled variable *y1* by setting the set-point
+% of the inner loop. Controller *C2* in the inner loop is the secondary
+% controller that rejects disturbance *d2* locally before it propagates to
+% *P1*. For a cascade control system to function properly, the inner loop
+% must respond much faster than the outer loop.
+
+%%
+% In this example, you will design a single loop control system with a PI
+% controller and a cascade control system with two PI controllers. The
+% responses of the two control systems are compared for both reference
+% tracking and disturbance rejection.
+
+%% Plant
+% In this example, the inner loop plant P2 is 
+%
+% $$ P2(s) = \frac{3}{s+2} $$
+%
+% The outer loop plant P1 is 
+%
+% $$ P1(s) = \frac{10}{(s+1)^3} $$
+P2 = zpk([],-2,3);
+P1 = zpk([],[-1 -1 -1],10);
+
+%% Designing a Single Loop Control System with a PI Controller
+% Use *pidtune* command to design a PI controller in standard form for
+% the whole plant model P = P1 * P2.
+%
+% <<../html/cascadepiddemoscheme1.png>>
+%
+% The desired open loop bandwidth is 0.2 rad/sec, which roughly corresponds
+% to the response time of 10 seconds.
+
+% The plant model is P = P1*P2
+P = P1*P2; 
+% Use a PID or PIDSTD object to define the desired controller structure
+C = pidstd(1,1);
+% Use pidtune options to specify performance and robustness targets
+options = pidtuneOptions('CrossoverFrequency',0.2);
+% Design PI controller
+C = pidtune(P,C,options);
+C
+
+%% Designing a Cascade Control System with Two PI Controllers
+% The best practice is to design the inner loop controller *C2* first and
+% then design the outer loop controller *C1* with the inner loop closed. In
+% this example, the inner loop bandwidth is selected as 2 rad/sec, which is
+% ten times higher than the desired outer loop bandwidth. In order to have
+% an effective cascade control system, it is essential that the inner loop
+% responds much faster than the outer loop.
+
+%%
+% Design inner loop controller C2 with open loop bandwidth at 2 rad/sec.
+C2 = pidtune(P2,pidstd(1,1),pidtuneOptions('CrossoverFrequency',2));
+C2
+
+%%
+% Design outer loop controller C1 with the same bandwidth as the single
+% loop system.
+
+% Inner loop system when the control loop is closed first
+clsys = feedback(P2*C2,1); 
+% Plant seen by the outer loop controller C1 is clsys*P1
+C1 = pidtune(clsys*P1,pidstd(1,1),pidtuneOptions('CrossoverFrequency',0.2));
+C1
+
+%% Performance Comparison 
+% First, plot the step reference tracking responses for both control systems.
+
+% single loop system for reference tracking 
+sys1 = feedback(P*C,1);
+set(sys1,'Name','Single Loop');
+% cascade system for reference tracking
+sys2 = feedback(clsys*P1*C1,1); 
+set(sys2,'Name','Cascade');
+% plot step response
+figure;step(sys1,'r',sys2,'b')
+legend('show','location','southeast')
+title('Reference Tracking')
+
+%%
+% Secondly, plot the step disturbance rejection responses of d2 for both
+% control systems.
+
+% single loop system for rejecting d2
+sysd1 = feedback(P1,P2*C); 
+set(sysd1,'Name','Single Loop');
+% cascade system for rejecting d2
+sysd2 = P1/(1+P2*C2+P2*P1*C1*C2); 
+set(sysd2,'Name','Cascade');
+% plot step response
+figure;step(sysd1,'r',sysd2,'b')
+legend('show')
+title('Disturbance Rejection')
+
+%%
+% From the two response plots you can conclude that the cascade control
+% system performs much better in rejecting disturbance d2 while the
+% set-point tracking performances are almost identical.
+
+%%
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

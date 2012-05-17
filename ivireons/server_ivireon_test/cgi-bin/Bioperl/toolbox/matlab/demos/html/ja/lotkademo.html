@@ -1,0 +1,36 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>微分方程式の数値積分</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="lotkademo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit lotkademo">エディターで lotkademo.m を開く</a></div><div class="right"><a href="matlab:echodemo lotkademo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>微分方程式の数値積分</h1><!--introduction--><p>ODE23 と ODE45 は、常微分方程式の数値解に対する関数です。これらは、Runge-Kutta の積分手法の可変ステップ サイズを使用します。ODE23 は、中規模な精度に対して単純に 2 次、3 次の公式の組み合わせを使用し、ODE45 は、高い精度に対して 4 次、5 次の組み合わせを使用します。このデモは、単純な微分方程式にこれらを使用した例を示します。</p><!--/introduction--><p>ロトカ・ボルテラの捕食者と被食者モデルと呼ばれる 1 次の常微分方程式の組み合わせを考えます。</p><pre>   y1' = (1 - alpha*y2)*y1</pre><pre>   y2' = (-1 + beta*y1)*y2</pre><p>関数 y1 と y2 は、被捕食者と捕食者のそれぞれの個体群のサイズを表します。2 次のクロス項は、種の間の相互関係を説明します。捕食者がいない場合、被捕食者の個体群は増加しますが、被捕食者がない場合は、捕食者は減少することに注意してください。</p><p>システムをシミュレートするために、状態と時間の値を与えて、状態導関数の列ベクトルを返す関数を作成します。この例では、LOTKA.M というファイルを作成します。</p><pre class="codeinput">type <span class="string">lotka</span>
+</pre><pre class="codeoutput">
+function yp = lotka(t,y)
+%LOTKA  Lotka-Volterra predator-prey model.
+
+%   Copyright 1984-2002 The MathWorks, Inc. 
+%   $Revision: 1.1.6.12.2.1 $  $Date: 2010/07/29 21:28:52 $
+
+yp = diag([1 - .01*y(2), -1 + .02*y(1)])*y;
+
+</pre><p>区間 0 &lt; t &lt; 15 で LOTKA に定義した微分方程式をシミュレートするために、ODE23 を呼び出します。1e-3 (0.1%) の既定の相対精度を使用します。</p><pre class="codeinput"><span class="comment">% Define initial conditions.</span>
+t0 = 0;
+tfinal = 15;
+y0 = [20 20]';
+<span class="comment">% Simulate the differential equation.</span>
+tfinal = tfinal*(1+eps);
+[t,y] = ode23(<span class="string">'lotka'</span>,[t0 tfinal],y0);
+</pre><p>2 つの異なる方法のシミュレーション結果をプロットします。</p><pre class="codeinput">subplot(1,2,1)
+plot(t,y)
+title(<span class="string">'Time history'</span>)
+
+subplot(1,2,2)
+plot(y(:,1),y(:,2))
+title(<span class="string">'Phase plane plot'</span>)
+</pre><img vspace="5" hspace="5" src="../lotkademo_01.png" alt=""> <p>ODE23 の代りに ODE45 を使って LOTKA をシミュレートします。ODE45 は、各ステップにおいてより時間を要しますが、より大きいステップを取ります。それにもかかわらず、既定の設定で、ソルバーは連続的な拡張式を利用して、使用した各ステップの期間において 4 つの等間隔な時間点で出力を生成するため、ODE45 の出力は滑らかです。プロットは、前の結果に対してこの結果を比較します。</p><pre class="codeinput">[T,Y] = ode45(<span class="string">'lotka'</span>,[t0 tfinal],y0);
+
+subplot(1,1,1)
+title(<span class="string">'Phase plane plot'</span>)
+plot(y(:,1),y(:,2),<span class="string">'-'</span>,Y(:,1),Y(:,2),<span class="string">'-'</span>);
+legend(<span class="string">'ode23'</span>,<span class="string">'ode45'</span>)
+</pre><img vspace="5" hspace="5" src="../lotkademo_02.png" alt=""> <p class="footer">Copyright 1984-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Numerical Integration of Differential Equations % ODE23 and ODE45 are functions for the numerical solution of ordinary % differential equations.  They employ variable step size Runge-Kutta % integration methods.  ODE23 uses a simple 2nd and 3rd order pair of formulas % for medium accuracy and ODE45 uses a 4th and 5th order pair for higher % accuracy.  This demo shows their use on a simple differential equation. % % Copyright 1984-2010 The MathWorks, Inc.  % $Revision: 1.1.6.12.2.1 $  $Date: 2010/07/29 21:28:52 $  %% % Consider the pair of first order ordinary differential equations known as the % Lotka-Volterra predator-prey model. % %     y1' = (1 - alpha*y2)*y1 % %     y2' = (-1 + beta*y1)*y2 % % The functions y1 and y2 measure the sizes of the prey and predator populations % respectively.  The quadratic cross term accounts for the interactions between % the species.  Note that the prey population increases when there are no % predators, but the predator population decreases when there are no prey.  %% % To simulate a system, create a function that returns a column vector of % state derivatives, given state and time values.  For this example, we've % created a file called LOTKA.M.  type lotka  %% % To simulate the differential equation defined in LOTKA over the interval 0 < t % < 15, invoke ODE23.  Use the default relative accuracy of 1e-3 (0.1 percent).  % Define initial conditions. t0 = 0; tfinal = 15; y0 = [20 20]';    % Simulate the differential equation. tfinal = tfinal*(1+eps); [t,y] = ode23('lotka',[t0 tfinal],y0);  %% % Plot the result of the simulation two different ways.  subplot(1,2,1) plot(t,y) title('Time history')  subplot(1,2,2) plot(y(:,1),y(:,2)) title('Phase plane plot')  %% % Now simulate LOTKA using ODE45, instead of ODE23.  ODE45 takes longer at each % step, but also takes larger steps.  Nevertheless, the output of ODE45 is smooth % because by default the solver uses a continuous extension formula to produce % output at 4 equally spaced time points in the span of each step taken.  The % plot compares this result against the previous.  [T,Y] = ode45('lotka',[t0 tfinal],y0);  subplot(1,1,1) title('Phase plane plot') plot(y(:,1),y(:,2),'-',Y(:,1),Y(:,2),'-'); legend('ode23','ode45')   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

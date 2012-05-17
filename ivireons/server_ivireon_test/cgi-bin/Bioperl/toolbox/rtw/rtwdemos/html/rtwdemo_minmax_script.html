@@ -1,0 +1,103 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Optimizing Generated Code Using Specified Minimum and Maximum Values</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_minmax_script.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_minmax_script">Open rtwdemo_minmax_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_minmax_script">Run in the Command Window</a></div></div><div class="content"><h1>Optimizing Generated Code Using Specified Minimum and Maximum Values</h1><!--introduction--><p>This demo shows how the minimum and maximum values specified on signals and parameters in a model can be used to optimize the generated code.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Overview</a></li><li><a href="#2">Review Minimum and Maximum Information</a></li><li><a href="#3">Generate Code Without This Optimization</a></li><li><a href="#4">Enable This Optimization</a></li><li><a href="#5">Generate Code With This Optimization</a></li></ul></div><h2>Overview<a name="1"></a></h2><p>The specified minimum and maximum values usually represent environmental limits, such as temperature, or mechanical and electrical limits, such as output ranges of sensors.</p><p>This optimization uses these values to streamline the generated code, for example, by reducing expressions to constants or by removing dead branches of conditional statements.</p><p><b>NOTE:</b> You must ensure that the specified minimum and maximum values are accurate and trustworthy.  Otherwise, this optimization might result in numerical mismatch with simulation.</p><p>The benefits of optimizing the generated code are:</p><div><ul><li>Reducing the ROM and RAM consumption.</li><li>Improving the execution speed.</li></ul></div><h2>Review Minimum and Maximum Information<a name="2"></a></h2><p>Consider the model <a href="matlab:rtwdemo_minmax">rtwdemo_minmax</a>. In this model, there are minimum and maximum values specified on Inports and on the gain parameter of the Gain block.</p><pre class="codeinput">open_system(<span class="string">'rtwdemo_minmax'</span>);
+</pre><img vspace="5" hspace="5" src="rtwdemo_minmax_script_01.png" alt=""> <h2>Generate Code Without This Optimization<a name="3"></a></h2><p>First, generate code for this model without considering the min and max values:</p><div><ol><li>Double-click the blue button.</li><li>An HTML Code Generation Report opens.</li><li>In the Code Generation Report, click "rtwdemo_minmax.c".</li><li>The generated code is:</li></ol></div><pre> void rtwdemo_minmax_step(void)
+ {
+   if (U1 + U2 &lt;= k * U3) {
+     rtY.Out1 = (U1 + U2) + U3;
+   } else {
+     rtY.Out1 = U1 * U2 * U3;
+   }
+ }</pre><h2>Enable This Optimization<a name="4"></a></h2><div><ol><li>Double-click the yellow button to open the Configuration Parameters   dialog box.</li><li>In the dialog, under <b>Code generation</b>, select   <b>Optimize using the specified minimum and maximum values</b>.</li></ol></div><h2>Generate Code With This Optimization<a name="5"></a></h2><p>In the model, with the specified minimum and maximum values for U1 and U2, the sum of U1 and U2 has a minimum value of 50.  Considering the range of U3 and the specified minimum and maximum values for the Gain block parameter, the maximum value of the Gain block's output is 40.</p><p>Therefore, the output of the Relational Operator block is always false, and the output of the Switch block is always the product of the three inputs.</p><p>To generate code, double-click the blue button and examine the Code Generation Report.  The generated code shows that the output is always equal to the product of the three inputs, optimizing out the conditional statement:</p><pre> void rtwdemo_minmax_step(void)
+ {
+   rtY.Out1 = U1 * U2 * U3;
+ }</pre><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Optimizing Generated Code Using Specified Minimum and Maximum Values
+% This demo shows how the minimum and maximum values specified on signals
+% and parameters in a model can be used to optimize the generated code.
+
+%   Copyright 2010 The MathWorks, Inc.
+%   $Revision: 1.1.6.1 $  $Date: 2010/05/20 02:55:21 $
+
+%% Overview
+% The specified minimum and maximum values usually represent environmental
+% limits, such as temperature, or mechanical and electrical limits, such as
+% output ranges of sensors.
+%
+% This optimization uses these values to streamline the generated code, for
+% example, by reducing expressions to constants or by removing dead branches of
+% conditional statements.
+%
+% *NOTE:* You must ensure that the specified minimum and maximum values are
+% accurate and trustworthy.  Otherwise, this optimization might result in
+% numerical mismatch with simulation.
+%
+% The benefits of optimizing the generated code are:
+%
+% * Reducing the ROM and RAM consumption.
+% * Improving the execution speed.
+
+
+%% Review Minimum and Maximum Information
+% Consider the model <matlab:rtwdemo_minmax rtwdemo_minmax>.
+% In this model, there are minimum and maximum values specified on Inports and
+% on the gain parameter of the Gain block.
+open_system('rtwdemo_minmax');
+
+%% Generate Code Without This Optimization
+% 
+% First, generate code for this model without considering the min and max values:
+%
+% # Double-click the blue button.  
+% # An HTML Code Generation Report opens.
+% # In the Code Generation Report, click "rtwdemo_minmax.c".
+% # The generated code is:
+%
+%   void rtwdemo_minmax_step(void)
+%   {
+%     if (U1 + U2 <= k * U3) {
+%       rtY.Out1 = (U1 + U2) + U3;
+%     } else {
+%       rtY.Out1 = U1 * U2 * U3;
+%     }
+%   }
+% 
+
+%% Enable This Optimization
+% # Double-click the yellow button to open the Configuration Parameters
+%   dialog box.  
+% # In the dialog, under *Code generation*, select 
+%   *Optimize using the specified minimum and maximum values*.
+%
+
+%% Generate Code With This Optimization
+% In the model, with the specified minimum and maximum values for U1 and U2,
+% the sum of U1 and U2 has a minimum value of 50.  Considering the range of U3
+% and the specified minimum and maximum values for the Gain block parameter, the
+% maximum value of the Gain block's output is 40.
+%
+% Therefore, the output of the Relational Operator block is always false, and
+% the output of the Switch block is always the product of the three inputs.
+%
+% To generate code, double-click the blue button and examine the Code Generation
+% Report.  The generated code shows that the output is always equal to the
+% product of the three inputs, optimizing out the conditional statement:
+%
+%   void rtwdemo_minmax_step(void)
+%   {
+%     rtY.Out1 = U1 * U2 * U3;
+%   }
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

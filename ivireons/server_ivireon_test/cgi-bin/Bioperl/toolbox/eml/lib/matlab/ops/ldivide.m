@@ -1,0 +1,11 @@
+function z = ldivide(x,y)
+%Embedded MATLAB Library Function
+
+%   Copyright 2002-2007 The MathWorks, Inc.
+%#eml
+
+eml_assert(nargin > 1, 'Not enough input arguments.');
+eml_assert(isa(x,'numeric'), ['Function ''ldivide'' is not defined for values of class ''' class(x) '''.']);
+eml_assert(isa(y,'numeric'), ['Function ''ldivide'' is not defined for values of class ''' class(y) '''.']);
+eml_must_inline;
+z = rdivide(y,x);

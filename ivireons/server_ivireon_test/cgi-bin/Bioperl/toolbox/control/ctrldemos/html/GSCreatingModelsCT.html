@@ -1,0 +1,295 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Creating Continuous-Time Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="GSCreatingModelsCT.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit GSCreatingModelsCT">Open GSCreatingModelsCT.m in the Editor</a></div><div class="right"><a href="matlab:echodemo GSCreatingModelsCT">Run in the Command Window</a></div></div><div class="content"><h1>Creating Continuous-Time Models</h1><!--introduction--><p>This demo shows how to create continuous-time linear models using the <tt>tf</tt>, <tt>zpk</tt>, <tt>ss</tt>, and <tt>frd</tt> commands.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">LTI Model Types</a></li><li><a href="#2">Creating Transfer Function Models</a></li><li><a href="#4">Creating Zero-Pole-Gain Models</a></li><li><a href="#6">Creating State-Space Models</a></li><li><a href="#7">Creating Frequency Response Data Models</a></li><li><a href="#9">Creating MIMO Models</a></li><li><a href="#10">Analyzing LTI Models</a></li></ul></div><h2>LTI Model Types<a name="1"></a></h2><p>Control System Toolbox&#8482; provides functions for creating four basic representations of linear time-invariant (LTI) models:</p><div><ul><li>Transfer function (TF) models</li><li>Zero-pole-gain (ZPK) models</li><li>State-space (SS) models</li><li>Frequency response data (FRD) models</li></ul></div><p>These functions take model data as input and create objects that embody this data in a single MATLAB&reg; variable.</p><h2>Creating Transfer Function Models<a name="2"></a></h2><p>Transfer functions (TF) are frequency-domain representations of LTI systems. A SISO transfer function is a ratio of polynomials:</p><p><img src="GSCreatingModelsCT_eq03717.png" alt="$$ H(s) = \frac{A(s)}{B(s)} = \frac{a_{1} s^{n} + a_{2} s^{n-1} + \ldots + a_{n+1}}{b_{1}&#xA;s^{m} + b_{2} s^{m-1} + \ldots + b_{m+1}} $$"></p><p>Transfer functions are specified by their numerator and denominator polynomials <tt>A(s)</tt> and <tt>B(s)</tt>. In MATLAB, a polynomial is represented by the vector of its coefficients, for example, the polynomial</p><p><img src="GSCreatingModelsCT_eq71836.png" alt="$$  s^{2} + 2 s + 10 $$"></p><p>is specified as <tt>[1 2 10]</tt>.</p><p>To create a TF object representing the transfer function:</p><p><img src="GSCreatingModelsCT_eq95668.png" alt="$$ H(s) = \frac{s}{s^2+2s+10}  $$"></p><p>specify the numerator and denominator polynomials and use <tt>tf</tt> to construct the TF object:</p><pre class="codeinput">num = [ 1  0 ];       <span class="comment">% Numerator: s</span>
+den = [ 1  2  10 ];   <span class="comment">% Denominator: s^2 + 2 s + 10</span>
+H = tf(num,den)
+</pre><pre class="codeoutput"> 
+Transfer function:
+      s
+--------------
+s^2 + 2 s + 10
+ 
+</pre><p>Alternatively, you can specify this model as a rational expression of the Laplace variable <tt>s</tt>:</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);        <span class="comment">% Create Laplace variable</span>
+H = s / (s^2 + 2*s + 10)
+</pre><pre class="codeoutput"> 
+Transfer function:
+      s
+--------------
+s^2 + 2 s + 10
+ 
+</pre><h2>Creating Zero-Pole-Gain Models<a name="4"></a></h2><p>Zero-pole-gain (ZPK) models are the factored form of transfer functions:</p><p><img src="GSCreatingModelsCT_eq46140.png" alt="$$ H(s) = k \frac{( s - z_{1} ) \ldots ( s - z_{n} )}{( s - p_{1} ) \ldots&#xA;( s - p_{m} )} $$"></p><p>Such models expose the roots <tt>z</tt> of the numerator (the zeros) and the roots <tt>p</tt> of the denominator (the poles). The scalar coefficient <tt>k</tt> is called the gain.</p><p>To create the ZPK model:</p><p><img src="GSCreatingModelsCT_eq71626.png" alt="$$ H(s) = \frac{-2 s}{( s - 2 ) ( s^2 - 2 s + 2 )} $$"></p><p>specify the vectors of poles and zeros and the gain <tt>k</tt>:</p><pre class="codeinput">z = 0;                   <span class="comment">% Zeros</span>
+p = [ 2  1+i  1-i ];     <span class="comment">% Poles</span>
+k = -2;                  <span class="comment">% Gain</span>
+H = zpk(z,p,k)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+        -2 s
+--------------------
+(s-2) (s^2 - 2s + 2)
+ 
+</pre><p>As for TF models, you can also specify this model as a rational expression of <tt>s</tt>:</p><pre class="codeinput">s = zpk(<span class="string">'s'</span>);
+H = -2*s / (s - 2) / (s^2 - 2*s + 2)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+        -2 s
+--------------------
+(s-2) (s^2 - 2s + 2)
+ 
+</pre><h2>Creating State-Space Models<a name="6"></a></h2><p>State-space (SS) models are time-domain representations of LTI systems:</p><p><img src="GSCreatingModelsCT_eq43691.png" alt="$$ \frac{dx}{dt} = A x(t) + B u(t) $$"></p><p><img src="GSCreatingModelsCT_eq13622.png" alt="$$ y(t) = Cx(t) + Du(t) $$"></p><p>where <tt>x(t)</tt> is the state vector, <tt>u(t)</tt> is input vector, and <tt>y(t)</tt> is the output trajectory.</p><p>State-space models are derived from the differential equations describing the system dynamics. For example, consider the second-order ODE for a simple electric motor:</p><p><img src="GSCreatingModelsCT_eq88228.png" alt="$$ \frac{d^2\theta}{dt^2} + 2\frac{d\theta}{dt} + 5\theta = 3I $$"></p><p>where <tt>I</tt> is the driving current (input) and <tt>theta</tt> is the angular displacement of the rotor (output). This ODE can be rewritten in state-space form as:</p><p><img src="GSCreatingModelsCT_eq02653.png" alt="$$ \frac{dx}{dt} = Ax + BI~~~~~~~A = \left[\matrix{0 &amp; 1 \cr&#xA;-5 &amp; -2 }\right] ~~~~~~~  B=\left[\matrix{0 \cr 3 }\right]~~~~~~~&#xA;x=\left[\matrix{\theta \cr \frac{d\theta}{dt} }\right] $$"></p><p><img src="GSCreatingModelsCT_eq96982.png" alt="$$ \theta = Cx + DI~~~~~~~C=[1~~0]~~~~~~~D = [0] $$"></p><p>To create this model, specify the state-space matrices <tt>A, B, C, D</tt> and use <tt>ss</tt> to construct the SS object:</p><pre class="codeinput">A = [ 0  1 ; -5  -2 ];
+B = [ 0 ; 3 ];
+C = [ 1  0 ];
+D = 0;
+H = ss(A,B,C,D)
+</pre><pre class="codeoutput"> 
+a = 
+       x1  x2
+   x1   0   1
+   x2  -5  -2
+ 
+b = 
+       u1
+   x1   0
+   x2   3
+ 
+c = 
+       x1  x2
+   y1   1   0
+ 
+d = 
+       u1
+   y1   0
+ 
+Continuous-time model.
+</pre><h2>Creating Frequency Response Data Models<a name="7"></a></h2><p>Frequency response data (FRD) models let you store the measured or simulated complex frequency response of a system in an LTI object. You can then use this data as a surrogate model for frequency-domain analysis and design purposes.</p><p>For example, suppose you get the following data out of a frequency analyzer:</p><div><ul><li>Frequency (Hz): 10, 30, 50, 100, 500</li><li>Response:  0.0021+0.0009i, 0.0027+0.0029i, 0.0044+0.0052i, 0.0200-0.0040i, 0.0001-0.0021i</li></ul></div><p>You can create an FRD object containing this data using:</p><pre class="codeinput">freq = [10, 30, 50, 100, 500];
+resp = [0.0021+0.0009i, 0.0027+0.0029i, 0.0044+0.0052i, 0.0200-0.0040i, 0.0001-0.0021i];
+H = frd(resp,freq,<span class="string">'Units'</span>,<span class="string">'Hz'</span>)
+</pre><pre class="codeoutput"> 
+  Frequency(Hz)            Response        
+  -------------            --------        
+        10         2.100e-003 + 9.000e-004i
+        30         2.700e-003 + 2.900e-003i
+        50         4.400e-003 + 5.200e-003i
+       100         2.000e-002 - 4.000e-003i
+       500         1.000e-004 - 2.100e-003i
+ 
+Continuous-time frequency response.
+</pre><p>Note that frequency values are assumed to be in rad/s unless you specify the <tt>Units</tt> to be Hertz.</p><h2>Creating MIMO Models<a name="9"></a></h2><p>The <tt>tf</tt>, <tt>zpk</tt>, <tt>ss</tt>, and <tt>frd</tt> commands let you construct both SISO and MIMO models. For TF or ZPK models, it is often convenient to construct MIMO models by concatenating simpler SISO models. For example, you can create the 2x2 MIMO transfer function:</p><p><img src="GSCreatingModelsCT_eq56639.png" alt="$$ H(s) = \left[ \begin{array}{cc} {1\over s+1} &amp; 0 \\ &amp; \\ {s+1 \over s^2+s+3}&#xA;&amp; {-4s \over s+2} \end{array} \right] $$"></p><p>using:</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);
+H = [ 1/(s+1) , 0 ; (s+1)/(s^2+s+3) , -4*s/(s+2) ]
+</pre><pre class="codeoutput"> 
+Transfer function from input 1 to output...
+        1
+ #1:  -----
+      s + 1
+ 
+         s + 1
+ #2:  -----------
+      s^2 + s + 3
+ 
+Transfer function from input 2 to output...
+ #1:  0
+ 
+      -4 s
+ #2:  -----
+      s + 2
+ 
+</pre><h2>Analyzing LTI Models<a name="10"></a></h2><p>Control System Toolbox provides an extensive set of functions for analyzing LTI models. These functions range from simple queries about I/O size and order to sophisticated time and frequency response analysis.</p><p>For example, you can obtain size information for the MIMO transfer function <tt>H</tt> specified above by typing:</p><pre class="codeinput">size(H)
+</pre><pre class="codeoutput">Transfer function with 2 outputs and 2 inputs.
+</pre><p>You can compute the poles using:</p><pre class="codeinput">pole(H)
+</pre><pre class="codeoutput">
+ans =
+
+  -1.0000          
+  -0.5000 + 1.6583i
+  -0.5000 - 1.6583i
+  -2.0000          
+
+</pre><p>You can ask whether this system is stable using:</p><pre class="codeinput">isstable(H)
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><p>Finally, you can plot the step response by typing:</p><pre class="codeinput">step(H)
+</pre><img vspace="5" hspace="5" src="GSCreatingModelsCT_01.png" alt=""> <p>See the <b>Model Analysis</b> demos for more details.</p><p class="footer">Copyright 1986-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Creating Continuous-Time Models
+% This demo shows how to create continuous-time linear models using the
+% |tf|, |zpk|, |ss|, and |frd| commands.
+
+%   Copyright 1986-2007 The MathWorks, Inc.
+%   $Revision: 1.1.8.2 $  $Date: 2007/11/09 19:47:45 $
+
+ 
+%% LTI Model Types
+% Control System Toolbox(TM) provides functions for creating four basic
+% representations of linear time-invariant (LTI) models:
+%
+% * Transfer function (TF) models 
+% * Zero-pole-gain (ZPK) models 
+% * State-space (SS) models 
+% * Frequency response data (FRD) models 
+%
+% These functions take model data as input and create objects that embody
+% this data in a single MATLAB(R) variable.
+
+
+%% Creating Transfer Function Models
+% Transfer functions (TF) are frequency-domain representations of LTI systems.
+% A SISO transfer function is a ratio of polynomials:
+% 
+% $$ H(s) = \frac{A(s)}{B(s)} = \frac{a_{1} s^{n} + a_{2} s^{n-1} + \ldots + a_{n+1}}{b_{1}
+% s^{m} + b_{2} s^{m-1} + \ldots + b_{m+1}} $$
+%
+% Transfer functions are specified by their numerator and denominator
+% polynomials |A(s)| and |B(s)|. In MATLAB, a polynomial is represented by
+% the vector of its coefficients, for example, the polynomial
+%        
+% $$  s^{2} + 2 s + 10 $$
+%
+% is specified as |[1 2 10]|.
+%
+% To create a TF object representing the transfer function:
+%
+% $$ H(s) = \frac{s}{s^2+2s+10}  $$
+%
+% specify the numerator and denominator polynomials and use |tf| to
+% construct the TF object:
+num = [ 1  0 ];       % Numerator: s
+den = [ 1  2  10 ];   % Denominator: s^2 + 2 s + 10
+H = tf(num,den)
+
+%%
+% Alternatively, you can specify this model as a rational expression of the 
+% Laplace variable |s|:
+s = tf('s');        % Create Laplace variable
+H = s / (s^2 + 2*s + 10)
+
+%% Creating Zero-Pole-Gain Models
+% Zero-pole-gain (ZPK) models are the factored form of transfer functions:
+%
+% $$ H(s) = k \frac{( s - z_{1} ) \ldots ( s - z_{n} )}{( s - p_{1} ) \ldots
+% ( s - p_{m} )} $$
+%
+% Such models expose the roots |z| of the numerator (the zeros) and the
+% roots |p| of the denominator (the poles). The scalar coefficient |k| is
+% called the gain.
+% 
+% To create the ZPK model:
+%
+% $$ H(s) = \frac{-2 s}{( s - 2 ) ( s^2 - 2 s + 2 )} $$
+%
+% specify the vectors of poles and zeros and the gain |k|:
+z = 0;                   % Zeros
+p = [ 2  1+i  1-i ];     % Poles
+k = -2;                  % Gain
+H = zpk(z,p,k)
+
+%%
+% As for TF models, you can also specify this model as a rational expression of |s|:
+s = zpk('s');
+H = -2*s / (s - 2) / (s^2 - 2*s + 2)
+ 
+
+%% Creating State-Space Models
+% State-space (SS) models are time-domain representations of LTI systems:
+%
+% $$ \frac{dx}{dt} = A x(t) + B u(t) $$
+%
+% $$ y(t) = Cx(t) + Du(t) $$
+%
+% where |x(t)| is the state vector, |u(t)| is input vector, and 
+% |y(t)| is the output trajectory. 
+%
+% State-space models are derived from the differential equations 
+% describing the system dynamics. For example, consider the 
+% second-order ODE for a simple electric motor:
+%
+% $$ \frac{d^2\theta}{dt^2} + 2\frac{d\theta}{dt} + 5\theta = 3I $$
+%
+% where |I| is the driving current (input) and |theta| is the angular
+% displacement of the rotor (output). This ODE can be rewritten in
+% state-space form as:
+%
+% $$ \frac{dx}{dt} = Ax + BI~~~~~~~A = \left[\matrix{0 & 1 \cr
+% -5 & -2 }\right] ~~~~~~~  B=\left[\matrix{0 \cr 3 }\right]~~~~~~~
+% x=\left[\matrix{\theta \cr \frac{d\theta}{dt} }\right] $$
+%
+% $$ \theta = Cx + DI~~~~~~~C=[1~~0]~~~~~~~D = [0] $$
+%
+% To create this model, specify the state-space matrices |A, B, C, D| and
+% use |ss| to construct the SS object: 
+A = [ 0  1 ; -5  -2 ];
+B = [ 0 ; 3 ];
+C = [ 1  0 ];
+D = 0;
+H = ss(A,B,C,D)
+
+%% Creating Frequency Response Data Models
+% Frequency response data (FRD) models let you store the measured
+% or simulated complex frequency response of a system in an LTI object. You
+% can then use this data as a surrogate model for frequency-domain analysis 
+% and design purposes.
+% 
+% For example, suppose you get the following data out of a frequency
+% analyzer:
+%
+% * Frequency (Hz): 10, 30, 50, 100, 500
+% * Response:  0.0021+0.0009i, 0.0027+0.0029i, 0.0044+0.0052i, 0.0200-0.0040i, 0.0001-0.0021i
+%
+% You can create an FRD object containing this data using:
+freq = [10, 30, 50, 100, 500];
+resp = [0.0021+0.0009i, 0.0027+0.0029i, 0.0044+0.0052i, 0.0200-0.0040i, 0.0001-0.0021i];
+H = frd(resp,freq,'Units','Hz')
+
+%%
+% Note that frequency values are assumed to be in rad/s unless you specify the
+% |Units| to be Hertz. 
+
+%% Creating MIMO Models
+% The |tf|, |zpk|, |ss|, and |frd| commands let you construct both SISO and
+% MIMO models. For TF or ZPK models, it is often convenient to
+% construct MIMO models by concatenating simpler SISO models. For example,
+% you can create the 2x2 MIMO transfer function:
+%
+% $$ H(s) = \left[ \begin{array}{cc} {1\over s+1} & 0 \\ & \\ {s+1 \over s^2+s+3}
+% & {-4s \over s+2} \end{array} \right] $$
+%
+% using:
+s = tf('s');
+H = [ 1/(s+1) , 0 ; (s+1)/(s^2+s+3) , -4*s/(s+2) ]
+
+%% Analyzing LTI Models
+% Control System Toolbox provides an extensive set of functions for
+% analyzing LTI models. These functions range from simple queries about I/O size and order to
+% sophisticated time and frequency response analysis. 
+%
+% For example, you can obtain size information for the MIMO transfer
+% function |H| specified above by typing:
+size(H)
+
+%%
+% You can compute the poles using:
+pole(H)
+
+%%
+% You can ask whether this system is stable using:
+isstable(H)
+
+%% 
+% Finally, you can plot the step response by typing:
+step(H)
+
+%%
+% See the *Model Analysis* demos for more details.
+
+displayEndOfDemoMessage(mfilename)
+ 
+##### SOURCE END #####
+--></body></html>

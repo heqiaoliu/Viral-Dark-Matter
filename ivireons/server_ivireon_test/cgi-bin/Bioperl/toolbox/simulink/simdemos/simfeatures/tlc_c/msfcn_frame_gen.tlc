@@ -1,0 +1,80 @@
+%% File : msfcn_frame_filt.tlc
+%% Abstract:
+%% Inlined TLC File for S-Function msfcn_frame_filt.c
+%%
+%% Copyright 2009 The MathWorks, Inc.
+%implements msfcn_frame_gen "C"
+
+%% Function: BlockInstanceSetup ===========================================
+%% Abstract:
+%%          Block Setup
+%%
+%function BlockInstanceSetup(block, system) void
+ 
+  %%   Set the expression-folding compliance.
+  %<LibBlockSetIsExpressionCompliant(block)>
+  
+%endfunction
+
+
+%% Function: Start ========================================================
+%% Abstract:
+%%          Initialize Dworks to Zero
+%%
+%function Start(block, system) Output
+
+  %<LibBlockDWork(count, "", "", 0)> = 0.0;
+
+%endfunction 
+
+
+%% Function: Outputs ======================================================
+%% Abstract:
+%%          Output Function
+%%
+%function Outputs(block, system) Output
+
+%% Get the filter coefficients from an RTW file.
+  %with block
+    %assign Ampl     = ParamSettings.Amplitude[0]
+    %assign Per      = ParamSettings.Period
+  %endwith
+
+%% Obtain the size of the frame signal.
+%assign nSamples  = LibBlockOutputSignalDimensions(0)[0]
+%assign nChannels = LibBlockOutputSignalDimensions(0)[1]
+
+%% Set up variables for use in the output loop.
+%assign y     = LibBlockOutputSignal(0, "sample+channel*%<nSamples>", "", 0)
+%assign cnt = LibBlockDWork(count, "","", 0) 
+
+{
+%% Output loop. 
+%% Note that the order of the loop variables matters; the loop traverses 
+%% the frame signal, which is an [nSamples x nChannels] matrix. 
+int channel;
+int sample;
+int inCyclePos;
+ %assign nAmpl = SIZE(%<Ampl>, 1)
+
+double Amplitude[]={ \
+%foreach i=nAmpl-1
+    %<Ampl[i]>, \
+%endforeach
+%<Ampl[nAmpl-1]> };
+
+for(sample = 0; sample < %<nSamples>; sample++){
+    for (channel = 0; channel < %<nChannels>; channel++) {
+      inCyclePos = ((int)%<cnt>+sample) % %<Per>;
+      if( (inCyclePos >= (%<Per>/2.0)) && (inCyclePos < %<Per>) )
+        %<y> = Amplitude[channel];
+      else
+        %<y> = 0;
+    }
+}
+}
+
+%% Update the dworks.
+%<cnt> = (%<(cnt)>+%<nSamples> % %<Per>);
+
+%endfunction

@@ -1,0 +1,81 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>米国の人口を予測</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="census.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit census">エディターで census.m を開く</a></div><div class="right"><a href="matlab:echodemo census">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>米国の人口を予測</h1><!--introduction--><p>この例の予測は、MATLAB&reg; が作成されるより前に行われたものです。1977 年に Prentice-Hall によって公表され、Forsythe、Malcolm、および Moler らの &quot;Computer Methods for Mathematical Computations&quot; 内の練習として始まりました。</p><p>現在では、MATLAB と Handle Graphics&reg; によって、パラメーターを変化して結果を見ることは大変容易に行えますが、根本的な数学的法則は変わりません。それはデータの推定によって、将来を予測するために適度に多項式を使うことが危険な行為であることを示します。</p><!--/introduction--><p>1900 年から 2000 年の米国の人口調査データを示します。</p><pre class="codeinput"><span class="comment">% Time interval</span>
+t = (1900:10:2000)';
+
+<span class="comment">% Population</span>
+p = [75.995 91.972 105.711 123.203 131.669 <span class="keyword">...</span>
+     150.697 179.323 203.212 226.505 249.633 281.422]';
+
+<span class="comment">% Plot</span>
+plot(t,p,<span class="string">'bo'</span>);
+axis([1900 2020 0 400]);
+title(<span class="string">'Population of the U.S. 1900-2000'</span>);
+ylabel(<span class="string">'Millions'</span>);
+</pre><img vspace="5" hspace="5" src="../census_01.png" alt=""> <p>2010 年には人口はどうなると推定しますか?</p><pre class="codeinput">p
+</pre><pre class="codeoutput">
+p =
+
+   75.9950
+   91.9720
+  105.7110
+  123.2030
+  131.6690
+  150.6970
+  179.3230
+  203.2120
+  226.5050
+  249.6330
+  281.4220
+
+</pre><p>t の多項式でデータを近似し、これを使用して t = 2010 に外挿しましょう。多項式の係数は、要素がスケーリングした時間 A(i,j) = s(i)^(n-j) の乗数となる 11 行11 列の Vandermonde 行列を含む方程式の線形システムを解くことで得られます。</p><pre class="codeinput">n = length(t);
+s = (t-1950)/50;
+A = zeros(n);
+A(:,end) = 1;
+<span class="keyword">for</span> j = n-1:-1:1, A(:,j) = s .* A(:,j+1); <span class="keyword">end</span>
+</pre><p>データ p に近似する次数 d の多項式に対する係数 c は、Vandermonde 行列の最後の d+1 列を含む方程式の線形システムを解くことで得られます。</p><pre>   A(:,n-d:n)*c ~= p</pre><p>d が 10 より小さい場合、さらに未知の方程式があり、最小二乗解は適切です。d が 10 に等しい場合、その方程式は厳密な解になり、多項式は実際にデータを内挿します。どちらの場合も、システムは、MATLAB のバックスラッシュ演算を使って解きます。ここで、3 次の近似に対する係数を出力します。</p><pre class="codeinput">c = A(:,n-3:n)\p
+</pre><pre class="codeoutput">
+c =
+
+    1.2629
+   23.7261
+  100.3659
+  155.9043
+
+</pre><p>1900 年から 2010 年の各年で多項式を評価し、結果をプロットしましょう。</p><pre class="codeinput">v = (1900:2020)';
+x = (v-1950)/50;
+w = (2010-1950)/50;
+y = polyval(c,x);
+z = polyval(c,w);
+
+hold <span class="string">on</span>
+plot(v,y,<span class="string">'k-'</span>);
+plot(2010,z,<span class="string">'ks'</span>);
+text(2010,z+15,num2str(z));
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="../census_02.png" alt=""> <p>3 次と 4 次多項式近似を比較します。外挿の点が大きく異なることに注意してください。</p><pre class="codeinput">c = A(:,n-4:n)\p;
+y = polyval(c,x);
+z = polyval(c,w);
+
+hold <span class="string">on</span>
+plot(v,y,<span class="string">'k-'</span>);
+plot(2010,z,<span class="string">'ks'</span>);
+text(2010,z-15,num2str(z));
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="../census_03.png" alt=""> <p>次数が増加すると、外挿はさらに不安定になります。</p><pre class="codeinput">cla
+plot(t,p,<span class="string">'bo'</span>); hold <span class="string">on</span>; axis([1900 2020 0 400]);
+colors = hsv(8); labels = {<span class="string">'data'</span>};
+<span class="keyword">for</span> d = 1:8
+   [Q,R] = qr(A(:,n-d:n));
+   R = R(1:d+1,:); Q = Q(:,1:d+1);
+   c = R\(Q'*p);    <span class="comment">% Same as c = A(:,n-d:n)\p;</span>
+   y = polyval(c,x);
+   z = polyval(c,11);
+   plot(v,y,<span class="string">'color'</span>,colors(d,:));
+   labels{end+1} = [<span class="string">'degree = '</span> int2str(d)];
+<span class="keyword">end</span>
+legend(labels,2)
+</pre><img vspace="5" hspace="5" src="../census_04.png" alt=""> <p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Predicting the US Population  % This example is older than MATLAB(R).  It started as an exercise in "Computer % Methods for Mathematical Computations", by Forsythe, Malcolm and Moler, % published by Prentice-Hall in 1977. % % Now, MATLAB and Handle Graphics(R) make it much easier to vary the parameters and % see the results, but the underlying mathematical principles are unchanged.  It % shows that using polynomials of even modest degree to predict the future by % extrapolating data is a risky business. % % Copyright 1984-2007 The MathWorks, Inc. % $Revision: 1.1.6.11.2.1 $  $Date: 2010/07/29 21:28:52 $  %% % Here is the US Census data from 1900 to 2000.  % Time interval t = (1900:10:2000)';  % Population p = [75.995 91.972 105.711 123.203 131.669 ...      150.697 179.323 203.212 226.505 249.633 281.422]';  % Plot plot(t,p,'bo'); axis([1900 2020 0 400]); title('Population of the U.S. 1900-2000'); ylabel('Millions');  %% % What is your guess for the population in the year 2010?  p  %% % Let's fit the data with a polynomial in t and use it to extrapolate to t = % 2010.  The coefficients in the polynomial are obtained by solving a linear % system of equations involving a 11-by-11 Vandermonde matrix, whose elements % are powers of scaled time, A(i,j) = s(i)^(n-j);  n = length(t); s = (t-1950)/50; A = zeros(n); A(:,end) = 1; for j = n-1:-1:1, A(:,j) = s .* A(:,j+1); end  %% % The coefficients c for a polynomial of degree d that fits the data p are % obtained by solving a linear system of equations involving the last d+1 % columns of the Vandermonde matrix: %     %     A(:,n-d:n)*c ~= p % % If d is less than 10, there are more equations than unknowns and a least % squares solution is appropriate.  If d is equal to 10, the equations can be % solved exactly and the polynomial actually interpolates the data.  In either % case, the system is solved with MATLAB's backslash operator.  Here are the % coefficients for the cubic fit.  c = A(:,n-3:n)\p  %% % Now we evaluate the polynomial at every year from 1900 to 2010 and plot the % results.  v = (1900:2020)'; x = (v-1950)/50; w = (2010-1950)/50; y = polyval(c,x); z = polyval(c,w);  hold on plot(v,y,'k-'); plot(2010,z,'ks'); text(2010,z+15,num2str(z)); hold off  %% % Compare the cubic fit with the quartic.  Notice that the extrapolated point is % very different.  c = A(:,n-4:n)\p; y = polyval(c,x); z = polyval(c,w);  hold on plot(v,y,'k-'); plot(2010,z,'ks'); text(2010,z-15,num2str(z)); hold off  %% % As the degree increases, the extrapolation becomes even more erratic.  cla plot(t,p,'bo'); hold on; axis([1900 2020 0 400]); colors = hsv(8); labels = {'data'}; for d = 1:8    [Q,R] = qr(A(:,n-d:n));    R = R(1:d+1,:); Q = Q(:,1:d+1);    c = R\(Q'*p);    % Same as c = A(:,n-d:n)\p;    y = polyval(c,x);     z = polyval(c,11);    plot(v,y,'color',colors(d,:));    labels{end+1} = ['degree = ' int2str(d)]; end legend(labels,2)   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,157 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>分類</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="classdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit classdemo">エディターで classdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo classdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>分類</h1><!--introduction--><p>さまざまな変数 (「予測変数」と呼びます) に関する測定値と既知のクラス ラベルがある観測で構成されるデータ セットがあるとします。新しい観測の予測値を入手した場合、その観測がおそらくどのクラスに属するのかを判定できるでしょうか。これは分類の問題です。このデモでは、Statistics Toolbox™ を使用して MATLAB&reg; で分類アルゴリズムをフィッシャーのアヤメのデータに適用して、分類アルゴリズムを実行する方法について説明します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">フィッシャーのアヤメのデータ</a></li><li><a href="#3">線形判別分析と二次判別分析</a></li><li><a href="#15">単純ベイズ分類器</a></li><li><a href="#19">決定木</a></li><li><a href="#28">まとめ</a></li></ul></div><h2>フィッシャーのアヤメのデータ<a name="1"></a></h2><p>フィッシャーのアヤメのデータは、アヤメの標本 150 個のがく片の長さと幅、花弁の長さと幅に関する測定値で構成されます。3 種それぞれについて 50 個の標本があります。データを読み込んで、がく片の測定値が種間でどのように異なるのかを調べてみましょう。がく片の測定値を格納した 2 つの列を使用することができます。</p><pre class="codeinput">load <span class="string">fisheriris</span>
+gscatter(meas(:,1), meas(:,2), species,<span class="string">'rgb'</span>,<span class="string">'osd'</span>);
+xlabel(<span class="string">'Sepal length'</span>);
+ylabel(<span class="string">'Sepal width'</span>);
+N = size(meas,1);
+</pre><img vspace="5" hspace="5" src="../classdemo_01.png" alt=""> <p>1 本のアヤメのがく片と花弁を測定し、その測定値に基づいて種を判定する必要があるとします。この問題を解く 1 つのアプローチは、「判別分析」と呼ばれます。</p><h2>線形判別分析と二次判別分析<a name="3"></a></h2><p>関数 <tt>classify</tt> は、さまざまな判別分析を使用して分類を行うことができます。最初に、既定の線形判別分析 (LDA) を使用してデータを分類します。</p><pre class="codeinput">ldaClass = classify(meas(:,1:2),meas(:,1:2),species);
+</pre><p>既知のクラス ラベルがある観測は通常、「トレーニング データ」と呼ばれます。ここで、誤判別率を計算します。これは、トレーニング セットに関する誤判別の誤差 (誤判別された観測の割合) です。</p><pre class="codeinput">bad = ~strcmp(ldaClass,species);
+ldaResubErr = sum(bad) / N
+</pre><pre class="codeoutput">
+ldaResubErr =
+
+    0.2000
+
+</pre><p>トレーニング セットに関する混合行列を計算することもできます。混合行列には、既知のクラス ラベルと予測されたクラス ラベルについての情報が格納されます。一般的に言って、混合行列の (i,j) 要素は、既知のクラス ラベルがクラス i であり、予測されたクラス ラベルがクラス j である標本の数を表します。対角要素は、正しく分類された観測を表します。</p><pre class="codeinput">[ldaResubCM,grpOrder] = confusionmat(species,ldaClass)
+</pre><pre class="codeoutput">
+ldaResubCM =
+
+    49     1     0
+     0    36    14
+     0    15    35
+
+
+grpOrder = 
+
+    'setosa'
+    'versicolor'
+    'virginica'
+
+</pre><p>150 個のトレーニング用観測のうち、20% つまり 30 個の観測が線形判別関数によって誤判別されています。どの観測が誤判別されたのかを具体的に確認するには、誤判別された点を通る X を描きます。</p><pre class="codeinput">hold <span class="string">on</span>;
+plot(meas(bad,1), meas(bad,2), <span class="string">'kx'</span>);
+hold <span class="string">off</span>;
+</pre><img vspace="5" hspace="5" src="../classdemo_02.png" alt=""> <p>この関数により、平面が直線で複数の領域に分割され、種ごとに別の領域に割り当てられました。この領域を可視化する 1 つの方法は、(x,y) 値のグリッドを作成し、そのグリッドに分類関数を適用することです。</p><pre class="codeinput">[x,y] = meshgrid(4:.1:8,2:.1:4.5);
+x = x(:);
+y = y(:);
+j = classify([x y],meas(:,1:2),species);
+gscatter(x,y,j,<span class="string">'grb'</span>,<span class="string">'sod'</span>)
+</pre><img vspace="5" hspace="5" src="../classdemo_03.png" alt=""> <p>データ セットのなかには、さまざまなクラスの領域が直線ではっきりと分割されないものもあります。その場合には、線形判別分析は適切ではありません。むしろ、ここで紹介するデータには二次判別分析 (QDA) を試すことができます。</p><p>二次判別分析の誤判別率を計算します。</p><pre class="codeinput">qdaClass = classify(meas(:,1:2),meas(:,1:2),species,<span class="string">'quadratic'</span>);
+bad = ~strcmp(qdaClass,species);
+qdaResubErr = sum(bad) / N
+</pre><pre class="codeoutput">
+qdaResubErr =
+
+    0.2000
+
+</pre><p>誤判別率を計算できました。人は一般に、検定誤差 (「汎化誤差」とも呼ばれます) の方に関心を持つものです。この誤差は、独立したセットに関して見込まれる予測誤差です。実際、判別誤差では検定誤差が過小評価されがちです。</p><p>この場合、ラベル付けされた別のデータ セットはありませんが、交差検定を行うことによりシミュレートすることができます。分類アルゴリズムでの検定誤差を推定するには、階層化された 10 分割交差検定がよく使用されます。この検定では、トレーニング セットが 10 個の互いに素のサブセットに無作為に分割されます。各サブセットは、サイズがほぼ等しく、トレーニング セット内でのクラスの割合とほぼ同じクラスの割合を持っています。1 つのサブセットを削除し、他の 9 個のサブセットで分類モデルをトレーニングし、削除されたサブセットをトレーニング済みモデルを使用して分類します。これを一度に 1 つのサブセットを 10 個のサブセットから削除して繰り返します。</p><p>交差検定によってデータが無作為に分割されるので、結果は初期無作為シードで決まります。このデモでまったく同じ結果を再現するには、次のコマンドを実行します。</p><pre class="codeinput">s = RandStream(<span class="string">'mt19937ar'</span>,<span class="string">'seed'</span>,0);
+RandStream.setDefaultStream(s);
+</pre><p>最初に、関数 <tt>cvpartition</tt> を使用して 10 個の互いに素の階層化されたサブセットを生成します。</p><pre class="codeinput">cp = cvpartition(species,<span class="string">'k'</span>,10)
+</pre><pre class="codeoutput">
+cp = 
+
+K-fold cross validation partition
+             N: 150
+   NumTestSets: 10
+     TrainSize: 135  135  135  135  135  135  135  135  135  135
+      TestSize: 15  15  15  15  15  15  15  15  15  15
+</pre><p>関数 <tt>crossval</tt> は、所定のデータ区分 <tt>cp</tt> を使用して、LDA と QDA 両方の誤判別の誤差を推定することができます。</p><p>階層化された 10 分割交差検定を使用して、LDA の真の検定誤差を推定します。</p><pre class="codeinput">ldaClassFun= @(xtrain,ytrain,xtest)(classify(xtest,xtrain,ytrain));
+ldaCVErr  = crossval(<span class="string">'mcr'</span>,meas(:,1:2),species,<span class="string">'predfun'</span>, <span class="keyword">...</span>
+             ldaClassFun,<span class="string">'partition'</span>,cp)
+</pre><pre class="codeoutput">
+ldaCVErr =
+
+    0.2000
+
+</pre><p>このデータに関する LDA の交差検定誤差は、LDA の誤判別率と同じ値です。</p><p>階層化された 10 分割交差検定を使用して、QDA の真の検定誤差を推定します。</p><pre class="codeinput">qdaClassFun = @(xtrain,ytrain,xtest)(classify(xtest,xtrain,ytrain,<span class="keyword">...</span>
+              <span class="string">'quadratic'</span>));
+qdaCVErr = crossval(<span class="string">'mcr'</span>,meas(:,1:2),species,<span class="string">'predfun'</span>,<span class="keyword">...</span>
+           qdaClassFun,<span class="string">'partition'</span>,cp)
+</pre><pre class="codeoutput">
+qdaCVErr =
+
+    0.2267
+
+</pre><p>QDA の交差検定誤差の値は、LDA の場合より少し大きいです。これは、モデルが簡単であればあるほど類似度が高くなるか、または複雑なモデルより成績が良くなることを示しています。</p><h2>単純ベイズ分類器<a name="15"></a></h2><p>関数 <tt>classify</tt> には他にも diagLinear と diagQuadratic という 2 種類があります。これらは linear および quadratic と似ていますが、対角の共分散行列の推定値がある点が異なります。これらの対角性の選択肢は、単純ベイズ分類器の具体例です。クラス ラベルが与えられた場合、変数が条件的に独立しているものと仮定されるからです。単純ベイズ分類器は、最も一般的な分類器の一種です。クラスの条件付きの下で変数が互いに独立であるという仮定は、一般には成り立ちませんが、多くのデータ セットで単純ベイズ分類器が実際のところうまくいくことが確認されています。</p><p><tt>NaiveBayes</tt> クラスを使用して、より一般的な種類の単純ベイズ分類器を作成します。</p><p>最初に、ガウス分布を使用して各クラスの各変数をモデル化します。誤判別率と交差検定誤差を計算することができます。</p><pre class="codeinput">nbGau= NaiveBayes.fit(meas(:,1:2), species);
+nbGauClass= nbGau.predict(meas(:,1:2));
+bad = ~strcmp(nbGauClass,species);
+nbGauResubErr = sum(bad) / N
+nbGauClassFun = @(xtrain,ytrain,xtest)<span class="keyword">...</span>
+               (predict(NaiveBayes.fit(xtrain,ytrain), xtest));
+nbGauCVErr  = crossval(<span class="string">'mcr'</span>,meas(:,1:2),species,<span class="keyword">...</span>
+              <span class="string">'predfun'</span>, nbGauClassFun,<span class="string">'partition'</span>,cp)
+</pre><pre class="codeoutput">
+nbGauResubErr =
+
+    0.2200
+
+
+nbGauCVErr =
+
+    0.2200
+
+</pre><p>これまでは、各クラスの変数に多変量正規分布があると仮定してきました。たいていの場合、これは理にかなった仮定です。しかし、このように仮定したくないかまたはこの仮定が明らかに無効であるとわかる場合もあります。そこで、各クラスの変数をカーネル密度推定を使用してモデル化してみましょう。これは、より柔軟性に富むノンパラメトリックな手法です。</p><pre class="codeinput">nbKD= NaiveBayes.fit(meas(:,1:2), species,<span class="string">'dist'</span>,<span class="string">'kernel'</span>);
+nbKDClass= nbKD.predict(meas(:,1:2));
+bad = ~strcmp(nbKDClass,species);
+nbKDResubErr = sum(bad) / N
+nbKDClassFun = @(xtrain,ytrain,xtest)<span class="keyword">...</span>
+            (predict(NaiveBayes.fit(xtrain,ytrain,<span class="string">'dist'</span>,<span class="string">'kernel'</span>),xtest));
+nbKDCVErr = crossval(<span class="string">'mcr'</span>,meas(:,1:2),species,<span class="keyword">...</span>
+            <span class="string">'predfun'</span>, nbKDClassFun,<span class="string">'partition'</span>,cp)
+</pre><pre class="codeoutput">
+nbKDResubErr =
+
+    0.1800
+
+
+nbKDCVErr =
+
+    0.1933
+
+</pre><p>このデータ セットの場合、単純ベイズ分類器にカーネル密度推定を適用すると、ガウス分布を適用した場合より誤判別率と交差検定誤差が小さくなります。</p><h2>決定木<a name="19"></a></h2><p>別の分類アルゴリズムは、決定木に基づきます。決定木は、単純な規則のセットです。たとえば、&quot;がく片の長さが 5.45 未満なら、その標本を setosa (セトサ) に分類する。&quot; です。決定木もノンパラメトリックです。各クラスの変数の分布について仮定がまったく不要だからです。</p><p><tt>classregtree</tt> クラスは決定木を作成します。アヤメのデータの決定木を作成して、アヤメが種にどのように分類されるのかを調べます。</p><pre class="codeinput">t = classregtree(meas(:,1:2), species,<span class="string">'names'</span>,{<span class="string">'SL'</span> <span class="string">'SW'</span> });
+</pre><p>決定木法で平面が分割される様子を見るのは興味深いものです。上と同じ手法で、各種に割り当てられた領域を可視化します。</p><pre class="codeinput">[grpname,node] = t.eval([x y]);
+gscatter(x,y,grpname,<span class="string">'grb'</span>,<span class="string">'sod'</span>)
+</pre><img vspace="5" hspace="5" src="../classdemo_04.png" alt=""> <p>決定木を可視化する別の方法は、決定規則とクラス割り当ての図を描くことです。</p><pre class="codeinput">view(t);
+</pre><img vspace="5" hspace="5" src="../classdemo_05.png" alt=""> <p>この乱れたように見える木では、&quot;SL &lt; 5.45&quot; という形式の一連の規則を使用して、各標本を 19 個の終端ノードのいずれかに分類します。ある観測の種割り当てを判定するため、最上位ノードから開始して規則を適用していきます。点が規則を満たすなら左に進み、そうでないなら右に進みます。最終的には、観測を 3 つの種のいずれかに割り当てる終端ノードに到達します。</p><p>決定木の誤判別率と交差検定誤差を計算します。</p><pre class="codeinput">dtclass = t.eval(meas(:,1:2));
+bad = ~strcmp(dtclass,species);
+dtResubErr = sum(bad) / N
+
+dtClassFun = @(xtrain,ytrain,xtest)(eval(classregtree(xtrain,ytrain),xtest));
+dtCVErr  = crossval(<span class="string">'mcr'</span>,meas(:,1:2),species, <span class="keyword">...</span>
+          <span class="string">'predfun'</span>, dtClassFun,<span class="string">'partition'</span>,cp)
+</pre><pre class="codeoutput">
+dtResubErr =
+
+    0.1333
+
+
+dtCVErr =
+
+    0.3200
+
+</pre><p>決定木アルゴリズムの場合、交差検定誤差の推定値は判別誤差より有意に大きくなります。これは、生成された木がトレーニング セットを過剰に適合することを示しています。言い換えると、この木は元のトレーニング セットをうまく分類する木ですが、木の構造はこの特定のトレーニング セットの影響を受けやすいので、別の新しいデータでは成績が低下する可能性が高くなります。別の新しいデータでは、複雑な木より良い成績を収めるより単純な木を見つけることができることがよくあります。</p><p>枝切りを行います。最初に、元の木のさまざまなサブセットについて誤判別率を計算します。次に、これらのサブツリーについて交差検定誤差を計算します。グラフは、誤判別率が楽観的すぎることを示しています。ツリーのサイズが大きくなるにつれて誤判別率は小さくなりますが、ある点を越えると、ツリーのサイズが増えると交差検定誤差率が上昇するようになります。</p><pre class="codeinput">resubcost = test(t,<span class="string">'resub'</span>);
+[cost,secost,ntermnodes,bestlevel] = test(t,<span class="string">'cross'</span>,meas(:,1:2),species);
+plot(ntermnodes,cost,<span class="string">'b-'</span>, ntermnodes,resubcost,<span class="string">'r--'</span>)
+figure(gcf);
+xlabel(<span class="string">'Number of terminal nodes'</span>);
+ylabel(<span class="string">'Cost (misclassification error)'</span>)
+legend(<span class="string">'Cross-validation'</span>,<span class="string">'Resubstitution'</span>)
+</pre><img vspace="5" hspace="5" src="../classdemo_06.png" alt=""> <p>どの木を選択すべきでしょうか。簡単な規則は、交差検定誤差が最小の木を選択することです。これで十分かもしれませんが、単純な木を使用しても複雑な木で得られるのとほぼ同じ結果になるのであれば、単純な木を選択することもできるでしょう。この例では、最小値の 1 標準誤差内にある最も単純な木を採用します。これは、<tt>classregtree/test</tt> 法で使用される既定の規則です。</p><p>このことは、カットオフ値を計算することによってグラフに示すことができます。このカットオフ値は、最小コストに 1 標準誤差を加えた値です。<tt>classregtree/test</tt> 法によって計算される &quot;最高&quot; のレベルは、このカットオフ値を下回る最小木です (bestlevel=0 が何も刈り込まれていない木であることに注意してください。したがって、<tt>classregtree/test</tt> のベクトル出力のインデックスとして使用するには、1 を加える必要があります)。</p><pre class="codeinput">[mincost,minloc] = min(cost);
+cutoff = mincost + secost(minloc);
+hold <span class="string">on</span>
+plot([0 20], [cutoff cutoff], <span class="string">'k:'</span>)
+plot(ntermnodes(bestlevel+1), cost(bestlevel+1), <span class="string">'mo'</span>)
+legend(<span class="string">'Cross-validation'</span>,<span class="string">'Resubstitution'</span>,<span class="string">'Min + 1 std. err.'</span>,<span class="string">'Best choice'</span>)
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="../classdemo_07.png" alt=""> <p>最後に、刈り込まれた木を調べて、推定誤分類誤差を計算することができます。</p><pre class="codeinput">pt = prune(t,bestlevel);
+view(pt)
+</pre><img vspace="5" hspace="5" src="../classdemo_08.png" alt=""> <pre class="codeinput">cost(bestlevel+1)
+</pre><pre class="codeoutput">
+ans =
+
+    0.2400
+
+</pre><h2>まとめ<a name="28"></a></h2><p>このデモでは、Statistics Toolbox のさまざまな関数を使用して、MATLAB で分類を行う方法を説明しました。</p><p>このデモの目的は、フィッシャーのアヤメのデータの理想的な分析を示すことではありません。実際、がく片の測定値ではなく、またはがく片の測定値に加えて花弁の測定値を使用すると、分類の精度が向上することがあります。また、このデモの目的は、さまざまな分類アルゴリズムの強みと弱みを比較することでもありません。データ セットをさまざまに変えて分析を行い、さまざまなアルゴリズムを比較すると、得るところが大きいでしょう。他の分類アルゴリズムを実装する Statistics Toolbox の関数もあります。たとえば、関数 <tt>TreeBagger</tt> を使用して、決定木の集合についてブートストラップ集約を実行することができます。例については、<a href="http://www.mathworks.com/access/helpdesk/help/toolbox/stats/br0gosr-1.html#br0g6t1-1">Classifying Radar Returns for Ionosphere Data</a> を参照してください。</p><p class="footer">Copyright 2002-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Classification % Suppose you have a data set containing observations with measurements on % different variables (called predictors) and their known class labels. If % you obtain predictor values for new observations, could you determine to % which classes those observations probably belong?  This is the problem of % classification. This demo illustrates how to perform some classification % algorithms in MATLAB(R) using Statistics Toolbox(TM) by applying them % to Fisher's iris data.  %   Copyright 2002-2009 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:29:28 $  %% Fisher's Iris Data % Fisher's iris data consists of measurements on the sepal length, sepal % width, petal length, and petal width for 150 iris specimens.  There are % 50 specimens from each of three species. Load the data and see how the % sepal measurements differ between species. You can use the two columns % containing sepal measurements.  load fisheriris gscatter(meas(:,1), meas(:,2), species,'rgb','osd'); xlabel('Sepal length'); ylabel('Sepal width'); N = size(meas,1); %% % Suppose you measure a sepal and petal from an iris, and you need to % determine its species on the basis of those measurements. One approach to % solving this problem is known as discriminant analysis.  %% Linear and Quadratic Discriminant Analysis % The |classify| function can perform classification using different types % of discriminant analysis. First classify the data using the default % linear discriminant analysis (LDA).  ldaClass = classify(meas(:,1:2),meas(:,1:2),species);  %% % The observations with known class labels are usually called the training % data. Now compute the resubstitution error, which is the % misclassification error (the proportion of misclassified observations) on % the training set.  bad = ~strcmp(ldaClass,species); ldaResubErr = sum(bad) / N %% % You can also compute the confusion matrix on the training set. A % confusion matrix contains information about known class labels and % predicted class labels. Generally speaking, the (i,j) element in the % confusion matrix is the number of samples whose known class label is % class i and whose predicted class is j.  The diagonal elements represent % correctly classified observations.   [ldaResubCM,grpOrder] = confusionmat(species,ldaClass) %% % Of the 150 training observations, 20% or 30 observations are % misclassified by the linear discriminant function. You can see which ones % they are by drawing X through the misclassified points.  hold on; plot(meas(bad,1), meas(bad,2), 'kx'); hold off;  %% % The function has separated the plane into regions divided by lines, and % assigned different regions to different species.  One way to visualize % these regions is to create a grid of (x,y) values and apply the % classification function to that grid.  [x,y] = meshgrid(4:.1:8,2:.1:4.5); x = x(:); y = y(:); j = classify([x y],meas(:,1:2),species); gscatter(x,y,j,'grb','sod')   %% % For some data sets, the regions for the various classes are not well % separated by lines. When that is the case, linear discriminant analysis % is not appropriate. Instead, you can try quadratic discriminant analysis % (QDA) for our data. % % Compute the resubstitution error for quadratic discriminant analysis. qdaClass = classify(meas(:,1:2),meas(:,1:2),species,'quadratic'); bad = ~strcmp(qdaClass,species); qdaResubErr = sum(bad) / N  %%  % You have computed the resubstitution error. Usually people are more % interested in the test error (also referred to as generalization error), % which is the expected prediction error on an independent set. In fact, % the resubstitution error will likely under-estimate the test error. % % In this case you don't have another labeled data set, but you can % simulate one by doing cross-validation. A stratified 10-fold % cross-validation is a popular choice for estimating the test error on % classification algorithms. It randomly divides the training set into 10 % disjoint subsets. Each subset has roughly equal size and roughly the same % class proportions as in the training set. Remove one subset, train the % classification model using the other nine subsets, and use the trained % model to classify the removed subset. You could repeat this by removing % each of the ten subsets one at a time. % % Because cross-validation randomly divides data, its outcome depends on % the initial random seed. To reproduce the exact results in this demo, % execute the following command:  s = RandStream('mt19937ar','seed',0); RandStream.setDefaultStream(s);  %% % First use |cvpartition| to generate 10 disjoint stratified subsets. cp = cvpartition(species,'k',10) %% % The |crossval| function can estimate the misclassification error for both % LDA and QDA using the given data partition |cp|. % % Estimate the true test error for LDA using 10-fold stratified % cross-validation. ldaClassFun= @(xtrain,ytrain,xtest)(classify(xtest,xtrain,ytrain)); ldaCVErr  = crossval('mcr',meas(:,1:2),species,'predfun', ...              ldaClassFun,'partition',cp) %% % The LDA cross-validation error has the same value as the LDA % resubstitution error on this data. %% % Estimate the true test error for QDA using 10-fold stratified % cross-validation. qdaClassFun = @(xtrain,ytrain,xtest)(classify(xtest,xtrain,ytrain,...               'quadratic')); qdaCVErr = crossval('mcr',meas(:,1:2),species,'predfun',...            qdaClassFun,'partition',cp) %% % QDA has a slightly larger cross-validation error than LDA. It shows that % a simpler model may get comparable, or better performance than a more % complicated model.  %% NaiveBayes Classifier % The |classify| function has other two other types, 'diagLinear' and % 'diagQuadratic'. They are similar to 'linear' and 'quadratic', but with % diagonal covariance matrix estimates. These diagonal choices are specific % examples of a Naive Bayes classifier, because they assume the variables % are conditionally independent given the class label. Naive Bayes % classifiers are among the most popular classifiers. While the assumption % of class-conditional independence between variables is not true in % general, Naive Bayes classifiers have been found to work well in practice % on many data sets.   % % The |NaiveBayes| class can be used to create a more general type of % Naive Bayes classifier.  %% % First model each variable in each class using a Gaussian distribution. % You can compute the resubstitution error and the cross-validation error.  nbGau= NaiveBayes.fit(meas(:,1:2), species); nbGauClass= nbGau.predict(meas(:,1:2)); bad = ~strcmp(nbGauClass,species); nbGauResubErr = sum(bad) / N nbGauClassFun = @(xtrain,ytrain,xtest)...                (predict(NaiveBayes.fit(xtrain,ytrain), xtest));         nbGauCVErr  = crossval('mcr',meas(:,1:2),species,...               'predfun', nbGauClassFun,'partition',cp)  %% % So far you have assumed the variables from each class have a multivariate % normal distribution. Often that is a reasonable assumption, but sometimes % you may not be willing to make that assumption or you may see clearly % that it is not valid.  Now try to model each variable in each class using % a kernel density estimation, which is a more flexible nonparametric % technique.  nbKD= NaiveBayes.fit(meas(:,1:2), species,'dist','kernel'); nbKDClass= nbKD.predict(meas(:,1:2)); bad = ~strcmp(nbKDClass,species); nbKDResubErr = sum(bad) / N nbKDClassFun = @(xtrain,ytrain,xtest)...             (predict(NaiveBayes.fit(xtrain,ytrain,'dist','kernel'),xtest)); nbKDCVErr = crossval('mcr',meas(:,1:2),species,...             'predfun', nbKDClassFun,'partition',cp)  %% % For this data set, the Naive Bayes classifier with kernel density % estimation gets smaller resubstitution error and cross-validation error % than the Naive Bayes classifier with a Gaussian distribution.  %% Decision Tree % % Another classification algorithm is based on a decision tree. A decision % tree is a set of simple rules, such as "if the sepal length is less than % 5.45, classify the specimen as setosa."  Decision trees are also % nonparametric because they do not require any assumptions about the % distribution of the variables in each class.   % % The |classregtree| class creates a decision tree. Create a decision tree % for the iris data and see how well it classifies the irises into % species.  t = classregtree(meas(:,1:2), species,'names',{'SL' 'SW' });  %% % It's interesting to see how the decision tree method divides the plane.  % Use the same technique as above to visualize the regions assigned to each % species.  [grpname,node] = t.eval([x y]); gscatter(x,y,grpname,'grb','sod')  %% % Another way to visualize the decision tree is to draw a diagram of the % decision rule and class assignments.  view(t); %% % This cluttered-looking tree uses a series of rules of the form "SL < % 5.45" to classify each specimen into one of 19 terminal nodes.  To % determine the species assignment for an observation, start at the % top node and apply the rule. If the point satisfies the rule you take % the left path, and if not you take the right path. Ultimately you reach % a terminal node that assigns the observation to one of the three species. %  %%  % Compute the resubstitution error and the cross-validation error for % decision tree. dtclass = t.eval(meas(:,1:2)); bad = ~strcmp(dtclass,species); dtResubErr = sum(bad) / N  dtClassFun = @(xtrain,ytrain,xtest)(eval(classregtree(xtrain,ytrain),xtest)); dtCVErr  = crossval('mcr',meas(:,1:2),species, ...           'predfun', dtClassFun,'partition',cp) %% % For the decision tree algorithm, the cross-validation error % estimate is significantly larger than the resubstitution error. This % shows that the generated tree overfits the training set. In other words, % this is a tree that classifies the original training set well, but % the structure of the tree is sensitive to this particular training set so % that its performance on new data is likely to degrade. It is often % possible to find a simpler tree that performs better than a more % complex tree on new data.   % % Try pruning the tree. First compute the resubstitution error for various % of subsets of the original tree. Then compute the cross-validation error % for these sub-trees. A graph shows that the resubstitution error is % overly optimistic. It always decreases as the tree size grows, but beyond % a certain point, increasing the tree size increases the cross-validation % error rate.  resubcost = test(t,'resub'); [cost,secost,ntermnodes,bestlevel] = test(t,'cross',meas(:,1:2),species); plot(ntermnodes,cost,'b-', ntermnodes,resubcost,'rREPLACE_WITH_DASH_DASH') figure(gcf); xlabel('Number of terminal nodes'); ylabel('Cost (misclassification error)') legend('Cross-validation','Resubstitution')  %% % Which tree should you choose? A simple rule would be to choose the tree % with the smallest cross-validation error.  While this may be % satisfactory, you might prefer to use a simpler tree if it is roughly as % good as a more complex tree. For this example, take the simplest tree % that is within one standard error of the minimum.  That's the default % rule used by the |classregtree/test| method. % % You can show this on the graph by computing a cutoff value that is equal % to the minimum cost plus one standard error.  The "best" level computed % by the |classregtree/test| method is the smallest tree under this cutoff. % (Note that bestlevel=0 corresponds to the unpruned tree, so you have to % add 1 to use it as an index into the vector outputs from % |classregtree/test|.)  [mincost,minloc] = min(cost); cutoff = mincost + secost(minloc); hold on plot([0 20], [cutoff cutoff], 'k:') plot(ntermnodes(bestlevel+1), cost(bestlevel+1), 'mo') legend('Cross-validation','Resubstitution','Min + 1 std. err.','Best choice') hold off  %% % Finally, you can look at the pruned tree and compute the estimated % misclassification error for it.   pt = prune(t,bestlevel); view(pt)  %% cost(bestlevel+1)  %% Conclusions % This demonstration shows how to perform classification in MATLAB using % Statistics Toolbox functions. % % This demonstration is not meant to be an ideal analysis of the Fisher % iris data, In fact, using the petal measurements instead of, or in % addition to, the sepal measurements may lead to better classification. % Also, this demonstration is not meant to compare the strengths and % weaknesses of different classification algorithms. You may find it % instructive to perform the analysis on other data sets and compare % different algorithms. There are also Statistics Toolbox functions that % implement other classification algorithms. For example, you can use % |TreeBagger| to perform bootstrap aggregation for an ensemble of decision % trees, as described in the example  % <http://www.mathworks.com/access/helpdesk/help/toolbox/stats/br0gosr-1.html#br0g6t1-1 % Classifying Radar Returns for Ionosphere Data>.  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

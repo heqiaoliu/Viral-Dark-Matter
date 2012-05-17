@@ -1,0 +1,143 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Anonymous Functions</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="anondemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit anondemo">Open anondemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo anondemo">Run in the Command Window</a></div></div><div class="content"><h1>Anonymous Functions</h1><!--introduction--><p>This demo shows some examples of how to define functions at the command line in a new much simpler way than with the <tt>inline</tt> function.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Integrating a Function</a></li><li><a href="#6">Minimizing a Function</a></li><li><a href="#8">2D Functions</a></li><li><a href="#9">Function Composition</a></li></ul></div><h2>Integrating a Function<a name="1"></a></h2><p>Consider the function 10*x.</p><p><img src="anondemo_eq25577.png" alt="$$h(x)= 10x$$"></p><p>If we want to allow any multiplier of x, not just 10, we might create a variable g (where g is initially set to 10), and create a new function</p><p><img src="anondemo_eq89542.png" alt="$$h(x)= g * x$$"></p><p>Let's do this in MATLAB&reg; by creating a function handle h.</p><pre class="codeinput">g=10;
+h=@(x) g*x;
+</pre><p>You can integrate the function by passing its handle to quad.</p><pre class="codeinput">quad(h,1,10)
+</pre><pre class="codeoutput">
+ans =
+
+   495
+
+</pre><p>Consider another function:</p><p><img src="anondemo_eq41389.png" alt="$$f(x)= sin(\alpha x)$$"></p><p>Create a function handle to this function where <tt>alpha = 0.9</tt>.</p><pre class="codeinput">alpha=0.9;
+f=@(x) sin(alpha*x);
+</pre><p>Plot the function and shade the area under it.</p><pre class="codeinput">x=0:pi/100:pi;
+area(x,f(x)); <span class="comment">% You can evaluate f without feval</span>
+title(<span class="string">'f(x)= sin(\alpha x), \alpha =.9'</span>);
+</pre><img vspace="5" hspace="5" src="anondemo_01.png" alt=""> <p>We can use quad to calculate the area under the function between a range of values.</p><pre class="codeinput">quad(f,0,pi)
+</pre><pre class="codeoutput">
+ans =
+
+    2.1678
+
+</pre><h2>Minimizing a Function<a name="6"></a></h2><p>Consider the function:</p><p><img src="anondemo_eq76345.png" alt="$$f(x)=a x^2 + bx + c$$"></p><p>where <tt>a=1, b=-2, and c=1</tt></p><p>Create a function handle for it.</p><pre class="codeinput">a=1;b=-2;c=1;
+f=@(x)(a*x.^2+b*x+c);
+</pre><pre class="codeinput">ezplot(f); <span class="comment">% Plot the function</span>
+title(<span class="string">'f(x)=ax^2+bx+c, a=1,b=-2,c=1'</span>);
+hold <span class="string">on</span>;
+
+<span class="comment">% Find and plot the minimum</span>
+minimum=fminbnd(f,-2,2); <span class="comment">% We can pass the function handle direct to the minimization routine</span>
+plot(minimum,f(minimum),<span class="string">'d'</span>); <span class="comment">% We can evaluate the function without using feval</span>
+grid;
+hold <span class="string">off</span>;
+</pre><img vspace="5" hspace="5" src="anondemo_02.png" alt=""> <h2>2D Functions<a name="8"></a></h2><p>We can create handles to functions of many variables</p><pre class="codeinput">a=pi;b=15;
+f=@(x,y) (a*x+b*y);
+ezsurf(f);
+title(<span class="string">'f(x,y)=ax+by, a=\pi, b=15'</span>);
+</pre><img vspace="5" hspace="5" src="anondemo_03.png" alt=""> <h2>Function Composition<a name="9"></a></h2><p>We can also create handles to functions of functions</p><pre class="codeinput">f=@(x) x.^2;
+g=@(x) 3*x;
+h=@(x) g(f(x));
+h(3)
+</pre><pre class="codeoutput">
+ans =
+
+    27
+
+</pre><p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Anonymous Functions
+% This demo shows some examples of how to define functions at the
+% command line in a new much simpler way than with the |inline|
+% function.
+
+% Copyright 1984-2007 The MathWorks, Inc. 
+% $Revision: 1.1.6.6 $  $Date: 2007/12/14 14:50:56 $
+
+
+%% Integrating a Function
+% Consider the function 10*x.
+%
+% $$h(x)= 10x$$
+%
+% If we want to allow any multiplier of x, not just 10, we might
+% create a variable g (where g is initially set to 10), and create a
+% new function
+%
+% $$h(x)= g * x$$
+%
+% Let's do this in MATLAB(R) by creating a function handle h.
+g=10;
+h=@(x) g*x;
+
+%%
+% You can integrate the function by passing its handle to quad.
+quad(h,1,10)
+
+%%
+% Consider another function:
+%
+% $$f(x)= sin(\alpha x)$$
+% 
+% Create a function handle to this function where |alpha = 0.9|.
+alpha=0.9;
+f=@(x) sin(alpha*x); 
+
+%%
+% Plot the function and shade the area under it.
+x=0:pi/100:pi;
+area(x,f(x)); % You can evaluate f without feval
+title('f(x)= sin(\alpha x), \alpha =.9');
+
+%%
+% We can use quad to calculate the area under the function between a
+% range of values.
+quad(f,0,pi)
+
+%% Minimizing a Function
+% Consider the function:
+% 
+% $$f(x)=a x^2 + bx + c$$ 
+%
+% where |a=1, b=-2, and c=1|
+%
+% Create a function handle for it.
+a=1;b=-2;c=1;
+f=@(x)(a*x.^2+b*x+c);
+
+%%
+ezplot(f); % Plot the function
+title('f(x)=ax^2+bx+c, a=1,b=-2,c=1');
+hold on;
+
+% Find and plot the minimum
+minimum=fminbnd(f,-2,2); % We can pass the function handle direct to the minimization routine
+plot(minimum,f(minimum),'d'); % We can evaluate the function without using feval
+grid;
+hold off;
+
+%% 2D Functions
+% We can create handles to functions of many variables
+a=pi;b=15;
+f=@(x,y) (a*x+b*y); 
+ezsurf(f);
+title('f(x,y)=ax+by, a=\pi, b=15');
+
+%% Function Composition
+% We can also create handles to functions of functions
+
+f=@(x) x.^2;
+g=@(x) 3*x;
+h=@(x) g(f(x));
+h(3)
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

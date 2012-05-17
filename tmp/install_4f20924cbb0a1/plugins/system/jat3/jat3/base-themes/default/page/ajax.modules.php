@@ -1,0 +1,1 @@
+<jdoc:include type="modules" name="<?php echo JRequest::getCmd ('name') ?>" />

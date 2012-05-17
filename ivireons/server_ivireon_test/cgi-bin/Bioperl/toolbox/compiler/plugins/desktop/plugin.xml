@@ -1,0 +1,529 @@
+<?xml version="1.0" ?>
+<plugin xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  <build>
+  	<validation class="com.mathworks.toolbox.compiler.plugin.Validator" />
+  	
+	<ant>
+		<xsl:element name="mkdir" xml:space="preserve"><xsl:attribute name="dir"><xsl:value-of select="param.output" /></xsl:attribute>
+		</xsl:element>
+
+		<xsl:element name="mkdir" xml:space="preserve"><xsl:attribute name="dir"><xsl:value-of select="param.intermediate" /></xsl:attribute>
+		</xsl:element>
+	</ant>
+  	
+	<java class="com.mathworks.toolbox.compiler.plugin.MccWrapper"></java>
+	
+	<xsl:for-each select="build-deliverables/file">
+		<copy>
+			<xsl:attribute name="src" xml:space="preserve"><xsl:value-of select="../../param.intermediate" />/<xsl:value-of select="@name" /></xsl:attribute>
+			<xsl:attribute name="dest" xml:space="preserve"><xsl:value-of select="." /></xsl:attribute>
+		</copy>
+	</xsl:for-each>
+  </build>
+  
+  <package>
+  	<type key="package.type.exe" extension="exe" enable="${platform/windows}" />
+  	<type key="package.type.zip" extension="zip" />	
+  	<!-- @NOTE - Cannot use ANT-ZIP because it does not preserve the permissions. This is an issue on non-windows platform. -->
+  	<ant>
+	    <!-- create an install script, which will be packaged into the self-extractor -->
+	    <xsl:if test="@package-type = 'package.type.exe'">
+	    	<xsl:element name="echo" xml:space="preserve"><xsl:attribute name="file"><xsl:value-of select="param.output" />/_install.bat</xsl:attribute>
+echo off
+echo Deploying project <xsl:value-of select="param.appname" /><xsl:if test="@target = 'target.com.component' or @target = 'target.ex.addin'">, version <xsl:value-of select="param.version" /></xsl:if>
+IF EXIST MCRInstaller.exe (
+    echo Running MCRInstaller
+    MCRInstaller.exe
+) ELSE IF EXIST MCRInstaller.cmd (
+    echo Running remote MCRInstaller
+    MCRInstaller.cmd
+)
+<xsl:if test="@target = 'target.com.component' or @target = 'target.ex.addin'">
+echo Registering the component...
+regsvr32 <xsl:value-of select="param.appname" />_<xsl:value-of select="translate(param.version, '.', '_')" />.dll
+</xsl:if>
+echo Installation complete.
+echo Please refer to the documentation for any additional setup steps.
+	    	</xsl:element>
+	    </xsl:if>
+    </ant>
+
+    <zip>
+      <xsl:attribute name="target" xml:space="preserve"><xsl:value-of select="@package" /></xsl:attribute>
+        <xsl:if test="@package-type = 'package.type.exe'">
+            <file><xsl:value-of select="param.output" />/_install.bat</file>
+	    </xsl:if>
+
+	    <xsl:for-each select="build-deliverables/file | fileset.package/file">
+	        <file><xsl:value-of select="." /></file>
+	    </xsl:for-each>
+    </zip>
+  </package>
+
+	<!-- product definitions -->
+  <product xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  	key="product.mlcompiler" 
+  	license="Compiler" 
+  	help-map-path="toolbox/compiler/compiler.map">
+  	
+    <target key="target.standalone.win" icon="windows.png" enable="${platform/windows}" help-key="component_info_winmain">
+      <file-set key="fileset.main" />
+      <file-set key="fileset.resources" />
+      <file-set key="fileset.package" />
+      <param-set key="paramset.general" />
+      <param-set key="paramset.toolbox_on_path" />
+      <param-set key="paramset.warnings" />
+      <param-set key="paramset.advanced" />
+      
+      <build-deliverables>
+      		<file>
+      			<xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />.exe
+		</file>
+	
+		<xsl:if test="param.embed.ctf = 'false'">
+			<file>
+				<xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />.ctf
+			</file>			
+		</xsl:if>
+		
+		<file>
+			<xsl:value-of select="param.output" />/readme.txt
+		</file>
+      </build-deliverables>      
+    </target>
+    
+    <target key="target.standalone" icon="standalone.png" help-key="component_info_mainc">
+      <label-key>
+      	<xsl:choose>
+      	   <xsl:when test="platform/windows = 'true'">
+		target.standalone.label.windows	      	
+      	   </xsl:when>
+      	   <xsl:otherwise>
+      	        target.standalone
+      	   </xsl:otherwise>
+      	</xsl:choose>
+      </label-key>
+      
+      <file-set key="fileset.main" />
+      <file-set key="fileset.resources" />
+      <file-set key="fileset.package" />
+      <param-set key="paramset.general" />
+      <param-set key="paramset.toolbox_on_path" />
+      <param-set key="paramset.warnings" />
+      <param-set key="paramset.advanced" />
+      
+      <build-deliverables>
+      		<file>
+      			<xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />
+      			<xsl:if test="platform/windows = 'true'">.exe</xsl:if>
+                <xsl:if test="platform/mac='true' and platform/os64='true'">.app</xsl:if>
+		</file>	        
+		<xsl:if test="platform/windows = 'false'">
+			<file>
+				<xsl:value-of select="param.output" />/run_<xsl:value-of select="param.appname" />.sh
+			</file>
+		</xsl:if>	
+	
+		<xsl:if test="param.embed.ctf = 'false'">	
+          <xsl:if test="platform/mac='false' or platform/os64='false'">
+            <file>
+                <xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />.ctf
+            </file>
+          </xsl:if>
+		</xsl:if>			
+	
+		<file>
+			<xsl:value-of select="param.output" />/readme.txt
+		</file>
+      </build-deliverables>
+    </target>
+
+
+    <target key="target.ctfx" icon="standalone.png" help-key="component_info_mainc" enable="${prefs/MWCtfxTarget}">
+       <file-set key="fileset.main" />
+        <file-set key="fileset.resources" />
+        <file-set key="fileset.package" />
+        <param-set key="paramset.general"/>
+        <param-set key="paramset.toolbox_on_path" />
+        <param-set key="paramset.warnings" />
+        <param-set key="paramset.advanced" />
+    
+        <build-deliverables>
+            <file><xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />.ctfx</file>			
+            <file><xsl:value-of select="param.output" />/readme.txt</file>
+        </build-deliverables>      
+    </target>
+		
+    <target key="target.library.c" icon="c.png" help-key="component_info_cshared">
+      <file-set key="fileset.exports" />
+      <file-set key="fileset.resources" />
+      <file-set key="fileset.package" />
+      <param-set key="paramset.general" />
+      <param-set key="paramset.toolbox_on_path" />
+      <param-set key="paramset.warnings" />
+      <param-set key="paramset.advanced" />
+      
+      <build-deliverables>
+      		<file>
+      			<xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />
+      			<xsl:choose>
+      				<xsl:when test="platform/windows = 'true'">.dll</xsl:when>
+      				<xsl:when test="platform/mac = 'true'">.dylib</xsl:when>
+      				<xsl:otherwise>.so</xsl:otherwise>
+      			</xsl:choose>
+		</file>
+	
+        <xsl:if test="platform/windows='true'">
+          <file>|${param.output}+'/'+${param.appname}+'.lib'|</file>
+        </xsl:if>
+        
+		<xsl:if test="param.embed.ctf = 'false'">
+			<file>
+				<xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />.ctf
+			</file>			
+		</xsl:if>	
+	
+		<file>
+			<xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />.h
+		</file>
+	
+		<file>
+			<xsl:value-of select="param.output" />/readme.txt
+		</file>
+      </build-deliverables> 
+    </target>
+    
+    <target key="target.library.cpp" icon="c++.png" help-key="component_info_cppshared">
+      <file-set key="fileset.exports" />
+      <file-set key="fileset.resources" />
+      <file-set key="fileset.package" />
+      <param-set key="paramset.general" />
+      <param-set key="paramset.toolbox_on_path" />
+      <param-set key="paramset.warnings" />
+      <param-set key="paramset.advanced" />
+      
+      <build-deliverables>
+      		<file>
+      			<xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />
+      			<xsl:choose>
+      				<xsl:when test="platform/windows = 'true'">.dll</xsl:when>
+      				<xsl:when test="platform/mac = 'true'">.dylib</xsl:when>
+      				<xsl:otherwise>.so</xsl:otherwise>
+      			</xsl:choose>
+		</file>
+		
+        <xsl:if test="platform/windows='true'">
+          <file>|${param.output}+'/'+${param.appname}+'.lib'|</file>
+        </xsl:if>
+        
+		<xsl:if test="param.embed.ctf = 'false'">
+			<file>
+				<xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />.ctf
+			</file>
+		</xsl:if>			
+		
+		<file>
+			<xsl:value-of select="param.output" />/<xsl:value-of select="param.appname" />.h
+		</file>
+		
+		<file>
+			<xsl:value-of select="param.output" />/readme.txt
+		</file>
+      </build-deliverables>      
+    </target>
+		
+  </product>
+
+
+  <product key="product.builder.ex" location="../../../matlabxl/plugins" />
+  <product key="product.builder.ne" location="../../../dotnetbuilder/plugins" />
+  <product key="product.builder.ja" location="../../../javabuilder/plugins" />
+
+  <!-- File Sets -->
+
+  <filter key="filter.executable">
+	<allow>*.m</allow>
+	<allow>*.p</allow>
+	<allow>*.mexglx</allow>
+	<allow>*.mexa64</allow>
+	<allow>*.mexmaci</allow>
+	<allow>*.mexmaci64</allow>
+	<allow>*.mexs64</allow>
+	<allow>*.mexw32</allow>
+        <allow>*.mexw64</allow>
+  </filter>
+	
+  <file-set	
+	key="fileset.main" 
+	desc="fileset.main.desc"
+	pattern-error="generic.executable.pattern.error"
+	size-error="fileset.main.size.error"
+	count="1">
+
+	<filter key="filter.executable" />
+  </file-set>
+  	
+  <file-set
+	key="fileset.exports"
+	desc="fileset.exports.desc"
+	pattern-error="generic.executable.pattern.error">
+
+	<filter key="filter.executable" />
+  </file-set>
+		
+  <file-set
+	key="fileset.resources"
+	desc="fileset.resources.desc"
+	count="0+">
+	
+    <allow>*.*</allow>
+    <allowDir />
+  </file-set>
+	
+  <file-set
+	key="fileset.classes"
+	desc="fileset.classes.desc"
+	pattern-error="generic.executable.pattern.error">
+		
+	<entity key="entity.package" count="1" icon="package.png">
+		<entity key="entity.class" count="1+" icon="class.png">
+			<filter key="filter.executable" />
+		</entity>
+        </entity>		
+  </file-set>
+		
+  <file-set
+  	key="fileset.package"
+  	desc="fileset.package.desc">
+  	
+  	<allowDir />
+  	<allow>*.*</allow>
+  	
+  	<special-file key="file.mcr" desc="file.mcr.desc">
+		<reference-mode type="direct" />
+		<reference-mode type="symbolic" />
+		<reference-mode type="batch-invoker" />
+		<location-preference-panel key="prefpanel.compiler" />
+  		<location>
+  			<xsl:value-of select="prefs/pCompilerMCRLocation" />
+  		</location>
+  		
+  		<!-- This location is used in an installed copy. -->
+  		<location>
+  			<xsl:value-of select="matlab/root" />/toolbox/compiler/deploy/
+                  <xsl:if test = "platform/mac = 'true' and platform/os64 = 'true'">
+                    maci64
+                  </xsl:if>
+                  <xsl:if test = "platform/mac = 'false' or platform/os64 = 'false'">
+  			<xsl:value-of select="platform/arch" />
+                  </xsl:if>
+  			/MCRInstaller
+  			<xsl:choose>
+				<xsl:when test="platform/mac = 'true'">
+					.dmg
+				</xsl:when>
+				<xsl:when test="platform/windows = 'true'">
+					.exe
+				</xsl:when>
+				<xsl:otherwise>
+					.bin
+				</xsl:otherwise>  			
+			</xsl:choose>
+  		</location>
+  	
+  		<!-- This is the fallback location for sandboxes -->
+  		<location>
+  			<xsl:value-of select="matlab/root" />/derived/obj/
+			<xsl:choose>
+				<xsl:when test="platform/mac = 'true'">
+                      <xsl:if test="platform/os64 = 'true'">
+			maci64/mcr_install/maci64/
+                      </xsl:if>
+                      <xsl:if test="platform/os32 = 'true'">
+			maci/mcr_install/maci/
+                      </xsl:if>
+                      MCRInstaller.dmg
+				</xsl:when>
+                          
+				<xsl:when test="platform/windows = 'true'">
+					<xsl:value-of select="platform/arch" />/mcr_install/MCRInstaller.exe
+				</xsl:when>
+				<xsl:otherwise>
+						<xsl:value-of select="platform/arch" />/mcr_install/<xsl:value-of select="platform/arch" />/disk1/MCRInstaller.bin
+				</xsl:otherwise>
+			</xsl:choose>
+  		</location>
+  		
+  		<!-- If it's not the sandbox, use Adeploy perfect -->
+  		<location>
+	  		<xsl:choose>
+				<xsl:when test="platform/windows = 'true'">
+					\\mathworks\devel\bat\Adeploy\perfect\matlab
+				</xsl:when>
+				<xsl:otherwise>
+					/mathworks/devel/bat/Adeploy/perfect/matlab
+				</xsl:otherwise>
+			</xsl:choose>
+  			/derived/obj/
+			<xsl:choose>
+				<xsl:when test="platform/mac = 'true'">
+                      <xsl:if test="platform/os64 = 'true'">
+                        maci64/mcr_install/maci64/
+                      </xsl:if>
+                      <xsl:if test = "platform/os32 = 'true'">
+                        maci/mcr_install/maci/
+                      </xsl:if>
+		      MCRInstaller.dmg
+				</xsl:when>
+				<xsl:when test="platform/windows = 'true'">
+					<xsl:value-of select="platform/arch" />/mcr_install/MCRInstaller.exe
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="platform/arch" />/mcr_install/<xsl:value-of select="platform/arch" />/disk1/MCRInstaller.bin
+				</xsl:otherwise>
+			</xsl:choose>
+  		</location>  		
+  	</special-file>
+  	
+  </file-set>
+  	
+  <!-- Settings -->
+	
+  <param-set key="paramset.general" help-key="general_settings">	
+    <param key="param.project.name" type="string" default="${@file}" enable="false" desc="param.project.name.desc" />
+	<param key="param.target.type" type="string" default="${@target-name}" enable="false" desc="param.target.type.desc" />
+	<param key="param.appname" type="string" default="${@name}" desc="param.appname.desc" />
+	<category key="category.outdirs">		
+		<param key="param.intermediate" type="dir" default="${@location} + '/' + ${param.appname} + '/src'" desc="param.intermediate.desc" _mccflag="-d"/>
+		<param key="param.output" type="dir" default="${@location} + '/' + ${param.appname} + '/distrib'" desc="param.output.desc" />
+	</category>
+	<param key="param.embed.ctf" type="boolean" default="true" desc="param.embed.ctf.desc" 
+		visible="${@target = 'target.standalone.win'} || ${@target = 'target.standalone'} || ${@target = 'target.library.c'} || ${@target = 'target.library.cpp'} ||
+				${@target = 'target.net.component'} || ${@target = 'target.ex.addin'} || ${@target = 'target.com.component'}" />
+  </param-set>
+
+  
+  <param-set key="paramset.toolbox_on_path"  help-key="toolboxes_on_path">	
+	<param key="param.tbx_on_path" type="string-list" widget="com.mathworks.toolbox.compiler.plugin.ToolboxesOnPath" desc="param.tbx_on_path.desc">
+		<default>
+			<item>all</item>
+		</default>
+	</param>
+  </param-set>
+
+
+  
+  <param-set key="paramset.warnings"  help-key="warnings">
+	<param key="param.warnings" type="warnings" desc="param.warnings.desc">
+		<warning key="warning.fullpath" />
+		<warning key="warning.duplicate" />
+		<warning key="warning.option.ignored" />
+		<warning key="warning.libname" />
+		<warning key="warning.demo" />
+	</param>
+  </param-set>
+
+  <!-- for C/C++ based targets - MATLAB Compiler and COM targets -->
+
+  <param-set key="paramset.advanced"  help-key="advanced_c_cpp">
+	<param key="param.version" type="string" default="1.0" columns="4" visible="${@target = 'target.com.component'} || ${@target = 'target.ex.addin'}" desc="param.version.desc"/>	
+
+    <category key="category.external.compiler" >
+		<param key="param.c.cpp.options.file" type="file" visible="${@target != 'target.ctfx'}" desc="param.c.cpp.options.file.desc" _mccflag="-f" />
+		<param key="param.include.dirs" type="dir-list" visible="${@target != 'target.ctfx'}" desc="param.include.dirs.desc" />
+		<param key="param.lib.dirs" type="dir-list" visible="${@target != 'target.ctfx'}" desc="param.lib.dirs.desc"/>
+		<param key="param.lib.files" type="file-list" visible="${@target != 'target.ctfx'}" desc="param.lib.files.desc" />
+		<param key="param.defines" type="string-list" visible="${@target != 'target.ctfx'}" desc="param.defines.desc"/>
+		<param key="param.undefines" type="string-list" visible="${@target != 'target.ctfx'}" desc="param.undefines.desc"/>
+		<param key="param.debug" type="boolean" visible="${@target != 'target.ctfx'}" desc="param.debug.desc" _mccflag="-g"/>			
+    </category>
+
+    <category key="category.mcr.startup">
+		<param key="param.share.mcr" type="boolean" visible="${@target = 'target.com.component'} " desc="param.share.mcr.desc" _mccflag="-S" />
+		<param key="param.disable.jvm" type="boolean" visible="${@target = 'target.standalone'} || ${@target = 'target.standalone.win'} || ${@target = 'target.ctfx'}" desc="param.disable.jvm.desc" _mccflag="-R -nojvm">
+			<!-- Derive the disable JVM parameter from the MCR options by default -->
+			
+			<default>
+				<xsl:choose>
+					<xsl:when test="contains(param.user.defined.mcr.options, '-nojvm')">true</xsl:when>
+					<xsl:otherwise>false</xsl:otherwise>
+				</xsl:choose>
+			</default>
+		</param>
+		
+		<param key="param.disable.display" type="boolean" visible="${@target = 'target.standalone'} || ${@target = 'target.standalone.win'} || ${@target = 'target.ctfx'}" desc="param.disable.display.desc" _mccflag="-R -nodisplay">
+			<!-- Derive the disable display parameter from the MCR options by default -->
+
+			<default>
+				<xsl:choose>
+					<xsl:when test="contains(param.user.defined.mcr.options, '-nodisplay')">true</xsl:when>
+					<xsl:otherwise>false</xsl:otherwise>
+				</xsl:choose>
+			</default>		
+		</param>
+		
+		<param key="param.create.log" type="boolean" visible="${@target = 'target.standalone'} || ${@target = 'target.standalone.win'} || ${@target = 'target.ctfx'}"  desc="param.create.log.desc">
+			<!-- Derive the create log parameter from the MCR options by default -->
+			
+			<default>
+				<xsl:choose>
+					<xsl:when test="contains(param.user.defined.mcr.options, '-logfile')">true</xsl:when>
+					<xsl:otherwise>false</xsl:otherwise>
+				</xsl:choose>
+			</default>				
+		</param>
+		
+        	<param key="param.log.file" type="string" enable="${param.create.log}" visible="${@target = 'target.standalone'} || ${@target = 'target.standalone.win'} || ${@target = 'target.ctfx'}" desc="param.log.file.desc">
+        		<!-- Derive the log file parameter from the MCR options by default -->
+        		
+			<default>
+				<xsl:choose>
+					<xsl:when test="contains(param.user.defined.mcr.options, '-logfile,')">
+						<xsl:variable name="logfile" select="substring-after(param.user.defined.mcr.options, '-logfile,')" />
+						<xsl:choose>
+							<xsl:when test="contains($logfile, ' ')">
+								<xsl:value-of select="substring-before($logfile, ' ')" />
+							</xsl:when>
+							<xsl:otherwise>
+								<xsl:value-of select="$logfile" />
+							</xsl:otherwise>
+						</xsl:choose>
+					</xsl:when>
+					<xsl:otherwise></xsl:otherwise>
+				</xsl:choose>
+			</default>		        	
+        	</param>
+        	
+		<param key="param.user.defined.mcr.options" type="string-list" visible="${@target = 'target.standalone'} || ${@target = 'target.standalone.win'} || ${@target = 'target.ctfx'}" desc="param.user.defined.mcr.options.desc" _mccflag="-R" />
+
+    </category>
+  </param-set>
+
+  <param-set key="paramset.java"  help-key="advanced_java">
+    <category key="category.mcr.startup">
+      <!-- ensure that the key, param.share.mcr, and _mccflag are consistent with the one for C/C++/COM target properties -->
+      <param key="param.share.mcr" type="boolean" visible="${@target = 'target.java.package'}" desc="param.share.mcr.desc" _mccflag="-S" />
+    </category>
+  </param-set>
+
+
+	
+  <param-set key="paramset.net"  help-key="advanced_dotnet">
+    <param key="param.net.framework" type="enum" desc="param.net.framework.desc">
+      <option key="option.net.framework.default" />
+      <option key="option.net.framework.2.0" />
+      <option key="option.net.framework.3.0" />
+	<option key="option.net.framework.3.5" />
+    </param>
+		
+    <category key="category.net.assembly">
+      <param key="param.assembly.type" type="enum" style="radio-horizontal" desc="param.assembly.type.desc">
+        <option key="option.assembly.type.private" />
+        <option key="option.assembly.type.shared" />
+      </param>
+      <param key="param.encryption.key.file" type="file" enable="${param.assembly.type = 'option.assembly.type.shared'}" desc="param.encryption.key.file.desc" />
+    </category>
+		
+    <param key="param.net.enable.remoting" type="boolean" desc="param.net.enable.remoting.desc"/>
+  </param-set>
+</plugin>

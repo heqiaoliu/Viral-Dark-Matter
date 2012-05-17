@@ -1,0 +1,350 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Replacing Math Functions and Operators</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_tfl_script.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_tfl_script">Open rtwdemo_tfl_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_tfl_script">Run in the Command Window</a></div></div><div class="content"><h1>Replacing Math Functions and Operators</h1><!--introduction--><p>This demo shows you how to use target function libraries (TFLs) to replace operators and functions in the generated code. The models described below demonstrate the replacement capabilities. With each example model, a separate target function library is provided to illustrate the creation of operator and function replacements using a <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_mapi')">MATLAB&reg; based API</a> and how to <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_registration')">register them</a> with Simulink&reg;.</p><p>Using target function libraries enables:</p><div><ul><li>Better integration of model code with external and legacy code, to   reduce code size and verification efforts</li><li>The use of target specific function implementations, to optimize   performance of the embedded application</li></ul></div><p>The target function library capabilities include:</p><div><ul><li>Replacement of math functions with target specific function   implementations</li><li>Replacement of math operations with target specific function   implementations</li><li>Specifying build information for compiling and building the   replacements with the generated code</li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Steps in Using a Target Function Library</a></li><li><a href="#2">Addition and Subtraction Operator Replacement for Built-in Integers</a></li><li><a href="#3">Multiplication and Division Operator Replacement for Built-in Integers</a></li><li><a href="#4">Fixed Point Operator Replacement for Basic Operators</a></li><li><a href="#5">Addition and Subtraction Operator Replacement in Embedded MATLAB Coder</a></li><li><a href="#6">Set Embedded MATLAB Coder to Use the Target Function Library</a></li><li><a href="#7">Compile the MATLAB program into a C Source File</a></li><li><a href="#8">Inspect the Embedded MATLAB Coder Generated Code</a></li><li><a href="#9">Math Function Replacement</a></li><li><a href="#10">Matrix Operator Replacement</a></li><li><a href="#11">BLAS Support</a></li><li><a href="#12">Other Scalar Operator Replacements</a></li><li><a href="#13">Custom TFL Entry</a></li><li><a href="#14">Viewer for Target Function Libraries</a></li><li><a href="#16">Build Support</a></li><li><a href="#17">Reserved Identifier Support</a></li><li><a href="#18">Removing the Example Target Function Libraries</a></li></ul></div><h2>Steps in Using a Target Function Library<a name="1"></a></h2><div><ul><li>Create a table of replacement function entries</li><li>Register a target function library consisting of one or more tables   using Simulink's sl_customization.m API</li><li>From the model, select the desired target function library using the   Interface pane under Real-Time Workshop&reg; in the Configuration Parameters   dialog box</li><li>Generate code for the model with Real-Time Workshop Embedded Coder&#8482;</li></ul></div><p>For more information on these steps, <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_overview')">look here</a>.</p><h2>Addition and Subtraction Operator Replacement for Built-in Integers<a name="2"></a></h2><p>This example target function library replaces '+' and '-' for two input, scalar operations on data types that are built-in integers:</p><div><ul><li>int8, uint8</li><li>int16, uint16</li><li>int32, uint32</li></ul></div><p>The model <a href="matlab:rtwdemo_tfladdsub">rtwdemo_tfladdsub</a> demonstrates these replacements. For more information on operator replacement, <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_operators')">look here</a>.</p><pre class="codeinput">open_system(<span class="string">'rtwdemo_tfladdsub'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_tfl_script_01.png" alt=""> <h2>Multiplication and Division Operator Replacement for Built-in Integers<a name="3"></a></h2><p>This example target function library replaces '*' and '/' for two input, scalar operations on data types that are built-in integers:</p><div><ul><li>int8, uint8</li><li>int16, uint16</li><li>int32, uint32</li></ul></div><p>The model <a href="matlab:rtwdemo_tflmuldiv">rtwdemo_tflmuldiv</a> demonstrates these replacements.</p><pre class="codeinput">open_system(<span class="string">'rtwdemo_tflmuldiv'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_tfl_script_02.png" alt=""> <h2>Fixed Point Operator Replacement for Basic Operators<a name="4"></a></h2><p>This example target function library replaces '+', '-', '*' and '/' for two input, scalar operations on data types that are fixed point. Replacements can be defined as matching:</p><div><ul><li>A specific slope/bias scaling combination on the inputs and output</li><li>A specific binary point scaling combination on the inputs and output</li><li>A relative scaling between the inputs and output</li><li>The same slope value and a zero net bias across the inputs and output</li></ul></div><p>The model <a href="matlab:rtwdemo_tflfixpt">rtwdemo_tflfixpt</a> demonstrates these replacements.</p><p><b>Note:</b> Using fixed point data types in a model requires a Simulink Fixed Point license.</p><pre class="codeinput">open_system(<span class="string">'rtwdemo_tflfixpt'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_tfl_script_03.png" alt=""> <h2>Addition and Subtraction Operator Replacement in Embedded MATLAB Coder<a name="5"></a></h2><p>This example target function library replaces '+' and '-' for two input, scalar operations on integer data types when using the <tt>emlc</tt> command.</p><p>For more information on operator replacement, <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_operators')">look here</a>. For more information on embeddable C-code generation using Embedded MATLAB Coder, <a href="matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'working_with_emlc_chapter')">look here</a>.</p><p>There is a MATLAB program that is needed to run this demonstration. Copy it to a temporary directory. This step requires write-permission to the system's temporary directory.</p><p>To see the MATLAB file, <a href="matlab:edit(fullfile(matlabroot,'toolbox','rtw','rtwdemos','tfl_demo','addsub_two_int16.m'))">look here</a>.</p><pre class="codeinput">emlcdir = [tempname filesep <span class="string">'emlcdir'</span>];
+<span class="keyword">if</span> ~exist(emlcdir,<span class="string">'dir'</span>)
+    mkdir(emlcdir);
+<span class="keyword">end</span>
+emlcsrc = <span class="keyword">...</span>
+    fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>,<span class="string">'rtwdemos'</span>,<span class="string">'tfl_demo'</span>,<span class="string">'addsub_two_int16.m'</span>);
+copyfile(emlcsrc,emlcdir,<span class="string">'f'</span>);
+emlcurdir = pwd;
+cd(emlcdir);
+</pre><h2>Set Embedded MATLAB Coder to Use the Target Function Library<a name="6"></a></h2><p>Set up the configuration parameters for an RTW build and define the operation input type. To see the TFL table definition file, <a href="matlab:edit(fullfile(matlabroot,'toolbox','rtw','rtwdemos','tfl_demo','tfl_table_addsub.m'))">look here</a>.</p><pre class="codeinput">addpath(fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>,<span class="string">'rtwdemos'</span>,<span class="string">'tfl_demo'</span>));
+sl_refresh_customizations;
+rtwConfig = emlcoder.RTWConfig(<span class="string">'ert'</span>);
+rtwConfig.TargetFunctionLibrary = <span class="string">'Addition &amp; Subtraction Examples'</span>;
+rtwConfig.GenerateReport = false;
+rtwConfig.LaunchReport = false;
+
+t = int16(2);
+</pre><h2>Compile the MATLAB program into a C Source File<a name="7"></a></h2><p>Compile the MATLAB program using the configuration parameters that point to the desired target function library and the example input class defined in the previous step as input parameters to the <tt>emlc</tt> command.</p><pre class="codeinput">emlc <span class="string">-T</span> <span class="string">rtw</span> <span class="string">-s</span> <span class="string">rtwConfig</span> <span class="string">-c</span> <span class="string">addsub_two_int16</span> <span class="string">-eg</span> <span class="string">{t, t}</span>;
+</pre><h2>Inspect the Embedded MATLAB Coder Generated Code<a name="8"></a></h2><p>After compiling, you may want to explore the generated source code. <a href="matlab:edit(fullfile(emlcdir,'emcprj','rtwlib','addsub_two_int16','addsub_two_int16.c'))">matlab:edit(fullfile(emlcdir,'emcprj','rtwlib','addsub_two_int16','addsub_two_int16.c'))</a></p><h2>Math Function Replacement<a name="9"></a></h2><p>Target function libraries support the replacement of a variety of functions. For a full list of supported functions <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_supportedfcns')">look here</a>.</p><p>The model <a href="matlab:rtwdemo_tflmath">rtwdemo_tflmath</a> demonstrates these replacements. For more information on math function replacement, <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_mathfcns')">look here</a>.</p><pre class="codeinput">cd(emlcurdir);
+open_system(<span class="string">'rtwdemo_tflmath'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_tfl_script_04.png" alt=""> <h2>Matrix Operator Replacement<a name="10"></a></h2><p>Target function libraries support replacement of the following matrix operations:</p><p>addition, subtraction, multiplication,transposition, conjugate, hermitian</p><p>The model <a href="matlab:rtwdemo_tflmatops">rtwdemo_tflmatops</a> demonstrates some of these replacements. Supported types include:</p><div><ul><li>single, double</li><li>int8, uint8</li><li>int16, uint16</li><li>int32, uint32</li><li>csingle, cdouble</li><li>cint8, cuint8</li><li>cint16, cuint16</li><li>cint32, cuint32</li><li>fixed-point integers</li><li>mixed types (different type on each input)</li></ul></div><p><a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_matops')">look here</a>.</p><pre class="codeinput">open_system(<span class="string">'rtwdemo_tflmatops'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_tfl_script_05.png" alt=""> <h2>BLAS Support<a name="11"></a></h2><p>In addition, matrix multiplication can be mapped to Basic Linear Algebra Subroutines (BLAS).The following operations can be mapped to a BLAS Subroutine:</p><p>matrix multiplication, matrix multiplication with transpose on single or both inputs, and matrix multiplication with hermitian operation on single or both inputs</p><p>The model <a href="matlab:rtwdemo_tflblas">rtwdemo_tflblas</a> demonstrates mapping to BLAS xGEMM and xGEMV subroutines.</p><pre class="codeinput">open_system(<span class="string">'rtwdemo_tflblas'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_tfl_script_06.png" alt=""> <h2>Other Scalar Operator Replacements<a name="12"></a></h2><p>Target function libraries support replacement of the following scalar operations:</p><p>Complex operations including - addition, subtraction, multiplication, division, and complex conjugate Other scalar operations including - data type cast, shift left, arithmetic shift right, logical shift right</p><p>The model <a href="matlab:rtwdemo_tflscalarops">rtwdemo_tflscalarops</a> demonstrates some of these replacements. Supported types include:</p><div><ul><li>single, double</li><li>int8, uint8</li><li>int16, uint16</li><li>int32, uint32</li><li>csingle, cdouble</li><li>cint8, cuint8</li><li>cint16, cuint16</li><li>cint32, cuint32</li><li>fixed-point integers</li><li>mixed types (different type on each input)</li></ul></div><p><a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_operators')">look here</a></p><pre class="codeinput">open_system(<span class="string">'rtwdemo_tflscalarops'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_tfl_script_07.png" alt=""> <h2>Custom TFL Entry<a name="13"></a></h2><p>TFLs support the creation of custom entries.  You can create your own TFL entry by subclassing from either RTW.TflCFunctionEntryML or RTW.TflCOperationEntryML. Your entry class must implement a do_match method that customizes your matching logic or modifies the matched entry. The do_match method must have a fixed preset signature. The model <a href="matlab:rtwdemo_tflcustomentry">rtwdemo_tflcustomentry</a> demonstrates how to use custom entries to create your own matching function and how to modify the matched entry by injecting constants as additional implementation function arguments. For more information on Custom TFL entries, <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_customentry')">look here</a>.</p><pre class="codeinput">open_system(<span class="string">'rtwdemo_tflcustomentry'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_tfl_script_08.png" alt=""> <h2>Viewer for Target Function Libraries<a name="14"></a></h2><p>A viewer is provided for examining and validating tables and their entries. For example, to view the table 'tfl_tablemuldiv', the commands are:</p><pre class="codeinput">tfl = tfl_table_muldiv;
+me = RTW.viewTfl(tfl);
+</pre><p>For more information on the target function library viewer, <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_viewer')">look here</a>.</p><h2>Build Support<a name="16"></a></h2><p>Each entry in a target function library table can specify build information such as:</p><div><ul><li>Header file dependencies</li><li>Source file dependencies</li><li>Additional include paths</li><li>Additional source paths</li><li>Additional link flags</li></ul></div><p>Additionally, the method RTW.copyFileToBuildDir can be used to locally copy the source and header files specified by an entry. For more information on specifying compilation information, <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_buildsupport')">look here</a>.</p><p><b>Note:</b> The models in this demo are configured for code generation only, as the implementations for the replacement functions are not provided.</p><h2>Reserved Identifier Support<a name="17"></a></h2><p>Each function implementation name defined by a entry will be reserved as a unique identifier. Other identifiers can be specified with a table on a per-header-file basis. Providing additional reserved identifiers ensures that duplicate symbols and other identifier related compile and link issues do not occur.</p><p>For more information on specifying reserved identifiers, <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_identifiers')">look here</a>.</p><h2>Removing the Example Target Function Libraries<a name="18"></a></h2><p>Once finished using the example models, you can remove the example target function libraries and close the example models with the commands:</p><pre class="codeinput">rmpath(fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>,<span class="string">'rtwdemos'</span>,<span class="string">'tfl_demo'</span>));
+sl_refresh_customizations;
+
+close_system(<span class="string">'rtwdemo_tfladdsub'</span>, 0)
+close_system(<span class="string">'rtwdemo_tflmuldiv'</span>, 0)
+close_system(<span class="string">'rtwdemo_tflfixpt'</span>, 0)
+close_system(<span class="string">'rtwdemo_tflmath'</span>, 0)
+close_system(<span class="string">'rtwdemo_tflmatops'</span>, 0)
+close_system(<span class="string">'rtwdemo_tflblas'</span>, 0)
+close_system(<span class="string">'rtwdemo_tflscalarops'</span>, 0)
+close_system(<span class="string">'rtwdemo_tflcblas'</span>, 0)
+<span class="keyword">if</span> ~isempty(me)
+    me.delete;
+<span class="keyword">end</span>
+clear <span class="string">tfl</span>;
+clear <span class="string">me</span>;
+clear <span class="string">emlcdir</span>;
+clear <span class="string">emlcsrc</span>;
+clear <span class="string">emlcurdir</span>;
+clear <span class="string">n1</span>;
+clear <span class="string">rtwConfig</span>;
+clear <span class="string">t</span>;
+</pre><p class="footer">Copyright 2007-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Replacing Math Functions and Operators
+% This demo shows you how to use target function libraries (TFLs) to 
+% replace operators and functions in the generated code. The models 
+% described below demonstrate the replacement capabilities. With each 
+% example model, a separate target function library is provided to 
+% illustrate the creation of operator and function replacements using a 
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_mapi') MATLAB(R) based API>
+% and how to 
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_registration') register them>
+% with Simulink(R).
+%
+% Using target function libraries enables:
+%
+% * Better integration of model code with external and legacy code, to 
+%   reduce code size and verification efforts
+% * The use of target specific function implementations, to optimize 
+%   performance of the embedded application
+%
+% The target function library capabilities include:
+%
+% * Replacement of math functions with target specific function 
+%   implementations
+% * Replacement of math operations with target specific function 
+%   implementations
+% * Specifying build information for compiling and building the 
+%   replacements with the generated code
+
+%   Copyright 2007-2010 The MathWorks, Inc.
+%   $Revision: 1.1.6.11 $  $Date: 2010/05/20 02:55:26 $
+
+
+%% Steps in Using a Target Function Library
+%
+% * Create a table of replacement function entries
+% * Register a target function library consisting of one or more tables 
+%   using Simulink's sl_customization.m API
+% * From the model, select the desired target function library using the
+%   Interface pane under Real-Time Workshop(R) in the Configuration Parameters
+%   dialog box
+% * Generate code for the model with Real-Time Workshop Embedded Coder(TM)
+%
+% For more information on these steps,
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_overview') look here>.
+
+%% Addition and Subtraction Operator Replacement for Built-in Integers
+% This example target function library replaces '+' and '-' for two input, 
+% scalar operations on data types that are built-in integers:
+%
+% * int8, uint8
+% * int16, uint16
+% * int32, uint32
+%
+% The model <matlab:rtwdemo_tfladdsub rtwdemo_tfladdsub> 
+% demonstrates these replacements. For more information on operator 
+% replacement, 
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_operators') look here>.
+open_system('rtwdemo_tfladdsub')
+
+%% Multiplication and Division Operator Replacement for Built-in Integers
+% This example target function library replaces '*' and '/' for two input, 
+% scalar operations on data types that are built-in integers:
+%
+% * int8, uint8
+% * int16, uint16
+% * int32, uint32
+%
+% The model <matlab:rtwdemo_tflmuldiv rtwdemo_tflmuldiv> demonstrates these 
+% replacements.
+open_system('rtwdemo_tflmuldiv')
+
+%% Fixed Point Operator Replacement for Basic Operators
+% This example target function library replaces '+', '-', '*' and '/' for 
+% two input, scalar operations on data types that are fixed point. 
+% Replacements can be defined as matching:
+%
+% * A specific slope/bias scaling combination on the inputs and output
+% * A specific binary point scaling combination on the inputs and output
+% * A relative scaling between the inputs and output
+% * The same slope value and a zero net bias across the inputs and output
+%
+% The model <matlab:rtwdemo_tflfixpt rtwdemo_tflfixpt> demonstrates these 
+% replacements.
+%
+% *Note:* Using fixed point data types in a model requires a Simulink Fixed
+% Point license.
+open_system('rtwdemo_tflfixpt')
+
+%% Addition and Subtraction Operator Replacement in Embedded MATLAB Coder
+% This example target function library replaces '+' and '-' for two input, 
+% scalar operations on integer data types when using the |emlc| command.
+%
+% For more information on operator replacement, 
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_operators') look here>.
+% For more information on embeddable C-code generation using Embedded 
+% MATLAB Coder, <matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'working_with_emlc_chapter') look here>.
+%
+% There is a MATLAB program that is needed to run this demonstration. Copy it to
+% a temporary directory. This step requires write-permission to the
+% system's temporary directory.
+%
+% To see the MATLAB file, <matlab:edit(fullfile(matlabroot,'toolbox','rtw','rtwdemos','tfl_demo','addsub_two_int16.m')) look here>.
+emlcdir = [tempname filesep 'emlcdir'];
+if ~exist(emlcdir,'dir')
+    mkdir(emlcdir);
+end
+emlcsrc = ...
+    fullfile(matlabroot,'toolbox','rtw','rtwdemos','tfl_demo','addsub_two_int16.m');
+copyfile(emlcsrc,emlcdir,'f');
+emlcurdir = pwd;
+cd(emlcdir);
+
+%% Set Embedded MATLAB Coder to Use the Target Function Library
+% Set up the configuration parameters for an RTW build and define the 
+% operation input type.
+% To see the TFL table definition file, <matlab:edit(fullfile(matlabroot,'toolbox','rtw','rtwdemos','tfl_demo','tfl_table_addsub.m')) look here>.
+addpath(fullfile(matlabroot,'toolbox','rtw','rtwdemos','tfl_demo'));
+sl_refresh_customizations;
+rtwConfig = emlcoder.RTWConfig('ert');
+rtwConfig.TargetFunctionLibrary = 'Addition & Subtraction Examples';
+rtwConfig.GenerateReport = false;
+rtwConfig.LaunchReport = false;
+
+t = int16(2);
+
+%% Compile the MATLAB program into a C Source File
+% Compile the MATLAB program using the configuration parameters that point to the
+% desired target function library and the example input class defined in the
+% previous step as input parameters to the |emlc| command.
+emlc -T rtw -s rtwConfig -c addsub_two_int16 -eg {t, t};
+
+%% Inspect the Embedded MATLAB Coder Generated Code
+% After compiling, you may want to explore the generated source code.
+% <matlab:edit(fullfile(emlcdir,'emcprj','rtwlib','addsub_two_int16','addsub_two_int16.c'))>
+
+%% Math Function Replacement 
+% Target function libraries support the replacement of a variety of 
+% functions. For a full list of supported functions
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_supportedfcns') look here>.
+%
+% The model <matlab:rtwdemo_tflmath rtwdemo_tflmath> demonstrates these 
+% replacements.
+% For more information on math function replacement, 
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_mathfcns') look here>.
+cd(emlcurdir);
+open_system('rtwdemo_tflmath')
+
+%% Matrix Operator Replacement 
+% Target function libraries support replacement of the following matrix
+% operations:
+% 
+% addition, subtraction, multiplication,transposition, conjugate, hermitian
+%
+% The model <matlab:rtwdemo_tflmatops rtwdemo_tflmatops> demonstrates some 
+% of these replacements. Supported types include:
+%
+% * single, double
+% * int8, uint8
+% * int16, uint16
+% * int32, uint32
+% * csingle, cdouble
+% * cint8, cuint8
+% * cint16, cuint16
+% * cint32, cuint32
+% * fixed-point integers
+% * mixed types (different type on each input)
+%
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_matops') look here>.
+open_system('rtwdemo_tflmatops')
+
+%% BLAS Support 
+% In addition, matrix multiplication can be mapped to Basic Linear Algebra 
+% Subroutines (BLAS).The following operations can be mapped to a BLAS Subroutine:
+% 
+% matrix multiplication, matrix multiplication with transpose on single or both inputs, 
+% and matrix multiplication with hermitian operation on single or both inputs
+%
+% The model <matlab:rtwdemo_tflblas rtwdemo_tflblas>
+% demonstrates mapping to BLAS xGEMM and xGEMV subroutines.
+open_system('rtwdemo_tflblas')
+
+%% Other Scalar Operator Replacements 
+% Target function libraries support replacement of the following scalar
+% operations:
+% 
+% Complex operations including - addition, subtraction, multiplication, division, and complex conjugate 
+% Other scalar operations including - data type cast, shift left, arithmetic shift right, logical shift right
+%
+% The model <matlab:rtwdemo_tflscalarops rtwdemo_tflscalarops> demonstrates some 
+% of these replacements. Supported types include:
+%
+% * single, double
+% * int8, uint8
+% * int16, uint16
+% * int32, uint32
+% * csingle, cdouble
+% * cint8, cuint8
+% * cint16, cuint16
+% * cint32, cuint32
+% * fixed-point integers
+% * mixed types (different type on each input)
+%
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_operators') look here>
+open_system('rtwdemo_tflscalarops')
+
+%% Custom TFL Entry
+% TFLs support the creation of custom entries.  You can create your own
+% TFL entry by subclassing from either RTW.TflCFunctionEntryML or
+% RTW.TflCOperationEntryML. Your entry class must implement a do_match
+% method that customizes your matching logic or modifies the matched entry. 
+% The do_match method must have a fixed preset signature.  
+% The model <matlab:rtwdemo_tflcustomentry rtwdemo_tflcustomentry> 
+% demonstrates how to use custom entries to create your own 
+% matching function and how to modify the matched entry by injecting constants 
+% as additional implementation function arguments. 
+% For more information on Custom TFL entries,
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_customentry') look here>.
+open_system('rtwdemo_tflcustomentry')
+
+%% Viewer for Target Function Libraries
+% A viewer is provided for examining and validating tables and
+% their entries. For example, to view the table 'tfl_tablemuldiv', the 
+% commands are:
+tfl = tfl_table_muldiv;
+me = RTW.viewTfl(tfl);
+
+%%
+% For more information on the target function library viewer,
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_viewer') look here>.
+
+%% Build Support
+% Each entry in a target function library table can specify build 
+% information such as:
+%
+% * Header file dependencies
+% * Source file dependencies
+% * Additional include paths
+% * Additional source paths
+% * Additional link flags
+% 
+% Additionally, the method RTW.copyFileToBuildDir can be used to locally 
+% copy the source and header files specified by an entry. For more 
+% information on specifying compilation information, 
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_buildsupport') look here>.
+%
+% *Note:* The models in this demo are configured for code generation only, 
+% as the implementations for the replacement functions are not provided.
+
+%% Reserved Identifier Support
+% Each function implementation name defined by a entry will be reserved as 
+% a unique identifier. Other identifiers can be specified with a table on a
+% per-header-file basis. Providing additional reserved identifiers ensures 
+% that duplicate symbols and other identifier related compile and link 
+% issues do not occur.
+%
+% For more information on specifying reserved identifiers, 
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'tfl_identifiers') look here>.
+
+%% Removing the Example Target Function Libraries
+% Once finished using the example models, you can remove the example target 
+% function libraries and close the example models with the commands:
+
+rmpath(fullfile(matlabroot,'toolbox','rtw','rtwdemos','tfl_demo'));
+sl_refresh_customizations;
+
+close_system('rtwdemo_tfladdsub', 0)
+close_system('rtwdemo_tflmuldiv', 0)
+close_system('rtwdemo_tflfixpt', 0)
+close_system('rtwdemo_tflmath', 0)
+close_system('rtwdemo_tflmatops', 0)
+close_system('rtwdemo_tflblas', 0)
+close_system('rtwdemo_tflscalarops', 0)
+close_system('rtwdemo_tflcblas', 0)
+if ~isempty(me)
+    me.delete;
+end
+clear tfl;
+clear me;
+clear emlcdir;
+clear emlcsrc;
+clear emlcurdir;
+clear n1;
+clear rtwConfig;
+clear t;
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

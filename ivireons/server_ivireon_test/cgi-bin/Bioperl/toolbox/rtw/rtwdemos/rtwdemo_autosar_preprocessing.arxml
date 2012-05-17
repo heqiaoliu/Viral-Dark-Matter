@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AUTOSAR xsi:schemaLocation="http://autosar.org/3.0.2 autosar_302.xsd" xmlns="http://autosar.org/3.0.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<TOP-LEVEL-PACKAGES>
+		<AR-PACKAGE>
+			<SHORT-NAME>ComponentType</SHORT-NAME>
+			<ELEMENTS>
+				<APPLICATION-SOFTWARE-COMPONENT-TYPE>
+					<SHORT-NAME>preprocessing</SHORT-NAME>
+					<PORTS>
+						<P-PORT-PROTOTYPE>
+							<SHORT-NAME>out</SHORT-NAME>
+							<PROVIDED-COM-SPECS>
+								<UNQUEUED-SENDER-COM-SPEC>
+									<DATA-ELEMENT-REF DEST="DATA-ELEMENT-PROTOTYPE">/PortInterface/valueInterface/value</DATA-ELEMENT-REF>
+									<CAN-INVALIDATE>false</CAN-INVALIDATE>
+								</UNQUEUED-SENDER-COM-SPEC>
+							</PROVIDED-COM-SPECS>
+							<PROVIDED-INTERFACE-TREF DEST="SENDER-RECEIVER-INTERFACE">/PortInterface/valueInterface</PROVIDED-INTERFACE-TREF>
+						</P-PORT-PROTOTYPE>
+						<R-PORT-PROTOTYPE>
+							<SHORT-NAME>in</SHORT-NAME>
+							<REQUIRED-COM-SPECS>
+								<UNQUEUED-RECEIVER-COM-SPEC>
+									<DATA-ELEMENT-REF DEST="DATA-ELEMENT-PROTOTYPE">/PortInterface/valueAndFaultInterface/faults</DATA-ELEMENT-REF>
+									<ALIVE-TIMEOUT>0</ALIVE-TIMEOUT>
+									<RESYNC-TIME>0</RESYNC-TIME>
+								</UNQUEUED-RECEIVER-COM-SPEC>
+								<UNQUEUED-RECEIVER-COM-SPEC>
+									<DATA-ELEMENT-REF DEST="DATA-ELEMENT-PROTOTYPE">/PortInterface/valueAndFaultInterface/values</DATA-ELEMENT-REF>
+									<ALIVE-TIMEOUT>0</ALIVE-TIMEOUT>
+									<RESYNC-TIME>0</RESYNC-TIME>
+								</UNQUEUED-RECEIVER-COM-SPEC>
+							</REQUIRED-COM-SPECS>
+							<REQUIRED-INTERFACE-TREF DEST="SENDER-RECEIVER-INTERFACE">/PortInterface/valueAndFaultInterface</REQUIRED-INTERFACE-TREF>
+						</R-PORT-PROTOTYPE>
+					</PORTS>
+				</APPLICATION-SOFTWARE-COMPONENT-TYPE>
+				<INTERNAL-BEHAVIOR>
+					<SHORT-NAME>preprocessing_InternalBehavior</SHORT-NAME>
+					<COMPONENT-REF DEST="APPLICATION-SOFTWARE-COMPONENT-TYPE">/ComponentType/preprocessing</COMPONENT-REF>
+					<PORT-API-OPTIONS>
+						<PORT-API-OPTION>
+							<ENABLE-TAKE-ADDRESS>false</ENABLE-TAKE-ADDRESS>
+							<INDIRECT-API>false</INDIRECT-API>
+							<PORT-REF DEST="R-PORT-PROTOTYPE">/ComponentType/preprocessing/in</PORT-REF>
+						</PORT-API-OPTION>
+						<PORT-API-OPTION>
+							<ENABLE-TAKE-ADDRESS>false</ENABLE-TAKE-ADDRESS>
+							<INDIRECT-API>false</INDIRECT-API>
+							<PORT-REF DEST="P-PORT-PROTOTYPE">/ComponentType/preprocessing/out</PORT-REF>
+						</PORT-API-OPTION>
+					</PORT-API-OPTIONS>
+					<SUPPORTS-MULTIPLE-INSTANTIATION>false</SUPPORTS-MULTIPLE-INSTANTIATION>
+				</INTERNAL-BEHAVIOR>
+				<SWC-IMPLEMENTATION>
+					<SHORT-NAME>preprocessing_Implementation</SHORT-NAME>
+					<CODE-DESCRIPTORS>
+						<CODE>
+							<SHORT-NAME>Code</SHORT-NAME>
+							<TYPE>SRC</TYPE>
+						</CODE>
+					</CODE-DESCRIPTORS>
+					<BEHAVIOR-REF DEST="INTERNAL-BEHAVIOR">/ComponentType/preprocessing_InternalBehavior</BEHAVIOR-REF>
+				</SWC-IMPLEMENTATION>
+			</ELEMENTS>
+		</AR-PACKAGE>
+		<AR-PACKAGE>
+			<SHORT-NAME>DataType</SHORT-NAME>
+			<ELEMENTS>
+				<BOOLEAN-TYPE>
+					<SHORT-NAME>Boolean</SHORT-NAME>
+					<DESC>
+						<L-2 L="FOR-ALL">Boolean has the value space required to support the mathematical concept of 
+binary-valued logic: {true, false}.</L-2>
+					</DESC>
+				</BOOLEAN-TYPE>
+				<REAL-TYPE>
+					<SHORT-NAME>Double</SHORT-NAME>
+					<DESC>
+						<L-2 L="FOR-ALL">The Double datatype corresponds to IEEE double-precision 64-bit floating point
+type [IEEE 754-1985]. The basic ·value space· of Double consists of the values
+m × 2^e, where m is an integer whose absolute value is less than 2^53, and e is
+ an integer between -1075 and 970, inclusive. In addition to the basic value 
+space described above, the value space of Double also contains the following 
+special values: positive and negative zero, positive and negative infinity 
+and not-a-number. 
+The order-relation on double is: x &lt; y if y - x is positive. 
+Positive zero is greater than negative zero. Not-a-number equals itself and 
+is greater than all double values including positive infinity. 
+                    
+Double values have a lexical representation consisting of a mantissa followed,
+optionally, by the character "E" or "e", followed by an exponent. 
+The exponent must be an integer. The mantissa must be a decimal number.
+The representations for exponent and mantissa must follow the lexical rules 
+for integer and decimal. If the "E" or "e" and the following exponent are 
+omitted, an exponent value of 0 is assumed. 
+
+The special values positive and negative zero, positive and negative infinity
+and not-a-number have lexical representations 0, -0, INF, -INF and NaN, 
+respectively. 
+
+For example, -1E4, 1267.43233E12, 12.78e-2, 12 and INF are all 
+legal literals for Double.</L-2>
+					</DESC>
+					<LOWER-LIMIT INTERVAL-TYPE="INFINITE"></LOWER-LIMIT>
+					<UPPER-LIMIT INTERVAL-TYPE="INFINITE"></UPPER-LIMIT>
+					<ALLOW-NAN>true</ALLOW-NAN>
+					<ENCODING>DOUBLE</ENCODING>
+				</REAL-TYPE>
+				<RECORD-TYPE>
+					<SHORT-NAME>Boolean_pair</SHORT-NAME>
+					<ELEMENTS>
+						<RECORD-ELEMENT>
+							<SHORT-NAME>primary</SHORT-NAME>
+							<TYPE-TREF DEST="BOOLEAN-TYPE">/DataType/Boolean</TYPE-TREF>
+						</RECORD-ELEMENT>
+						<RECORD-ELEMENT>
+							<SHORT-NAME>secondary</SHORT-NAME>
+							<TYPE-TREF DEST="BOOLEAN-TYPE">/DataType/Boolean</TYPE-TREF>
+						</RECORD-ELEMENT>
+					</ELEMENTS>
+				</RECORD-TYPE>
+				<RECORD-TYPE>
+					<SHORT-NAME>Double_pair</SHORT-NAME>
+					<ELEMENTS>
+						<RECORD-ELEMENT>
+							<SHORT-NAME>primary</SHORT-NAME>
+							<TYPE-TREF DEST="REAL-TYPE">/DataType/Double</TYPE-TREF>
+						</RECORD-ELEMENT>
+						<RECORD-ELEMENT>
+							<SHORT-NAME>secondary</SHORT-NAME>
+							<TYPE-TREF DEST="REAL-TYPE">/DataType/Double</TYPE-TREF>
+						</RECORD-ELEMENT>
+					</ELEMENTS>
+				</RECORD-TYPE>
+			</ELEMENTS>
+		</AR-PACKAGE>
+		<AR-PACKAGE>
+			<SHORT-NAME>DaVinci</SHORT-NAME>
+			<ELEMENTS/>
+		</AR-PACKAGE>
+		<AR-PACKAGE>
+			<SHORT-NAME>PortInterface</SHORT-NAME>
+			<ELEMENTS>
+				<SENDER-RECEIVER-INTERFACE>
+					<SHORT-NAME>valueAndFaultInterface</SHORT-NAME>
+					<IS-SERVICE>false</IS-SERVICE>
+					<DATA-ELEMENTS>
+						<DATA-ELEMENT-PROTOTYPE>
+							<SHORT-NAME>faults</SHORT-NAME>
+							<TYPE-TREF DEST="RECORD-TYPE">/DataType/Boolean_pair</TYPE-TREF>
+							<IS-QUEUED>false</IS-QUEUED>
+						</DATA-ELEMENT-PROTOTYPE>
+						<DATA-ELEMENT-PROTOTYPE>
+							<SHORT-NAME>values</SHORT-NAME>
+							<TYPE-TREF DEST="RECORD-TYPE">/DataType/Double_pair</TYPE-TREF>
+							<IS-QUEUED>false</IS-QUEUED>
+						</DATA-ELEMENT-PROTOTYPE>
+					</DATA-ELEMENTS>
+				</SENDER-RECEIVER-INTERFACE>
+				<SENDER-RECEIVER-INTERFACE>
+					<SHORT-NAME>valueInterface</SHORT-NAME>
+					<IS-SERVICE>false</IS-SERVICE>
+					<DATA-ELEMENTS>
+						<DATA-ELEMENT-PROTOTYPE>
+							<SHORT-NAME>value</SHORT-NAME>
+							<TYPE-TREF DEST="REAL-TYPE">/DataType/Double</TYPE-TREF>
+							<IS-QUEUED>false</IS-QUEUED>
+						</DATA-ELEMENT-PROTOTYPE>
+					</DATA-ELEMENTS>
+				</SENDER-RECEIVER-INTERFACE>
+			</ELEMENTS>
+		</AR-PACKAGE>
+	</TOP-LEVEL-PACKAGES>
+</AUTOSAR>

@@ -1,0 +1,248 @@
+#! /bin/sh
+
+# Copyright 2004-2010 The MathWorks, Inc.
+
+#========================= realpath.sh (start) ============================
+#-----------------------------------------------------------------------------
+# Usage: realpath <filename>
+# Returns the actual path in the file system of a file. It follows links. 
+# It returns an empty path if an error occurs.
+# Return status: 0 if successful.
+# If return status is 0, the function echoes out the real path to the file.
+# Return status 1 Exceeded the maximum number of links to follow.
+# Return status 2 Some other error occurred.
+realpath() {
+    filename_rpath=$1
+    SUCCESS_STATUS_rpath=0
+    MAX_LINKS_EXCEEDED_rpath=1
+    OTHER_ERROR_rpath=2
+    #
+    # Now filename_rpath is either a file or a link to a file.
+    #
+    cpath_rpath=`pwd`
+
+    #
+    # Follow up to 8 links before giving up. Same as BSD 4.3
+    # We cd into the directory where the file is located, and do a /bin/pwd 
+    # to get the name of the CWD.  If the file is a symbolic link, we update 
+    # the basename of the file and cd into the directory that the link points 
+    # to and repeat the process.
+    # Once we arrive in a directory where we do not have a soft-link, we are 
+    # done.
+    n_rpath=1
+    maxlinks_rpath=8
+    while [ $n_rpath -le $maxlinks_rpath ]
+    do
+        #
+        # Get directory part of $filename_rpath correctly!
+        #
+        newdir_rpath=`dirname "$filename_rpath"`
+        # dirname shouldn't return empty instead of ".", but let's be paranoid.
+        if [ -z "${newdir_rpath}" ]; then
+            newdir_rpath=".";
+        fi
+        (cd "$newdir_rpath") > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            # This should not happen.  The file is in a non-existing directory.
+            cd "$cpath_rpath"
+            return $OTHER_ERROR_rpath
+        fi
+        cd "$newdir_rpath"
+        #
+        # Need the function pwd - not the shell built-in one.  The command 
+        # /bin/pwd resolves all symbolic links, but the shell built-in one 
+        # does not.
+        #
+        newdir_rpath=`/bin/pwd`
+        # Stip the directories off the filename_rpath.
+        newbase_rpath=`basename "$filename_rpath"`
+
+        lscmd=`ls -l "$newbase_rpath" 2>/dev/null`
+        if [ ! "$lscmd" ]; then
+            # This should not happen, the file does not exist.
+            cd "$cpath_rpath"
+            return $OTHER_ERROR_rpath
+        fi
+        #
+        # Check for link.  The link target is everything after ' -> ' in 
+        # the output of ls.
+        #
+        if [ `expr "$lscmd" : '.*->.*'` -ne 0 ]; then
+            filename_rpath=`echo "$lscmd" | sed 's/.*-> //'`
+        else
+            #
+            # We are done.  We found a file and not a symbolic link.
+            # newdir_rpath contains the directory name, newbase_rpath contains 
+            # the file name.
+            cd "$cpath_rpath"
+            echo "$newdir_rpath/$newbase_rpath"
+            return $SUCCESS_STATUS_rpath
+        fi
+        n_rpath=`expr $n_rpath + 1`
+    done
+    # We exceeded the maximum number of links to follow.
+    cd "$cpath_rpath"
+    return $MAX_LINKS_EXCEEDED_rpath
+}
+#========================= realpath.sh (end) ==============================
+
+#========================= pathsetup.sh (start) ============================
+#-----------------------------------------------------------------------------
+# Usage: warnIfNotInBin <full path> <scriptname>
+warnIfNotInBin() {
+    # Search for toolbox/distcomp/bin in $1.
+    if [ `expr "$1" : ".*toolbox/distcomp/bin$"` -eq 0 ]; then
+        echo "Warning: $2 should be run only from toolbox/distcomp/bin,"
+        echo "or using a symbolic link to toolbox/distcomp/bin/$2."
+        echo ""
+    fi
+}
+
+# THIS MUST BE RUN FIRST BEFORE SETTING UP THE APPLICATION VARIABLES
+# Get the fully qualified path to the script
+SCRIPT="$0"
+REALPATH=`realpath "$SCRIPT"`
+# Get the path to distcomp bin BASE from this by removing the name of the shell
+# script.
+BASE=`echo $REALPATH | sed -e 's;\/[^\/]*$;;g'`
+warnIfNotInBin "$BASE" stopjobmanager
+# Make sure we are in the correct directory to run setbase.sh
+cd "$BASE"
+# Set base directory variables
+. util/setbase.sh
+#-----------------------------------------------------------------------------
+#========================= pathsetup.sh (end) ==============================
+
+usage()
+{
+echo
+echo "stopjobmanager: Stop a job manager that is running under the mdce service.  "
+echo
+echo "Usage:  stopjobmanager [ -name job_manager_name ]"
+echo "                       [ -clean ]"
+echo "                       [ -remotehost hostname ]"
+echo "                       [ -baseport port_number ]"
+echo "                       [ -v ]"
+echo "                       [ -help ]"
+echo
+echo "-name           Specify the name of the job manager to stop.  The default is"
+echo "                the value of DEFAULT_JOB_MANAGER_NAME parameter the mdce_def  "
+echo "                file."
+echo
+echo "-clean          Delete all checkpoint information stored on disk from the"
+echo "                current instance of the job manager after stopping it.  This"
+echo "                will clean the job manager and all its jobs and tasks."
+echo
+echo "-remotehost     Specify the name of the host where you want to stop the job"
+echo "                manager and the associated job manager lookup process.  The "
+echo "                default value is the local host.  "
+echo
+echo "-baseport       Specify the base port that the mdce service on the remote host"
+echo "                is using.  You only need to specify this if the value of"
+echo "                BASE_PORT in the local mdce_def file does not match the base"
+echo "                port being used by the mdce service on the remote host. "
+echo
+echo "-v              Be verbose.  Display the progress of the command execution."
+echo
+echo "-help           Print this help information."
+echo
+echo "Examples:       1) Stop the job manager MyJobManager on the local host."
+echo
+echo "                stopjobmanager -name MyJobManager"
+echo
+echo "                2) Stop the job manager MyJobManager on the host JMHost."
+echo
+echo "                stopjobmanager -name MyJobManager -remotehost JMHost"
+echo
+echo "See also:       mdce, nodestatus, startjobmanager, startworker, and stopworker."
+echo
+}
+
+#-----------------------------------------------------------------------------
+
+SERVICE_CLEAN="false"
+REMOTE_COMMAND_VERBOSITY="false"
+while [ -n "$1" ] ; do
+    case $1 in 
+	-name)
+	    SERVICE_NAME=$2
+	    shift
+	    ;;
+        -clean)
+            SERVICE_CLEAN="true"
+            ;;
+        -remotehost)
+            REMOTE_HOSTNAME=$2
+            shift
+            ;;
+        -baseport)
+            READ_BASE_PORT=$2
+            shift
+            ;;
+        -v)
+            REMOTE_COMMAND_VERBOSITY="true"
+            ;;
+        -help|-h)
+	    usage
+	    exit 0
+	    ;;
+	*)
+	    echo "Error: unrecognized option: $1"
+	    usage
+	    exit 1
+	    ;;
+    esac
+    shift
+done    
+
+# Set the general MDCE environment
+. "$UTILBASE/setmdceenv"
+sourceMdceDef
+defineJRECMD
+
+REMOTE_HOSTNAME=${REMOTE_HOSTNAME:-$HOSTNAME}
+BASE_PORT=${READ_BASE_PORT:-$BASE_PORT}
+
+JM_EXIT_STATUS=0
+JINI_EXIT_STATUS=0
+
+# Stop the job manager.
+$JRECMD \
+    -classpath "$REMOTE_COMMAND_CLASSPATH" \
+    -Djava.security.policy="$CONFIGBASE/jsk-all.policy" \
+    -Dcom.mathworks.toolbox.distcomp.remote_command_type="jobmanager" \
+    -Dcom.mathworks.toolbox.distcomp.servicename=$SERVICE_NAME \
+    -Dcom.mathworks.toolbox.distcomp.remote_hostname=$REMOTE_HOSTNAME \
+    -Dcom.mathworks.toolbox.distcomp.base_port=$BASE_PORT \
+    -Dcom.mathworks.toolbox.distcomp.remote_command_verbosity=$REMOTE_COMMAND_VERBOSITY \
+    -Dcom.mathworks.toolbox.distcomp.remote_command_action="stop" \
+    -Dcom.mathworks.toolbox.distcomp.service_config_file="start-jobmanager.config" \
+    -Dcom.mathworks.toolbox.distcomp.debug_jobmanager_port=$MDCEQE_JOBMANAGER_DEBUG_PORT \
+    -Dcom.mathworks.toolbox.distcomp.clean_checkpoint_info=$SERVICE_CLEAN \
+    com.mathworks.toolbox.distcomp.control.RunCommandSender \
+    "$CONFIGBASE/control-startstop.config"
+JM_EXIT_STATUS=$?
+
+# Also stop the lookup service if there are no job managers left running, 
+$JRECMD \
+    -classpath "$REMOTE_COMMAND_CLASSPATH" \
+    -Djava.security.policy="$CONFIGBASE/jsk-all.policy" \
+    -Dcom.mathworks.toolbox.distcomp.remote_command_type="lookup" \
+    -Dcom.mathworks.toolbox.distcomp.remote_hostname=$REMOTE_HOSTNAME \
+    -Dcom.mathworks.toolbox.distcomp.base_port=$BASE_PORT \
+    -Dcom.mathworks.toolbox.distcomp.remote_command_verbosity=$REMOTE_COMMAND_VERBOSITY \
+    -Dcom.mathworks.toolbox.distcomp.remote_command_action="stop" \
+    -Dcom.mathworks.toolbox.distcomp.servicename="$SERVICE_NAME" \
+    -Dcom.mathworks.toolbox.distcomp.service_config_file="start-jini.config" \
+    -Dcom.mathworks.toolbox.distcomp.clean_checkpoint_info=$SERVICE_CLEAN \
+    com.mathworks.toolbox.distcomp.control.RunCommandSender \
+    "$CONFIGBASE/control-startstop.config"
+JINI_EXIT_STATUS=$?
+
+# Make sure we exit with a non-zero status if either one of the stop commands 
+# failed.
+if [ $JINI_EXIT_STATUS -ne 0 -o $JM_EXIT_STATUS -ne 0 ]; then 
+    exit 1
+else
+    exit 0
+fi

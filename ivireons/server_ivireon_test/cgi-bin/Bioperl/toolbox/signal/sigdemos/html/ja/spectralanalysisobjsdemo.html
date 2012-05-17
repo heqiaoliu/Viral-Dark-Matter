@@ -1,0 +1,181 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   <!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>スペクトル解析オブジェクトのご利用の前に</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="spectralanalysisobjsdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit spectralanalysisobjsdemo">エディターで spectralanalysisobjsdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo spectralanalysisobjsdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>スペクトル解析オブジェクトのご利用の前に</h1><!--introduction--><p>このデモでは、スペクトル解析のオブジェクト指向パラダイムについて説明します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">はじめに</a></li><li><a href="#2">既定のスペクトル オブジェクト</a></li><li><a href="#3">オブジェクトのインスタンス化時にパラメーターを指定</a></li><li><a href="#5">オブジェクトのインスタンス化後にプロパティ値を変更</a></li><li><a href="#8">スペクトル推定法</a></li><li><a href="#11">スペクトル解析の例</a></li><li><a href="#16">片側 PSD</a></li><li><a href="#18">周波数ベクトルを使用するスペクトル</a></li><li><a href="#19">信頼区間を持つスペクトル推定値</a></li><li><a href="#20">スペクトル データ オブジェクト</a></li></ul></div><h2>はじめに<a name="1"></a></h2><p>Signal Processing Toolbox™ は、古典的な (ノンパラメトリックな) 手法とパラメトリックな手法、固有ベクトル (または部分空間) 手法を含むスペクトル解析を実行するためのさまざまなコマンド ライン関数を提供します。  さらに、これらの機能に、使いやすさを向上するためのオブジェクトと、可視化機能が加わりました。  以下のスペクトル解析アルゴリズムを表す 9 つのクラスがあります。</p><pre>    <pre>ピリオドグラム
+    Welch
+    MTM (Thomson マルチテーパ法)
+    Burg
+    共分散
+    修正共分散
+    Yule-Walker
+    MUSIC (多重信号分類)
+    固有ベクトル</pre></pre><h2>既定のスペクトル オブジェクト<a name="2"></a></h2><p>入力引数を指定せずにスペクトル オブジェクトをインスタンス化できます。  たとえば、次の構文は、既定の設定を使用して既定のピリオドグラム スペクトル オブジェクトを作成します。</p><pre class="codeinput">     h = spectrum.periodogram
+</pre><pre class="codeoutput"> 
+h =
+ 
+    EstimationMethod: 'Periodogram'
+          WindowName: 'Rectangular'
+
+</pre><h2>オブジェクトのインスタンス化時にパラメーターを指定<a name="3"></a></h2><p>オブジェクトの作成時にパラメーター値を指定するには、ヘルプにリストされている順序でパラメーターを指定する必要があります。一例として、&quot;help spectrum.welch&quot; と入力します。Welch オブジェクトをインスタンス化する場合、ウィンドウ名を指定せずにセグメント長を指定することはできません。ただし、このデモの後半でわかるように、オブジェクトの作成後はいつでも任意のパラメーターを設定できます。</p><p>作成時にオブジェクトのパラメーター値のいくつかを指定する例を次に示します。</p><pre class="codeinput">    h = spectrum.welch(<span class="string">'kaiser'</span>,66,50)
+</pre><pre class="codeoutput"> 
+h =
+ 
+    EstimationMethod: 'Welch'
+       SegmentLength: 66
+      OverlapPercent: 50
+          WindowName: 'Kaiser'
+                Beta: 0.5000
+
+</pre><h2>オブジェクトのインスタンス化後にプロパティ値を変更<a name="5"></a></h2><p>ドット表記または set メソッドのいずれかを使用して、EstimationMethod を除くすべてのパラメーターの値を設定できます。ドット表記法を使用して、上記で作成した Welch オブジェクトのウィンドウを設定する方法を次に示します。</p><pre class="codeinput">     h.WindowName = <span class="string">'Chebyshev'</span>
+</pre><pre class="codeoutput"> 
+h =
+ 
+    EstimationMethod: 'Welch'
+       SegmentLength: 66
+      OverlapPercent: 50
+          WindowName: 'Chebyshev'
+       SidelobeAtten: 100
+
+</pre><p>チェビシェフ ウィンドウはサイドローブの減衰パラメーターを持つことに注意してください。これは、プロパティのリストに動的に表示されます。</p><p>ウィンドウ パラメーターを指定するには、ウィンドウ名とパラメーター値をセル配列で囲まなければなりません。チェビシェフ ウィンドウのサイドローブ減衰値を指定する方法を次に示します。</p><pre class="codeinput">    h = spectrum.welch({<span class="string">'Chebyshev'</span>,80})
+</pre><pre class="codeoutput"> 
+h =
+ 
+    EstimationMethod: 'Welch'
+       SegmentLength: 64
+      OverlapPercent: 50
+          WindowName: 'Chebyshev'
+       SidelobeAtten: 80
+
+</pre><h2>スペクトル推定法<a name="8"></a></h2><p>スペクトル オブジェクトの最も重要なメソッドの一部は、psd、msspectrum および pseudospectrum です。psd メソッドは、パワー スペクトル密度 (PSD) を返します。msspectrum メソッドは、ピリオドグラムまたは Welch スペクトル推定法によって計算された平均二乗 (パワー) スペクトル (MSS) を返します。pseudospectrum メソッドは、MUSIC または固有ベクトル推定法によって計算された擬似スペクトルを返します。これらのメソッドはすべて、出力引数が指定されていない場合に、スペクトルをプロットします。</p><p>PSD は、単位周波数あたりのパワーの尺度であるため、単位はパワー/周波数です。たとえば、一連の電圧測定値について、PSD の単位は volts^2/Hz です。一方、MSS は、特定の周波数におけるパワーの尺度であり、単位はパワーです。信号が電圧測定値であるこの例を続けると、単位は volts^2 になります。</p><p>これら 3 つのメソッド (psd、msspectrum、pseudospectrum) はすべて同じ構文を持ちます。これらは、最初の入力としてスペクトル オブジェクトを必要とし、2 番目の入力引数としてパワーを測定する信号を必要とします。次に、オプションで、サンプリング周波数、スペクトル範囲、FFT 点の数などについてプロパティと値のペアを指定できます。</p><p>あるいは、スペクトル オブジェクトに対して psdopts メソッドを呼び出すことができます。このメソッドは、これらと他のパラメーターの既定値を持つオプション オブジェクトを返します。以下に例を示します。</p><pre class="codeinput">       h = spectrum.welch;
+       hopts = psdopts(h)
+</pre><pre class="codeoutput"> 
+hopts =
+ 
+             FreqPoints: 'All'
+                   NFFT: 'Nextpow2'
+    NormalizedFrequency: true
+                     Fs: 'Normalized'
+           SpectrumType: 'Onesided'
+               CenterDC: false
+              ConfLevel: 'Not Specified'
+           ConfInterval: []
+
+</pre><p>は、psd メソッドに渡すことができるオプション パラメーターのリストを含む Hopts オプション オブジェクトを生成します。このオプション オブジェクトは、psd メソッドに対する複数の呼び出しで使用できるようになりました。</p><p>次に、Hopts オプション オブジェクトのいずれかのプロパティの値を設定し、Hopts を psd メソッドに渡すことができます。これに対応する msspectrumopts および pseudospectrumopts メソッドが存在し、それぞれ、msspectrum および pseudospectrum メソッドで使用するオプション オブジェクトを返します。</p><h2>スペクトル解析の例<a name="11"></a></h2><p>この例では、ピリオドグラム スペクトル オブジェクトを使用して、ノイズを含む 200 Hz の余弦信号のパワー スペクトル密度を計算およびプロットします。</p><pre class="codeinput">       <span class="comment">% Create signal.</span>
+       Fs = 1000; t = 0:1/Fs:.3;
+       randn(<span class="string">'state'</span>,0);
+       x = cos(2*pi*t*200)+randn(size(t));  <span class="comment">% A cosine of 200Hz plus noise</span>
+
+       <span class="comment">% Instantiate spectrum object and call its PSD method.</span>
+       h = spectrum.periodogram(<span class="string">'rectangular'</span>);
+       hopts = psdopts(h,x);  <span class="comment">% Default options based on the signal x</span>
+       set(hopts,<span class="string">'Fs'</span>,Fs,<span class="string">'SpectrumType'</span>,<span class="string">'twosided'</span>,<span class="string">'CenterDC'</span>,true);
+       psd(h,x,hopts)
+</pre><img vspace="5" hspace="5" src="../spectralanalysisobjsdemo_01.png" alt=""> <p>Fs が指定されているため、PSD は単位が Hz の周波数に対してプロットされました。  Fs が指定されていない場合、単位がラジアン/サンプルの周波数が使用されます (その場合、PSD の単位はパワー/(ラジアン/サンプル) になります)。  また、SpectrumType を twosided として指定することは、ナイキスト間隔全体で計算されたスペクトルを必要とすることを意味します。</p><p>出力引数を指定した場合、psd メソッドは、次の例に示すように、PSD データ オブジェクトを返します。  PSD データ オブジェクトの詳細は、このドキュメンテーションの「スペクトル データ オブジェクト」の節を参照してください。</p><pre class="codeinput">       <span class="comment">% Use a long FFT for integral approximation accuracy</span>
+       set(hopts,<span class="string">'NFFT'</span>,2^14);
+       hpsd = psd(h,x,hopts)
+</pre><pre class="codeoutput"> 
+hpsd =
+ 
+                   Name: 'Power Spectral Density'
+                   Data: [16384x1 double]
+           SpectrumType: 'Twosided'
+    NormalizedFrequency: false
+                     Fs: 1000
+            Frequencies: [16384x1 double]
+              ConfLevel: 'Not Specified'
+           ConfInterval: []
+
+</pre><p>返された PSD データ オブジェクトには、他のパラメーターに加えて、スペクトル データ、スペクトルが計算された周波数、サンプリング周波数が含まれています。PSD データ オブジェクトのメソッドには、plot、avgpower などがあります。plot メソッドは、オブジェクトに格納されているスペクトル データをプロットします。avgpower メソッドは、積分の四角形近似を使用し、オブジェクトに格納されている PSD データを使用して信号の平均パワーを計算します。</p><p>avgpower メソッドは、PSD 曲線の下の面積である信号の平均パワーを返します。</p><pre class="codeinput">       avgpower(hpsd)
+</pre><pre class="codeoutput">
+ans =
+
+    1.3162
+
+</pre><h2>片側 PSD<a name="16"></a></h2><p>上の例では、Hopts オプション オブジェクトを介して psd メソッドの呼び出しで twosided を指定しました。  しかし、実信号の場合、既定で onesided PSD が返されます。  同様に、出力引数が指定されなかった場合、プロットにはナイキスト間隔の半分しか表示されません (残りの半分は重複した情報です)。</p><pre class="codeinput">       set(hopts,<span class="string">'SpectrumType'</span>,<span class="string">'onesided'</span>);
+       psd(h,x,hopts)
+</pre><img vspace="5" hspace="5" src="../spectralanalysisobjsdemo_02.png" alt=""> <p>ナイキスト間隔の半分しか表示されていなくても、これには合計パワーが含まれていることに注意してください。つまり、PSD 曲線の下を積分すると、合計平均パワーが得られます。これを片側 PSD と呼びます。  最後の例を続けて、上記で twosided PSD を使用したときと同じになる平均パワーを測定してみましょう。</p><pre class="codeinput">       hpsd = psd(h,x,hopts);
+       avgpower(hpsd)
+</pre><pre class="codeoutput">
+ans =
+
+    1.3162
+
+</pre><h2>周波数ベクトルを使用するスペクトル<a name="18"></a></h2><p>信号のパワー スペクトルが評価される周波数のベクトルを指定するように、dspopts.spectrum オブジェクトを設定できます。</p><p>この例では、msspectrum オブジェクトを使用して、1.24 kHz および 1.26 kHz の成分を、10 kHz の成分を持つ余弦に分解します。</p><pre class="codeinput">       <span class="comment">% Generate signal.</span>
+       randn(<span class="string">'state'</span>,0);
+       Fs = 32e3;   t = 0:1/Fs:2.96;
+       x  = cos(2*pi*t*10e3)+cos(2*pi*t*1.24e3)+cos(2*pi*t*1.26e3)<span class="keyword">...</span>
+            + randn(size(t));
+
+       nfft = (length(x)+1)/2;
+       f = (Fs/2)/nfft*(0:nfft-1);          <span class="comment">% Generate frequency vector</span>
+
+       <span class="comment">% Instantiate spectrum object and call its PSD method.</span>
+       h = spectrum.periodogram(<span class="string">'rectangular'</span>);
+       hopts = psdopts(h,x);  <span class="comment">% Default options based on the signal x</span>
+       set(hopts,<span class="string">'Fs'</span>,Fs,<span class="string">'SpectrumType'</span>,<span class="string">'twosided'</span>);
+       hopts.FreqPoints = <span class="string">'User Defined'</span>;
+       hopts.FrequencyVector = f(f&gt;1.2e3 &amp; f&lt;1.3e3);
+       msspectrum(h,x,hopts)
+</pre><img vspace="5" hspace="5" src="../spectralanalysisobjsdemo_03.png" alt=""> <h2>信頼区間を持つスペクトル推定値<a name="19"></a></h2><p>スペクトル推定値の信頼区間を求めるには、信頼水準を指定します。 この機能は psd および msspectrum メソッドで利用できます。</p><p>この例では、95% の信頼水準について信頼区間を計算します。</p><pre class="codeinput">       <span class="comment">% Create signal.</span>
+       Fs = 1000;   t = 0:1/Fs:.296;
+       x = cos(2*pi*t*200)+randn(size(t));  <span class="comment">% A cosine of 200Hz plus noise</span>
+
+       <span class="comment">% Confidence Level</span>
+       p = 0.95;
+
+       <span class="comment">% PSD with confidence level</span>
+       h = spectrum.welch;
+       hpsd = psd(h,x,<span class="string">'Fs'</span>,Fs,<span class="string">'ConfLevel'</span>,p)
+       plot(hpsd)
+</pre><pre class="codeoutput"> 
+hpsd =
+ 
+                   Name: 'Power Spectral Density'
+                   Data: [129x1 double]
+           SpectrumType: 'Onesided'
+    NormalizedFrequency: false
+                     Fs: 1000
+            Frequencies: [129x1 double]
+              ConfLevel: 0.9500
+           ConfInterval: [129x2 double]
+
+</pre><img vspace="5" hspace="5" src="../spectralanalysisobjsdemo_04.png" alt=""> <h2>スペクトル データ オブジェクト<a name="20"></a></h2><p>psd、msspectrum および pseudospectrum データ オブジェクトを直接インスタンス化することもできます。 これらのオブジェクトは、既存のスペクトル データの保持に使用できます。また、これらのオブジェクトにより、プロット機能を使用できます。  これらのオブジェクトは、各列が異なるスペクトル推定値である行列形式のデータも受け入れます。</p><p>この例では、3 つの異なるウィンドウを使用して、実信号のパワー スペクトル密度を推定します。  次に、これら 3 つのスペクトルが行列として格納されている PSD データ オブジェクトを作成し、その plot メソッドを呼び出して結果をグラフィカルに表示します。</p><pre class="codeinput">       <span class="comment">% Create signal.</span>
+       Fs = 1000;   t = 0:1/Fs:.296;
+       x = cos(2*pi*t*200)+randn(size(t));  <span class="comment">% A cosine of 200Hz plus noise</span>
+
+       <span class="comment">% Construct a Welch spectrum object.</span>
+       h = spectrum.welch(<span class="string">'hamming'</span>,64);
+
+       <span class="comment">% Create three power spectral density estimates.</span>
+       hpsd1 = psd(h,x,<span class="string">'Fs'</span>,Fs);
+       Pxx1 = hpsd1.Data;
+       W = hpsd1.Frequencies;
+
+       h.WindowName = <span class="string">'Kaiser'</span>;
+       hpsd2 = psd(h,x,<span class="string">'Fs'</span>,Fs);
+       Pxx2 = hpsd2.Data;
+
+       h.WindowName = <span class="string">'Chebyshev'</span>;
+       hpsd3 = psd(h,x,<span class="string">'Fs'</span>,Fs);
+       Pxx3 = hpsd3.Data;
+
+       <span class="comment">% Instantiate a PSD data object and store the three different</span>
+       <span class="comment">% estimates since they all share the same frequency information.</span>
+       hpsd = dspdata.psd([Pxx1, Pxx2, Pxx3],W,<span class="string">'Fs'</span>,Fs)
+</pre><pre class="codeoutput"> 
+hpsd =
+ 
+                   Name: 'Power Spectral Density'
+                   Data: [129x3 double]
+           SpectrumType: 'Onesided'
+    NormalizedFrequency: false
+                     Fs: 1000
+            Frequencies: [129x1 double]
+              ConfLevel: 'Not Specified'
+           ConfInterval: []
+
+</pre><pre class="codeinput">       plot(hpsd);
+       legend(<span class="string">'Hamming'</span>,<span class="string">'kaiser'</span>,<span class="string">'Chebyshev'</span>);
+</pre><img vspace="5" hspace="5" src="../spectralanalysisobjsdemo_05.png" alt=""> <p class="footer">Copyright 1988-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Getting Started with Spectral Analysis Objects % This demo describes an object-oriented paradigm for spectral analysis.  % Copyright 1988-2007 The MathWorks, Inc. % $Revision: 1.1.4.10.2.1 $ $Date: 2010/07/29 21:29:04 $  %% Introduction % % The Signal Processing Toolbox(TM) provides several command line functions to % perform spectral analysis, including classical (non-parametric) % techniques, parametric techniques, and eigenvector (or subspace) % techniques.  In addition, objects have been added which enhance the % usability, and visualization capabilities to these functions.  There are % nine classes representing the following spectral analysis algorithms. % %      Periodogram %      Welch %      MTM (Thomson multitaper method) %      Burg %      Covariance %      Modified Covariance %      Yule-Walker %      MUSIC (Multiple Signal Classification) %      Eigenvector %  %% Default Spectrum Object % % You can instantiate a spectrum object without specifying any input % arguments.  For example, the following creates a default periodogram % spectrum object with default settings.       h = spectrum.periodogram   %% Specifying Parameters at Object Instantiation % % Specifying parameter values at object construction time requires that you % specify the parameters in the order listed in the help.  Type "help % spectrum.welch" for an example.  When instantiating a Welch object you % can't specify segment length without specifying window name.  However, as % you will see later in this demo you can always set any parameter after % the object is created.  %% % Here's an example of specifying several of the object's parameter values % at construction time.      h = spectrum.welch('kaiser',66,50)   %% Changing Property Values after Object Instantiation % % You can set the value of any parameter, except for the EstimationMethod, % using either dot-notation or the set method.  Here's how you set the % window of the Welch object created above using dot-notation.       h.WindowName = 'Chebyshev'     %% % Note that the Chebyshev window has a sidelobe attenuation parameter, % which dynamically appears in the list of properties.  %% % To specify a window parameter you must enclose the window name and the % parameter value in a cell array.  Here's how you can specify the sidelobe % attenuation value for the Chebyshev window:      h = spectrum.welch({'Chebyshev',80})       %% Spectral Estimation Methods % % Some of the most important methods of the spectrum objects are psd, % msspectrum, and pseudospectrum. The psd method returns the power spectral % density (PSD).  The msspectrum method returns the mean-square (power) % spectrum (MSS) calculated by the periodogram or Welch spectral estimation % technique. The pseudospectrum method returns the pseudospectrum % calculated by the MUSIC or eigenvector estimation technique.  All of % these methods will plot the spectrum if no output argument is specified. % % The PSD is a measure of power per unit of frequency, hence it has units % of power/frequency.  For example, for a sequence of voltage measurements % the units of the PSD are volts^2/Hz.  The MSS, on the other hand, is a % measure of power at specific frequency and has units of power. % Continuing our example where the signal is voltage measurements the units % would be volts^2. % % All three of these methods (psd, msspectrum, and pseudospectrum) have the % same syntax.  They require a spectrum object as the first input and the % signal to measure the power as the second input argument.  Then you can % optionally specify property-value pairs for the sampling frequency, the % spectrum range, and the number of FFT points, etc. % % Alternatively you can invoke the psdopts method on a spectrum object, % which returns an options object with default values for these and other % parameters. For example:         h = spectrum.welch;        hopts = psdopts(h) 	    %% % produces an options object hopts which contains the list of optional % parameters that can be passed to the psd method.  This options object can % now be used in multiple calls to the psd method. 	    %%  % You can then set the value of any of the properties of the options % object hopts and pass hopts to the psd method. There are corresponding % msspectrumopts and pseudospectrumopts methods that return options % objects to be used with the msspectrum and pseudospectrum methods, % respectively.  %% Spectral Analysis Example % % In this example you will compute and plot the power spectral density of a % 200 Hz cosine signal with noise using a periodogram spectrum object.         % Create signal.        Fs = 1000;   t = 0:1/Fs:.3;        randn('state',0);        x = cos(2*pi*t*200)+randn(size(t));  % A cosine of 200Hz plus noise         % Instantiate spectrum object and call its PSD method.          h = spectrum.periodogram('rectangular');           hopts = psdopts(h,x);  % Default options based on the signal x        set(hopts,'Fs',Fs,'SpectrumType','twosided','CenterDC',true);        psd(h,x,hopts)          %% % Because Fs was specified the PSD was plotted against the frequency with % units of Hz.  If Fs was not specified a frequency with units of % rad/sample would have been used (in that case the PSD units would be % power/(rad/sample).)  Also, specifying the SpectrumType as 'twosided' % indicates that you want the spectrum calculated over the whole Nyquist % interval. % % If you specify an output argument then the psd method will return a PSD % data object as shown in the example below.  See the section "Spectrum % Data Objects" later in this document for more details on PSD data % objects.  %%        % Use a long FFT for integral approximation accuracy        set(hopts,'NFFT',2^14);        hpsd = psd(h,x,hopts)  %% % The PSD data object returned contains among other parameters the spectrum % data, the frequencies at which the spectrum was calculated, and the % sampling frequency.  The methods of the PSD data object include plot, and % avgpower.  The plot method plots the spectrum data stored in the object. % The avgpower method uses a rectangle approximation to the integral to % calculate the signal's average power using the PSD data stored in the % object.     %% % The avgpower method returns the average power of the signal which is the % area under the PSD curve.        avgpower(hpsd)      %% One-sided PSD % % In the example above you specified 'twosided' in the call to the psd % method via the options object hopts.  However, for real signals by % default the 'onesided' PSD is returned.  Likewise, if no output argument % is specified the plot displays only half the Nyquist interval (the other % half is duplicate information).           set(hopts,'SpectrumType','onesided');        psd(h,x,hopts)  %% % It is important to note that although you are only seeing half the % Nyquist interval it contains the total power, i.e., if you integrate % under the PSD curve you get the total average power - this is called the % one-sided PSD.  Continuing the last example let's measure the average % power which should be the same as when we used the 'twosided' PSD above.         hpsd = psd(h,x,hopts);        avgpower(hpsd)         %% Spectrum Using a Vector of Frequencies % % You can configure a dspopts.spectrum object so as to supply a vector of % frequencies where the power spectrum of the signal is to be evaluated. % % In this example you will use the msspectrum object to resolve the 1.24 % kHz and 1.26 kHz components in a cosine which also has a 10 kHz % component.         % Generate signal.        randn('state',0);        Fs = 32e3;   t = 0:1/Fs:2.96;        x  = cos(2*pi*t*10e3)+cos(2*pi*t*1.24e3)+cos(2*pi*t*1.26e3)...             + randn(size(t));         nfft = (length(x)+1)/2;        f = (Fs/2)/nfft*(0:nfft-1);          % Generate frequency vector                % Instantiate spectrum object and call its PSD method.          h = spectrum.periodogram('rectangular');           hopts = psdopts(h,x);  % Default options based on the signal x        set(hopts,'Fs',Fs,'SpectrumType','twosided');        hopts.FreqPoints = 'User Defined';        hopts.FrequencyVector = f(f>1.2e3 & f<1.3e3);        msspectrum(h,x,hopts)                 %% Spectrum Estimates with Confidence Intervals % % You can obtain the confidence interval for the spectrum estimate by % specifying the confidence level. This feature is available for psd and  % msspectrum methods.  % % In this example you will calculate the confidence interval for a % confidence level of 95%.         % Create signal.        Fs = 1000;   t = 0:1/Fs:.296;        x = cos(2*pi*t*200)+randn(size(t));  % A cosine of 200Hz plus noise                 % Confidence Level        p = 0.95;                % PSD with confidence level        h = spectrum.welch;        hpsd = psd(h,x,'Fs',Fs,'ConfLevel',p)        plot(hpsd)                        %% Spectrum Data Objects % % You can also instantiate psd, msspectrum, and pseudospectrum data objects % directly. These objects can be used to hold existing spectrum data and % enable you to use the plotting features.  These objects also accept the % data in a matrix format where each column is different spectral estimate. % % In this example you will estimate the power spectral density of a real % signal using three different windows.  Then you will create a PSD data % object with these three spectrums stored as a matrix, and call its plot % method to view the results graphically.         % Create signal.        Fs = 1000;   t = 0:1/Fs:.296;        x = cos(2*pi*t*200)+randn(size(t));  % A cosine of 200Hz plus noise           % Construct a Welch spectrum object.        h = spectrum.welch('hamming',64);         % Create three power spectral density estimates.        hpsd1 = psd(h,x,'Fs',Fs);        Pxx1 = hpsd1.Data;        W = hpsd1.Frequencies;                h.WindowName = 'Kaiser';        hpsd2 = psd(h,x,'Fs',Fs);        Pxx2 = hpsd2.Data;                h.WindowName = 'Chebyshev';        hpsd3 = psd(h,x,'Fs',Fs);        Pxx3 = hpsd3.Data;                % Instantiate a PSD data object and store the three different        % estimates since they all share the same frequency information.        hpsd = dspdata.psd([Pxx1, Pxx2, Pxx3],W,'Fs',Fs) %%             plot(hpsd);        legend('Hamming','kaiser','Chebyshev');                 displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

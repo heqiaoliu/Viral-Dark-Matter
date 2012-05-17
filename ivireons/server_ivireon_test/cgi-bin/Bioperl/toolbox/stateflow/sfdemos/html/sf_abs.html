@@ -1,0 +1,70 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling a Rectifier With Zero Crossings</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_abs.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_abs.mdl</div><div class="right"><a href="matlab:sf_abs">Open this model</a></div></div><div class="content"><h1>Modeling a Rectifier With Zero Crossings</h1><p>This is a simple model of a rectifier which takes a single (scalar) input and converts it into its absolute value. This simple model illustrates the zero crossings capability of Stateflow&reg; (a new feature in R2007b).</p><img vspace="5" hspace="5" src="sf_abs_01.png" alt=""> <p>The chart itself is simple. It has two states namely <tt>P</tt> (for positive input) and <tt>N</tt> (for negative input). This can readily seen to be the state machine of a rectifier.</p><img vspace="5" hspace="5" src="sf_abs_02.png" alt=""> <p>The interesting thing about this model is the behavior of the Stateflow chart in the presence of variable step solvers (such as ode45). In this case, Stateflow registers a change in its state configuration with the Simulink&reg; solver. This enables mode-changes to be recorded very accurately during simulation.</p><p>In order to enable this feature, you need to set the "Update Method" property of the Stateflow chart to be "continuous". When this is done, a new option called "Enable zero-crossing detection" is visible. This setting controls whether Stateflow will register a zero crossings signal with Simulink's solver.</p><img vspace="5" hspace="5" src="sf_abs_03.png" alt=""> <p>The fact that we recorded changes in mode accurately is evident when we plot the time intervals between successive "major time steps". When we do this, we see:</p><img vspace="5" hspace="5" src="sf_abs_04.png" alt=""> <p>As is clear, the solver records six zero crossings corresponding to the six times when the sine wave changes sign.</p><p class="footer">Copyright 2007-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling a Rectifier With Zero Crossings
+% 
+% This is a simple model of a rectifier which takes a single (scalar) input
+% and converts it into its absolute value. This simple model illustrates
+% the zero crossings capability of Stateflow(R) (a new feature in R2007b). 
+
+%   Copyright 2007-2008 The MathWorks, Inc.
+
+mdl = 'sf_abs';
+open_system(mdl);
+close_system([mdl '/Scope']);
+
+root = sfroot;
+chart = root.find('-isa', 'Stateflow.Chart', 'Name', 'AbsoluteValue');
+chart.visible = 0;
+
+%% 
+%
+% The chart itself is simple. It has two states namely |P| (for positive
+% input) and |N| (for negative input). This can readily seen to be the
+% state machine of a rectifier.
+
+chart.visible = 1;
+
+%% 
+% 
+% The interesting thing about this model is the behavior of the Stateflow
+% chart in the presence of variable step solvers (such as ode45). In this
+% case, Stateflow registers a change in its state configuration with the
+% Simulink(R) solver. This enables mode-changes to be recorded very
+% accurately during simulation.
+% 
+% In order to enable this feature, you need to set the "Update Method"
+% property of the Stateflow chart to be "continuous". When this is done, a
+% new option called "Enable zero-crossing detection" is visible. This
+% setting controls whether Stateflow will register a zero crossings signal
+% with Simulink's solver. 
+
+open_system([mdl '/Scope']);
+evalc('sim(mdl)');
+
+%% 
+% 
+% The fact that we recorded changes in mode accurately is evident when we
+% plot the time intervals between successive "major time steps". When we do
+% this, we see:
+
+dt = [diff(tout); NaN];
+plot(tout, dt);
+xlabel('Simulation time (t)');
+ylabel('Simulation time step (dt = diff(t))');
+
+%% 
+% 
+% As is clear, the solver records six zero crossings corresponding to the
+% six times when the sine wave changes sign.
+
+##### SOURCE END #####
+--></body></html>

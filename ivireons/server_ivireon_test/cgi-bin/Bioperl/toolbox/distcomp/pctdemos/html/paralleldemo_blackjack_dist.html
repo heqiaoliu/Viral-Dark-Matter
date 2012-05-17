@@ -1,0 +1,188 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Distributed Blackjack</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-04-23"><meta name="DC.source" content="paralleldemo_blackjack_dist.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_blackjack_dist">Open paralleldemo_blackjack_dist.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_blackjack_dist">Run in the Command Window</a></div></div><div class="content"><h1>Distributed Blackjack</h1><!--introduction--><p>This demo uses the Parallel Computing Toolbox&#8482; to play the card game of blackjack, also known as 21.  We simulate a number of players that are independently playing thousands of hands at a time, and display payoff statistics.  Simulating the playing of blackjack is representative of Monte Carlo analysis of financial instruments.  The simulation can be done completely in parallel, except for the data collection at the end.</p><p>For details about the computations, <a href="matlab:edit('pctdemo_setup_blackjack.m')">view the code for pctdemo_setup_blackjack</a></p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_blackjack_seq.html">Sequential Blackjack</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analyze the Sequential Problem</a></li><li><a href="#2">Load the Demo Settings and the Data</a></li><li><a href="#4">Divide the Work into Smaller Tasks</a></li><li><a href="#5">Run the Simulation</a></li><li><a href="#6">Retrieve the Results</a></li><li><a href="#10">Measure the Elapsed Time</a></li><li><a href="#11">Plot the Results</a></li></ul></div><h2>Analyze the Sequential Problem<a name="1"></a></h2><p>Because the blackjack players are independent one of another, we can simulate them in parallel.  We do this as simply as possible by using <tt>dfevalasync</tt> to perform the computations.  This effectively creates one task for each invocation of our task function.</p><h2>Load the Demo Settings and the Data<a name="2"></a></h2><p>The demo uses the default configuration when identifying the scheduler to use. The <a href="matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')">configurations documentation</a> explains how to create new configurations and how to change the default configuration.  See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for instructions on how to change the demo difficulty level.</p><pre class="codeinput">config = defaultParallelConfig();
+
+<span class="comment">% We will not use the scheduler object returned, only difficulty</span>
+<span class="comment">% and numTasks.</span>
+[difficulty, sched, numTasks] = pctdemo_helper_getDefaults();
+</pre><p>We get the number of players and the number of hands each player plays from <tt>pctdemo_setup_blackjack</tt>.  The <tt>difficulty</tt> parameter controls the number of players that we simulate. You can <a href="matlab:edit('pctdemo_setup_blackjack.m')">view the code for pctdemo_setup_blackjack</a> for full details.</p><pre class="codeinput">[fig, numHands, numPlayers] = pctdemo_setup_blackjack(difficulty);
+</pre><h2>Divide the Work into Smaller Tasks<a name="4"></a></h2><p>We divide the simulation of the <tt>numPlayers</tt> players among the <tt>numTasks</tt> tasks.  Thus, task <tt>i</tt> simulates <tt>splitPlayers{i}</tt> players.</p><pre class="codeinput">[splitPlayers, numTasks] = pctdemo_helper_split_scalar(numPlayers, <span class="keyword">...</span>
+                                                  numTasks);
+fprintf([<span class="string">'This demo will submit a job with %d task(s) '</span> <span class="keyword">...</span>
+         <span class="string">'to the scheduler.\n'</span>], numTasks);
+</pre><pre class="codeoutput">This demo will submit a job with 4 task(s) to the scheduler.
+</pre><h2>Run the Simulation<a name="5"></a></h2><p>We use <tt>dfevalasync</tt> to call <tt>pctdemo_task_blackjack</tt> <tt>numTasks</tt> times.  Since <tt>dfevalasync</tt> requires the input arguments to the task function to be specified as cell arrays, we convert the vector <tt>splitPlayers</tt> to a cell array. You can <a href="matlab:edit('pctdemo_task_blackjack.m')">view the code for pctdemo_task_blackjack</a> for full details. Notice that by passing a configuration name to <tt>dfevalasync</tt>, we can use any of the supported schedulers.</p><pre class="codeinput">startTime = clock;
+job = dfevalasync(@pctdemo_task_blackjack, 1, <span class="keyword">...</span>
+                  repmat({numHands}, numTasks, 1), <span class="keyword">...</span>
+                  num2cell(splitPlayers),  <span class="keyword">...</span>
+                  <span class="string">'Configuration'</span>, config);
+waitForState(job, <span class="string">'finished'</span>);
+</pre><h2>Retrieve the Results<a name="6"></a></h2><p>Let us verify that we received all the results that we expected.  We throw an error if we could not obtain any results, but display a warning if we got only some of the results.</p><pre class="codeinput">jobResults = getAllOutputArguments(job);
+<span class="keyword">if</span> isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job);
+    error(<span class="string">'distcomp:demo:EmptyJobOutput'</span>,  <span class="keyword">...</span>
+          [<span class="string">'Could not obtain any job results.  The following error(s) '</span> <span class="keyword">...</span>
+           <span class="string">'occurred \nduring task execution:\n\n%s'</span>], <span class="keyword">...</span>
+          taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>Collect the task results into a numHands-by-numPlayers matrix.</p><pre class="codeinput">S = cell2mat(jobResults');
+</pre><p>We verify that all the tasks completed successfully.</p><pre class="codeinput">numOk = size(S, 2);
+<span class="keyword">if</span> ~(numOk == numPlayers)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning(<span class="string">'distcomp:demo:IncompleteJobResults'</span>, <span class="keyword">...</span>
+            [<span class="string">'Some tasks did not finish.  Results were only obtained '</span> <span class="keyword">...</span>
+             <span class="string">'for %d out of %d players.  \nThe following error(s) '</span> <span class="keyword">...</span>
+             <span class="string">'occurred during task execution:\n\n%s'</span>], <span class="keyword">...</span>
+            numOk, numPlayers,  taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>We have now finished all the verifications, so we can destroy the job.</p><pre class="codeinput">destroy(job);
+</pre><h2>Measure the Elapsed Time<a name="10"></a></h2><p>The time used for the distributed simulations should be compared against the time it takes to perform the same set of calculations in the <a href="paralleldemo_blackjack_seq.html">Sequential Blackjack</a> demo. The elapsed time varies with the underlying hardware and network infrastructure.</p><pre class="codeinput">elapsedTime = etime(clock, startTime);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 22.6 seconds
+</pre><h2>Plot the Results<a name="11"></a></h2><p>We display the expected fraction of the bet that is won or lost in each hand, along with the confidence interval.  We also show the evolution of the winnings and losses of each of the players we simulate. You can <a href="matlab:edit('pctdemo_plot_blackjack.m')">view the code for pctdemo_plot_blackjack</a> for full details.</p><pre class="codeinput">pctdemo_plot_blackjack(fig, S);
+</pre><img vspace="5" hspace="5" src="paralleldemo_blackjack_dist_01.png" alt=""> <p class="footer">Copyright 2007-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Distributed Blackjack
+% This demo uses the Parallel Computing Toolbox(TM) to play the card game of
+% blackjack, also known as 21.  We simulate a number of players that are
+% independently playing thousands of hands at a time, and display payoff
+% statistics.  Simulating the playing of blackjack is representative of Monte 
+% Carlo analysis of financial instruments.  The simulation can be done 
+% completely in parallel, except for the data collection at the end.
+%
+% For details about the computations, 
+% <matlab:edit('pctdemo_setup_blackjack.m') 
+% view the code for pctdemo_setup_blackjack>
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+%
+% Related demos:
+%
+% * <paralleldemo_blackjack_seq.html Sequential Blackjack> 
+%
+
+%   Copyright 2007-2010 The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2010/05/10 17:07:14 $
+
+%% Analyze the Sequential Problem
+% Because the blackjack players are independent one of another, we can simulate
+% them in parallel.  We do this as simply as possible by using
+% |dfevalasync| to perform the computations.  This effectively creates one task 
+% for each invocation of our task function.  
+
+%% Load the Demo Settings and the Data
+% The demo uses the default configuration when identifying the scheduler to use.
+% The
+% <matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')
+% configurations documentation> 
+% explains how to create new configurations and how to change the default 
+% configuration.  See 
+% <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% for instructions on how to change the demo difficulty level.
+config = defaultParallelConfig();
+
+% We will not use the scheduler object returned, only difficulty 
+% and numTasks.
+[difficulty, sched, numTasks] = pctdemo_helper_getDefaults();
+
+%%
+% We get the number of players and the number of hands each player plays from
+% |pctdemo_setup_blackjack|.  The |difficulty| parameter controls the number of
+% players that we simulate.
+% You can 
+% <matlab:edit('pctdemo_setup_blackjack.m') view the code for pctdemo_setup_blackjack> 
+% for full details.
+[fig, numHands, numPlayers] = pctdemo_setup_blackjack(difficulty);
+
+%% Divide the Work into Smaller Tasks
+% We divide the simulation of the |numPlayers| players among the |numTasks| 
+% tasks.  Thus, task |i| simulates |splitPlayers{i}| players.
+[splitPlayers, numTasks] = pctdemo_helper_split_scalar(numPlayers, ...
+                                                  numTasks);
+fprintf(['This demo will submit a job with %d task(s) ' ...
+         'to the scheduler.\n'], numTasks);
+
+%% Run the Simulation
+% We use |dfevalasync| to call |pctdemo_task_blackjack| |numTasks| times.  Since
+% |dfevalasync| requires the input arguments to the task function to be specified
+% as cell arrays, we convert the vector |splitPlayers| to a cell array.
+% You can 
+% <matlab:edit('pctdemo_task_blackjack.m') view the code for pctdemo_task_blackjack> 
+% for full details.
+% Notice that by passing a configuration name to |dfevalasync|, we can use any
+% of the supported schedulers.
+startTime = clock;
+job = dfevalasync(@pctdemo_task_blackjack, 1, ...
+                  repmat({numHands}, numTasks, 1), ...
+                  num2cell(splitPlayers),  ...
+                  'Configuration', config);
+waitForState(job, 'finished');
+
+%% Retrieve the Results
+% Let us verify that we received all the results that we expected.  We throw an
+% error if we could not obtain any results, but display a warning if we got
+% only some of the results.
+jobResults = getAllOutputArguments(job);
+if isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job);
+    error('distcomp:demo:EmptyJobOutput',  ...
+          ['Could not obtain any job results.  The following error(s) ' ...
+           'occurred \nduring task execution:\n\n%s'], ...
+          taskErrorMsgs);
+end
+
+%%
+% Collect the task results into a numHands-by-numPlayers matrix.
+S = cell2mat(jobResults'); 
+
+%%
+% We verify that all the tasks completed successfully.
+numOk = size(S, 2);
+if ~(numOk == numPlayers)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning('distcomp:demo:IncompleteJobResults', ...
+            ['Some tasks did not finish.  Results were only obtained ' ...
+             'for %d out of %d players.  \nThe following error(s) ' ...
+             'occurred during task execution:\n\n%s'], ...
+            numOk, numPlayers,  taskErrorMsgs);
+end
+%%
+% We have now finished all the verifications, so we can destroy the job.
+destroy(job);
+
+%% Measure the Elapsed Time
+% The time used for the distributed simulations should be compared
+% against the time it takes to perform the same set of calculations
+% in the <paralleldemo_blackjack_seq.html Sequential Blackjack> demo.
+% The elapsed time varies with the underlying hardware and network 
+% infrastructure.
+elapsedTime = etime(clock, startTime);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+%% Plot the Results
+% We display the expected fraction of the bet that is won or
+% lost in each hand, along with the confidence interval.  We also show 
+% the evolution of the winnings and losses of each of the players we simulate. 
+% You can 
+% <matlab:edit('pctdemo_plot_blackjack.m') view the code for pctdemo_plot_blackjack> 
+% for full details.
+pctdemo_plot_blackjack(fig, S);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

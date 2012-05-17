@@ -1,0 +1,409 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Dry Friction Between Two Bodies: Parameter Estimation Using Multiple Experiment Data</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="idnlgreydemo7.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit idnlgreydemo7">Open idnlgreydemo7.m in the Editor</a></div><div class="right"><a href="matlab:echodemo idnlgreydemo7">Run in the Command Window</a></div></div><div class="content"><h1>Dry Friction Between Two Bodies: Parameter Estimation Using Multiple Experiment Data</h1><!--introduction--><p>This tutorial illustrates IDNLGREY modeling based on multiple experiment data. A system exhibiting dry friction between two solid bodies will be used as the basis for the discussion. In this system, one body is fixed, while the other body moves forward and backward over the fixed body due to an exogenous force according to Figure 1.</p><p><img vspace="5" hspace="5" src="../Figures/twobodies.png" alt=""> </p><p><b>Figure 1:</b> Schematic view of a two body system.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Modeling Dry Friction Between Two Bodies</a></li><li><a href="#5">Input-Output Data</a></li><li><a href="#8">Performance of the Initial Two Body Model</a></li><li><a href="#10">Parameter Estimation</a></li><li><a href="#11">Performance of the Estimated Two Body Model</a></li><li><a href="#15">Conclusions</a></li><li><a href="#16">Additional Information</a></li></ul></div><h2>Modeling Dry Friction Between Two Bodies<a name="1"></a></h2><p>Using Newton's third law of motion, the movement of the moving body is described by:</p><pre>  F_tot(t) = m*a(t) = m*d/dt v(t) = m*d^2/dt^2 s(t)</pre><p>where F_tot(t) equals the exogenous force F(t) minus the friction force caused by the contact between the two bodies. The friction force is assumed to be the sum of a sliding friction force F_s(t) and a dry friction force F_d(t). The former is normally modeled as a linear function of the velocity, i.e., F_s(t) = k*v(t), where k is an unknown sliding friction parameter. Dry friction, on the other hand, is a rather complex phenomenon. In the paper:</p><p>A. Clavel, M. Sorine and Q. Zhang. "Modeling and identification of a leaf spring system". In third IFAC Workshop on Advances in Automotive Control, 2001.</p><p>it is modeled by an ordinary differential equation:</p><pre>  d/dt F_d(t) = -1/e*|v(t)|*F_d(t) + f/e*v(t)</pre><p>where e and f are two unknown parameters with dimensions distance and force, respectively.</p><p>Denoting the input signal u(t) = F(t) [N], introducing states as:</p><pre>  x1(t) = s(t)    Position of the moving body [m].
+  x2(t) = v(t)    Velocity of the moving body [m/s].
+  x3(t) = F_d(t)  Dry friction force between the bodies [N].</pre><p>and model parameters as:</p><pre>  m       Mass of the moving body [m].
+  k       Sliding friction force coefficient [kg/s].
+  e       Distance-related dry friction parameter [m].
+  f       Force-related dry friction parameter [N].</pre><p>we arrive at the following state space model structure:</p><pre>  d/dt x1(t) = x2(t)
+  d/dt x2(t) = 1/m*(u(t) - k*x2(t) - x3(t))
+  d/dt x3(t) = 1/e*(-|x2(t)|*x3(t) + f*x2(t))</pre><pre>        y(t) = x1(t)</pre><p>These equations are entered into a C-MEX model file, twobodies_c.c. Its state and output update equations, compute_dx and compute_y, are as follows:</p><pre>  /* State equations. */
+  void compute_dx(double *dx, double t, double *x, double *u, double **p,
+                  const mxArray *auxvar)
+  {
+      /* Retrieve model parameters. */
+      double *m, *k, *e, *f;
+      m = p[0];   /* Mass of the moving body.                 */
+      k = p[1];   /* Sliding friction force coefficient.      */
+      e = p[2];   /* Distance-related dry friction parameter. */
+      f = p[3];   /* Force-related dry friction parameter.    */</pre><pre>      /* x[0]: Position. */
+      /* x[1]: Velocity. */
+      /* x[2]: Dry friction force. */
+      dx[0] = x[1];
+      dx[1] = (u[0]-k[0]*x[1]-x[2])/m[0];
+      dx[2] = (-fabs(x[1])*x[2]+f[0]*x[1])/e[0];
+  }</pre><pre>  /* Output equation. */
+  void compute_y(double *y, double t, double *x, double *u, double **p,
+                 const mxArray *auxvar)
+  {
+      /* y[0]: Position. */
+      y[0] = x[0];
+  }</pre><p>Having written the file describing the model structure, the next step is to create an IDNLGREY object reflecting the modeling situation. We also add information about the names and units of the inputs, outputs, states and model parameters of the model structure. Notice that the Parameters and InitialStates are here specified as vectors, which by default means that all model parameters and no initial state vector will be estimated when PEM is called.</p><pre class="codeinput">FileName      = <span class="string">'twobodies_c'</span>;              <span class="comment">% File describing the model structure.</span>
+Order         = [1 1 3];                    <span class="comment">% Model orders [ny nu nx].</span>
+Parameters    = [380; 2200; 0.00012; 1900]; <span class="comment">% Initial parameter vector.</span>
+InitialStates = [0; 0; 0];                  <span class="comment">% Initial states.</span>
+Ts            = 0;                          <span class="comment">% Time-continuous system.</span>
+nlgr = idnlgrey(FileName, Order, Parameters, InitialStates, Ts, <span class="keyword">...</span>
+                <span class="string">'Name'</span>, <span class="string">'Two body system'</span>,                      <span class="keyword">...</span>
+                <span class="string">'InputName'</span>, <span class="string">'Exogenous force'</span>,                 <span class="keyword">...</span>
+                <span class="string">'InputUnit'</span>, <span class="string">'N'</span>,                               <span class="keyword">...</span>
+                <span class="string">'OutputName'</span>, <span class="string">'Position of moving body'</span>,        <span class="keyword">...</span>
+                <span class="string">'OutputUnit'</span>, <span class="string">'m'</span>,                              <span class="keyword">...</span>
+                <span class="string">'TimeUnit'</span>, <span class="string">'s'</span>);
+setinit(nlgr, <span class="string">'Name'</span>, {<span class="string">'Position of moving body'</span> <span class="keyword">...</span>
+                       <span class="string">'Velocity of moving body'</span> <span class="keyword">...</span>
+                       <span class="string">'Dry friction force between the bodies'</span>});
+setinit(nlgr, <span class="string">'Unit'</span>, {<span class="string">'m'</span> <span class="string">'m/s'</span> <span class="string">'N'</span>});
+setpar(nlgr, <span class="string">'Name'</span>, {<span class="string">'Mass of the moving body'</span>                 <span class="keyword">...</span>
+                      <span class="string">'Sliding friction force coefficient'</span>,     <span class="keyword">...</span>
+                      <span class="string">'Distance-related dry friction parameter'</span> <span class="keyword">...</span>
+                      <span class="string">'Force-related dry friction parameter'</span>});
+setpar(nlgr, <span class="string">'Unit'</span>, {<span class="string">'m'</span> <span class="string">'kg/s'</span> <span class="string">'m'</span> <span class="string">'N'</span>});
+</pre><h2>Input-Output Data<a name="5"></a></h2><p>At this point, we load the available (simulated) input-output data. The file contains data from three different (simulated) test runs each holding 1000 noise-corrupted input-output samples generated using a sampling rate (Ts) of 0.005 seconds. The input u(t) is the exogenous force [N] acting upon the moving body. In the experiments, the input was a symmetric saw-tooth formed signal, where the waveform repetition frequency was the same for all experiments, but where the maximum signal amplitude varied between the test runs. The output y(t) is the position [m] of the moving body (relative to the fixed one). For our modeling purposes, we create one IDDATA object holding three different experiments:</p><pre class="codeinput">load(fullfile(matlabroot, <span class="string">'toolbox'</span>, <span class="string">'ident'</span>, <span class="string">'iddemos'</span>, <span class="string">'data'</span>, <span class="string">'twobodiesdata'</span>));
+z = merge(iddata(y1, u1, 0.005), iddata(y2, u2, 0.005), iddata(y3, u3, 0.005));
+z.Name = <span class="string">'Two body system'</span>;
+z.InputName = nlgr.InputName;
+z.InputUnit = nlgr.InputUnit;
+z.OutputName = nlgr.OutputName;
+z.OutputUnit = nlgr.OutputUnit;
+z.Tstart = 0;
+z.TimeUnit = nlgr.TimeUnit;
+</pre><p>The input-output data used for the onward identification experiments are shown in a plot window.</p><pre class="codeinput">figure(<span class="string">'Name'</span>, [z.Name <span class="string">': input-output data'</span>]);
+<span class="keyword">for</span> i = 1:z.Ne
+    zi = getexp(z, i);
+    subplot(z.Ne, 2, 2*i-1);   <span class="comment">% Input.</span>
+    plot(zi(:, [], 1));
+    title([z.ExperimentName{i} <span class="string">': '</span> zi.InputName{1}]);
+    <span class="keyword">if</span> (i &lt; z.Ne)
+        xlabel(<span class="string">''</span>);
+    <span class="keyword">else</span>
+        xlabel([z.Domain <span class="string">' ('</span> zi.TimeUnit <span class="string">')'</span>]);
+    <span class="keyword">end</span>
+    axis(<span class="string">'tight'</span>);
+    subplot(z.Ne, 2, 2*i);     <span class="comment">% Output.</span>
+    plot(zi(:, 1, []));
+    title([z.ExperimentName{i} <span class="string">': '</span> zi.OutputName{1}]);
+    <span class="keyword">if</span> (i &lt; z.Ne)
+        xlabel(<span class="string">''</span>);
+    <span class="keyword">else</span>
+        xlabel([z.Domain <span class="string">' ('</span> zi.TimeUnit <span class="string">')'</span>]);
+    <span class="keyword">end</span>
+    axis(<span class="string">'tight'</span>);
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="idnlgreydemo7_01.png" alt=""> <p><b>Figure 2:</b> Input-output data from a two body system.</p><h2>Performance of the Initial Two Body Model<a name="8"></a></h2><p>Before estimating the four unknown parameters we simulate the system using the initial parameter values. We use the default differential equation solver (ode45) with the default solver options. When called with only two input arguments, COMPARE will estimate the full initial state vectors, in this case one per experiment, i.e., 3 experiments each with a 3-by-1 state vector implies 9 estimated initial states in total. The simulated and true outputs are shown in a plot window, and as can be seen the fit is decent but not as good as desired. (The outputs of an experiment are typically displayed under a "TAB". In this case there are three experiments and hence three "TABS", named Exp1, Exp2 and Exp3. In published demos, only the output(s) of the first experiment is displayed. Clicking on a "TAB" leads to that the experiment data associated with the "TAB" is displayed.)</p><pre class="codeinput">figure;
+compare(z, nlgr);
+</pre><img vspace="5" hspace="5" src="idnlgreydemo7_02.png" alt=""> <p><b>Figure 3:</b> Comparison between true outputs and the simulated outputs of the initial two body model.</p><h2>Parameter Estimation<a name="10"></a></h2><p>In order to improve the fit, the four parameters are next estimated. We use data from the first and last experiments in the estimation phase and keep the data from the second experiment for pure validation purposes.</p><pre class="codeinput">nlgr = pem(getexp(z, [1 3]), nlgr, <span class="string">'Display'</span>, <span class="string">'Full'</span>);
+</pre><pre class="codeoutput">
+Criterion: Trace minimization
+   Scheme: Trust-Region Reflective Newton (LSQNONLIN, LargeScale = 'On')
+--------------------------------------------------------------
+                                 Norm of      First-order
+ Iteration      Cost             step         optimality  
+--------------------------------------------------------------
+     0     9.19335e-005             -                - 
+     1     8.55109e-005            10             72.1
+     2     7.43184e-005            20             68.4
+     3     5.23253e-005            40             50.8
+     4     2.30174e-005            80             18.7
+     5     3.23926e-007           143             13.7
+     6     2.24853e-007          11.1             1.43
+     7     2.24076e-007          4.07            0.153
+--------------------------------------------------------------
+</pre><h2>Performance of the Estimated Two Body Model<a name="11"></a></h2><p>In order to investigate the performance of the estimated model, a simulation of it is finally performed. By tailoring the initial state structure array of nlgr it is possible to fully specify which states to estimate per experiment in, e.g., COMPARE. Let us here define and use a structure where initial states x1(0) and x2(0) are estimated for experiment 1, x2(0) for experiment 2, and x3(0) for experiment 3. With this modification, a comparison between measured and model outputs is shown in a plot window.</p><pre class="codeinput">nlgr.InitialStates = struct(<span class="string">'Name'</span>, getinit(nlgr, <span class="string">'Name'</span>),                <span class="keyword">...</span>
+                            <span class="string">'Unit'</span>, getinit(nlgr, <span class="string">'Unit'</span>),                <span class="keyword">...</span>
+                            <span class="string">'Value'</span> , zeros(1, 3), <span class="string">'Minimum'</span>, -Inf(1, 3), <span class="keyword">...</span>
+                            <span class="string">'Maximum'</span>, Inf(1, 3), <span class="string">'Fixed'</span>,                <span class="keyword">...</span>
+                            {[false false true]; [true false true]; [true true false]});
+figure;
+compare(z, nlgr, <span class="string">'init'</span>, <span class="string">'model'</span>);
+</pre><img vspace="5" hspace="5" src="idnlgreydemo7_03.png" alt=""> <p><b>Figure 4:</b> Comparison between true outputs and the simulated outputs of the estimated two body model.</p><p>Of special interest is the result with data from the second experiment, which were not used for the parameter estimation. The dynamics of the true system is clearly modeled quite well for all experiments. The estimated parameters are also rather close to the ones used to generate the experimental data:</p><pre class="codeinput">disp(<span class="string">'   True          Estimated parameter vector'</span>);
+ptrue = [400; 2e3; 0.0001; 1700];
+fprintf(<span class="string">'   %10.5f    %10.5f\n'</span>, [ptrue'; getpvec(nlgr)']);
+</pre><pre class="codeoutput">   True          Estimated parameter vector
+    400.00000     399.91422
+   2000.00000    2002.15650
+      0.00010       0.00010
+   1700.00000    1699.37636
+</pre><p>By finally using the PRESENT command, we can get additional information about the estimated model:</p><pre class="codeinput">present(nlgr);
+</pre><pre class="codeoutput">Time-continuous nonlinear state-space model defined by 'twobodies_c' (MEX-file):
+
+   dx/dt = F(t, u(t), x(t), p1, ..., p4)
+    y(t) = H(t, u(t), x(t), p1, ..., p4) + e(t)
+
+with 1 input, 3 states, 1 output, and 4 free parameters (out of 4).
+
+Input:
+   u(1)  Exogenous force(t) [N]
+States:                                                 initial value
+   x(1)  Position of moving body(t) [m]                 xinit@exp1   0   (est) in [-Inf, Inf]
+                                                        xinit@exp2   0   (est) in [-Inf, Inf]
+                                                        xinit@exp3   0   (fix) in [-Inf, Inf]
+   x(2)  Velocity of moving body(t) [m/s]               xinit@exp1   0   (fix) in [-Inf, Inf]
+                                                        xinit@exp2   0   (est) in [-Inf, Inf]
+                                                        xinit@exp3   0   (fix) in [-Inf, Inf]
+   x(3)  Dry friction force between the bodies(t) [N]   xinit@exp1   0   (fix) in [-Inf, Inf]
+                                                        xinit@exp2   0   (fix) in [-Inf, Inf]
+                                                        xinit@exp3   0   (est) in [-Inf, Inf]
+Output:
+   y(1)  Position of moving body(t) [m]
+Parameters:                                           value          standard dev
+   p1   Mass of the moving body [m]                        399.914       661.277   (est) in [-Inf, Inf]
+   p2   Sliding friction force coefficient [kg/s]          2002.16       5640.97   (est) in [-Inf, Inf]
+   p3   Distance-related dry friction parameter [m]   9.97295e-005   0.000835731   (est) in [-Inf, Inf]
+   p4   Force-related dry friction parameter [N]           1699.38       2116.46   (est) in [-Inf, Inf]
+
+The model was originally estimated and then modified.
+
+Created:       29-Jun-2010 23:42:56                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+Last modified: 29-Jun-2010 23:43:24                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+</pre><h2>Conclusions<a name="15"></a></h2><p>This demo has set forth how to use multiple experiment data when performing IDNLGREY modeling. Any number of experiments can be employed, and for each such experiment it is possible to fully specify which initial state or states to estimate in PEM, COMPARE, PREDICT, and so on.</p><h2>Additional Information<a name="16"></a></h2><p>For more information on identification of dynamic systems with System Identification Toolbox&#8482; visit the <a href="http://www.mathworks.com/products/sysid/">System Identification Toolbox</a> product information page.</p><p class="footer">Copyright 2005-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Dry Friction Between Two Bodies: Parameter Estimation Using Multiple Experiment Data
+% This tutorial illustrates IDNLGREY modeling based on multiple experiment
+% data. A system exhibiting dry friction between two solid bodies will be
+% used as the basis for the discussion. In this system, one body is fixed,
+% while the other body moves forward and backward over the fixed body due
+% to an exogenous force according to Figure 1.
+%
+% <<../Figures/twobodies.png>>
+%
+% *Figure 1:* Schematic view of a two body system.
+
+%   Copyright 2005-2009 The MathWorks, Inc.
+%   $Revision: 1.1.8.9 $ $Date: 2009/10/16 04:54:30 $
+
+%% Modeling Dry Friction Between Two Bodies
+% Using Newton's third law of motion, the movement of the moving body is
+% described by:
+%
+%    F_tot(t) = m*a(t) = m*d/dt v(t) = m*d^2/dt^2 s(t)
+%
+% where F_tot(t) equals the exogenous force F(t) minus the friction force
+% caused by the contact between the two bodies. The friction force is
+% assumed to be the sum of a sliding friction force F_s(t) and a dry
+% friction force F_d(t). The former is normally modeled as a linear
+% function of the velocity, i.e., F_s(t) = k*v(t), where k is an unknown
+% sliding friction parameter. Dry friction, on the other hand, is a rather
+% complex phenomenon. In the paper:
+%
+% A. Clavel, M. Sorine and Q. Zhang. "Modeling and identification of a
+% leaf spring system". In third IFAC Workshop on Advances in Automotive
+% Control, 2001.
+%
+% it is modeled by an ordinary differential equation:
+%
+%    d/dt F_d(t) = -1/e*|v(t)|*F_d(t) + f/e*v(t)
+%
+% where e and f are two unknown parameters with dimensions distance and
+% force, respectively.
+
+%%
+% Denoting the input signal u(t) = F(t) [N], introducing states as:
+%
+%    x1(t) = s(t)    Position of the moving body [m].
+%    x2(t) = v(t)    Velocity of the moving body [m/s].
+%    x3(t) = F_d(t)  Dry friction force between the bodies [N].
+%
+% and model parameters as:
+%
+%    m       Mass of the moving body [m].
+%    k       Sliding friction force coefficient [kg/s].
+%    e       Distance-related dry friction parameter [m].
+%    f       Force-related dry friction parameter [N].
+%
+% we arrive at the following state space model structure:
+%
+%    d/dt x1(t) = x2(t)
+%    d/dt x2(t) = 1/m*(u(t) - k*x2(t) - x3(t))
+%    d/dt x3(t) = 1/e*(-|x2(t)|*x3(t) + f*x2(t))
+%
+%          y(t) = x1(t)
+
+%%
+% These equations are entered into a C-MEX model file, twobodies_c.c. Its
+% state and output update equations, compute_dx and compute_y, are as
+% follows:
+%
+%    /* State equations. */
+%    void compute_dx(double *dx, double t, double *x, double *u, double **p,
+%                    const mxArray *auxvar)
+%    {
+%        /* Retrieve model parameters. */
+%        double *m, *k, *e, *f;
+%        m = p[0];   /* Mass of the moving body.                 */
+%        k = p[1];   /* Sliding friction force coefficient.      */
+%        e = p[2];   /* Distance-related dry friction parameter. */
+%        f = p[3];   /* Force-related dry friction parameter.    */
+%        
+%        /* x[0]: Position. */
+%        /* x[1]: Velocity. */
+%        /* x[2]: Dry friction force. */
+%        dx[0] = x[1];
+%        dx[1] = (u[0]-k[0]*x[1]-x[2])/m[0];
+%        dx[2] = (-fabs(x[1])*x[2]+f[0]*x[1])/e[0];
+%    }
+%
+%    /* Output equation. */
+%    void compute_y(double *y, double t, double *x, double *u, double **p,
+%                   const mxArray *auxvar)
+%    {
+%        /* y[0]: Position. */
+%        y[0] = x[0];
+%    }
+
+%%
+% Having written the file describing the model structure, the next step is
+% to create an IDNLGREY object reflecting the modeling situation. We also
+% add information about the names and units of the inputs, outputs, states
+% and model parameters of the model structure. Notice that the Parameters
+% and InitialStates are here specified as vectors, which by default means
+% that all model parameters and no initial state vector will be estimated
+% when PEM is called.
+FileName      = 'twobodies_c';              % File describing the model structure.
+Order         = [1 1 3];                    % Model orders [ny nu nx].
+Parameters    = [380; 2200; 0.00012; 1900]; % Initial parameter vector.
+InitialStates = [0; 0; 0];                  % Initial states.
+Ts            = 0;                          % Time-continuous system.
+nlgr = idnlgrey(FileName, Order, Parameters, InitialStates, Ts, ...
+                'Name', 'Two body system',                      ...
+                'InputName', 'Exogenous force',                 ...
+                'InputUnit', 'N',                               ...
+                'OutputName', 'Position of moving body',        ...
+                'OutputUnit', 'm',                              ...
+                'TimeUnit', 's');
+setinit(nlgr, 'Name', {'Position of moving body' ...
+                       'Velocity of moving body' ...
+                       'Dry friction force between the bodies'});
+setinit(nlgr, 'Unit', {'m' 'm/s' 'N'});
+setpar(nlgr, 'Name', {'Mass of the moving body'                 ...
+                      'Sliding friction force coefficient',     ...
+                      'Distance-related dry friction parameter' ...
+                      'Force-related dry friction parameter'});
+setpar(nlgr, 'Unit', {'m' 'kg/s' 'm' 'N'});
+
+%% Input-Output Data
+% At this point, we load the available (simulated) input-output data.
+% The file contains data from three different (simulated) test runs each
+% holding 1000 noise-corrupted input-output samples generated using a
+% sampling rate (Ts) of 0.005 seconds. The input u(t) is the exogenous
+% force [N] acting upon the moving body. In the experiments, the input was
+% a symmetric saw-tooth formed signal, where the waveform repetition
+% frequency was the same for all experiments, but where the maximum signal
+% amplitude varied between the test runs. The output y(t) is the position
+% [m] of the moving body (relative to the fixed one). For our modeling
+% purposes, we create one IDDATA object holding three different
+% experiments:
+load(fullfile(matlabroot, 'toolbox', 'ident', 'iddemos', 'data', 'twobodiesdata'));
+z = merge(iddata(y1, u1, 0.005), iddata(y2, u2, 0.005), iddata(y3, u3, 0.005));
+z.Name = 'Two body system';
+z.InputName = nlgr.InputName;
+z.InputUnit = nlgr.InputUnit;
+z.OutputName = nlgr.OutputName;
+z.OutputUnit = nlgr.OutputUnit;
+z.Tstart = 0;
+z.TimeUnit = nlgr.TimeUnit;
+
+%%
+% The input-output data used for the onward identification experiments are
+% shown in a plot window.
+figure('Name', [z.Name ': input-output data']);
+for i = 1:z.Ne
+    zi = getexp(z, i);
+    subplot(z.Ne, 2, 2*i-1);   % Input.
+    plot(zi(:, [], 1));
+    title([z.ExperimentName{i} ': ' zi.InputName{1}]);
+    if (i < z.Ne)
+        xlabel('');
+    else
+        xlabel([z.Domain ' (' zi.TimeUnit ')']);
+    end
+    axis('tight');
+    subplot(z.Ne, 2, 2*i);     % Output.
+    plot(zi(:, 1, []));
+    title([z.ExperimentName{i} ': ' zi.OutputName{1}]);
+    if (i < z.Ne)
+        xlabel('');
+    else
+        xlabel([z.Domain ' (' zi.TimeUnit ')']);
+    end
+    axis('tight');
+end
+
+%%
+% *Figure 2:* Input-output data from a two body system.
+
+%% Performance of the Initial Two Body Model
+% Before estimating the four unknown parameters we simulate the system
+% using the initial parameter values. We use the default differential
+% equation solver (ode45) with the default solver options. When called with
+% only two input arguments, COMPARE will estimate the full initial state
+% vectors, in this case one per experiment, i.e., 3 experiments each with a
+% 3-by-1 state vector implies 9 estimated initial states in total. The
+% simulated and true outputs are shown in a plot window, and as can be seen
+% the fit is decent but not as good as desired. (The outputs of an
+% experiment are typically displayed under a "TAB". In this case there are
+% three experiments and hence three "TABS", named Exp1, Exp2 and Exp3. In
+% published demos, only the output(s) of the first experiment is
+% displayed. Clicking on a "TAB" leads to that the experiment data
+% associated with the "TAB" is displayed.)
+figure;
+compare(z, nlgr);
+
+%%
+% *Figure 3:* Comparison between true outputs and the simulated outputs of
+% the initial two body model.
+
+%% Parameter Estimation
+% In order to improve the fit, the four parameters are next estimated. We
+% use data from the first and last experiments in the estimation phase and
+% keep the data from the second experiment for pure validation purposes.
+nlgr = pem(getexp(z, [1 3]), nlgr, 'Display', 'Full');
+
+%% Performance of the Estimated Two Body Model
+% In order to investigate the performance of the estimated model, a
+% simulation of it is finally performed. By tailoring the initial state
+% structure array of nlgr it is possible to fully specify which states to
+% estimate per experiment in, e.g., COMPARE. Let us here define and use a
+% structure where initial states x1(0) and x2(0) are estimated for
+% experiment 1, x2(0) for experiment 2, and x3(0) for experiment 3. With
+% this modification, a comparison between measured and model outputs is
+% shown in a plot window.
+nlgr.InitialStates = struct('Name', getinit(nlgr, 'Name'),                ...
+                            'Unit', getinit(nlgr, 'Unit'),                ...
+                            'Value' , zeros(1, 3), 'Minimum', -Inf(1, 3), ...
+                            'Maximum', Inf(1, 3), 'Fixed',                ...
+                            {[false false true]; [true false true]; [true true false]});
+figure;
+compare(z, nlgr, 'init', 'model');
+
+%%
+% *Figure 4:* Comparison between true outputs and the simulated outputs of
+% the estimated two body model.
+
+%%
+% Of special interest is the result with data from the second experiment,
+% which were not used for the parameter estimation. The dynamics of the
+% true system is clearly modeled quite well for all experiments. The
+% estimated parameters are also rather close to the ones used to generate
+% the experimental data:
+disp('   True          Estimated parameter vector');
+ptrue = [400; 2e3; 0.0001; 1700];
+fprintf('   %10.5f    %10.5f\n', [ptrue'; getpvec(nlgr)']);
+
+%%
+% By finally using the PRESENT command, we can get additional information
+% about the estimated model:
+present(nlgr);
+
+%% Conclusions
+% This demo has set forth how to use multiple experiment data when
+% performing IDNLGREY modeling. Any number of experiments can be employed,
+% and for each such experiment it is possible to fully specify which
+% initial state or states to estimate in PEM, COMPARE, PREDICT, and so on.
+
+%% Additional Information
+% For more information on identification of dynamic systems with System Identification Toolbox(TM) 
+% visit the
+% <http://www.mathworks.com/products/sysid/ System Identification Toolbox>
+% product information page.
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

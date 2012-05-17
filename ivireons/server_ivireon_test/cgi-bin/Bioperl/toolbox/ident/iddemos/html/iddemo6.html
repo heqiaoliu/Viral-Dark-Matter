@@ -1,0 +1,584 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Data and Model Objects in System Identification Toolbox&#8482;</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="iddemo6.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit iddemo6">Open iddemo6.m in the Editor</a></div><div class="right"><a href="matlab:echodemo iddemo6">Run in the Command Window</a></div></div><div class="content"><h1>Data and Model Objects in System Identification Toolbox&#8482;</h1><!--introduction--><p>System identification is about building models from data. A data set is characterized by several pieces of information: The input and output signals, the sampling interval, the variable names and units, etc. Similarly, the estimated models contain information of different kinds - estimated parameters, their covariance matrices, model structure and so on.</p><p>This means that it is suitable and desirable to package relevant information around data and models into objects. System Identification Toolbox&#8482; contains a number of such objects, and the basic features of these are described in this demo. More details and complete lists of properties are found by typing the command <tt>idprops</tt>.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">The IDDATA Object</a></li><li><a href="#24">The IDMODEL Objects</a></li><li><a href="#33">Variants of IDMODEL - IDPOLY, IDPROC, IDSS and IDGREY</a></li><li><a href="#37">Transforming IDMODELs into LTI Objects of Control System Toolbox&#8482;</a></li><li><a href="#39">Additional Information</a></li></ul></div><h2>The IDDATA Object<a name="1"></a></h2><p>First create some data:</p><pre class="codeinput">u = sign(randn(200,2)); <span class="comment">% 2 inputs</span>
+y = randn(200,1);       <span class="comment">% 1 output</span>
+ts = 0.1;               <span class="comment">% The sampling interval</span>
+</pre><p>To collect the input and the output in one object do</p><pre class="codeinput">z = iddata(y,u,ts);
+</pre><p>The data information is displayed by just typing its name:</p><pre class="codeinput">z
+</pre><pre class="codeoutput">
+Time domain data set with 200 samples.
+Sampling interval: 0.1                 
+                                       
+Outputs      Unit (if specified)       
+   y1                                  
+                                       
+Inputs       Unit (if specified)       
+   u1                                  
+   u2                                  
+                                       
+</pre><p>The data is plotted as iddata by the <tt>plot</tt> command, as in <tt>plot(z)</tt>. Press a key to continue and advance between the subplots. Here, we plot the channels separately:</p><pre class="codeinput">plot(z(:,1,1)) <span class="comment">%Data subset with Input 1 and Output 1.</span>
+</pre><img vspace="5" hspace="5" src="iddemo6_01.png" alt=""> <pre class="codeinput">plot(z(:,1,2)) <span class="comment">%Data subset with Input 2 and Output 1.</span>
+</pre><img vspace="5" hspace="5" src="iddemo6_02.png" alt=""> <p>To retrieve the outputs and inputs, use</p><pre class="codeinput">u = z.u;   <span class="comment">% or, equivalently u = get(z,'u');</span>
+y = z.y;   <span class="comment">% or, equivalently y = get(z,'y');</span>
+</pre><p>To select a portion of the data:</p><pre class="codeinput">zp = z(48:79);
+</pre><p>To select the first output and the second input:</p><pre class="codeinput">zs = z(:,1,2);  <span class="comment">% The ':' refers to all the data time points.</span>
+</pre><p>The sub-selections can be combined:</p><pre class="codeinput">plot(z(45:54,1,2)) <span class="comment">%samples 45 to 54 of response from second input to the first output.</span>
+</pre><img vspace="5" hspace="5" src="iddemo6_03.png" alt=""> <p>The channels are given default names 'y1', 'u2', etc. This can be changed to any values by</p><pre class="codeinput">set(z,<span class="string">'InputName'</span>,{<span class="string">'Voltage'</span>;<span class="string">'Current'</span>},<span class="string">'OutputName'</span>,<span class="string">'Speed'</span>);
+</pre><p>Equivalently we could write</p><pre class="codeinput">z.inputn = {<span class="string">'Voltage'</span>;<span class="string">'Current'</span>}; <span class="comment">% Autofill is used for properties</span>
+z.outputn = <span class="string">'Speed'</span>;    <span class="comment">% Upper and lower cases are also ignored</span>
+</pre><p>For bookkeeping and plots, also units can be set:</p><pre class="codeinput">z.InputUnit = {<span class="string">'Volt'</span>;<span class="string">'Ampere'</span>};
+z.OutputUnit = <span class="string">'m/s'</span>;
+
+z
+</pre><pre class="codeoutput">
+Time domain data set with 200 samples.
+Sampling interval: 0.1                 
+                                       
+Outputs       Unit (if specified)      
+   Speed         m/s                   
+                                       
+Inputs        Unit (if specified)      
+   Voltage       Volt                  
+   Current       Ampere                
+                                       
+</pre><p>All current properties are (as for any object) obtained by get:</p><pre class="codeinput">get(z)
+</pre><pre class="codeoutput">
+ans = 
+
+              Domain: 'Time'
+                Name: ''
+          OutputData: [200x1 double]
+                   y: 'Same as OutputData'
+          OutputName: {'Speed'}
+          OutputUnit: {'m/s'}
+           InputData: [200x2 double]
+                   u: 'Same as InputData'
+           InputName: {2x1 cell}
+           InputUnit: {2x1 cell}
+              Period: [2x1 double]
+         InterSample: {2x1 cell}
+                  Ts: 0.1000
+              Tstart: []
+    SamplingInstants: [200x0 double]
+            TimeUnit: ''
+      ExperimentName: 'Exp1'
+               Notes: {}
+            UserData: []
+
+</pre><p>In addition to the properties discussed so far, we have 'Period' which denotes the period of the input if periodic Period = inf means a non-periodic input:</p><pre class="codeinput">z.Period
+</pre><pre class="codeoutput">
+ans =
+
+   Inf
+   Inf
+
+</pre><p>The intersample behavior of the input may be given as 'zoh' (zero-order-hold, i.e. piecewise constant) or 'foh' (first- order-hold, i.e., piecewise linear). The identification routines use this information to adjust the algorithms.</p><pre class="codeinput">z.InterSample
+</pre><pre class="codeoutput">
+ans = 
+
+    'zoh'
+    'zoh'
+
+</pre><p>To see all the properties, and their assignable values use (as for any object) the <tt>set</tt> command:</p><pre class="codeinput">set(z)
+</pre><pre class="codeoutput">
+ans = 
+
+              Domain: ''Time'/'Frequency''
+                Name: 'String'
+          OutputData: 'N-by-Ny matrix or 1-by-Ne cell array '
+                   y: 'Same as OutputData'
+          OutputName: 'Ny-by-1 cell array of strings'
+          OutputUnit: 'Ny-by-1 cell array of strings'
+           InputData: 'N-by-Nu matrix or 1-by-Ne cell array'
+                   u: 'Same as InputData'
+           InputName: 'Nu-by-1 cell array of strings'
+           InputUnit: 'Nu-by-1 cell array of strings'
+              Period: 'Nu-by-1 matrix of input periods (inf: non-periodic)'
+         InterSample: 'Nu-by-1 cell array: 'zoh'/'foh'/'bl''
+                  Ts: [1x54 char]
+              Tstart: 'Scalar  (Starting time)'
+    SamplingInstants: 'N-by-1 matrix (leave empty if equidistant sampling)'
+            TimeUnit: 'String'
+      ExperimentName: '1-by-Ne cell array (Ne = No of experiments)'
+               Notes: 'Cell array of strings'
+            UserData: 'Arbitrary'
+
+Type "idprops", or "idprops iddata", for more details.
+</pre><p>You can add channels (both input and output) by "horizontal concatenation", i.e. z = [z1 z2]:</p><pre class="codeinput">z2 = iddata(rand(200,1),ones(200,1),0.1,<span class="string">'OutputName'</span>,<span class="string">'New Output'</span>,<span class="keyword">...</span>
+    <span class="string">'InputName'</span>,<span class="string">'New Input'</span>);
+z3 = [z,z2]
+</pre><pre class="codeoutput">
+Time domain data set with 200 samples.
+Sampling interval: 0.1                 
+                                       
+Outputs          Unit (if specified)   
+   Speed            m/s                
+   New Output                          
+                                       
+Inputs           Unit (if specified)   
+   Voltage          Volt               
+   Current          Ampere             
+   New Input                           
+                                       
+</pre><p>Let us plot some of the channels of <tt>z3</tt>:</p><pre class="codeinput">plot(z3(:,1,1)) <span class="comment">% Data subset with Input 2 and Output 1.</span>
+</pre><img vspace="5" hspace="5" src="iddemo6_04.png" alt=""> <pre class="codeinput">plot(z3(:,2,3)) <span class="comment">% Data subset with Input 2 and Output 3.</span>
+</pre><img vspace="5" hspace="5" src="iddemo6_05.png" alt=""> <p><b>Generating Inputs</b></p><p>The command <tt>idinput</tt> generates typical input signals.</p><pre class="codeinput">u = idinput([30 1 10],<span class="string">'sine'</span>); <span class="comment">% 10 periods of 30 samples</span>
+u = iddata([],u,1,<span class="string">'Period'</span>,30) <span class="comment">% Making the input an IDDATA object.</span>
+</pre><pre class="codeoutput">
+Time domain data set with 300 samples.
+Sampling interval: 1                   
+                                       
+Inputs       Unit (if specified)       
+   u1                                  
+                                       
+</pre><p>SIM applied to an iddata input delivers an iddata output. Let us use <tt>sim</tt> to obtain the response of an estimated model <tt>m</tt> using the input <tt>u</tt>:</p><pre class="codeinput">m = idpoly([1 -1.5 0.7],[0 1 0.5]);  <span class="comment">% This creates a model; see below.</span>
+y = sim(m,u,<span class="string">'noise'</span>) <span class="comment">% y is the simulated response produced as an iddata object</span>
+</pre><pre class="codeoutput">
+Time domain data set with 300 samples.
+Sampling interval: 1                   
+                                       
+Outputs      Unit (if specified)       
+   y1                                  
+                                       
+</pre><p>The simulation input <tt>u</tt> and the output <tt>y</tt> may be combined into a single <tt>iddata</tt> object as follows:</p><pre class="codeinput">z5 = [y u] <span class="comment">% The output-input iddata.</span>
+</pre><pre class="codeoutput">
+Time domain data set with 300 samples.
+Sampling interval: 1                   
+                                       
+Outputs      Unit (if specified)       
+   y1                                  
+                                       
+Inputs       Unit (if specified)       
+   u1                                  
+                                       
+</pre><p>More about the <tt>iddata</tt> object is found under <tt>help iddata</tt> and <tt>idprops iddata</tt>.</p><h2>The IDMODEL Objects<a name="24"></a></h2><p>All models are delivered as MATLAB&reg; objects. There are a few different objects depending on the type of model used, but this is mostly transparent.</p><pre class="codeinput">load <span class="string">iddata1</span>
+
+m = armax(z1,[2 2 2 1]);  <span class="comment">% This creates an ARMAX model, delivered as an IDPOLY object</span>
+</pre><p>All relevant properties of this model are packaged as one object (here, <tt>idpoly</tt>), which is derived from the <tt>idmodel</tt> object. To display it just type its name:</p><pre class="codeinput">m
+</pre><pre class="codeoutput">Discrete-time IDPOLY model: A(q)y(t) = B(q)u(t) + C(q)e(t)
+A(q) = 1 - 1.531 q^-1 + 0.7296 q^-2                       
+                                                          
+B(q) = 0.943 q^-1 + 0.5218 q^-2                           
+                                                          
+C(q) = 1 - 1.059 q^-1 + 0.1967 q^-2                       
+                                                          
+Estimated using ARMAX on data set z1                      
+Loss function 1.08559 and FPE 1.13005                     
+Sampling interval: 0.1                                    
+                                                          
+</pre><pre>    Many of the model properties are directly accessible</pre><pre class="codeinput">m.a    <span class="comment">% The A-polynomial</span>
+</pre><pre class="codeoutput">
+ans =
+
+    1.0000   -1.5314    0.7296
+
+</pre><pre class="codeinput">m.nc   <span class="comment">% The order of the C-polynomial</span>
+</pre><pre class="codeoutput">
+ans =
+
+     2
+
+</pre><p>A list of properties is obtained by get:</p><pre class="codeinput">get(m)
+</pre><pre class="codeoutput">
+ans = 
+
+                   a: [1 -1.5314 0.7296]
+                   b: [0 0.9430 0.5218]
+                   c: [1 -1.0591 0.1967]
+                   d: 1
+                   f: 1
+                  da: [0 0.0180 0.0147]
+                  db: [0 0.0608 0.0783]
+                  dc: [0 0.0608 0.0597]
+                  dd: 0
+                  df: 0
+                  na: 2
+                  nb: 2
+                  nc: 2
+                  nd: 0
+                  nf: 0
+                  nk: 1
+        InitialState: 'Auto'
+                Name: ''
+                  Ts: 0.1000
+           InputName: {'u1'}
+           InputUnit: {''}
+          OutputName: {'y1'}
+          OutputUnit: {''}
+            TimeUnit: ''
+     ParameterVector: [6x1 double]
+               PName: {}
+    CovarianceMatrix: [6x6 double]
+       NoiseVariance: 1.1083
+          InputDelay: 0
+           Algorithm: [1x1 struct]
+      EstimationInfo: [1x1 struct]
+               Notes: {}
+            UserData: []
+
+</pre><p>nf = 0, nd = 0 denote orders of a general linear model, of which the ARMAX model is a special case.</p><p>EstimationInfo contains information about the estimation process:</p><pre class="codeinput">m.es  <span class="comment">% Autofill of properties is used, so that "es" is a shortcut for "EstimationInfo".</span>
+</pre><pre class="codeoutput">
+ans = 
+
+             Status: 'Estimated model (PEM)'
+             Method: 'ARMAX'
+            LossFcn: 1.0856
+                FPE: 1.1300
+           DataName: 'z1'
+         DataLength: 300
+             DataTs: 0.1000
+         DataDomain: 'time'
+    DataInterSample: {'zoh'}
+            WhyStop: 'Near (local) minimum, (norm(g) &lt; tol).'
+         UpdateNorm: 0.0019
+    LastImprovement: 0.0019
+         Iterations: 3
+       InitialState: 'Zero'
+            Warning: ''
+
+</pre><p>The Algorithm property contains many properties that affect the estimation algorithm:</p><pre class="codeinput">m.algorithm
+</pre><pre class="codeoutput">
+ans = 
+
+             Focus: 'Prediction'
+           MaxIter: 20
+         Tolerance: 0.0100
+        LimitError: 0
+           MaxSize: 'Auto'
+      SearchMethod: 'Auto'
+         Criterion: 'det'
+         Weighting: 1
+    FixedParameter: []
+           Display: 'Off'
+          N4Weight: 'Auto'
+         N4Horizon: 'Auto'
+          Advanced: [1x1 struct]
+
+</pre><p>All the algorithm properties can be set in the estimation command: (see <tt>idprops idmodel algorithm</tt> for a complete explanation)</p><pre class="codeinput">m1 = armax(z1,[2 2 2 1],<span class="string">'maxiter'</span>,5,<span class="string">'search'</span>,<span class="string">'LM'</span>); <span class="comment">% max 5 iterations, using the Levenberg-Marquard search direction</span>
+</pre><p>To obtain on-line information about the minimization, use the property 'Display' with possible values 'Off', 'On', and 'Full':</p><pre class="codeinput">m1 = armax(z1,[2 2 2 1],<span class="string">'Display'</span>,<span class="string">'On'</span>);
+</pre><pre class="codeoutput">
+Criterion: Determinant minimization
+   Scheme: Nonlinear least squares with automatically chosen line search method
+------------------------------------------------------------------------------------------
+                            Norm of      First-order      Improvement (%)
+ Iteration       Cost       step         optimality     Expected   Achieved    Bisections
+------------------------------------------------------------------------------------------
+     0        1.12961          -            271        1.98           -         -
+     1        1.10671      0.125           47.2        1.98        2.03         0
+     2        1.10646    0.00823           7.45      0.0187       0.023         0
+     3        1.10644    0.00206           3.17     0.00142     0.00194         0
+------------------------------------------------------------------------------------------
+</pre><h2>Variants of IDMODEL - IDPOLY, IDPROC, IDSS and IDGREY<a name="33"></a></h2><p>There are several variants ("children") of the <tt>idmodel</tt> object. The one above is an example of the <tt>idpoly</tt> version for polynomial type models. Different variants of polynomial-type models, such as Box-Jenkins models, Output Error models, ARMAX models etc are obtained using the corresponding estimators - <tt>bj, oe, armax, arx</tt> etc. All of these are presented as <tt>idpoly</tt> objects.</p><p>Other variants are <tt>idss</tt> for state-space models; <tt>idgrey</tt> for user-defined structured state-space models; <tt>idarx</tt> for multi-output ARX-models, and <tt>idproc</tt> for process models (gain+delay+static gain).</p><p>The commands to evaluate the model: <tt>bode, step, zpplot, compare</tt>, etc, all operate directly on the model objects, for example:</p><pre class="codeinput">compare(z1,m1)
+</pre><img vspace="5" hspace="5" src="iddemo6_06.png" alt=""> <p>Transformations to state-space, transfer function and zeros/poles are obtained by <tt>ssdata</tt>, <tt>tfdata</tt> and <tt>zpkdata</tt>:</p><pre class="codeinput">[num,den]  = tfdata(m1,<span class="string">'v'</span>)
+</pre><pre class="codeoutput">
+num =
+
+         0    0.9430    0.5218
+
+
+den =
+
+    1.0000   -1.5314    0.7296
+
+</pre><p>The 'v' means that num and den are returned as vectors and not as cell arrays. The cell arrays are useful to handle multivariable systems.</p><h2>Transforming IDMODELs into LTI Objects of Control System Toolbox&#8482;<a name="37"></a></h2><p>The objects also connect directly to the Control System Toolbox&#8482; model objects, like <tt>tf</tt>, <tt>ss</tt>, and <tt>zpk</tt>, and can be converted into these LTI objects, if Control System Toolbox is installed. For example, <tt>tf</tt> converts an <tt>idmodel</tt> object into a <tt>tf</tt> object.</p><pre class="codeinput"><span class="keyword">if</span> iscstbinstalled <span class="comment">% check if Control System Toolbox is installed</span>
+    tfm = tf(m1) <span class="comment">%convert IDPOLY model m1 into a TF object</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput"> 
+Transfer function from input "u1" to output "y1":
+   0.943 z + 0.5218
+----------------------
+z^2 - 1.531 z + 0.7296
+ 
+Transfer function from input "v@y1" to output "y1":
+1.053 z^2 - 1.115 z + 0.2071
+----------------------------
+   z^2 - 1.531 z + 0.7296
+ 
+Sampling time: 0.1
+Input groups:           
+      Name      Channels
+    Measured       1    
+     Noise         2    
+                        
+</pre><p>Note that the model <tt>m1</tt> really has two inputs, the measured (control) input <tt>u1</tt> and the noise input <tt>e</tt>. When converting the IDMODEL object to the Control Systems Toolbox's LTI objects, the noise input is represented as a regular input with the default name <tt>v@y1</tt>. To just represent the measured input, use:</p><pre class="codeinput"><span class="keyword">if</span> iscstbinstalled
+    tfm = tf(m1,<span class="string">'m'</span>) <span class="comment">% 'm' for 'measured'.</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput"> 
+Transfer function from input "u1" to output "y1":
+   0.943 z + 0.5218
+----------------------
+z^2 - 1.531 z + 0.7296
+ 
+Sampling time: 0.1
+</pre><h2>Additional Information<a name="39"></a></h2><p>For more information on identification of dynamic systems with System Identification Toolbox visit the <a href="http://www.mathworks.com/products/sysid/">System Identification Toolbox</a> product information page.</p><p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Data and Model Objects in System Identification Toolbox(TM)
+%
+% System identification is about building models from data. A data set is
+% characterized by several pieces of information: The input and output
+% signals, the sampling interval, the variable names and units, etc.
+% Similarly, the estimated models contain information of different kinds - 
+% estimated parameters, their covariance matrices, model structure and so
+% on.
+%
+% This means that it is suitable and desirable to package relevant
+% information around data and models into objects. System Identification Toolbox(TM) 
+% contains a number of such objects, and the basic features of these are described 
+% in this demo. More details and complete lists of properties are found by
+% typing the command |idprops|.
+
+% Copyright 1986-2009 The MathWorks, Inc. 
+% $Revision: 1.9.4.10 $ $Date: 2009/10/16 04:54:14 $
+
+%% The IDDATA Object
+% First create some data:
+
+u = sign(randn(200,2)); % 2 inputs
+y = randn(200,1);       % 1 output
+ts = 0.1;               % The sampling interval
+
+%%
+% To collect the input and the output in one object do
+
+z = iddata(y,u,ts);
+
+%%
+% The data information is displayed by just typing its name:
+
+z
+
+%%
+%
+% The data is plotted as iddata by the |plot| command, as in |plot(z)|.
+% Press a key to continue and advance between the subplots. Here, we plot
+% the channels separately:
+%
+plot(z(:,1,1)) %Data subset with Input 1 and Output 1.
+%%
+plot(z(:,1,2)) %Data subset with Input 2 and Output 1.
+
+%%
+% To retrieve the outputs and inputs, use
+
+u = z.u;   % or, equivalently u = get(z,'u');
+y = z.y;   % or, equivalently y = get(z,'y');
+
+%%
+% To select a portion of the data:
+
+zp = z(48:79);
+%%
+% To select the first output and the second input:
+
+zs = z(:,1,2);  % The ':' refers to all the data time points.
+
+%%
+% The sub-selections can be combined:
+
+plot(z(45:54,1,2)) %samples 45 to 54 of response from second input to the first output.
+
+%%
+% The channels are given default names 'y1', 'u2', etc. This can
+% be changed to any values by
+
+set(z,'InputName',{'Voltage';'Current'},'OutputName','Speed');
+%%
+% Equivalently we could write
+
+z.inputn = {'Voltage';'Current'}; % Autofill is used for properties
+z.outputn = 'Speed';    % Upper and lower cases are also ignored
+
+%%
+% For bookkeeping and plots, also units can be set:
+
+z.InputUnit = {'Volt';'Ampere'};
+z.OutputUnit = 'm/s';
+
+z
+
+%%
+% All current properties are (as for any object) obtained by get:
+
+get(z)
+
+%%
+% In addition to the properties discussed so far, we have
+% 'Period' which denotes the period of the input if periodic
+% Period = inf means a non-periodic input:
+
+z.Period
+
+%%
+% The intersample behavior of the input may be given as 'zoh'
+% (zero-order-hold, i.e. piecewise constant) or 'foh' (first-
+% order-hold, i.e., piecewise linear). The identification routines
+% use this information to adjust the algorithms.
+
+z.InterSample
+
+%%
+% To see all the properties, and their assignable values use (as for any
+% object) the |set| command:
+
+set(z)
+%%
+% You can add channels (both input and output) by "horizontal
+% concatenation", i.e. z = [z1 z2]:
+
+z2 = iddata(rand(200,1),ones(200,1),0.1,'OutputName','New Output',...
+    'InputName','New Input');
+z3 = [z,z2]
+
+%%
+% Let us plot some of the channels of |z3|:
+plot(z3(:,1,1)) % Data subset with Input 2 and Output 1.
+
+%%
+plot(z3(:,2,3)) % Data subset with Input 2 and Output 3.
+
+%%
+% *Generating Inputs*
+%
+% The command |idinput| generates typical input signals.
+
+u = idinput([30 1 10],'sine'); % 10 periods of 30 samples
+u = iddata([],u,1,'Period',30) % Making the input an IDDATA object.
+
+%%
+%
+% SIM applied to an iddata input delivers an iddata output. Let us use
+% |sim| to obtain the response of an estimated model |m| using the input
+% |u|:
+m = idpoly([1 -1.5 0.7],[0 1 0.5]);  % This creates a model; see below.
+y = sim(m,u,'noise') % y is the simulated response produced as an iddata object
+
+%%
+% The simulation input |u| and the output |y| may be combined into a single
+% |iddata| object as follows:
+z5 = [y u] % The output-input iddata.
+
+%%
+% More about the |iddata| object is found under |help iddata| and |idprops
+% iddata|.
+
+
+%% The IDMODEL Objects
+%
+% All models are delivered as MATLAB(R) objects. There are a few different
+% objects depending on the type of model used, but this is mostly
+% transparent. 
+
+load iddata1
+
+m = armax(z1,[2 2 2 1]);  % This creates an ARMAX model, delivered as an IDPOLY object
+
+%%
+% All relevant properties of this model are packaged as one object (here,
+% |idpoly|), which is derived from the |idmodel| object. To display it just
+% type its name: 
+
+m
+
+%%
+%      Many of the model properties are directly accessible
+
+m.a    % The A-polynomial
+%%
+m.nc   % The order of the C-polynomial
+
+%%
+% A list of properties is obtained by get:
+
+get(m)
+
+%%
+% nf = 0, nd = 0 denote orders of a general linear model, of which
+% the ARMAX model is a special case.
+%
+% EstimationInfo contains information about the estimation process:
+m.es  % Autofill of properties is used, so that "es" is a shortcut for "EstimationInfo".
+
+%%
+%
+% The Algorithm property contains many properties that affect the
+% estimation algorithm:
+
+m.algorithm
+%%
+% All the algorithm properties can be set in the estimation command:
+% (see |idprops idmodel algorithm| for a complete explanation)
+
+m1 = armax(z1,[2 2 2 1],'maxiter',5,'search','LM'); % max 5 iterations, using the Levenberg-Marquard search direction
+
+%%
+% To obtain on-line information about the minimization, use the property
+% 'Display' with possible values 'Off', 'On', and 'Full':
+
+m1 = armax(z1,[2 2 2 1],'Display','On');
+
+%% Variants of IDMODEL - IDPOLY, IDPROC, IDSS and IDGREY
+% There are several variants ("children") of the |idmodel| object. The one
+% above is an example of the |idpoly| version for polynomial type models.
+% Different variants of polynomial-type models, such as Box-Jenkins models,
+% Output Error models, ARMAX models etc are obtained using the
+% corresponding estimators - |bj, oe, armax, arx| etc. All of these are
+% presented as |idpoly| objects. 
+%
+% Other variants are |idss| for state-space models; |idgrey| for
+% user-defined structured state-space models; |idarx| for multi-output
+% ARX-models, and |idproc| for 
+% process models (gain+delay+static gain). 
+%
+%%
+% The commands to evaluate the model: |bode, step, zpplot, compare|, etc,
+% all operate directly on the model objects, for example:
+
+compare(z1,m1)
+
+%%
+% Transformations to state-space, transfer function and zeros/poles are
+% obtained by |ssdata|, |tfdata| and |zpkdata|:
+
+[num,den]  = tfdata(m1,'v')
+%%
+% The 'v' means that num and den are returned as vectors and not as cell
+% arrays. The cell arrays are useful to handle multivariable systems.
+
+%% Transforming IDMODELs into LTI Objects of Control System Toolbox(TM)
+% The objects also connect directly to the Control System Toolbox(TM) model
+% objects, like |tf|, |ss|, and |zpk|, and can be converted into these LTI
+% objects, if Control System Toolbox is installed. For example, |tf|
+% converts an |idmodel| object into a |tf| object.
+
+if iscstbinstalled % check if Control System Toolbox is installed
+    tfm = tf(m1) %convert IDPOLY model m1 into a TF object
+end
+
+%%
+% Note that the model |m1| really has two inputs, the measured (control) input |u1|
+% and the noise input |e|. When converting the IDMODEL object to the Control
+% Systems Toolbox's LTI objects, the noise input is represented as a
+% regular input with the default name |v@y1|. To just represent the
+% measured input, use:
+
+if iscstbinstalled
+    tfm = tf(m1,'m') % 'm' for 'measured'.
+end
+
+%% Additional Information
+% For more information on identification of dynamic systems with System
+% Identification Toolbox visit the
+% <http://www.mathworks.com/products/sysid/ System Identification Toolbox> product
+% information page.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

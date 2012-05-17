@@ -1,0 +1,279 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Simulation Save and Restore with Stateflow&reg; Charts</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="sf_simulation_save_restore.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sf_simulation_save_restore">Open sf_simulation_save_restore.m in the Editor</a></div><div class="right"><a href="matlab:echodemo sf_simulation_save_restore">Run in the Command Window</a></div></div><div class="content"><h1>Simulation Save and Restore with Stateflow&reg; Charts</h1><!--introduction--><p>This demonstration shows how to use "Simulation Save and Restore" feature with Stateflow charts. There are two common use cases as listed below.</p><div><ol><li>Division of a long simulation into segments.</li><li>Test of a chart response to different settings by restoring simulation from modified chart simulation state.</li></ol></div><p>We'll show in detail how to view Stateflow chart SimState saved in model simulation state, and how to change chart SimState before restoring simulation.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Open a Stateflow Model</a></li><li><a href="#2">Enable Saving of Final SimState</a></li><li><a href="#4">Simulate Model to a Mid-Point</a></li><li><a href="#5">View Chart SimState in Saved Model Simulation State</a></li><li><a href="#14">Modify Chart SimState</a></li><li><a href="#18">Restore Simulation from Saved Model SimState</a></li></ul></div><h2>Open a Stateflow Model<a name="1"></a></h2><p>In this demo, we'll use Stateflow demo model "sf_boiler" . Open this model by typing the following MATLAB&reg; commands.</p><pre class="codeinput">model = <span class="string">'sf_boiler'</span>;
+open_system(model);
+</pre><img vspace="5" hspace="5" src="sf_simulation_save_restore_01.png" alt=""> <h2>Enable Saving of Final SimState<a name="2"></a></h2><p>The following command programmatically enables saving of complete model final SimState to base workspace when simulation stops. The specified SimState variable name is "xFinal".</p><pre class="codeinput">set_param(model, <span class="string">'SaveFinalState'</span>, <span class="string">'on'</span>, <span class="keyword">...</span>
+                 <span class="string">'FinalStateName'</span>, <span class="string">'xFinal'</span>, <span class="keyword">...</span>
+                 <span class="string">'SaveCompleteFinalSimState'</span>, <span class="string">'on'</span>);
+</pre><p>You can also do this with the Configuration Parameters dialog</p><div><ol><li>Open the Configuration Parameters dialog box and go to the Data Import/Export pane.</li><li>Select the "Final states:" check box, and enter desired model SimState variable name.</li><li>Select the "Save complete SimState in final state" check box.</li></ol></div><h2>Simulate Model to a Mid-Point<a name="4"></a></h2><p>Define a simulation stop time, for example 400. When you simulate model for this time period, you save the complete simulation state at t = 400 as the variable "xFinal" in the MATLAB base workspace.</p><pre class="codeinput">tstop = 400;
+[t1, x1, y1] = sim(model, [0 tstop]);
+xFinal
+</pre><pre class="codeoutput">
+xFinal = 
+
+    Simulink.SimState.ModelSimState
+
+    SimState snapshot of the model 'sf_boiler' at time 400.
+
+  Properties
+
+    loggedStates
+    description
+    startTime (Read-only)
+
+    snapshotTime (Read-only)
+
+  Methods
+
+    getBlockSimState
+    setBlockSimState
+
+
+</pre><h2>View Chart SimState in Saved Model Simulation State<a name="5"></a></h2><p>You can get chart SimState by calling model SimState method "getBlockSimState", and passing in the chart path.</p><pre class="codeinput">chartpath = <span class="string">'sf_boiler/Bang-Bang Controller'</span>;
+cst = xFinal.getBlockSimState(chartpath);
+</pre><p>Chart SimState has information for all graphical and data states contained in the chart. Chart SimState is managed in a hierarchical tree structure, which matches the hierarchy of chart objects. A non-leaf node in chart SimState represents a Stateflow container object, for example State, Function, Box. A leaf node in chart SimState represents a Data object parented by the container node. You can use dot notation to navigate to specific state data.</p><p>For example, to view chart SimState at chart level use the following command. Notice chart contains a Box, several Functions, and chart level data. Container nodes are listed after expansion signs "+".</p><pre class="codeinput">cst
+</pre><pre class="codeoutput">
+cst = 
+
+  Block:    "Bang-Bang Controller"    (handle)    (active)
+  Path:     &lt;a href="matlab:open_system('sf_boiler'); open_system('sf_boiler/Bang-Bang Controller');"&gt;sf_boiler/Bang-Bang Controller&lt;/a&gt;
+
+  Contains:
+
+    + Heater              "Box"                                  
+    + cold                "Function"                             
+    + flash_LED           "Function"                             
+    + turn_boiler         "Function"                             
+      LED                 "Block output data"         int8 [1, 1]
+      boiler              "Block output data"         int8 [1, 1]
+      color               "Local scope data"          int8 [1, 1]
+
+</pre><p>To view chart parented Local scope data "color", type in the following command. The display shows data properties and its value.</p><pre class="codeinput">cst.color
+</pre><pre class="codeoutput">
+ans = 
+
+     Description: 'Local scope data'
+        DataType: 'int8'
+            Size: '[1, 1]'
+           Range: [1x1 struct]
+    InitialValue: [1x0 double]
+           Value: 1
+
+</pre><p>The following command shows states "On" and "Off" inside of Box "Heater". State "Off" is the current active state.</p><pre class="codeinput">cst.Heater
+</pre><pre class="codeoutput">
+ans = 
+
+  Box:      "Heater"    (handle)
+  Path:     &lt;a href="matlab:open_system('sf_boiler'); h = sfprivate('ssIdToHandle', 'sf_boiler/Bang-Bang Controller:1'); sf('Open', h.Id);"&gt;sf_boiler/Bang-Bang Controller/Heater&lt;/a&gt;
+
+  Contains:
+
+    + Off         "State (OR)"         (active)
+    + On          "State (OR)"                 
+
+</pre><p>You can use "open" method of a SimState node to open the corresponding chart object. For example, use the following command to highlight function "turn_boiler" in chart editor.</p><pre class="codeinput">cst.turn_boiler.open;
+</pre><img vspace="5" hspace="5" src="sf_simulation_save_restore_02.png" alt=""> <p>To query activity of a graphical state, use "isActive" method. For example, the following command returns whether state "NORM" is active.</p><pre class="codeinput">cst.Heater.On.NORM.isActive
+</pre><pre class="codeoutput">
+ans =
+
+     0
+
+</pre><p>To examine the value of a data state, check the "Value" field.</p><pre class="codeinput">cst.boiler.Value
+</pre><pre class="codeoutput">
+ans =
+
+    0
+
+</pre><p>You can also highlight all states that are active using the following command.</p><pre class="codeinput">cst.highlightActiveStates;
+</pre><img vspace="5" hspace="5" src="sf_simulation_save_restore_03.png" alt=""> <h2>Modify Chart SimState<a name="14"></a></h2><p>You can change chart SimState by assigning new values to data states, or by calling "setActive" method on graphical state nodes. In the former case, the new value is checked for compatibility with state data's type, size and value ranges. In the latter case, Stateflow automatically maintains state consistency as much as possible.</p><p>For example, to change chart output data "boiler" mode to be "ON", type in the following command.</p><pre class="codeinput">cst.boiler.Value = 1;
+</pre><p>To make current inactive state "NORM" to be active, call "NORM" node's setActive method.</p><pre class="codeinput">cst.Heater.On.NORM.setActive;
+</pre><img vspace="5" hspace="5" src="sf_simulation_save_restore_04.png" alt=""> <p>You can check chart state consistency after modifying graphical state activities by calling "checkStateConsistency" method.</p><pre class="codeinput">cst.checkStateConsistency;
+</pre><pre class="codeoutput">States are consistent!
+</pre><p>If you are satisfied with the updated chart SimState, you can set it back to model simulation state using "setBlockSimState" method. For example, to create a new model SimState variable "xInitial" in MATLAB base workspace with the updated chart SimState, type in the following command.</p><pre class="codeinput">xInitial = xFinal.setBlockSimState(chartpath, cst);
+</pre><h2>Restore Simulation from Saved Model SimState<a name="18"></a></h2><p>Model simulation can be restored from a model SimState saved in an older session. To demonstrate this, we will close "sf_boiler" and reopen it.</p><pre class="codeinput">close_system(model, 0);
+open_system(model);
+</pre><p>The following command programmatically enables loading of model SimState when simulation starts. The specified SimState variable name is "xInitial".</p><pre class="codeinput">set_param(model, <span class="string">'LoadInitialState'</span>, <span class="string">'on'</span>, <span class="keyword">...</span>
+                 <span class="string">'InitialState'</span>, <span class="string">'xInitial'</span>);
+</pre><p>You can also do this with the Configuration Parameters dialog</p><div><ol><li>Open the Configuration Parameters dialog box and go to the Data Import/Export pane.</li><li>Select the "Initial states:" check box, and enter desired model SimState variable name.</li></ol></div><p>Start simulation and observe that simulation is resumed from the saved SimState.</p><pre class="codeinput">[t2, x2, y2] = sim(model);
+open_system(<span class="string">'sf_boiler/Scope'</span>);
+</pre><img vspace="5" hspace="5" src="sf_simulation_save_restore_05.png" alt=""> <p class="footer">Copyright 2008-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Simulation Save and Restore with Stateflow(R) Charts
+% 
+% Copyright 2008-2009 The MathWorks, Inc.
+% $Revision: 1.1.10.2 $  $Date: 2009/07/27 20:35:38 $
+%
+% This demonstration shows how to use "Simulation Save and Restore" feature
+% with Stateflow charts. There are two common use cases as listed below.
+%
+% # Division of a long simulation into segments.
+% # Test of a chart response to different settings by restoring simulation
+% from modified chart simulation state.
+%
+% We'll show in detail how to view Stateflow chart SimState saved in
+% model simulation state, and how to change chart SimState before restoring
+% simulation.
+%
+%% Open a Stateflow Model
+% In this demo, we'll use Stateflow demo model "sf_boiler" . Open this 
+% model by typing the following MATLAB(R) commands. 
+%
+model = 'sf_boiler';
+open_system(model);
+
+%% Enable Saving of Final SimState
+% The following command programmatically enables saving of complete model
+% final SimState to base workspace when simulation stops. The specified
+% SimState variable name is "xFinal".
+%
+set_param(model, 'SaveFinalState', 'on', ...
+                 'FinalStateName', 'xFinal', ...
+                 'SaveCompleteFinalSimState', 'on');
+
+%%
+% You can also do this with the Configuration Parameters dialog
+%
+% # Open the Configuration Parameters dialog box and go to the Data Import/Export pane.
+% # Select the "Final states:" check box, and enter desired model SimState variable name.
+% # Select the "Save complete SimState in final state" check box.
+%
+
+%% Simulate Model to a Mid-Point
+% Define a simulation stop time, for example 400. When you simulate model for this
+% time period, you save the complete simulation state at t = 400 as the
+% variable "xFinal" in the MATLAB base workspace.
+%
+tstop = 400;
+[t1, x1, y1] = sim(model, [0 tstop]);
+xFinal
+
+%% View Chart SimState in Saved Model Simulation State
+% You can get chart SimState by calling model SimState method
+% "getBlockSimState", and passing in the chart path.
+% 
+chartpath = 'sf_boiler/Bang-Bang Controller';
+cst = xFinal.getBlockSimState(chartpath);
+
+%%
+% Chart SimState has information for all graphical and data states
+% contained in the chart. Chart SimState is managed in a hierarchical tree
+% structure, which matches the hierarchy of chart objects. A non-leaf node in chart
+% SimState represents a Stateflow container object, for example State,
+% Function, Box. A leaf node in chart SimState represents a Data object parented
+% by the container node. You can use dot notation to navigate to specific
+% state data.
+%
+
+%%
+% For example, to view chart SimState at chart level use the following
+% command. Notice chart contains a Box, several Functions, and chart level
+% data. Container nodes are listed after expansion signs "+".
+%
+cst
+
+%%
+% To view chart parented Local scope data "color", type in the following
+% command. The display shows data properties and its value.
+%
+cst.color
+
+%%
+% The following command shows states "On" and "Off" inside of Box "Heater". 
+% State "Off" is the current active state.
+%
+cst.Heater
+
+%%
+% You can use "open" method of a SimState node to open the corresponding chart object.
+% For example, use the following command to highlight function "turn_boiler" in chart editor.
+%
+cst.turn_boiler.open;
+
+%%
+% To query activity of a graphical state, use "isActive" method. For example,
+% the following command returns whether state "NORM" is active.
+%
+cst.Heater.On.NORM.isActive
+
+%%
+% To examine the value of a data state, check the "Value" field.
+%
+cst.boiler.Value
+
+%%
+% You can also highlight all states that are active using the following command.
+%
+cst.highlightActiveStates;
+
+%% Modify Chart SimState
+% You can change chart SimState by assigning new values to data states, or
+% by calling "setActive" method on graphical state nodes. In the former
+% case, the new value is checked for compatibility with state data's
+% type, size and value ranges. In the latter case, Stateflow automatically
+% maintains state consistency as much as possible.
+%
+% For example, to change chart output data "boiler" mode to be "ON", type
+% in the following command.
+%
+cst.boiler.Value = 1;
+
+%%
+% To make current inactive state "NORM" to be active, call "NORM" node's
+% setActive method.
+%
+cst.Heater.On.NORM.setActive;
+
+%%
+% You can check chart state consistency after modifying graphical state
+% activities by calling "checkStateConsistency" method.
+%
+cst.checkStateConsistency;
+
+%%
+% If you are satisfied with the updated chart SimState, you can set it back
+% to model simulation state using "setBlockSimState" method. For example,
+% to create a new model SimState variable "xInitial" in MATLAB base
+% workspace with the updated chart SimState, type in the following command.
+%
+xInitial = xFinal.setBlockSimState(chartpath, cst);
+
+%% Restore Simulation from Saved Model SimState
+% Model simulation can be restored from a model SimState saved in an older
+% session. To demonstrate this, we will close "sf_boiler" and reopen it.
+%
+close_system(model, 0);
+open_system(model);
+
+%%
+% The following command programmatically enables loading of model SimState
+% when simulation starts. The specified SimState variable name is "xInitial".
+%
+set_param(model, 'LoadInitialState', 'on', ...
+                 'InitialState', 'xInitial');
+
+%%
+% You can also do this with the Configuration Parameters dialog
+%
+% # Open the Configuration Parameters dialog box and go to the Data Import/Export pane.
+% # Select the "Initial states:" check box, and enter desired model SimState variable name.
+%
+
+%%
+% Start simulation and observe that simulation is resumed from the saved SimState.
+%
+[t2, x2, y2] = sim(model);
+open_system('sf_boiler/Scope');
+
+%%
+%
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,21 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>1 セント銅貨の表示</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="penny.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit penny">エディターで penny.m を開く</a></div><div class="right"><a href="matlab:echodemo penny">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>1 セント銅貨の表示</h1><!--introduction--><p>PENNY.MAT ファイルには、米国標準技術研究所で測定された、128 行 128 列のグリッド上でサンプリングされた米国の 1 セント銅貨を鋳造するために使用される型の深さのデータが含まれています。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">等高線図の描画</a></li><li><a href="#2">擬似カラー プロットの描画</a></li><li><a href="#3">カラーマップを使った擬似カラー プロットの描画</a></li><li><a href="#4">カラーマップを使った表面プロットの描画</a></li></ul></div><h2>等高線図の描画<a name="1"></a></h2><p>15 の赤銅色 (copper) で色付けされた等高線を使って等高線図を描画します。</p><pre class="codeinput">load <span class="string">penny.mat</span>
+contour(P,15)
+colormap(copper)
+axis <span class="string">ij</span> <span class="string">square</span>
+</pre><img vspace="5" hspace="5" src="../penny_01.png" alt=""> <h2>擬似カラー プロットの描画<a name="2"></a></h2><p>高さに比例する明るさを持つ擬似カラー プロットを描画します。</p><pre class="codeinput">pcolor(P)
+axis <span class="string">ij</span> <span class="string">square</span>
+shading <span class="string">flat</span>
+</pre><img vspace="5" hspace="5" src="../penny_02.png" alt=""> <h2>カラーマップを使った擬似カラー プロットの描画<a name="3"></a></h2><p>高さのラプラシアンに比例する明るさを持つ擬似カラー プロットを描画します。セルは、その高さがセルの 4 つの近傍の平均より大きい場合明るくなり、その高さがセルの 4 つの近傍の平均より小さい場合は暗くなります。これは、独特の &quot;光源モデル (lighting model)&quot; ですが、1 セント銅貨の写真のように見えるイメージを作ります。</p><pre class="codeinput">D = -del2(P);
+pcolor(D)
+axis <span class="string">ij</span> <span class="string">square</span>
+shading <span class="string">flat</span>
+</pre><img vspace="5" hspace="5" src="../penny_03.png" alt=""> <h2>カラーマップを使った表面プロットの描画<a name="4"></a></h2><p>最後は、ラプラシアン光源モデルを使い、赤銅色で色付けされた 3 次元の表面プロットを作成します。</p><pre class="codeinput">surf(P,D);
+axis(<span class="string">'ij'</span>,<span class="string">'tight'</span>)
+shading(<span class="string">'flat'</span>)
+view(-20,75)
+</pre><img vspace="5" hspace="5" src="../penny_04.png" alt=""> <p class="footer">Copyright 1984-2006 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Viewing a Penny % The file PENNY.MAT contains measurements made at the National Institute of % Standards and Technology of the depth of the mold used to mint a U. S. penny, % sampled on a 128-by-128 grid. %  % Copyright 1984-2006 The MathWorks, Inc. % $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:28:53 $  %% Drawing a Contour Plot % Draw a contour plot with 15 copper colored contour lines.  load penny.mat contour(P,15) colormap(copper) axis ij square   %% Drawing a Pseudocolor Plot % Draw a pseudocolor plot with brightness proportional to height.  pcolor(P) axis ij square shading flat   %% Drawing a Pseudocolor Plot With a Colormap % Draw a pseudocolor plot with brightness proportional to the Laplacian of the % height. A cell is bright if its height is greater than the average of its % four neighbors and dark if its height is less than the average of its four % neighbors. This is an unusual "lighting model", but it produces an image % that looks like a photograph of a penny.  D = -del2(P); pcolor(D) axis ij square shading flat   %% Drawing a Surface Plot With a Colormap % Finally, produce a 3-D, copper colored, surface plot with the Laplacian % lighting model.  surf(P,D); axis('ij','tight') shading('flat') view(-20,75)   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

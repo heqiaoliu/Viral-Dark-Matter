@@ -1,0 +1,452 @@
+%% $Revision $
+%% $Date: 2009/03/05 18:51:56 $
+%%
+%% Copyright 1994-2009 The MathWorks, Inc.
+%% Abstract:
+%%   Example for how to use the TLC hooks provided to specify 
+%%   target-specific profiling code.
+%%
+%% How do you use the profiling hooks in your target?
+%% --------------------------------------------------
+%% 1. For your target, create a TLC file containing functions that 
+%%    are written according to the format specified in Step 3.
+%% 
+%% 2. In your target.tlc file, create a global variable 
+%%    'ProfilerTLCHook' and assign to it the name of your profiling
+%%    TLC file. To turn profiling On/Off from your target TLC
+%%    file, use another global called 'ProfileGenCode'. Make this
+%%    variable have a value of 'TLC_TRUE' to turn on profiling.
+%%
+%% 3. Format for target-specific profiling TLC file:
+%%
+%%    Function              InputArgs      OutputType  
+%%    -----------------------------------------------------------
+%%    ProfilerHeaders         void         Return array of header file names
+%%
+%%    ProfilerTypedefs        void         Output typedefs
+%%
+%%    ProfilerGlobalData      system       Output global data for given system     
+%%
+%%    ProfilerExternDataDecls system       Output extern decls for given system     
+%% 
+%%    ProfilerSysDecl         system       Output declarations for given system
+%%                        functionType     for given functionType
+%%
+%%    ProfilerSysStart        system       Output profiler start commands for 
+%%                        functionType     for given system & functionType
+%%
+%%    ProfilerSysEnd          system       Output profiler end commands for 
+%%                        functionType     for given system & functionType
+%%
+%%    ProfilerSysTerminate    system       Output profiler termination code
+%%                                         for given system
+
+%if EXISTS("_GRTPROF_") == 0
+%assign _GRTPROF_ = 1
+
+%implements ProfilerType "C"
+
+%% Function: GetValName ============================================
+%% Abstract:
+%%    Get variable name for global profiler object associated with a system. 
+%%    If it does not exist, create one and save to a cache
+%%
+%function GetValName(system) void
+ 
+  %assign gp = LibGetProfCache(system)
+  %if !WHITE_SPACE(gp)    
+    %assign profval = gp.glbdata
+  %else
+    %assign SysNum = system.SystemIdx
+    %assign profval = "prof%<SysNum>"
+    %createrecord GRTProfCache { glbdata profval }
+    %<LibSetProfCache(system, GRTProfCache)>
+  %endif
+  %return profval
+
+%endfunction
+
+%% Function: ProfilerHeaders ============================================
+%% Abstract:
+%%    Generate code for including profiling header files 
+%%
+%function ProfilerHeaders(profRec) void
+  %assign compName = FEVAL("computer")
+  %if compName == "GLNX86" || compName == "GLNXA64"
+    %return ["stdio.h", "unistd.h", "sys/times.h", "sys/types.h"]
+  %elseif compName == "MAC" || compName == "MACI" || compName == "MACI64"
+    %return ["mach/mach_time.h", "stdio.h", "unistd.h", "sys/times.h", "sys/types.h"]
+  %elseif compName == "PCWIN" || compName == "PCWIN64"
+    %return ["stdio.h", "windows.h", "process.h", "time.h"]
+  %elseif compName == "SOL2" || compName == "SOL64"
+    %return ["stdio.h", "sys/times.h"]
+  %else
+    %error "The RTW profiling demo does not run on this platform."
+  %endif
+%endfunction
+
+
+%% Function: ProfilerTypeDefs ============================================
+%% Abstract:
+%%    Generate code for typedefs of profiler objects and macro definitions 
+%%    for CPU cycle counting
+%function ProfilerTypeDefs (ProfRec) void
+
+  %openfile tmpBuff
+  %assign compName = FEVAL("computer")
+
+  %if CompiledModel.ConfigSet.IsERTTarget == TLC_TRUE
+    
+    %if compName == "GLNX86" || compName == "PCWIN" || compName == "PCWIN64" || compName == "GLNXA64" || compName == "MAC" || compName == "MACI" || compName == "MACI64" || compName == "SOL2" || compName == "SOL64"
+      #ifndef INT64_T
+      # if defined(__ia64__)
+      #  define INT64_T long
+      # elif defined(_MSC_VER) || (defined(__BORLANDC__) && __BORLANDC__ >= 0x530) \
+                             || (defined(__WATCOMC__)  && __WATCOMC__  >= 1100)
+      #  define INT64_T __int64
+      # elif defined(__GNUC__) || defined(TMW_ENABLE_INT64) || defined(__sun)
+      #  define INT64_T long long
+      # endif
+      #endif
+      
+      #define int64_T INT64_T
+      
+      #ifndef uint64_T
+      # if defined(__ia64__)
+      #  define uint64_T unsigned long
+      # elif defined(_MSC_VER) || (defined(__BORLANDC__) && __BORLANDC__ >= 0x530) \
+     || (defined(__WATCOMC__)  && __WATCOMC__  >= 1100)
+      #  define uint64_T unsigned __int64
+      # elif defined(__GNUC__) || defined(TMW_ENABLE_INT64) || defined(__sun)
+      #  define uint64_T unsigned long long
+      # endif
+      #endif
+    %endif
+    
+    #ifdef _MSC_VER
+    #  define uint64_to_double(u) (((u) > _I64_MAX) ? \
+    (double)(__int64)((u) - _I64_MAX) + (double)_I64_MAX : \
+    (double)(__int64)(u))
+    #else
+    #  define uint64_to_double(u) ((double)(u))
+    #endif
+  %endif
+ 
+  %if compName == "PCWIN"
+  /* Define profiler data type */    
+  #ifndef __LCC__
+  typedef struct { 
+    uint64_T     count; 
+    unsigned int numcalls;
+  } GRTProfiler;  
+  #else
+  typedef struct { 
+    double       count; 
+    unsigned int numcalls;
+  } GRTProfiler; 
+  #endif
+  
+  /* Profiling helper functions */
+  #ifndef __LCC__
+  extern int64_T pentium_cyclecount(void); 
+  #else
+  extern double cputime(void);
+  #endif
+  
+  %elseif compName == "MAC" || compName == "MACI" || compName == "MACI64" || compName == "SOL2" || compName == "SOL64"
+  /* Define profiler data type */
+  typedef struct { 
+    uint64_T     count; 
+    unsigned int numcalls;
+  } GRTProfiler; 
+  
+   /* Profiling helper functions */
+  extern int64_T cputime_stamp(void); 
+  %else
+    
+  /* Define profiler data type */
+  typedef struct { 
+    uint64_T     count; 
+    unsigned int numcalls;
+  } GRTProfiler; 
+  
+   /* Profiling helper functions */
+  extern int64_T pentium_cyclecount(void); 
+  %endif
+
+  %closefile tmpBuff
+  %return tmpBuff
+  
+%endfunction
+
+%% Function: ProfilerGlobalExterns ============================================
+%% Abstract:
+%%    Generate code for global extern variable declarations of profiler 
+%%    objects
+%function ProfilerGlobalExterns (ProfRec, system) void
+
+  %assign profval = GetValName(system)
+
+  %openfile tmpBuff
+  /* Declare global externs for profiler */
+  extern GRTProfiler %<profval>Output;
+  extern GRTProfiler %<profval>Update;
+  extern GRTProfiler %<profval>OutputUpdate;
+  extern GRTProfiler %<profval>Derivatives;
+  %closefile tmpBuff
+   
+  %return tmpBuff
+
+%endfunction
+
+%% Function: ProfilerGlobalData ============================================
+%% Abstract:
+%%    Generate code for creating global variables of profiler objects
+%function ProfilerGlobalData (ProfRec, system) void
+  
+  %assign profval = GetValName(system)
+  
+  %openfile tmpBuff
+  /* Create and initialize global profiler object(s) */
+  GRTProfiler %<profval>Output       = {0, 0};
+  GRTProfiler %<profval>Update       = {0, 0};
+  GRTProfiler %<profval>OutputUpdate = {0, 0};
+  GRTProfiler %<profval>Derivatives  = {0, 0};
+  
+  %if system.Type == "root"
+  
+  %assign compName = FEVAL("computer")
+  %if compName == "GLNX86" || compName == "GLNXA64"
+    /* Define Pentium CPU cycle counting function */
+    int64_T pentium_cyclecount(void) 
+    {
+      int64_T count;
+      __asm__ volatile ("rdtsc" : "=A" (count));
+      return (count);
+    }
+  %elseif compName == "MAC" || compName == "MACI" || compName == "MACI64"
+    int64_T cputime_stamp(void)
+    {
+       /* For 32-bit applications that want to use 64-bit instructions, 
+        * one may use gcc -fast -mpowerpc64 -c <filename>.c
+        */
+        
+       static double scale = 0.0;
+       if (0.0 == scale) {
+         mach_timebase_info_data_t info;
+         mach_timebase_info(&info);
+         scale = info.numer / info.denom;
+       }
+       return (int64_T)(mach_absolute_time() * scale);
+    }
+  %elseif compName == "SOL2" || compName == "SOL64"
+    int64_T cputime_stamp(void)
+    {
+       return (int64_T)gethrtime();
+    }
+  %elseif compName == "PCWIN64"
+    int64_T pentium_cyclecount(void) 
+    {
+      return __rdtsc();
+    }
+  %elseif compName == "PCWIN"
+    #ifndef __LCC__
+    int64_T pentium_cyclecount(void) 
+    {
+      __asm rdtsc
+    }
+    #else
+    double cputime(void)
+    {
+      /*
+       * Use QueryPerformanceFrequency to conver to second. 
+       */
+      LARGE_INTEGER count;
+      QueryPerformanceCounter (&count);
+      return((double)count.QuadPart);
+    }
+    #endif
+  %endif
+  
+  %endif
+  %closefile tmpBuff
+   
+  %return tmpBuff
+
+%endfunction
+  
+%% Function: ProfilerSystemDecls ============================================
+%% Abstract:
+%%    Generate code for adding declarations of profiler variables within the 
+%%    scope of a System's fcn (Output/Update/OutputUpdate/Derivatives) function
+%function ProfilerSystemDecls(ProfRec, system, fcn) void
+  %% You can secify different system declarations for 
+  %% different functions: output, update and outputupdate.
+  
+  %assign compName = FEVAL("computer")
+  %assert fcn == "Output" ||  fcn == "Update" || "OutputUpdate" || "Derivatives"
+
+  %openfile tmpBuff
+  
+  /* Create start and end variables for profiler */
+  %if compName == "PCWIN"
+    #ifndef __LCC__
+    int64_T start = 0; 
+    int64_T end   = 0;
+    #else
+    double start = 0;
+    double end   = 0;
+    #endif
+  %else
+    int64_T start = 0; 
+    int64_T end   = 0;
+  %endif
+
+  %closefile tmpBuff
+  %return tmpBuff
+  
+%endfunction
+
+%% Function: ProfilerSystemStart ============================================
+%% Abstract:
+%%    Generate code for  starting the profile operation at the beginning of the 
+%%    code segment for a System's fcn (Output/Update/OutputUpdate/Derivatives)
+%%    function
+%function ProfilerSystemStart(ProfRec, system, fcn) void
+  %assign compName = FEVAL("computer")
+  %assert fcn == "Output" ||  fcn == "Update" || "OutputUpdate" || "Derivatives"
+
+  %openfile tmpBuff
+  
+  /* Start the profiler */
+  %if compName == "PCWIN"
+    #ifndef __LCC__
+    start = pentium_cyclecount();
+    #else
+    start = cputime();
+    #endif
+  %elseif compName == "MAC" || compName == "MACI" || compName == "MACI64" || compName == "SOL2" || compName == "SOL64"
+    start = cputime_stamp();
+  %else
+    start = pentium_cyclecount();
+  %endif
+
+  %closefile tmpBuff
+  %return tmpBuff
+  
+%endfunction
+
+%% Function: ProfilerSystemFinish ============================================
+%% Abstract:
+%%    Generate code for  ending the profile operation at the end of the 
+%%    code segment for a System's fcn (Output/Update/OutputUpdate/Derivatives)
+%%    function
+%function ProfilerSystemFinish(ProfRec, system, fcn) void
+  %assign profval = GetValName(system)
+    
+  %openfile tmpBuff 
+  %assign compName = FEVAL("computer")
+  %assert fcn == "Output" ||  fcn == "Update" || "OutputUpdate" || "Derivatives"
+
+  /* Terminate profiler and store profiling info into global profiler objects */
+  %if compName == "PCWIN"
+    #ifndef __LCC__
+    end = pentium_cyclecount(); 
+    #else
+    end = cputime();
+    #endif
+  %elseif compName == "MAC" || compName == "MACI" || compName == "MACI64" || compName == "SOL2" || compName == "SOL64"
+    end = cputime_stamp();
+  %else
+    end = pentium_cyclecount();
+  %endif 
+  
+  %<profval>%<fcn>.count = %<profval>%<fcn>.count + end - start; 
+  %<profval>%<fcn>.numcalls ++;
+
+  %closefile tmpBuff
+  %return tmpBuff
+
+%endfunction
+
+%% Function: ProfilerSystemTerminate ========================================
+%% Abstract:
+%%    Generate code for tabulating the profiler results in the terminate 
+%%    function of a system  
+%function ProfilerSystemTerminate(ProfRec, system) void
+  
+  %assign profval  = GetValName(system)
+  %assign compName = FEVAL("computer")
+  %assign isPC     = compName == "PCWIN"
+  %assign useTime  = compName == "MAC" || compName == "MACI" || compName == "MACI64" || compName == "SOL2" || compName == "SOL64"
+  
+  %openfile tmpBuff
+  
+  %if isPC 
+  #ifndef __LCC__
+  %endif
+  
+  %if !useTime
+  if ( %<profval>Output.numcalls != 0 ){
+    printf("Number of calls for system %s Output function is %u; \n CPU cycles/call = %f \n", 
+    "%<system.Name>", %<profval>Output.numcalls, 
+    uint64_to_double(%<profval>Output.count) / %<profval>Output.numcalls);
+  }
+  if ( %<profval>Update.numcalls != 0 ){
+    printf("Number of calls for system %s Update function is %u; \n CPU cycles/call = %f \n", 
+    "%<system.Name>", %<profval>Update.numcalls, 
+    uint64_to_double(%<profval>Update.count) / %<profval>Update.numcalls);
+  }
+  if ( %<profval>OutputUpdate.numcalls != 0 ){
+    printf("Number of calls for system %s OutputUpdate functions is %u; \n CPU cycles/call = %f \n", 
+    "%<system.Name>", %<profval>OutputUpdate.numcalls, 
+    uint64_to_double(%<profval>OutputUpdate.count) / %<profval>OutputUpdate.numcalls);
+  }
+  if ( %<profval>Derivatives.numcalls != 0 ){
+    printf("Number of calls for system %s Derivatives functions is %u; \n CPU cycles/call = %f \n", 
+    "%<system.Name>", %<profval>Derivatives.numcalls, 
+    uint64_to_double(%<profval>Derivatives.count) / %<profval>Derivatives.numcalls);
+  }
+  %endif
+  
+  %if isPC
+  #else
+  %endif
+  
+  %if useTime || isPC
+  if ( %<profval>Output.numcalls != 0 ){
+    printf("Number of calls for system %s Output function is %u; \n CPU time/call = %1.10f \n", 
+    "%<system.Name>", %<profval>Output.numcalls, 
+    uint64_to_double(%<profval>Output.count) / %<profval>Output.numcalls);
+  }
+  if ( %<profval>Update.numcalls != 0 ){
+    printf("Number of calls for system %s Update function is %u; \n CPU time/call = %1.10f \n", 
+    "%<system.Name>", %<profval>Update.numcalls, 
+    uint64_to_double(%<profval>Update.count) / %<profval>Update.numcalls);
+  }
+  if ( %<profval>OutputUpdate.numcalls != 0 ){
+    printf("Number of calls for system %s OutputUpdate functions is %u; \n CPU time/call = %1.10f \n", 
+    "%<system.Name>", %<profval>OutputUpdate.numcalls, 
+    uint64_to_double(%<profval>OutputUpdate.count) / %<profval>OutputUpdate.numcalls);
+  }
+  if ( %<profval>Derivatives.numcalls != 0 ){
+    printf("Number of calls for system %s Derivatives functions is %u; \n CPU time/call = %1.10f \n", 
+    "%<system.Name>", %<profval>Derivatives.numcalls, 
+    uint64_to_double(%<profval>Derivatives.count) / %<profval>Derivatives.numcalls);
+  }
+  %endif
+  
+  %if isPC
+  #endif
+  %endif
+  
+  %closefile tmpBuff
+  %return tmpBuff
+%endfunction
+  
+%endif
+
+
+
+
+

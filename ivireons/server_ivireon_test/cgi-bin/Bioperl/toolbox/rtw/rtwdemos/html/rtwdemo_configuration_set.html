@@ -1,0 +1,135 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Configuring a Model via Command Line</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_configuration_set.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_configuration_set">Open rtwdemo_configuration_set.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_configuration_set">Run in the Command Window</a></div></div><div class="content"><h1>Configuring a Model via Command Line</h1><!--introduction--><p>Real-Time Workshop and Real-Time Workshop&reg; Embedded Coder&#8482; provide numerous configuration options for tailoring the generated code.  Code generation options are accessed through the Simulink&reg; Configuration Parameters, also referred to as the model's configuration set.</p><p>You will make configuration decisions and tradeoffs depending on how you use and interact with the generated code.  In short, you will choose a configuration that best matches your needs for debugging, traceability, code efficiency, and safety precaution.  Features, scripts, and documentation facilitate your creation of an ideal model configuration set for your application.</p><p>While Real-Time Workshop provides a push-button facility to <a href="matlab:showdemo('rtwdemo_usingrtwec')">quickly configure and check a model for specified objectives</a>, it is common to automate the model configuration procedure using a MATLAB script.  The instructions in this demonstration illustrate</p><div><ul><li>Concepts of working with configuration parameters</li><li>Documentation to understand the code generation options</li><li>Tools and scripts to automate the configuration of a model</li></ul></div><p>With these basic skills you are well on your way to setting up an ideal automated configuration scheme for your project.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Configuration Parameter Workflows</a></li><li><a href="#2">Configuration Set Basics</a></li><li><a href="#9">Configuration Option Summary</a></li><li><a href="#10">Example Configuration Script</a></li><li><a href="#11">Configuration Wizard Blocks</a></li></ul></div><h2>Configuration Parameter Workflows<a name="1"></a></h2><p>There are many workflows for Configuration Parameters that include persistence within a single model or persistence across multiple models.  Depending on your needs you may wish to work with configuration sets as copies or references.  This example demonstrates the basics steps for working directly with the active configuration set of a model.  For a comprehensive description of configuration set features and workflows see <a href="matlab:helpview(fullfile(docroot,'toolbox','simulink','helptargets.map'),'ModelConfig')">Configuration Sets</a> in the Simulink documentation.</p><h2>Configuration Set Basics<a name="2"></a></h2><p>Open a model</p><pre class="codeinput">model=<span class="string">'rtwdemo_configwizard'</span>;
+open_system(model)
+</pre><img vspace="5" hspace="5" src="rtwdemo_configuration_set_01.png" alt=""> <p>Obtain the model's active configuration set</p><pre class="codeinput">cs = getActiveConfigSet(model);
+</pre><p>The Real-Time Workshop product exposes a subset of the code generation options. If you are using Real-Time Workshop, select the Generic Real-Time (GRT) target.</p><pre class="codeinput">switchTarget(cs,<span class="string">'grt.tlc'</span>,[]);
+</pre><p>The Real-Time Workshop Embedded Coder product exposes the complete set of code generation options.  If you are using Real-Time Workshop Embedded Coder, select the Embedded Real-Time (ERT) target.</p><pre class="codeinput">switchTarget(cs,<span class="string">'ert.tlc'</span>,[]);
+</pre><p>To automate configuration of models that will be built for both GRT and ERT-based targets you will find the configuration set <b><tt>IsERTTarget</tt></b> attribute useful.</p><pre class="codeinput">isERT = strcmp(get_param(cs,<span class="string">'IsERTTarget'</span>),<span class="string">'on'</span>);
+</pre><p>You can interact with code generation options via the model or the the configuration set.  This example gets and sets options indirectly via the model</p><pre class="codeinput">inlineParams = get_param(model,<span class="string">'InlineParams'</span>);  <span class="comment">% Get InlineParams</span>
+set_param(model,<span class="string">'InlineParams'</span>,inlineParams)     <span class="comment">% Set InlineParams</span>
+</pre><p>This example gets and sets options directly via the configuration set.</p><pre class="codeinput"><span class="keyword">if</span> isERT
+    lifespan = get_param(cs,<span class="string">'LifeSpan'</span>);  <span class="comment">% Get LifeSpan</span>
+    set_param(cs,<span class="string">'LifeSpan'</span>,lifespan)     <span class="comment">% Set LifeSpan</span>
+<span class="keyword">end</span>
+</pre><h2>Configuration Option Summary<a name="9"></a></h2><p>The full list of code generation options are documented with tradeoffs for debugging, traceability, code efficiency, and safety precaution.</p><div><ul><li><a href="matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'rtw_param_ref')">Real-Time Workshop (GRT) options</a></li><li><a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_param_ref')">Real-Time Workshop Embedded Coder (ERT) options</a></li></ul></div><h2>Example Configuration Script<a name="10"></a></h2><p>Real-Time Workshop provides an example configuration script that you can use as a starting point for your application.  The full list of relevant GRT and ERT code generation options are contained in <a href="matlab:edit('rtwconfiguremodel')">rtwconfiguremodel.m</a>.</p><h2>Configuration Wizard Blocks<a name="11"></a></h2><p>Real-Time Workshop Embedded Coder provides a set of <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_auto_config_blocks_scripts')">Configuration Wizard</a> blocks that automate configuration of a model for a specific goal. The pre-defined blocks provide configuration for:</p><div><ul><li>ERT optimized for fixed-point</li><li>ERT optimized for floating-point</li><li>GRT optimized for fixed/floating-point</li><li>GRT debug settings for fixed/floating-point</li><li>Custom (you provide the script)</li></ul></div><p>Just drop the block into a model and double-click to configure the model. See Simulink model <a href="matlab:rtwdemo_configwizard">rtwdemo_configwizard</a> for an interactive demonstration of these useful blocks.</p><p class="footer">Copyright 2007-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Configuring a Model via Command Line
+% 
+% Real-Time Workshop and Real-Time Workshop(R) Embedded Coder(TM) provide
+% numerous configuration options for tailoring the generated
+% code.  Code generation options are accessed through the Simulink(R)
+% Configuration Parameters, also referred to as the model's
+% configuration set.
+%
+% You will make configuration decisions and tradeoffs depending on how
+% you use and interact with the generated code.  In short, you will
+% choose a configuration that best matches your needs for debugging,
+% traceability, code efficiency, and safety precaution.  Features,
+% scripts, and documentation facilitate your creation of an ideal
+% model configuration set for your application.
+%
+% While Real-Time Workshop provides a push-button facility to
+% <matlab:showdemo('rtwdemo_usingrtwec') quickly configure and check a
+% model for specified objectives>, it is common to automate the model
+% configuration procedure using a MATLAB script.  The instructions
+% in this demonstration illustrate
+%
+% * Concepts of working with configuration parameters
+% * Documentation to understand the code generation options
+% * Tools and scripts to automate the configuration of a model
+%
+% With these basic skills you are well on your way to setting up an
+% ideal automated configuration scheme for your project.
+%
+%% Configuration Parameter Workflows
+% There are many workflows for Configuration Parameters that include persistence 
+% within a single model or persistence across multiple models.  Depending
+% on your needs you may wish to work with configuration sets as copies or
+% references.  This example demonstrates the basics steps for working directly
+% with the active configuration set of a model.  For a comprehensive
+% description of configuration set features and workflows see
+% <matlab:helpview(fullfile(docroot,'toolbox','simulink','helptargets.map'),'ModelConfig') Configuration Sets>
+% in the Simulink documentation.
+%
+%% Configuration Set Basics
+% Open a model
+model='rtwdemo_configwizard';
+open_system(model)
+%%
+% Obtain the model's active configuration set
+cs = getActiveConfigSet(model);
+
+%%
+% The Real-Time Workshop product exposes a subset of the code generation options.
+% If you are using Real-Time Workshop, select the Generic Real-Time (GRT)
+% target.
+switchTarget(cs,'grt.tlc',[]);
+
+%%
+% The Real-Time Workshop Embedded Coder product exposes the complete set of
+% code generation options.  If you are using Real-Time Workshop Embedded Coder,
+% select the Embedded Real-Time (ERT) target.
+switchTarget(cs,'ert.tlc',[]);
+
+%%
+% To automate configuration of models that will be built for both
+% GRT and ERT-based targets you will find the configuration
+% set *|IsERTTarget|* attribute useful.
+isERT = strcmp(get_param(cs,'IsERTTarget'),'on');
+%%
+% You can interact with code generation options via the model or the
+% the configuration set.  This example gets and sets options indirectly
+% via the model
+inlineParams = get_param(model,'InlineParams');  % Get InlineParams
+set_param(model,'InlineParams',inlineParams)     % Set InlineParams
+%%
+% This example gets and sets options directly via the configuration set.
+if isERT
+    lifespan = get_param(cs,'LifeSpan');  % Get LifeSpan
+    set_param(cs,'LifeSpan',lifespan)     % Set LifeSpan
+end
+%% Configuration Option Summary
+% The full list of code generation options are documented with 
+% tradeoffs for debugging, traceability, code efficiency, and safety
+% precaution.
+%
+% * <matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'rtw_param_ref') Real-Time Workshop (GRT) options>
+% * <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_param_ref') Real-Time Workshop Embedded Coder (ERT) options>
+%
+%% Example Configuration Script
+% Real-Time Workshop provides an example configuration script that you can
+% use as a starting point for your application.  The full list of relevant
+% GRT and ERT code generation options are contained in
+% <matlab:edit('rtwconfiguremodel') rtwconfiguremodel.m>.
+%
+%% Configuration Wizard Blocks
+% Real-Time Workshop Embedded Coder provides a set of
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_auto_config_blocks_scripts') Configuration Wizard>
+% blocks that automate configuration of a model for a specific goal.
+% The pre-defined blocks provide configuration for:
+% 
+% * ERT optimized for fixed-point
+% * ERT optimized for floating-point
+% * GRT optimized for fixed/floating-point
+% * GRT debug settings for fixed/floating-point
+% * Custom (you provide the script)
+% 
+% Just drop the block into a model and double-click to configure the model.
+% See Simulink model
+% <matlab:rtwdemo_configwizard rtwdemo_configwizard> for an interactive
+% demonstration of these useful blocks.
+%
+%   Copyright 2007-2008 The MathWorks, Inc.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

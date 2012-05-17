@@ -1,0 +1,260 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>時間遅れの指定</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="GSSpecifyingDelays.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit GSSpecifyingDelays">エディターで GSSpecifyingDelays.m を開く</a></div><div class="right"><a href="matlab:echodemo GSSpecifyingDelays">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>時間遅れの指定</h1><!--introduction--><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">LTI モデルの時間遅れ</a></li><li><a href="#2">1 次モデルにむだ時間を付加したモデル</a></li><li><a href="#9">入力遅れと出力遅れを持つ状態空間モデル</a></li><li><a href="#13">モデルと I/O 遅れの組み合わせ</a></li><li><a href="#18">内部遅れを持つモデルの作成</a></li><li><a href="#25">遅れの項を持つ状態空間方程式</a></li><li><a href="#27">遅れを持つ離散時間モデル</a></li><li><a href="#36">内部遅れを持つ内部状態空間モデル</a></li></ul></div><h2>LTI モデルの時間遅れ<a name="1"></a></h2><p>Control System Toolbox™ では、有限個の遅れを持つ LTI モデルを表現、操作および解析できます。遅れは、システム入力または出力、特定の I/O ペアの間またはモデルの内部 (フィードバック ループ内) において起きることがあります。</p><p>伝達関数 (TF)、零点-極-ゲイン (ZPK)、および周波数応答データ (FRD) オブジェクトは、遅れのモデル化のための次の 3 つのプロパティを持ちます。</p><div><ul><li>入力の遅れを指定する InputDelay</li><li>出力の遅れを指定する OutputDelay</li><li>各 I/O ペアに対する独立した伝達遅れを指定する IODelay</li></ul></div><p>状態空間 (SS) オブジェクトも、遅れに関する次の 3 つのプロパティを持ちます。</p><div><ul><li>入力の遅れを指定する InputDelay</li><li>出力の遅れを指定する OutputDelay</li><li>モデルを組み合わせるか、フィードバック ループを閉じるときの遅れを記録する InternalDelay</li></ul></div><p>状態空間表現は内部の遅れを記録できるため、制御システムでの遅れの効果のモデル化と解析に最適です。このチュートリアルでは、遅れを持つシステムの作成方法と取り扱い方法を説明します。遅れの効果の解析方法の詳細は、「遅延を持つ制御システムの解析」チュートリアルを参照してください。</p><h2>1 次モデルにむだ時間を付加したモデル<a name="2"></a></h2><p>1 次モデルにむだ時間を追加したモデルは、一般的にプロセス制御アプリケーションで使用します。以下はその一例です。</p><p><img src="../GSSpecifyingDelays_eq14654.png" alt="$$P(s) = {5 e^{-3.4 s} \over s+1} $$"></p><p>この伝達関数を指定するには、以下を使用します。</p><pre class="codeinput">num = 5;
+den = [1 1];
+P = tf(num,den,<span class="string">'InputDelay'</span>,3.4)
+</pre><pre class="codeoutput"> 
+Transfer function:
+                5
+exp(-3.4*s) * -----
+              s + 1
+ 
+</pre><p>予期されたように、<tt>P</tt> のステップ応答は、遅れのない応答がシフトしたものです。</p><pre class="codeinput">P0 = tf(num,den);
+step(P0,<span class="string">'b'</span>,P,<span class="string">'r'</span>)
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_01.png" alt=""> <p>以下のようにプロセス モデルに複数の出力がある場合は、</p><p><img src="../GSSpecifyingDelays_eq01309.png" alt="$$P(s) = \left[\matrix{{5 e^{-3.4 s} \over s+1} \cr {-2 e^{-2.7 s} \over s+3} }\right] , $$"></p><p>OutputDelay プロパティを使用して、出力チャンネルごとに異なる遅れを指定できます。</p><pre class="codeinput">num = {5 ; -2};
+den = {[1 1] ; [1 3]};
+P = tf(num,den,<span class="string">'OutputDelay'</span>,[3.4 ; 2.7])
+</pre><pre class="codeoutput"> 
+Transfer function from input to output...
+                      5
+ #1:  exp(-3.4*s) * -----
+                    s + 1
+ 
+                     -2
+ #2:  exp(-2.7*s) * -----
+                    s + 3
+ 
+</pre><p>次に、以下のような多入力、多出力のモデルを考えます。</p><p><img src="../GSSpecifyingDelays_eq63649.png" alt="$$P(s) = \left[\matrix{{5 e^{-3.4 s} \over s+1} &amp; 1 \cr {-2 e^{-2.7 s} \over s+3} &amp; {e^{-0.7 s} \over s} }\right] .$$"></p><p>ここでは遅れは I/O ペアごとに異なるため、IODelay プロパティを使用しなければなりません。</p><pre class="codeinput">num = {5 , 1; -2 1};
+den = {[1 1] , 1; [1 3], [1 0]};
+P = tf(num,den,<span class="string">'IODelay'</span>,[3.4  0;2.7 0.7]);
+</pre><p>このモデルをさらに直接的にリテラル値を使用して指定するには、ラプラス変数 &quot;s&quot; を導入し、伝達関数演算を使用します。</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);
+P = [ 5*exp(-3.4*s)/(s+1) , 1 ; -2*exp(-2.7*s)/(s+3) , exp(-0.7*s)/s ]
+</pre><pre class="codeoutput"> 
+Transfer function from input 1 to output...
+                      5
+ #1:  exp(-3.4*s) * -----
+                    s + 1
+ 
+                     -2
+ #2:  exp(-2.7*s) * -----
+                    s + 3
+ 
+Transfer function from input 2 to output...
+ #1:  1
+ 
+                    1
+ #2:  exp(-0.7*s) * -
+                    s
+ 
+</pre><p>この場合は、InputDelay、OutputDelay、および IODelay プロパティ間での遅れの分散方法が MATLAB&reg; によって自動的に決定されます。</p><pre class="codeinput">P.InputDelay
+P.OutputDelay
+P.IODelay
+</pre><pre class="codeoutput">
+ans =
+
+     0
+     0
+
+
+ans =
+
+         0
+    0.7000
+
+
+ans =
+
+    3.4000         0
+    2.0000         0
+
+</pre><p>関数 <tt>TOTALDELAY</tt> は、入力値、出力値、および I/O 遅れ値を合計して、入力された値に対し返します。</p><pre class="codeinput">totaldelay(P)
+</pre><pre class="codeoutput">
+ans =
+
+    3.4000         0
+    2.7000    0.7000
+
+</pre><h2>入力遅れと出力遅れを持つ状態空間モデル<a name="9"></a></h2><p>次の状態空間モデルを考えます。</p><p><img src="../GSSpecifyingDelays_eq89008.png" alt="$$ {dx \over dt} = - x(t) + u(t-2.5) , \;\; y(t) = 12 x(t) .$$"></p><p>入力信号 u(t) が 2.5 秒遅れていることに注目してください。このモデルを指定するには、以下のように入力します。</p><pre class="codeinput">sys = ss(-1,1,12,0,<span class="string">'InputDelay'</span>,2.5)
+</pre><pre class="codeoutput"> 
+a = 
+       x1
+   x1  -1
+ 
+b = 
+       u1
+   x1   1
+ 
+c = 
+       x1
+   y1  12
+ 
+d = 
+       u1
+   y1   0
+ 
+Input delays (listed by channel):  2.5 
+ 
+連続時間モデル。
+</pre><p>関連モデルは次のとおりです。</p><p><img src="../GSSpecifyingDelays_eq76784.png" alt="$$ {dx_1 \over dt} = - x_1(t) + u(t) , \;\; y(t) = 12 x_1(t-2.5) .$$"></p><p>ここでは、出力に 2.5 秒の遅れが発生しています。これは次のように状態式を書き直すことで確認できます。</p><p><img src="../GSSpecifyingDelays_eq11820.png" alt="$$ {dx_1 \over dt} = - x_1(t) + u(t) , \;\; y_1(t) = 12 x_1(t) , \;\;
+y(t) = y_1(t-2.5)$$"></p><p>したがって、このモデルは次のように指定できます。</p><pre class="codeinput">sys1 = ss(-1,1,12,0,<span class="string">'OutputDelay'</span>,2.5);
+</pre><p>以下で確認できるように、どちらのモデルの I/O 応答も同じであることに注目してください。</p><pre class="codeinput">step(sys,<span class="string">'b'</span>,sys1,<span class="string">'r--'</span>)
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_02.png" alt=""> <p>ただし、状態軌跡は異なります。状態 <tt>x</tt> および状態 <tt>x1</tt> は次のように関連付けられているためです。</p><p><img src="../GSSpecifyingDelays_eq94296.png" alt="$$ x(t) = x_1 (t-2.5) $$"></p><h2>モデルと I/O 遅れの組み合わせ<a name="13"></a></h2><p>これまでは、特定の I/O ペアの間の伝達遅れを持つ LTI モデルのみを考えてきました。多くのプロセスのモデル化ではこれで十分ですが、遅れを持つ単純なフィードバック ループを含む、遅れを持つほとんどの制御システムを解析する場合、このクラスのモデルは特殊すぎます。たとえば、次の並列結合を考えます。</p><p><img src="../GSSpecifyingDelays_eq22150.png" alt="$$ H(s) = H_1(s) + H_2(s) = {1 \over s+2} + {5 e^{-3.4 s} \over s+1} $$"></p><p>2 つの伝達関数 <tt>H1</tt> および <tt>H2</tt> を加算しようとするとエラーになります。</p><pre class="codeinput">H1 = 1/(s+2);
+H2 = 5*exp(-3.4*s)/(s+1);
+<span class="keyword">try</span>
+H = H1 + H2;
+<span class="keyword">catch</span> ME
+disp(ME.message) <span class="comment">% Display the error message</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">システムの相互接続は、内部遅延を発生し、状態空間でのみ表現可能です。&quot;ss&quot; コマンドを使用して、モデルの少なくとも 1 つを状態空間に変換してください。
+</pre><p>これは、次の結果の伝達関数</p><p><img src="../GSSpecifyingDelays_eq03228.png" alt="$$ H(s) = {s + 1 + (5 s + 10) e^{-3.4 s} \over (s+1)(s+2) } $$"></p><p>を入力または出力に遅れを持つ通常の伝達関数として表すことができないためです。</p><p>I/O 遅れを持つ単純なモデルの範囲を超えるには、<tt>H1</tt> および <tt>H2</tt> を状態空間 (SS) 表現に変換し、&quot;内部&quot; 遅れという機能を使用する必要があります。SS オブジェクトには、システムの接続時に遅れを追跡する機能があります。遅れの場所、および残りのダイナミクスとの結合に関する構造的な情報は、効率的かつ完全に一般化された方法でエンコードされます。たとえば、上記のモデル <tt>H</tt> の状態空間表現は次のように求められます。</p><pre class="codeinput">H = ss(H1) + H2
+</pre><pre class="codeoutput"> 
+a = 
+       x1  x2
+   x1  -2   0
+   x2   0  -1
+ 
+b = 
+       u1
+   x1   1
+   x2   2
+ 
+c = 
+        x1   x2
+   y1    1  2.5
+ 
+d = 
+       u1
+   y1   0
+ 
+(すべての内部遅れがゼロに設定された状態で値を計算)
+
+内部遅れ:  3.4 
+ 
+連続時間モデル。
+</pre><p>次の点に注目してください。　</p><div><ul><li>3.4 秒の遅れは &quot;内部&quot; として示されています。</li><li>A、B、C、Dのデータは、すべての遅れがゼロに設定されているとき (ゼロ次パデ近似) のダイナミクスに対応しています。</li></ul></div><p>内部遅れを持つモデルの伝達関数を確認することは不可能であり、推奨もできません。代わりに時間プロットと周波数プロットを使用してモデルを比較し、検証してください。</p><pre class="codeinput">step(H1,H2,H)
+legend(<span class="string">'H1'</span>,<span class="string">'H2'</span>,<span class="string">'H'</span>,<span class="string">'Location'</span>,<span class="string">'NorthWest'</span>), grid
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_03.png" alt=""> <pre class="codeinput">bode(H1,<span class="string">'b'</span>,H-H2,<span class="string">'r--'</span>)  <span class="comment">% verify that H-H2 = H1</span>
+grid
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_04.png" alt=""> <h2>内部遅れを持つモデルの作成<a name="18"></a></h2><p>通常、内部遅れを持つ状態空間モデルは、A、B、C、D データと内部遅れのセットの両方を指定して作成されません。その代わりに、より簡単な LTI モデル (I/O 遅れを持つモデル) を直列、並列、フィードバックで接続して、そのようなモデルを作成します。含まれる遅れの数や LTI モデルの接続方法に制限はありません。</p><p>たとえば、以下の制御ループを考えます。このプラントは、1 次モデルにむだ時間を付加してモデル化されています。</p><p><img vspace="5" hspace="5" src="../../Figures/GSSpecifyingDelays_01.png" alt=""> </p><p><b>図 1: </b> 遅れを持つフィードバック ループ</p><p>状態空間表現を使用すると、r から y への閉ループ応答に対してモデル <tt>T</tt> を導出して、以下によりシミュレートできます。</p><pre class="codeinput">P = ss(5*exp(-3.4*s)/(s+1));
+C = 0.1 * (1 + 1/(5*s));
+T = feedback(P*C,1);
+
+step(T)
+grid, title(<span class="string">'Closed-loop step response'</span>)
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_05.png" alt=""> <p>より複雑な相互接続には、各ブロックの入力信号と出力信号に名前を付け、<tt>CONNECT</tt> を使用して、配線を自動管理できます。たとえば、図 1 の制御ループにフィードフォワードを加えたいとします。</p><p><img vspace="5" hspace="5" src="../../Figures/GSSpecifyingDelays_02.png" alt=""> </p><p><b>図 2: </b> フィードフォワードおよびフィードバック制御</p><p>対応する閉ループモデル <tt>T</tt> を以下により導くことができます。</p><pre class="codeinput">F = 0.3/(s+4);
+P.InputName = <span class="string">'u'</span>;  P.OutputName = <span class="string">'y'</span>;
+C.InputName = <span class="string">'e'</span>;  C.OutputName = <span class="string">'uc'</span>;
+F.InputName = <span class="string">'r'</span>;  F.OutputName = <span class="string">'uf'</span>;
+Sum1 = sumblk(<span class="string">'e'</span>,<span class="string">'r'</span>,<span class="string">'y'</span>,<span class="string">'+-'</span>);    <span class="comment">% e = r-y</span>
+Sum2 = sumblk(<span class="string">'u'</span>,<span class="string">'uf'</span>,<span class="string">'uc'</span>,<span class="string">'++'</span>);  <span class="comment">% u = uf + uc</span>
+Tff = connect(P,C,F,Sum1,Sum2,<span class="string">'r'</span>,<span class="string">'y'</span>);
+</pre><p>さらに、その応答をフィードバックのみの設計と比較します。</p><pre class="codeinput">step(T,<span class="string">'b'</span>,Tff,<span class="string">'r'</span>)
+legend(<span class="string">'No feedforward'</span>,<span class="string">'Feedforward'</span>)
+grid, title(<span class="string">'Closed-loop step response with and without feedforward'</span>)
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_06.png" alt=""> <h2>遅れの項を持つ状態空間方程式<a name="25"></a></h2><p>遅れを持つ特別なクラスの LTI モデルに、遅れの項を持つ状態空間方程式があります。一般的な形式は次のとおりです。</p><p><img src="../GSSpecifyingDelays_eq97431.png" alt="$$ {dx \over dt} = A x(t) + B u(t) + \sum_j ( A_j x(t-\tau_j) + B_j u(t-\tau_j) ) $$"></p><p><img src="../GSSpecifyingDelays_eq52273.png" alt="$$ y(t) = C x(t) + D u(t) + \sum_j ( C_j x(t-\tau_j) + B_j u(t-\tau_j) ) $$"></p><p>関数 <tt>DELAYSS</tt> は、このようなモデルを指定するのに役立ちます。たとえば、次のモデルを考えてください。</p><p><img src="../GSSpecifyingDelays_eq94819.png" alt="$${dx \over dt} = -x(t) - x(t-1.2) + 2 u(t-0.5) , \;\; y(t) = x(t-0.5) + u(t) $$"></p><p>このモデルを作成するには、各遅れに対して <tt>Aj、Bj、Cj、Dj</tt> を指定し、<tt>DELAYSS</tt> を使用してモデルを組み立てます。</p><pre class="codeinput">DelayT(1) = struct(<span class="string">'delay'</span>,0.5,<span class="string">'a'</span>,0,<span class="string">'b'</span>,2,<span class="string">'c'</span>,1,<span class="string">'d'</span>,0);   <span class="comment">% tau1=0.5</span>
+DelayT(2) = struct(<span class="string">'delay'</span>,1.2,<span class="string">'a'</span>,-1,<span class="string">'b'</span>,0,<span class="string">'c'</span>,0,<span class="string">'d'</span>,0);  <span class="comment">% tau2=1.2</span>
+sys = delayss(-1,0,0,1,DelayT)
+</pre><pre class="codeoutput"> 
+a = 
+       x1
+   x1  -2
+ 
+b = 
+       u1
+   x1   2
+ 
+c = 
+       x1
+   y1   1
+ 
+d = 
+       u1
+   y1   1
+ 
+(すべての内部遅れがゼロに設定された状態で値を計算)
+
+内部遅れ:  0.5  0.5  1.2 
+ 
+連続時間モデル。
+</pre><p><tt>A、B、C、D</tt> の値はゼロに設定されているすべての遅れに対するものです。これらの値の応答が、遅れを持つ実際の応答に近くなる必要はありません。</p><pre class="codeinput">step(sys,<span class="string">'b'</span>,pade(sys,0),<span class="string">'r'</span>)
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_07.png" alt=""> <h2>遅れを持つ離散時間モデル<a name="27"></a></h2><p>離散時間の遅れは同様に取り扱われますが、わずかな違いがいくつかあります。</p><div><ul><li>離散時間の遅れは、通常、サンプリング周期の整数倍です。</li><li>離散時間遅れは、z=0 での極と等価です。したがって、モデル ダイナミクスに遅れを取り込むことは常に可能です。ただし、遅れを分離しておくと、性能はより良くなります。特に、サンプリング周期に比べて長い遅れを持つシステムでは、性能が向上します。</li></ul></div><p>次の 1 次モデル</p><p><img src="../GSSpecifyingDelays_eq09886.png" alt="$$ H(z) = z^{-25} { 2 \over z - 0.95 } $$"></p><p>を Ts=0.1 のサンプリング周期で指定するには、以下を使用します。</p><pre class="codeinput">H = tf(2,[1 -0.95],0.1,<span class="string">'inputdelay'</span>,25)
+step(H)
+</pre><pre class="codeoutput"> 
+Transfer function:
+             2
+z^(-25) * --------
+          z - 0.95
+ 
+サンプル時間:  0.1
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_08.png" alt=""> <p>以下は、等価な状態空間表現です。</p><pre class="codeinput">H = ss(H)
+</pre><pre class="codeoutput"> 
+a = 
+         x1
+   x1  0.95
+ 
+b = 
+       u1
+   x1   2
+ 
+c = 
+       x1
+   y1   1
+ 
+d = 
+       u1
+   y1   0
+ 
+入力遅れ (チャンネルごとにリスト):  25 
+ 
+サンプル時間:  0.1
+離散時間モデル
+</pre><p>遅れは極とは別に保持されることに注意してください。次に、g が純粋なゲインである以下のフィードバックループを考えます。</p><p><img vspace="5" hspace="5" src="../../Figures/GSSpecifyingDelays_03.png" alt=""> </p><p><b>図 3:</b> 離散時間フィードバック ループ</p><p><tt>g=0.01</tt> に対する閉ループ応答を計算するには、以下のように入力します。</p><pre class="codeinput">g = .01;
+T = feedback(g*H,1)
+step(T)
+</pre><pre class="codeoutput"> 
+a = 
+         x1
+   x1  0.93
+ 
+b = 
+       u1
+   x1   2
+ 
+c = 
+         x1
+   y1  0.01
+ 
+d = 
+       u1
+   y1   0
+ 
+(すべての内部遅れがゼロに設定された状態で値を計算)
+
+内部遅れ:  25 
+ 
+サンプル時間:  0.1
+離散時間モデル
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_09.png" alt=""> <p><tt>T</tt> は、なお 25 サンプルの内部遅れを持つ 1 次モデルです。比較のために、<tt>DELAY2Z</tt> を使用して、すべての遅れを z=0 での極にマップします。</p><pre class="codeinput">T1 = delay2z(T);
+order(T1)
+</pre><pre class="codeoutput">
+ans =
+
+    26
+
+</pre><p>結果のモデルは 26 個の状態を持つので、シミュレーションの効率は悪くなります。<tt>T</tt> と <tt>T1</tt> のステップ応答は、予想どおり完全に一致します。</p><pre class="codeinput">step(T,<span class="string">'b'</span>,T1,<span class="string">'r--'</span>)
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_10.png" alt=""> <p>一般に、内部遅れを持つモデルの閉ループ ダイナミクスを解析する場合を除いて、遅れは分離しておくことが推奨されます。</p><pre class="codeinput">rlocus(H)
+axis([-1 2 -1 1])
+</pre><img vspace="5" hspace="5" src="../GSSpecifyingDelays_11.png" alt=""> <h2>内部遅れを持つ内部状態空間モデル<a name="36"></a></h2><p>状態空間オブジェクトは、内部遅れを記録するために一般化された状態空間方程式を使用します。概念的に、そのようなモデルは、2 つの相互接続した部分から構成されます。</p><div><ul><li>拡張された I/O セットを持つ通常の状態空間モデル <tt>H(s)</tt></li><li>内部遅れの列</li></ul></div><p><img vspace="5" hspace="5" src="../../Figures/GSSpecifyingDelays_04.png" alt=""> </p><p><b>図 4:</b> 内部遅れを持つ状態空間モデルの内部表現</p><p>対応する状態空間方程式は次のとおりです。</p><p><img src="../GSSpecifyingDelays_eq69607.png" alt="$$\matrix{ \dot{x}(t) = A x(t) + B_1 u(t) + B_2 w(t) \;\;\;\; \cr
+           y(t) = C_1 x(t) + D_{11} u(t) + D_{12} w(t) \cr
+           z(t) = C_2 x(t) + D_{21} u(t) + D_{22} w(t) \cr
+           w_j(t) = z_j(t - \tau_j) , \;\; j = 1,...,N } \;\;\;\; \;\;\;\; $$"></p><p>ツールを使用するために、この内部表現に気を使う必要はありません。ただし、何らかの理由で <tt>H</tt> または行列 <tt>A、B1、B2、...</tt> を抽出する場合は、<tt>getDelayModel</tt> を使用できます。次に例を示します。</p><pre class="codeinput">P = 5*exp(-3.4*s)/(s+1);
+C = 0.1 * (1 + 1/(5*s));
+T = feedback(ss(P*C),1);
+
+[H,tau] = getDelayModel(T,<span class="string">'lft'</span>);
+size(H)
+</pre><pre class="codeoutput">2 出力、2 入力、および 2 状態の状態空間モデルを生成します。
+</pre><p><tt>H</tt> は 2 入力 2 出力モデルで、<tt>T</tt> は SISO であることに注意してください。逆の操作 (<tt>H</tt> と <tt>tau</tt> を組み合わせて <tt>T</tt> を作成) は <tt>setDelayModel</tt> で実行されます。</p><p class="footer">Copyright 1986-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Specifying Time Delays   %   Copyright 1986-2008 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $    %% Time Delays in LTI Models  % Control System Toolbox(TM) lets you represent, manipulate, and % analyze any LTI model with a finite number of delays. The  % delays can be at the system inputs or outputs, between specific  % I/O pair, or internal to the model (e.g., inside a feedback loop). % % Transfer function (TF), zero-pole-gain (ZPK), and frequency  % response data (FRD) objects offer three properties for  % modeling delays: % % * InputDelay, to specify delays at the inputs % * OutputDelay, to specify delays at the outputs % * IODelay, to specify independent transport delays for each I/O pair. % % The state-space (SS) object has three delay-related properties as well: % % * InputDelay, to specify delays at the inputs % * OutputDelay, to specify delays at the outputs % * InternalDelay, to keep track of delays when combining models or  %   closing feedback loops. % % The ability to keep track of internal delays makes the state-space representation % best suited to modeling and analyzing delay effects in control systems.  % This tutorial shows how to construct and manipulate systems  % with delays. See the "Analyzing Control Systems with Delays" tutorial for  % insights on how to analyze delay effects.   %% First-Order Plus Dead Time Models % First-order plus dead time models are commonly used % in process control applications. One such example is: % % $$P(s) = {5 e^{-3.4 s} \over s+1} $$ % % To specify this transfer function, use num = 5; den = [1 1]; P = tf(num,den,'InputDelay',3.4)  %%  % As expected, the step response of |P| is a shifted version of the delay-free % response: P0 = tf(num,den); step(P0,'b',P,'r')  %% % If the process model has multiple outputs, for example: % % $$P(s) = \left[\matrix{{5 e^{-3.4 s} \over s+1} \cr {-2 e^{-2.7 s} \over s+3} }\right] , $$ % % you can use the OutputDelay property to specify a different % delay for each output channel: num = {5 ; -2}; den = {[1 1] ; [1 3]}; P = tf(num,den,'OutputDelay',[3.4 ; 2.7])  %%  % Next consider a multi-input, multi-output model, e.g., % % $$P(s) = \left[\matrix{{5 e^{-3.4 s} \over s+1} & 1 \cr {-2 e^{-2.7 s} \over s+3} & {e^{-0.7 s} \over s} }\right] . $$ % % Here the delays are different for each I/O pair, so you must use the IODelay property: num = {5 , 1; -2 1}; den = {[1 1] , 1; [1 3], [1 0]}; P = tf(num,den,'IODelay',[3.4  0;2.7 0.7]);  %%  % A more direct and literal way to specify this model is to introduce  % the Laplace variable "s" and use transfer function arithmetic: s = tf('s'); P = [ 5*exp(-3.4*s)/(s+1) , 1 ; -2*exp(-2.7*s)/(s+3) , exp(-0.7*s)/s ]  %% % Note that in this case, MATLAB(R) automatically decides how to distribute % the delays between the InputDelay, OutputDelay, and IODelay properties.  P.InputDelay P.OutputDelay P.IODelay  %% % The function |TOTALDELAY| sums up the input, output, and I/O delay values % to give back the values we entered: totaldelay(P)  %% State-Space Models with Input and Output Delays % Consider the state-space model: % % $$ {dx \over dt} = - x(t) + u(t-2.5) , \;\; y(t) = 12 x(t) . $$ % % Note that the input signal u(t) is delayed by 2.5 seconds. To specify % this model, enter: sys = ss(-1,1,12,0,'InputDelay',2.5)  %% % A related model is  % % $$ {dx_1 \over dt} = - x_1(t) + u(t) , \;\; y(t) = 12 x_1(t-2.5) . $$ % % Here the 2.5 second delay is at the output, as seen by rewriting these state equations as:  % % $$ {dx_1 \over dt} = - x_1(t) + u(t) , \;\; y_1(t) = 12 x_1(t) , \;\;  % y(t) = y_1(t-2.5) . $$ % % You can therefore specify this model as: sys1 = ss(-1,1,12,0,'OutputDelay',2.5);  %% % Note that both models have the same I/O response as confirmed by step(sys,'b',sys1,'rREPLACE_WITH_DASH_DASH')  %% % However, their state trajectories are not the same because % the states |x| and |x1| are related by % % $$ x(t) = x_1 (t-2.5) $$  %% Combining Models with I/O Delays % So far we have only considered LTI models with transport delays between % specific I/O pairs.  While this is enough to model many processes, this % class of models is not general enough to analyze most control systems with  % delays, including simple feedback loops with delays. For example, consider the  % parallel connection: % % $$ H(s) = H_1(s) + H_2(s) = {1 \over s+2} + {5 e^{-3.4 s} \over s+1} $$ % % Trying to add the two transfer functions |H1| and |H2| results in an % error: H1 = 1/(s+2); H2 = 5*exp(-3.4*s)/(s+1); try    H = H1 + H2; catch ME     disp(ME.message) % Display the error message end  %% % This is because the resulting transfer function % % $$ H(s) = {s + 1 + (5 s + 10) e^{-3.4 s} \over (s+1)(s+2) } $$ % % cannot be represented as an ordinary transfer function with a delay at the % input or output.   %% % To go beyond simple models with I/O delays, you need to convert |H1| and % |H2| to the state-space (SS) representation and use a feature called "internal" delays. % SS objects have the ability to keep track of delays when % connecting systems together. Structural information on the delay location % and their coupling with the remaining dynamics is encoded in an efficient % and fully general manner. For example, a state-space representation of  % the model |H| above is obtained by: H = ss(H1) + H2  %%  % Note that % % * The 3.4 second delay is listed as "internal" % * The A,B,C,D data corresponds to the dynamics when all delays are set to % zero (zero-order Pade approximation) % % It is neither possible nor advisable to look at the transfer function of  % models with internal delays. Instead, use time and frequency plots  % to compare and validate models: step(H1,H2,H) legend('H1','H2','H','Location','NorthWest'), grid  %% bode(H1,'b',H-H2,'rREPLACE_WITH_DASH_DASH')  % verify that H-H2 = H1 grid  %% Building Models with Internal Delays % Typically, state-space models with internal delays are not created by % specifying A,B,C,D data together with a set of internal delays.  % Rather, you build such models by connecting simpler LTI models (some with % I/O delays) in series, parallel, or feedback. There is no limitation on % how many delays are involved and how the LTI models are connected % together. % % For example, consider the control loop shown below, where the plant is  % modeled as a first-order plus dead time.  % % <<../Figures/GSSpecifyingDelays_01.png>>  %% % *Figure 1:* Feedback Loop with Delay.  %% % Using the state-space  % representation, you can derive a model |T| for the closed-loop response from % r to y and simulate it by P = ss(5*exp(-3.4*s)/(s+1)); C = 0.1 * (1 + 1/(5*s)); T = feedback(P*C,1);  step(T) grid, title('Closed-loop step response')  %%  % For more complicated interconnections, you can name the input and output % signals of each block and use |CONNECT| to automatically take care of  % the wiring. Suppose, for example, that you want to add  feedforward  % to the control loop of Figure 1: % % <<../Figures/GSSpecifyingDelays_02.png>>  %% % *Figure 2:* Feedforward and Feedback Control.  %% % You can derive the corresponding closed-loop model |T| by F = 0.3/(s+4); P.InputName = 'u';  P.OutputName = 'y'; C.InputName = 'e';  C.OutputName = 'uc'; F.InputName = 'r';  F.OutputName = 'uf'; Sum1 = sumblk('e','r','y','+-');    % e = r-y Sum2 = sumblk('u','uf','uc','++');  % u = uf + uc Tff = connect(P,C,F,Sum1,Sum2,'r','y');  %% % and compare its response with the feedback only design: step(T,'b',Tff,'r') legend('No feedforward','Feedforward') grid, title('Closed-loop step response with and without feedforward')  %% State-Space Equations with Delayed Terms % A special class of LTI models with delays are state-space equations % with delayed terms. The general form is  % % $$ {dx \over dt} = A x(t) + B u(t) + \sum_j ( A_j x(t-\tau_j) + B_j u(t-\tau_j) ) $$ % % $$ y(t) = C x(t) + D u(t) + \sum_j ( C_j x(t-\tau_j) + B_j u(t-\tau_j) ) $$ %  % The function |DELAYSS| helps you specify such models. For example, consider % % $${dx \over dt} = -x(t) - x(t-1.2) + 2 u(t-0.5) , \;\; y(t) = x(t-0.5) + u(t) $$ % % To create this model, specify |Aj,Bj,Cj,Dj| for each delay and use % |DELAYSS| to assemble the model: DelayT(1) = struct('delay',0.5,'a',0,'b',2,'c',1,'d',0);   % tau1=0.5 DelayT(2) = struct('delay',1.2,'a',-1,'b',0,'c',0,'d',0);  % tau2=1.2 sys = delayss(-1,0,0,1,DelayT)  %%  % Note that the |A,B,C,D| values are for all delays set to zero. The  % response for these values need not be close to the actual response with % delays: step(sys,'b',pade(sys,0),'r')  %% Discrete-Time Models with Delays % Discrete-time delays are handled in a similar way with some minor  % differences: %  % * Discrete-time delays are always integer multiples of the sampling  %   period % * Discrete-time delays are equivalent to poles at z=0, so it is  %   always possible to absorb delays into the model dynamics. However, keeping %   delays separate is better for performance, especially %   for systems with long delays compared to the sampling period.  %% % To specify the first-order model % % $$ H(z) = z^{-25} { 2 \over z - 0.95 } $$ % % with sampling period Ts=0.1, use H = tf(2,[1 -0.95],0.1,'inputdelay',25) step(H)  %% % The equivalent state-space representation is  H = ss(H)  %% % Note that the delays are kept separate from the poles.  % Next, consider the feedback loop below where g is a pure gain. % % <<../Figures/GSSpecifyingDelays_03.png>>  %% % *Figure 3*: Discrete-Time Feedback Loop.  %% % To compute the closed-loop response for |g=0.01|, type g = .01; T = feedback(g*H,1) step(T)  %%  % Note that |T| is still a first-order model with an internal delay of 25 % samples. For comparison, map all delays to poles at z=0 using |DELAY2Z|: T1 = delay2z(T); order(T1)  %%  % The resulting model has 26 states and is therefore less efficient to  % simulate. Note that the step responses of |T| and |T1| exactly match as expected: step(T,'b',T1,'rREPLACE_WITH_DASH_DASH')  %% % In general, it is recommended to keep delays separate except when analyzing % the closed-loop dynamics of models with internal delays: rlocus(H) axis([-1 2 -1 1])  %% Inside State-Space Models with Internal Delays % State-space objects use generalized state-space equations to  % keep track of internal delays. Conceptually, such models % consist of two interconnected parts: % % * An ordinary state-space model |H(s)| with augmented I/O set % * A bank of internal delays. % % <<../Figures/GSSpecifyingDelays_04.png>>  %% % *Figure 4*: Internal Representation of State-Space Models with Internal Delays.  %%  % The corresponding state-space equations are % % $$\matrix{ \dot{x}(t) = A x(t) + B_1 u(t) + B_2 w(t) \;\;\;\; \cr %            y(t) = C_1 x(t) + D_{11} u(t) + D_{12} w(t) \cr %            z(t) = C_2 x(t) + D_{21} u(t) + D_{22} w(t) \cr %            w_j(t) = z_j(t - \tau_j) , \;\; j = 1,...,N } \;\;\;\; \;\;\;\; $$ %% % You need not bother with this internal representation  % to use the tools. However, if for some reason you want to extract % |H| or the matrices |A,B1,B2,...|, you can do this with |getDelayModel|. % For the example   P = 5*exp(-3.4*s)/(s+1); C = 0.1 * (1 + 1/(5*s)); T = feedback(ss(P*C),1);  [H,tau] = getDelayModel(T,'lft'); size(H)  %% % Note that |H| is a two-input, two-output model whereas |T| is SISO. % The inverse operation (combining |H| and |tau| to construct |T|) is  % performed by |setDelayModel|.  displayEndOfDemoMessage(mfilename)   ##### SOURCE END ##### --></body></html>

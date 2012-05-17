@@ -1,0 +1,150 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Spectrum Estimation Using Complex Data - Marple's Test Case</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="iddemo4.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit iddemo4">Open iddemo4.m in the Editor</a></div><div class="right"><a href="matlab:echodemo iddemo4">Run in the Command Window</a></div></div><div class="content"><h1>Spectrum Estimation Using Complex Data - Marple's Test Case</h1><!--introduction--><p>In this demo we consider spectrum estimation, using Marple's test case (The complex data in L. Marple: S.L. Marple, Jr, Digital Spectral Analysis with Applications, Prentice-Hall, Englewood Cliffs, NJ 1987.)</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Test Data</a></li><li><a href="#8">Estimating an Autoregressive (AR) Model</a></li><li><a href="#11">Estimating AR Model using Instrumental Variable Approach</a></li><li><a href="#12">Autoregressive-Moving Average (ARMA) Model of the Spectra</a></li><li><a href="#13">Additional Information</a></li></ul></div><h2>Test Data<a name="1"></a></h2><p>Let us beginn by loading the test data:</p><pre class="codeinput">load <span class="string">marple</span>
+<span class="comment">% Most of the routines in System Identification Toolbox(TM) support complex</span>
+<span class="comment">% data. For plotting we examine the real and imaginary parts of</span>
+<span class="comment">% the data separately, however.</span>
+</pre><p>First, take a look at the data:</p><pre class="codeinput">subplot(211),plot(real(marple)),title(<span class="string">'Real part of data.'</span>)
+subplot(212),plot(imag(marple)),title(<span class="string">'Imaginary part of data.'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo4_01.png" alt=""> <p>As a preliminary analysis step, let us check the periodogram of the data:</p><pre class="codeinput">per = etfe(marple);
+ffplot(per)
+</pre><img vspace="5" hspace="5" src="iddemo4_02.png" alt=""> <p>The spectrum can also be plotted with logarithmic frequency scale as a bodeplot:</p><pre class="codeinput">bode(per)
+</pre><img vspace="5" hspace="5" src="iddemo4_03.png" alt=""> <p>Since the data record is only 64 samples, and the periodogram is computed for 128 frequencies, we clearly see the oscillations from the narrow frequency window. We therefore apply some smoothing to the periodogram (corresponding to a frequency resolution of 1/32 Hz):</p><pre class="codeinput">sp = etfe(marple,32);
+ffplot(per,sp)
+</pre><img vspace="5" hspace="5" src="iddemo4_04.png" alt=""> <p>Let us now try the Blackman-Tukey approach to spectrum estimation:</p><pre class="codeinput">ssm = spa(marple); <span class="comment">% Function spa performs spectral estimation</span>
+ffplot(sp,<span class="string">'b'</span>,ssm,<span class="string">'g'</span>)
+        <span class="comment">% Blue: Smoothed periodogram.</span>
+        <span class="comment">% Green: Blackman-Tukey estimate.</span>
+</pre><img vspace="5" hspace="5" src="iddemo4_05.png" alt=""> <p>The default window length gives a very narrow lag window for this small amount of data. We can choose a larger lag window by:</p><pre class="codeinput">ss20 = spa(marple,20);
+ffplot(sp,ss20)
+        <span class="comment">%  Blue/solid: Smoothed periodogram.</span>
+        <span class="comment">%  Green/dashed: Blackman-Tukey estimate.</span>
+</pre><img vspace="5" hspace="5" src="iddemo4_06.png" alt=""> <h2>Estimating an Autoregressive (AR) Model<a name="8"></a></h2><p>A parametric 5-order AR-model is computed by:</p><pre class="codeinput">t5 = ar(marple,5);
+</pre><p>Compare with the periodogram estimate:</p><pre class="codeinput">ffplot(sp,<span class="string">'b'</span>,t5,<span class="string">'g'</span>)
+        <span class="comment">%  Blue Smoothed periodogram.</span>
+        <span class="comment">%  Green 5th order AR estimate.</span>
+</pre><img vspace="5" hspace="5" src="iddemo4_07.png" alt=""> <p>The AR-command in fact covers 20 different methods for spectrum estimation.  The above one was what is known as 'the modified covariance estimate' in Marple's book.</p><p>Some other well known ones are obtained with:</p><pre class="codeinput">tb5 = ar(marple,5,<span class="string">'burg'</span>);      <span class="comment">% Burg's method</span>
+ty5 = ar(marple,5,<span class="string">'yw'</span>);        <span class="comment">% The Yule-Walker method</span>
+ffplot(t5,tb5,ty5)
+        <span class="comment">%  blue: Modified covariance</span>
+        <span class="comment">%  green: Burg</span>
+        <span class="comment">%  red: Yule-Walker</span>
+</pre><img vspace="5" hspace="5" src="iddemo4_08.png" alt=""> <h2>Estimating AR Model using Instrumental Variable Approach<a name="11"></a></h2><p>AR-modeling can also be done using the Instrumental Variable approach. For this, we use the function <tt>ivar</tt>:</p><pre class="codeinput">ti = ivar(marple,4);
+ffplot(t5,ti)
+        <span class="comment">%  blue: Modified covariance</span>
+        <span class="comment">%  green: Instrumental Variable</span>
+</pre><img vspace="5" hspace="5" src="iddemo4_09.png" alt=""> <h2>Autoregressive-Moving Average (ARMA) Model of the Spectra<a name="12"></a></h2><p>Furthermore, System Identification Toolbox covers ARMA-modeling of spectra:</p><pre class="codeinput">ta44 = armax(marple,[4 4]); <span class="comment">% 4 AR-parameters and 4 MA-parameters</span>
+ffplot(t5,ta44)
+       <span class="comment">%  blue: Modified covariance</span>
+       <span class="comment">%  green: ARMA</span>
+</pre><img vspace="5" hspace="5" src="iddemo4_10.png" alt=""> <h2>Additional Information<a name="13"></a></h2><p>For more information on identification of dynamic systems with System Identification Toolbox visit the <a href="http://www.mathworks.com/products/sysid/">System Identification Toolbox</a> product information page.</p><p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Spectrum Estimation Using Complex Data - Marple's Test Case
+% In this demo we consider spectrum estimation, using Marple's
+% test case (The complex data in L. Marple: S.L. Marple, Jr, 
+% Digital Spectral Analysis with Applications, Prentice-Hall,
+% Englewood Cliffs, NJ 1987.)
+
+%   Copyright 1986-2009 The MathWorks, Inc.
+%   $Revision: 1.6.4.7 $  $Date: 2009/10/16 04:54:12 $
+
+%% Test Data
+% Let us beginn by loading the test data:
+load marple
+% Most of the routines in System Identification Toolbox(TM) support complex
+% data. For plotting we examine the real and imaginary parts of
+% the data separately, however.
+
+%%
+% First, take a look at the data:
+subplot(211),plot(real(marple)),title('Real part of data.')
+subplot(212),plot(imag(marple)),title('Imaginary part of data.')
+
+%%
+% As a preliminary analysis step, let us check the periodogram of the data:
+per = etfe(marple);
+ffplot(per)    
+%%
+% The spectrum can also be plotted with logarithmic frequency scale
+% as a bodeplot:
+bode(per)   
+
+%%
+% Since the data record is only 64 samples, and the periodogram is
+% computed for 128 frequencies, we clearly see the oscillations from the
+% narrow frequency window. We therefore apply some smoothing to the
+% periodogram (corresponding to a frequency resolution of 1/32 Hz):
+sp = etfe(marple,32);
+ffplot(per,sp)  
+
+%%
+% Let us now try the Blackman-Tukey approach to spectrum estimation:
+ssm = spa(marple); % Function spa performs spectral estimation
+ffplot(sp,'b',ssm,'g')    
+        % Blue: Smoothed periodogram.
+        % Green: Blackman-Tukey estimate.
+
+%%
+% The default window length gives a very narrow lag window for this
+% small amount of data. We can choose a larger lag window by:
+ss20 = spa(marple,20);
+ffplot(sp,ss20)
+        %  Blue/solid: Smoothed periodogram.
+        %  Green/dashed: Blackman-Tukey estimate.
+
+%% Estimating an Autoregressive (AR) Model
+% A parametric 5-order AR-model is computed by:
+t5 = ar(marple,5);
+
+%%
+% Compare with the periodogram estimate:
+ffplot(sp,'b',t5,'g')   
+        %  Blue Smoothed periodogram.
+        %  Green 5th order AR estimate.
+
+%% 
+% The AR-command in fact covers 20 different methods for spectrum
+% estimation.  The above one was what is known as 'the modified covariance
+% estimate' in Marple's book.
+%
+% Some other well known ones are obtained with:
+tb5 = ar(marple,5,'burg');      % Burg's method
+ty5 = ar(marple,5,'yw');        % The Yule-Walker method
+ffplot(t5,tb5,ty5)
+        %  blue: Modified covariance
+        %  green: Burg
+        %  red: Yule-Walker
+
+%% Estimating AR Model using Instrumental Variable Approach
+% AR-modeling can also be done using the Instrumental Variable approach.
+% For this, we use the function |ivar|:
+ti = ivar(marple,4); 
+ffplot(t5,ti)
+        %  blue: Modified covariance
+        %  green: Instrumental Variable        
+
+%% Autoregressive-Moving Average (ARMA) Model of the Spectra
+% Furthermore, System Identification Toolbox covers ARMA-modeling of
+% spectra: 
+ta44 = armax(marple,[4 4]); % 4 AR-parameters and 4 MA-parameters
+ffplot(t5,ta44)
+       %  blue: Modified covariance
+       %  green: ARMA
+
+%% Additional Information
+% For more information on identification of dynamic systems with System
+% Identification Toolbox visit the
+% <http://www.mathworks.com/products/sysid/ System Identification Toolbox> product
+% information page.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,52 @@
+%% ==============================================================================
+%% Abstract:
+%%   Example file process TLC script for Real-Time Workshop Embedded Coder
+%%   for demo model rtwdemo_fileprocess.mdl.
+%%
+%%   This 'File customization template,' which is entered into Templates page
+%%   of the Configuration Parameters, creates an additional entry point function
+%%   for the model to make the model's initialize function transparent to the
+%%   caller.  In other words, the caller only needs to call this step function
+%%   and the model initialization code will execute if necessary.
+%%
+%%   See Real-Time Workshop Embedded Code User's Guide for more information on
+%%   this capability.
+%%
+%% Copyright 1994-2005 The MathWorks, Inc.
+%% $Revision: 1.1.4.3 $
+%%
+%selectfile NULL_FILE
+
+%assign srcName = LibGetMdlSrcBaseName()
+%assign hdrName = LibGetMdlPubHdrBaseName()
+
+%assign modelC  = LibCreateSourceFile("Source", "Simulink", srcName)
+%assign modelH  = LibCreateSourceFile("Header", "Simulink", hdrName)
+
+%% Combine the model's initialize and step function into a single entry point
+%openfile tmpBuf
+
+/* Step model (and initialize if it's the first time called) */
+void %<srcName>(void) {
+  static boolean_T firstTime = 1;
+  
+  /* Initialize model */
+  if (firstTime) {
+    %<LibCallModelInitialize()>\
+    firstTime = 0;
+  }
+  
+  /* Step model */
+  %<LibCallModelStep(0)>\
+}
+%closefile tmpBuf
+  
+%<LibSetSourceFileSection(modelC, "Functions", tmpBuf)>
+
+%openfile tmpBuf
+
+/* Combined model initialize and step */
+extern void %<srcName>(void);
+%closefile tmpBuf
+
+%<LibSetSourceFileSection(modelH, "Declarations", tmpBuf)>

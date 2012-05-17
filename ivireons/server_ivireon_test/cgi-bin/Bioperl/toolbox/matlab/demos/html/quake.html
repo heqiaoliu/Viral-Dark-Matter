@@ -1,0 +1,265 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Loma Prieta Earthquake</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="quake.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit quake">Open quake.m in the Editor</a></div><div class="right"><a href="matlab:echodemo quake">Run in the Command Window</a></div></div><div class="content"><h1>Loma Prieta Earthquake</h1><!--introduction--><p>This demo shows how to analyze and visualize real-world earthquake data.</p><p>Authors: C. Denham, 1990, C. Moler, August, 1992.</p><!--/introduction--><p>The file QUAKE.MAT contains 200Hz data from the October 17, 1989 Loma Prieta earthquake in the Santa Cruz Mountains.  The data are courtesy of Joel Yellin at the Charles F. Richter Seismological Laboratory, University of California, Santa Cruz.  Start by loading the data.</p><pre class="codeinput">load <span class="string">quake</span> <span class="string">e</span> <span class="string">n</span> <span class="string">v</span>
+whos <span class="string">e</span> <span class="string">n</span> <span class="string">v</span>
+</pre><pre class="codeoutput">  Name          Size            Bytes  Class     Attributes
+
+  e         10001x1             80008  double              
+  n         10001x1             80008  double              
+  v         10001x1             80008  double              
+
+</pre><p>In the workspace now are three variables containing time traces from an accelerometer in the Natural Sciences' building at UC Santa Cruz.  The accelerometer recorded the main shock of the earthquake.  The variables n, e, v refer to the three directional components measured by the instrument, which was aligned parallel to the fault, with its N direction pointing in the direction of Sacramento.  The data is uncorrected for the response of the instrument.</p><p>Scale the data by the gravitational acceleration.  Also, create a fourth variable, t, containing a time base.</p><pre class="codeinput">g = 0.0980;
+e = g*e;
+n = g*n;
+v = g*v;
+delt = 1/200;
+t = delt*(1:length(e))';
+</pre><p>Here are plots of the accelerations.</p><pre class="codeinput">yrange = [-250 250];
+limits = [0 50 yrange];
+subplot(3,1,1), plot(t,e,<span class="string">'b'</span>), axis(limits), title(<span class="string">'East-West acceleration'</span>)
+subplot(3,1,2), plot(t,n,<span class="string">'g'</span>), axis(limits), title(<span class="string">'North-South acceleration'</span>)
+subplot(3,1,3), plot(t,v,<span class="string">'r'</span>), axis(limits), title(<span class="string">'Vertical acceleration'</span>)
+</pre><img vspace="5" hspace="5" src="quake_01.png" alt=""> <p>Look at the interval from t=8 seconds to t=15 seconds.  Draw black lines at the selected spots.  All subsequent calculations will involve this interval.</p><pre class="codeinput">t1 = 8*[1;1];
+t2 = 15*[1;1];
+subplot(3,1,1), hold <span class="string">on</span>, plot([t1 t2],yrange,<span class="string">'k'</span>,<span class="string">'LineWidth'</span>,2); hold <span class="string">off</span>
+subplot(3,1,2), hold <span class="string">on</span>, plot([t1 t2],yrange,<span class="string">'k'</span>,<span class="string">'LineWidth'</span>,2); hold <span class="string">off</span>
+subplot(3,1,3), hold <span class="string">on</span>, plot([t1 t2],yrange,<span class="string">'k'</span>,<span class="string">'LineWidth'</span>,2); hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="quake_02.png" alt=""> <p>Zoom in on the selected time interval.</p><pre class="codeinput">trange = sort([t1(1) t2(1)]);
+k = find((trange(1)&lt;=t) &amp; (t&lt;=trange(2)));
+e = e(k);
+n = n(k);
+v = v(k);
+t = t(k);
+ax = [trange yrange];
+
+subplot(3,1,1), plot(t,e,<span class="string">'b'</span>), axis(ax), title(<span class="string">'East-West acceleration'</span>)
+subplot(3,1,2), plot(t,n,<span class="string">'g'</span>), axis(ax), title(<span class="string">'North-South acceleration'</span>)
+subplot(3,1,3), plot(t,v,<span class="string">'r'</span>), axis(ax), title(<span class="string">'Vertical acceleration'</span>)
+</pre><img vspace="5" hspace="5" src="quake_03.png" alt=""> <p>Focusing on one second in the middle of this interval, a plot of "East-West" against "North-South" shows the horizontal acceleration.</p><pre class="codeinput">subplot(1,1,1)
+k = length(t);
+k = round(max(1,k/2-100):min(k,k/2+100));
+plot(e(k),n(k),<span class="string">'.-'</span>)
+xlabel(<span class="string">'East'</span>), ylabel(<span class="string">'North'</span>);
+title(<span class="string">'Acceleration During a One Second Period'</span>);
+</pre><img vspace="5" hspace="5" src="quake_04.png" alt=""> <p>Integrate the accelerations twice to calculate the velocity and position of a point in 3-D space.</p><pre class="codeinput">edot = cumsum(e)*delt;  edot = edot - mean(edot);
+ndot = cumsum(n)*delt;  ndot = ndot - mean(ndot);
+vdot = cumsum(v)*delt;  vdot = vdot - mean(vdot);
+
+epos = cumsum(edot)*delt;  epos = epos - mean(epos);
+npos = cumsum(ndot)*delt;  npos = npos - mean(npos);
+vpos = cumsum(vdot)*delt;  vpos = vpos - mean(vpos);
+
+subplot(2,1,1);
+plot(t,[edot+25 ndot vdot-25]); axis([trange min(vdot-30) max(edot+30)])
+xlabel(<span class="string">'Time'</span>), ylabel(<span class="string">'V - N - E'</span>), title(<span class="string">'Velocity'</span>)
+
+subplot(2,1,2);
+plot(t,[epos+50 npos vpos-50]);
+axis([trange min(vpos-55) max(epos+55)])
+xlabel(<span class="string">'Time'</span>), ylabel(<span class="string">'V - N - E'</span>), title(<span class="string">'Position'</span>)
+</pre><img vspace="5" hspace="5" src="quake_05.png" alt=""> <p>The trajectory defined by the position data can be displayed with three different 2-dimensional projections.  Here is the first with a few values of t annotated.</p><pre class="codeinput">subplot(1,1,1); cla; subplot(2,2,1)
+plot(npos,vpos,<span class="string">'b'</span>);
+na = max(abs(npos)); na = 1.05*[-na na];
+ea = max(abs(epos)); ea = 1.05*[-ea ea];
+va = max(abs(vpos)); va = 1.05*[-va va];
+axis([na va]); xlabel(<span class="string">'North'</span>); ylabel(<span class="string">'Vertical'</span>);
+
+nt = ceil((max(t)-min(t))/6);
+k = find(fix(t/nt)==(t/nt))';
+<span class="keyword">for</span> j = k, text(npos(j),vpos(j),[<span class="string">'o '</span> int2str(t(j))]); <span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="quake_06.png" alt=""> <p>Similar code produces two more 2-D views.</p><pre class="codeinput">subplot(2,2,2)
+plot(epos,vpos,<span class="string">'g'</span>);
+<span class="keyword">for</span> j = k; text(epos(j),vpos(j),[<span class="string">'o '</span> int2str(t(j))]); <span class="keyword">end</span>
+axis([ea va]); xlabel(<span class="string">'East'</span>); ylabel(<span class="string">'Vertical'</span>);
+
+subplot(2,2,3)
+plot(npos,epos,<span class="string">'r'</span>);
+<span class="keyword">for</span> j = k; text(npos(j),epos(j),[<span class="string">'o '</span> int2str(t(j))]); <span class="keyword">end</span>
+axis([na ea]); xlabel(<span class="string">'North'</span>); ylabel(<span class="string">'East'</span>);
+</pre><img vspace="5" hspace="5" src="quake_07.png" alt=""> <p>The fourth subplot is a 3-D view of the trajectory.</p><pre class="codeinput">subplot(2,2,4)
+plot3(npos,epos,vpos,<span class="string">'k'</span>)
+<span class="keyword">for</span> j = k;text(npos(j),epos(j),vpos(j),[<span class="string">'o '</span> int2str(t(j))]); <span class="keyword">end</span>
+axis([na ea va]); xlabel(<span class="string">'North'</span>); ylabel(<span class="string">'East'</span>), zlabel(<span class="string">'Vertical'</span>);
+box <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="quake_08.png" alt=""> <p>Finally, plot a dot at every tenth position point.  The spacing between dots indicates the velocity.</p><pre class="codeinput">subplot(1,1,1)
+plot3(npos,epos,vpos,<span class="string">'r'</span>)
+hold <span class="string">on</span>
+step = 10;
+plot3(npos(1:step:end),epos(1:step:end),vpos(1:step:end),<span class="string">'.'</span>)
+hold <span class="string">off</span>
+box <span class="string">on</span>
+axis <span class="string">tight</span>
+xlabel(<span class="string">'North-South'</span>)
+ylabel(<span class="string">'East-West'</span>)
+zlabel(<span class="string">'Vertical'</span>)
+title(<span class="string">'Position (cms)'</span>)
+</pre><img vspace="5" hspace="5" src="quake_09.png" alt=""> <p class="footer">Copyright 1984-2005 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Loma Prieta Earthquake
+% This demo shows how to analyze and visualize real-world earthquake data.
+% 
+% Authors: C. Denham, 1990, C. Moler, August, 1992.
+
+% Copyright 1984-2005 The MathWorks, Inc. 
+% $Revision: 5.17.4.3 $  $Date: 2007/02/06 19:52:52 $
+
+%%
+% The file QUAKE.MAT contains 200Hz data from the October 17, 1989 Loma Prieta
+% earthquake in the Santa Cruz Mountains.  The data are courtesy of Joel Yellin
+% at the Charles F. Richter Seismological Laboratory, University of California,
+% Santa Cruz.  Start by loading the data.
+
+load quake e n v
+whos e n v
+
+%%
+% In the workspace now are three variables containing time traces from an
+% accelerometer in the Natural Sciences' building at UC Santa Cruz.  The
+% accelerometer recorded the main shock of the earthquake.  The variables n, e,
+% v refer to the three directional components measured by the instrument, which
+% was aligned parallel to the fault, with its N direction pointing in the
+% direction of Sacramento.  The data is uncorrected for the response of the
+% instrument.
+%
+% Scale the data by the gravitational acceleration.  Also, create a fourth
+% variable, t, containing a time base.
+
+g = 0.0980;
+e = g*e;
+n = g*n;
+v = g*v;
+delt = 1/200;
+t = delt*(1:length(e))';
+
+%%
+% Here are plots of the accelerations.
+
+yrange = [-250 250];
+limits = [0 50 yrange];
+subplot(3,1,1), plot(t,e,'b'), axis(limits), title('East-West acceleration')
+subplot(3,1,2), plot(t,n,'g'), axis(limits), title('North-South acceleration')
+subplot(3,1,3), plot(t,v,'r'), axis(limits), title('Vertical acceleration')
+
+%%
+% Look at the interval from t=8 seconds to t=15 seconds.  Draw black lines at
+% the selected spots.  All subsequent calculations will involve this interval.
+
+t1 = 8*[1;1];
+t2 = 15*[1;1];
+subplot(3,1,1), hold on, plot([t1 t2],yrange,'k','LineWidth',2); hold off
+subplot(3,1,2), hold on, plot([t1 t2],yrange,'k','LineWidth',2); hold off
+subplot(3,1,3), hold on, plot([t1 t2],yrange,'k','LineWidth',2); hold off
+
+%%
+% Zoom in on the selected time interval.
+
+trange = sort([t1(1) t2(1)]);
+k = find((trange(1)<=t) & (t<=trange(2)));
+e = e(k);
+n = n(k);
+v = v(k);
+t = t(k);
+ax = [trange yrange];
+
+subplot(3,1,1), plot(t,e,'b'), axis(ax), title('East-West acceleration')
+subplot(3,1,2), plot(t,n,'g'), axis(ax), title('North-South acceleration')
+subplot(3,1,3), plot(t,v,'r'), axis(ax), title('Vertical acceleration')
+
+%%
+% Focusing on one second in the middle of this interval, a plot of "East-West"
+% against "North-South" shows the horizontal acceleration.
+
+subplot(1,1,1)
+k = length(t);
+k = round(max(1,k/2-100):min(k,k/2+100));
+plot(e(k),n(k),'.-')
+xlabel('East'), ylabel('North');
+title('Acceleration During a One Second Period');
+
+%%
+% Integrate the accelerations twice to calculate the velocity and position of a
+% point in 3-D space.
+
+edot = cumsum(e)*delt;  edot = edot - mean(edot);
+ndot = cumsum(n)*delt;  ndot = ndot - mean(ndot);
+vdot = cumsum(v)*delt;  vdot = vdot - mean(vdot);
+
+epos = cumsum(edot)*delt;  epos = epos - mean(epos);
+npos = cumsum(ndot)*delt;  npos = npos - mean(npos);
+vpos = cumsum(vdot)*delt;  vpos = vpos - mean(vpos);
+
+subplot(2,1,1);
+plot(t,[edot+25 ndot vdot-25]); axis([trange min(vdot-30) max(edot+30)])
+xlabel('Time'), ylabel('V - N - E'), title('Velocity')
+
+subplot(2,1,2);
+plot(t,[epos+50 npos vpos-50]);
+axis([trange min(vpos-55) max(epos+55)])
+xlabel('Time'), ylabel('V - N - E'), title('Position')
+
+%%
+% The trajectory defined by the position data can be displayed with three
+% different 2-dimensional projections.  Here is the first with a few values of t
+% annotated.
+
+subplot(1,1,1); cla; subplot(2,2,1)
+plot(npos,vpos,'b');
+na = max(abs(npos)); na = 1.05*[-na na];
+ea = max(abs(epos)); ea = 1.05*[-ea ea];
+va = max(abs(vpos)); va = 1.05*[-va va];
+axis([na va]); xlabel('North'); ylabel('Vertical');
+
+nt = ceil((max(t)-min(t))/6);
+k = find(fix(t/nt)==(t/nt))';
+for j = k, text(npos(j),vpos(j),['o ' int2str(t(j))]); end
+
+%%
+% Similar code produces two more 2-D views.
+
+subplot(2,2,2)
+plot(epos,vpos,'g');
+for j = k; text(epos(j),vpos(j),['o ' int2str(t(j))]); end
+axis([ea va]); xlabel('East'); ylabel('Vertical');
+
+subplot(2,2,3)
+plot(npos,epos,'r');
+for j = k; text(npos(j),epos(j),['o ' int2str(t(j))]); end
+axis([na ea]); xlabel('North'); ylabel('East');
+
+%%
+% The fourth subplot is a 3-D view of the trajectory.
+
+subplot(2,2,4)
+plot3(npos,epos,vpos,'k')
+for j = k;text(npos(j),epos(j),vpos(j),['o ' int2str(t(j))]); end
+axis([na ea va]); xlabel('North'); ylabel('East'), zlabel('Vertical');
+box on
+
+%%
+% Finally, plot a dot at every tenth position point.  The spacing between
+% dots indicates the velocity.
+
+subplot(1,1,1)
+plot3(npos,epos,vpos,'r')
+hold on
+step = 10;
+plot3(npos(1:step:end),epos(1:step:end),vpos(1:step:end),'.')
+hold off
+box on
+axis tight
+xlabel('North-South')
+ylabel('East-West')
+zlabel('Vertical')
+title('Position (cms)')
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

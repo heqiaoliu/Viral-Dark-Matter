@@ -1,0 +1,37 @@
+%% File: sfun_can_frame_2_double.tlc
+%%
+%% Abstract:
+%%   
+%%
+%% $Revision: 1.1.10.3 $
+%% $Date: 2008/11/04 21:23:57 $
+%%
+%% Copyright 2001-2006 The MathWorks, Inc.
+
+%implements sfun_can_frame_2_double "C"
+
+%include "canincludes.tlc"
+
+%function BlockTypeSetup(block,system) void
+   %<SetupCanDataTypes(block)>
+%endfunction
+
+%function BlockInstanceSetup(block, system) void
+%endfunction
+
+%function Outputs(block,system) Output
+   /*------------ %<Type> Block: %<Name> ------------*/
+   %assign frame = LibBlockInputSignal(0,"","",0)
+  
+   %assign outputData  = LibBlockOutputSignal(0, "", "", 0)
+   %assign outputData1 = LibBlockOutputSignal(1, "", "", 0)
+   %assign outputData2 = LibBlockOutputSignal(2, "", "", 0)
+   %assign outputData3 = LibBlockOutputSignalAddr(3, "", "", 0)
+
+   /* copy CAN_FRAME data to output */
+    %<outputData>=%<frame>.ID;
+    %<outputData1>=%<frame>.Extended;
+    %<outputData2>=%<frame>.Length;
+    memcpy(%<outputData3>,%<frame>.Data,8);  
+                
+%endfunction

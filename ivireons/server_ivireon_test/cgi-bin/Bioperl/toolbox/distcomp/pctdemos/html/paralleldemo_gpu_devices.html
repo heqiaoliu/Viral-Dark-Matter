@@ -1,0 +1,146 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>GPU Devices</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-10"><meta name="DC.source" content="paralleldemo_gpu_devices.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_gpu_devices">Open paralleldemo_gpu_devices.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_gpu_devices">Run in the Command Window</a></div></div><div class="content"><h1>GPU Devices</h1><!--introduction--><p>This demo shows how to find out the number of  CUDA devices in your machine, how to choose which device MATLAB&reg; uses, and how to query the properties of the currently selected device.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Number of Devices</a></li><li><a href="#2">Selecting and Querying Devices</a></li><li><a href="#3">Reset to the Original Device</a></li></ul></div><h2>Number of Devices<a name="1"></a></h2><p>The function <tt>gpuDeviceCount</tt> returns the number of CUDA devices in your machine:</p><pre class="codeinput">numDevices = gpuDeviceCount
+origDevice = gpuDevice
+</pre><pre class="codeoutput">
+numDevices =
+
+     2
+
+
+origDevice = 
+
+  parallel.gpu.CUDADevice handle
+  Package: parallel.gpu
+
+  Properties:
+                      Name: 'Tesla C2050'
+                     Index: 1
+         ComputeCapability: '2.0'
+            SupportsDouble: 1
+             DriverVersion: 3
+        MaxThreadsPerBlock: 1024
+          MaxShmemPerBlock: 49152
+        MaxThreadBlockSize: [1024 1024 64]
+               MaxGridSize: [65535 65535]
+                 SIMDWidth: 32
+               TotalMemory: 2.8180e+09
+                FreeMemory: 2.7591e+09
+       MultiprocessorCount: 14
+      GPUOverlapsTransfers: 1
+    KernelExecutionTimeout: 0
+           DeviceSupported: 1
+            DeviceSelected: 1
+
+
+</pre><h2>Selecting and Querying Devices<a name="2"></a></h2><p>Use the <tt>gpuDevice</tt> function with no inputs to return an object that represent the current device. Use the <tt>gpuDevice</tt> function with a single integer input to select a device with that device index. Note that device indices are one-based, which is different from the CUDA API. <tt>gpuDevice</tt> always returns an object representing the selected device. Not all devices are supported, in which case the DeviceSupported property is <tt>false</tt>, and the memory properties are not available.</p><pre class="codeinput"><span class="comment">% Ignore warnings about unsupported devices</span>
+warnState = warning( <span class="string">'off'</span>, <span class="string">'parallel:gpu:DeviceCapability'</span> );
+
+<span class="keyword">for</span> idx = 1:numDevices
+    device = gpuDevice( idx )
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">
+device = 
+
+  parallel.gpu.CUDADevice handle
+  Package: parallel.gpu
+
+  Properties:
+                      Name: 'Tesla C2050'
+                     Index: 1
+         ComputeCapability: '2.0'
+            SupportsDouble: 1
+             DriverVersion: 3
+        MaxThreadsPerBlock: 1024
+          MaxShmemPerBlock: 49152
+        MaxThreadBlockSize: [1024 1024 64]
+               MaxGridSize: [65535 65535]
+                 SIMDWidth: 32
+               TotalMemory: 2.8180e+09
+                FreeMemory: 2.7591e+09
+       MultiprocessorCount: 14
+      GPUOverlapsTransfers: 1
+    KernelExecutionTimeout: 0
+           DeviceSupported: 1
+            DeviceSelected: 1
+
+
+
+device = 
+
+  parallel.gpu.CUDADevice handle
+  Package: parallel.gpu
+
+  Properties:
+                      Name: 'Quadro FX 370'
+                     Index: 2
+         ComputeCapability: '1.1'
+            SupportsDouble: 0
+             DriverVersion: 3
+        MaxThreadsPerBlock: 512
+          MaxShmemPerBlock: 16384
+        MaxThreadBlockSize: [512 512 64]
+               MaxGridSize: [65535 65535]
+                 SIMDWidth: 32
+               TotalMemory: 267714560
+                FreeMemory: NaN
+       MultiprocessorCount: 2
+      GPUOverlapsTransfers: 1
+    KernelExecutionTimeout: 0
+           DeviceSupported: 0
+            DeviceSelected: 1
+
+
+</pre><h2>Reset to the Original Device<a name="3"></a></h2><p>We use the original properties to revert to the original device.</p><pre class="codeinput">gpuDevice( origDevice.Index );
+
+<span class="comment">% revert warning state</span>
+warning( warnState );
+</pre><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% GPU Devices
+% This demo shows how to find out the number of  CUDA devices in your
+% machine, how to choose which device MATLAB(R) uses, and how to query the
+% properties of the currently selected device.
+
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.10.2.2.1 $   $Date: 2010/06/09 17:57:35 $
+
+%% Number of Devices
+% The function |gpuDeviceCount| returns the number of CUDA
+% devices in your machine:
+numDevices = gpuDeviceCount
+origDevice = gpuDevice
+
+%% Selecting and Querying Devices
+% Use the |gpuDevice| function with no inputs to return an object that
+% represent the current device. Use the |gpuDevice| function with a single
+% integer input to select a device with that device index. Note that device
+% indices are one-based, which is different from the CUDA API. |gpuDevice|
+% always returns an object representing the selected device. Not all
+% devices are supported, in which case the DeviceSupported property is
+% |false|, and the memory properties are not available.
+
+% Ignore warnings about unsupported devices
+warnState = warning( 'off', 'parallel:gpu:DeviceCapability' );
+
+for idx = 1:numDevices
+    device = gpuDevice( idx )
+end
+
+%% Reset to the Original Device
+% We use the original properties to revert to the original device.
+gpuDevice( origDevice.Index );
+
+% revert warning state
+warning( warnState );
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,56 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using Variable-size Data</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_variable_size_data.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_variable_size_data.mdl</div><div class="right"><a href="matlab:sf_variable_size_data">Open this model</a></div></div><div class="content"><h1>Using Variable-size Data</h1><p>This demo showcases a simple use of variable-size data in Stateflow charts. Starting from R2010a, variable-size data can be passed as inputs and outputs to and from Embedded MATLAB functions, Embedded MATLAB truth-tables, and Simulink Functions in a Stateflow chart.</p><img vspace="5" hspace="5" src="sf_variable_size_data_01.png" alt=""> <img vspace="5" hspace="5" src="sf_variable_size_data_02.png" alt=""> <p>The chart <tt>variableSize</tt> defines a Simulink function <tt>foo</tt> that returns a matrix of varying dimensions, based on the simulation time.</p><img vspace="5" hspace="5" src="sf_variable_size_data_03.png" alt=""> <p>Note that the variable-size output of the Simulink function is assigned to the chart output at each time step. On simulation, the chart consequently outputs a matrix of varying size.</p><img vspace="5" hspace="5" src="sf_variable_size_data_04.png" alt=""> <p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using Variable-size Data
+%
+% This demo showcases a simple use of variable-size data in Stateflow
+% charts. Starting from R2010a, variable-size data can be passed as inputs
+% and outputs to and from Embedded MATLAB functions, Embedded MATLAB
+% truth-tables, and Simulink Functions in a Stateflow chart.
+
+% Copyright 2009 The MathWorks, Inc.
+
+clear all
+close all
+bdclose all
+
+model = 'sf_variable_size_data';
+open_system(model);
+rt = sfroot;
+m = rt.find('-isa', 'Stateflow.Machine', 'Name', model);
+c = m.find('-isa', 'Stateflow.Chart');
+
+%%
+% The chart |variableSize| defines a Simulink function |foo| that returns a
+% matrix of varying dimensions, based on the simulation time. 
+%
+
+open_system([model '/' c.Name '/' 'foo']);
+
+%%
+% Note that the variable-size output of the Simulink function is assigned
+% to the chart output at each time step. On simulation, the chart
+% consequently outputs a matrix of varying size.
+%
+evalc(['sim(''' model ''')']);
+
+%%
+%
+open_system([model '/Scope']);
+
+%%
+%
+bdclose all
+close all
+clear all
+
+##### SOURCE END #####
+--></body></html>

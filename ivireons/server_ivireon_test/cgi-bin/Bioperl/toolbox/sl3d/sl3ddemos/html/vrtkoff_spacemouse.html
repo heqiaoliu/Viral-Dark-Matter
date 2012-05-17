@@ -1,0 +1,242 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Plane Manipulation Using Space Mouse MATLAB&reg; Object</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="vrtkoff_spacemouse.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit vrtkoff_spacemouse">Open vrtkoff_spacemouse.m in the Editor</a></div><div class="right"><a href="matlab:echodemo vrtkoff_spacemouse">Run in the Command Window</a></div></div><div class="content"><h1>Plane Manipulation Using Space Mouse MATLAB&reg; Object</h1><!--introduction--><p>This demonstration shows how to use the Space Mouse via MATLAB&reg; interface.</p><p>After starting this demo, a virtual scene with an aircraft is displayed in the Simulink&reg; 3D Animation&#8482; Viewer. You can navigate the plane in the scene using the Space Mouse. By pressing the device button 1 you can place a marker at the current plane position.</p><p>This demonstration requires a Space Mouse or other compatible device.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Create and Initialize the Space Mouse Object</a></li><li><a href="#2">Load and View the Virtual World</a></li><li><a href="#3">Add an EXTERNPROTO for Trajectory Markers</a></li><li><a href="#4">Navigation in the Scene</a></li><li><a href="#5">Cleanup</a></li></ul></div><h2>Create and Initialize the Space Mouse Object<a name="1"></a></h2><p>The device ID is set to USB1 in the example. If your device uses a different connection, set the ID accordingly. Valid values for the space mouse ID are:</p><pre> COM1, COM2, COM3, COM4, USB1, USB2, USB3 or USB4.</pre><p>NOTE: a warning message is printed if Space Mouse is not connected.</p><pre class="codeinput">ID = <span class="string">'USB1'</span>;
+MOUSE = [];
+<span class="keyword">try</span>
+  <span class="comment">% try to create the space mouse object</span>
+  MOUSE = vrspacemouse(ID);
+<span class="keyword">catch</span> ME
+  fprintf(<span class="string">'Unable to initialize the Space Mouse on port %s.\n'</span>, ID);
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Unable to initialize the Space Mouse on port USB1.
+</pre><h2>Load and View the Virtual World<a name="2"></a></h2><pre class="codeinput"><span class="comment">% create and open the vrworld object</span>
+w = vrworld(<span class="string">'vrtkoff_hud.wrl'</span>, <span class="string">'new'</span>);
+open(w);
+
+<span class="comment">% create the vrfigure showing the virtual scene</span>
+fig = vrfigure(w);
+<span class="comment">% go to a viewpoint suitable for user navigation</span>
+set(fig, <span class="string">'Viewpoint'</span>, <span class="string">'Ride on the Plane'</span>);
+
+<span class="comment">% get the manipulated airplane node</span>
+airpln = vrnode(w, <span class="string">'Plane'</span>);
+<span class="comment">% read plane initial translation and rotation</span>
+originalTranslation = airpln.translation;
+originalRotation = airpln.rotation;
+
+<span class="comment">% set the HUD display text</span>
+offset = vrnode(w, <span class="string">'HUDOffset'</span>);
+offset.translation = offset.translation + [-0.15 1.9 0];
+hudtext = vrnode(w, <span class="string">'HUDText1'</span>);
+hudstr = sprintf(strcat(<span class="string">'Press button ''1'' to drop a marker\n'</span>, <span class="keyword">...</span>
+  <span class="string">'Press button ''2'' to reset plane position \n Press buttons ''1'' and ''2'' to exit\n'</span>));
+hudstr = textscan(hudstr, <span class="string">'%s'</span>, <span class="string">'delimiter'</span>, <span class="string">'\n'</span>);
+hudtext.string = hudstr{1};
+</pre><img vspace="5" hspace="5" src="vrtkoff_spacemouse_01.png" alt=""> <h2>Add an EXTERNPROTO for Trajectory Markers<a name="3"></a></h2><p>Load a tetrahedron shape PROTO from VRML file containing various marker shapes.</p><pre class="codeinput"><span class="comment">% get the path to the wrl file with marker PROTOs</span>
+pathtomarkers = which(<span class="string">'vr_markers.wrl'</span>);
+<span class="comment">% use the tetrahedron shape</span>
+MarkerName = <span class="string">'Marker_Tetrahedron'</span>;
+<span class="comment">% create an EXTERNPROTO with specified marker</span>
+<span class="keyword">try</span>
+  addexternproto(w, pathtomarkers, MarkerName);
+<span class="keyword">catch</span> ME
+  <span class="comment">% if required PROTO is already contained don't throw an exception</span>
+  <span class="keyword">if</span> ~strcmpi(ME.identifier, <span class="string">'VR:protoexists'</span>)
+    throwAsCaller(ME);
+  <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><h2>Navigation in the Scene<a name="4"></a></h2><p>The interactive navigation is finished either by pressing Space Mouse buttons 1 and 2 simultaneously or by closing the Simulink 3D Animation Viewer figure.</p><pre class="codeinput"><span class="keyword">if</span> ~isempty(MOUSE)
+
+  <span class="comment">% iterator that ensures unique DEF names for created markers</span>
+  iterforname = 0;
+
+  <span class="comment">% set the mouse sensitivity for translations</span>
+  <span class="comment">% higher values correspond to higher sensitivity</span>
+  MOUSE.PositionSensitivity = 1e-2;
+  <span class="comment">% set the mouse sensitivity for rotations</span>
+  <span class="comment">% higher values correspond to higher sensitivity</span>
+  MOUSE.RotationSensitivity = 1e-5;
+
+  <span class="comment">% read the space mouse values and update the scene objects in a cycle</span>
+  <span class="comment">% repeat unless buttons '1' and '2' simultaneously pressed or figure closed</span>
+  <span class="keyword">while</span> any(button(MOUSE, [1 2]) == 0) &amp;&amp; isvalid(fig)
+     pause(0.01);
+     <span class="comment">% use the method vrspacemouse/viewpoint to get the current translation and rotation</span>
+     V = viewpoint(MOUSE);
+     <span class="comment">% set the new translation to the aircraft node</span>
+     airpln.translation = originalTranslation + [-1 1 -1].*V(1:3);
+     <span class="comment">% set the new rotation to the aircraft node</span>
+     airpln.rotation = [-1 1 -1 1].*V(4:7);
+     <span class="keyword">if</span> button(MOUSE, 1) == 1
+       <span class="comment">% if mouse button '1' pressed create a new marker</span>
+       newMarker = vrnode(w, sprintf(<span class="string">'%s_%d'</span>, <span class="string">'Marker'</span>, iterforname), MarkerName);
+       <span class="comment">% set marker translation</span>
+       newMarker.markerTranslation = originalTranslation + [-1 1 -1].*V(1:3);
+       <span class="comment">% increment the iterator</span>
+       iterforname = iterforname + 1;
+     <span class="keyword">end</span>
+     <span class="keyword">if</span> button(MOUSE, 2) == 1
+       <span class="comment">% if mouse button '2' pressed reset the plane position and rotation</span>
+       airpln.translation = originalTranslation;
+       airpln.rotation = originalRotation;
+       MOUSE.InitialPosition = [0 0 0];
+       MOUSE.InitialRotation = [0 0 0];
+     <span class="keyword">end</span>
+     <span class="comment">% redraw the virtual scene</span>
+     vrdrawnow
+  <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><h2>Cleanup<a name="5"></a></h2><pre class="codeinput"><span class="comment">% close the vrfigure</span>
+close(fig);
+<span class="comment">% close the vrworld</span>
+close(w);
+<span class="comment">% clear all used variables</span>
+clear <span class="string">ID</span> <span class="string">MOUSE</span> <span class="string">w</span> <span class="string">fig</span> <span class="string">airpln</span> <span class="string">originalTranslation</span> <span class="string">originalRotation</span> <span class="string">offset</span> <span class="string">hudtext</span> <span class="string">hudstr</span> <span class="keyword">...</span>
+      <span class="string">pathtomarkers</span> <span class="string">MarkerName</span> <span class="string">iterforname</span> <span class="string">V</span> <span class="string">newMarker</span> <span class="string">img_capture</span> <span class="string">img</span>;
+
+<span class="comment">% display the end of demo message</span>
+</pre><p class="footer">Copyright 1998-2009 HUMUSOFT s.r.o. and The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Plane Manipulation Using Space Mouse MATLAB(R) Object
+% This demonstration shows how to use the Space Mouse via MATLAB(R) interface.
+%
+% After starting this demo, a virtual scene with an aircraft is displayed
+% in the Simulink(R) 3D Animation(TM) Viewer. You can navigate the plane in 
+% the scene using the Space Mouse. By pressing the device button 1 you can
+% place a marker at the current plane position.
+%
+% This demonstration requires a Space Mouse or other compatible device.
+
+% Copyright 1998-2009 HUMUSOFT s.r.o. and The MathWorks, Inc.
+% $Revision: 1.1.6.4 $ $Date: 2009/11/07 21:30:01 $ $Author: batserve $
+
+%% Create and Initialize the Space Mouse Object
+%
+% The device ID is set to USB1 in the example. If your device uses a
+% different connection, set the ID accordingly. 
+% Valid values for the space mouse ID are: 
+%
+%   COM1, COM2, COM3, COM4, USB1, USB2, USB3 or USB4.
+%
+% NOTE: a warning message is printed if Space Mouse is not connected.
+
+ID = 'USB1';
+MOUSE = [];
+try
+  % try to create the space mouse object
+  MOUSE = vrspacemouse(ID);
+catch ME
+  fprintf('Unable to initialize the Space Mouse on port %s.\n', ID);
+end
+
+%% Load and View the Virtual World
+
+% create and open the vrworld object
+w = vrworld('vrtkoff_hud.wrl', 'new');
+open(w);
+
+% create the vrfigure showing the virtual scene
+fig = vrfigure(w);
+% go to a viewpoint suitable for user navigation
+set(fig, 'Viewpoint', 'Ride on the Plane');
+
+% get the manipulated airplane node
+airpln = vrnode(w, 'Plane');
+% read plane initial translation and rotation
+originalTranslation = airpln.translation; 
+originalRotation = airpln.rotation;
+
+% set the HUD display text
+offset = vrnode(w, 'HUDOffset');
+offset.translation = offset.translation + [-0.15 1.9 0];
+hudtext = vrnode(w, 'HUDText1');
+hudstr = sprintf(strcat('Press button ''1'' to drop a marker\n', ...
+  'Press button ''2'' to reset plane position \n Press buttons ''1'' and ''2'' to exit\n'));
+hudstr = textscan(hudstr, '%s', 'delimiter', '\n');
+hudtext.string = hudstr{1};
+
+%% Add an EXTERNPROTO for Trajectory Markers
+% Load a tetrahedron shape PROTO from VRML file containing various marker shapes.
+
+% get the path to the wrl file with marker PROTOs 
+pathtomarkers = which('vr_markers.wrl');
+% use the tetrahedron shape                                              
+MarkerName = 'Marker_Tetrahedron';
+% create an EXTERNPROTO with specified marker
+try
+  addexternproto(w, pathtomarkers, MarkerName);
+catch ME
+  % if required PROTO is already contained don't throw an exception
+  if ~strcmpi(ME.identifier, 'VR:protoexists')
+    throwAsCaller(ME);
+  end
+end
+
+%% Navigation in the Scene
+% The interactive navigation is finished either by pressing Space Mouse 
+% buttons 1 and 2 simultaneously or by closing the Simulink 3D Animation Viewer figure.
+
+if ~isempty(MOUSE)
+
+  % iterator that ensures unique DEF names for created markers
+  iterforname = 0;
+  
+  % set the mouse sensitivity for translations
+  % higher values correspond to higher sensitivity
+  MOUSE.PositionSensitivity = 1e-2;
+  % set the mouse sensitivity for rotations
+  % higher values correspond to higher sensitivity
+  MOUSE.RotationSensitivity = 1e-5;
+  
+  % read the space mouse values and update the scene objects in a cycle
+  % repeat unless buttons '1' and '2' simultaneously pressed or figure closed
+  while any(button(MOUSE, [1 2]) == 0) && isvalid(fig)
+     pause(0.01); 
+     % use the method vrspacemouse/viewpoint to get the current translation and rotation
+     V = viewpoint(MOUSE);
+     % set the new translation to the aircraft node
+     airpln.translation = originalTranslation + [-1 1 -1].*V(1:3);
+     % set the new rotation to the aircraft node
+     airpln.rotation = [-1 1 -1 1].*V(4:7);
+     if button(MOUSE, 1) == 1
+       % if mouse button '1' pressed create a new marker
+       newMarker = vrnode(w, sprintf('%s_%d', 'Marker', iterforname), MarkerName);
+       % set marker translation
+       newMarker.markerTranslation = originalTranslation + [-1 1 -1].*V(1:3);
+       % increment the iterator
+       iterforname = iterforname + 1;
+     end
+     if button(MOUSE, 2) == 1
+       % if mouse button '2' pressed reset the plane position and rotation
+       airpln.translation = originalTranslation;
+       airpln.rotation = originalRotation;
+       MOUSE.InitialPosition = [0 0 0];
+       MOUSE.InitialRotation = [0 0 0];
+     end
+     % redraw the virtual scene
+     vrdrawnow
+  end
+end
+
+%% Cleanup
+
+% close the vrfigure
+close(fig);
+% close the vrworld
+close(w);
+% clear all used variables
+clear ID MOUSE w fig airpln originalTranslation originalRotation offset hudtext hudstr ...
+      pathtomarkers MarkerName iterforname V newMarker img_capture img;
+
+% display the end of demo message
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

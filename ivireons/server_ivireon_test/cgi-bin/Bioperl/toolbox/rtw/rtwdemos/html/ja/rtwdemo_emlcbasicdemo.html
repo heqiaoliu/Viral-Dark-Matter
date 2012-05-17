@@ -1,0 +1,91 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>Embedded MATLAB のコードを生成</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="rtwdemo_emlcbasicdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_emlcbasicdemo">エディターで rtwdemo_emlcbasicdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo rtwdemo_emlcbasicdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>Embedded MATLAB のコードを生成</h1><!--introduction--><p>これは、Embedded MATLAB™ C コード生成 (emlc) のいくつかの側面を示すデモです。組み込み可能な C コードを MATLAB コードから生成し、生成した C コードをコンパイル、実行、表示し、結果を表示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">デモの説明</a></li><li><a href="#2">必要なファイルのコピー</a></li><li><a href="#3">Sobel エッジ検出関数の確認</a></li><li><a href="#5">オリジナル イメージの表示</a></li><li><a href="#6">C の Main 関数の確認</a></li><li><a href="#8">生のバイナリ イメージ ファイルの作成</a></li><li><a href="#9">MATLAB コードを実行可能ファイルにコンパイル</a></li><li><a href="#10">生成されたコードの確認</a></li><li><a href="#11">コンパイルしたエッジ検出アルゴリズムの実行</a></li><li><a href="#12">変換されたイメージの表示</a></li></ul></div><h2>デモの説明<a name="1"></a></h2><p>この例では、MATLAB&reg; 標準ライブラリ関数をいくつか使用して、イメージ内のエッジを検出します。エッジを検出するには、Sobel と Feldman が考案した単純な畳み込みカーネルを使用して、イメージを畳み込みます。</p><h2>必要なファイルのコピー<a name="2"></a></h2><p>このデモを実行するにはいくつかの MATLAB プログラムが必要です。それらを一時ディレクトリにコピーします。この手順では、システムの一時ディレクトリへの書き込み権限が必要です。</p><pre class="codeinput">emlcdir = [tempname filesep <span class="string">'emlcdir'</span>];
+<span class="keyword">if</span> ~exist(emlcdir,<span class="string">'dir'</span>)
+    mkdir(emlcdir);
+<span class="keyword">end</span>
+emlcsrc = <span class="keyword">...</span>
+    fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>,<span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_emlcmain.m'</span>);
+copyfile(emlcsrc,fullfile(emlcdir,<span class="string">'main.m'</span>),<span class="string">'f'</span>);
+emlcsrc = <span class="keyword">...</span>
+    fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>,<span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_emlcsobel.m'</span>);
+copyfile(emlcsrc,emlcdir,<span class="string">'f'</span>);
+emlcsrc = <span class="keyword">...</span>
+    fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>,<span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_maggie.gif'</span>);
+copyfile(emlcsrc,emlcdir,<span class="string">'f'</span>);
+</pre><h2>Sobel エッジ検出関数の確認<a name="3"></a></h2><p>エッジ検出関数は、<tt>rtwdemo_emlcsobel.m</tt> ファイルにあります。</p><pre class="codeinput">type(fullfile(emlcdir,<span class="string">'rtwdemo_emlcsobel.m'</span>))
+</pre><pre class="codeoutput">
+function edgeImage = rtwdemo_emlcsobel(originalImage, threshHold) %#eml
+% Sobel edge-detection
+k = [1 2 1; 0 0 0; -1 -2 -1];
+H = conv2(double(originalImage),k, 'same');
+V = conv2(double(originalImage),k','same');
+E = sqrt(H.*H + V.*V);
+edgeImage = uint8((E &lt; threshHold) * 255);
+
+</pre><p>この関数では、以下の変数が使用されます。</p><div><ul><li><tt>originalImage</tt> は、クラス <tt>uint8</tt> の入力イメージ行列です。</li><li><tt>threshHold</tt> は、勾配ベクトルの入力カットオフ ポイントです。畳み込みを適用すると、このしきい値未満のピクセル値は黒、このしきい値以上のピクセル値は白になります。</li><li><tt>k</tt> は、Sobel エッジ検出畳み込みカーネルです。</li><li><tt>H</tt> は、オリジナル イメージの水平エッジを表します。</li><li><tt>V</tt> は、オリジナル イメージの垂直エッジを表します。</li><li><tt>E</tt> は、オリジナル イメージのピクセル勾配を表します。</li><li><tt>edgeImage</tt> は、<tt>originalImage</tt> と同じサイズの出力イメージです。</li></ul></div><p><tt>threshHold</tt> の値を変更すると、エッジ検出解像度に影響します。</p><h2>オリジナル イメージの表示<a name="5"></a></h2><p>以下の手順では、Sobel フィルターの効果がわかりやすいようにサンプル イメージを使用します。ここにあるのはオリジナル イメージです。</p><pre class="codeinput">[originalImage map] = imread(<span class="string">'rtwdemo_maggie.gif'</span>,<span class="string">'gif'</span>);
+scrsz = get(0,<span class="string">'ScreenSize'</span>);
+h1=figure;
+r = get(h1,<span class="string">'Position'</span>);
+r(1) = scrsz(3)/2-r(3)-5;
+set(h1,<span class="string">'Position'</span>,r);
+colormap(map);
+image(originalImage);
+</pre><img vspace="5" hspace="5" src="../rtwdemo_emlcbasicdemo_01.png" alt=""> <h2>C の Main 関数の確認<a name="6"></a></h2><p><tt>emlc</tt> を使用して実行可能ファイルを作成するときは、必要なサポート ファイル、特に関数 <tt>main</tt> が必要です。典型的な組み込みアプリケーションでは、この関数 <tt>main</tt> を C コードで直接手書きします。このデモでは、関数 <tt>main</tt> を MATLAB プログラムから生成します。この関数 <tt>main</tt> が担当するのは、ディスクからのオリジナル イメージの読み込みと、Sobel エッジ検出アルゴリズムの呼び出し、ディスクへの変換イメージの書き込みです。さまざまなファイル形式に関連する複雑さを避けるため、イメージは [int8] 値の 512*512 配列でディスクに保存されます。</p><pre class="codeinput">type(fullfile(emlcdir,<span class="string">'main.m'</span>))
+</pre><pre class="codeoutput">
+function rc = main %#ok file name is rtwdemo_emlcmain
+%#eml
+imageSize = uint32(512*512);
+fid = eml.opaque('FILE*','NULL');
+fileName = cstring('rtwdemo_maggie.bin');
+
+% Read the original image
+filePerm = cstring('r+b');
+fid = eml.ceval('fopen',eml.rref(fileName),eml.rref(filePerm));
+originalImage = uint8(zeros(512,512));
+eml.ceval('fread',eml.wref(originalImage),uint32(1),imageSize,fid);
+
+% Detect edges
+threshHold = 75;
+edgeImage = rtwdemo_emlcsobel(originalImage, threshHold);
+
+% Write new image
+eml.ceval('rewind',fid);
+eml.ceval('fwrite',eml.rref(edgeImage),uint32(1),imageSize,fid);
+eml.ceval('fclose',fid);
+
+rc = int32(0);
+
+% Convert char array to c-string
+function y = cstring(u)
+y = [u 0]; 
+
+</pre><p>関数 <tt>main</tt> は、<tt>emlc</tt> のカスタム C コード統合機能の典型的な使用法を示します。これらの機能により、C コードを非常に低いレベルで直接操作できます。独自の C 関数は MATLAB コードからしか呼び出せませんが、標準のライブラリ関数もすべて呼び出すことができます。このデモでは特に、<tt>stdio</tt> ライブラリを使用してファイルを読み書きします。</p><p>関数 <tt>main</tt> では、以下の変数が使用されます。</p><div><ul><li><tt>imageSize</tt> は、イメージのサイズ (バイト数) です。</li><li><tt>fileName</tt> は、バイナリ イメージ ファイルの名前です。同じファイル名が入力と出力の両方に使用されます。</li><li><tt>filePerm</tt> は、<tt>fopen</tt> ファイルのアクセス権を指定する文字列です。</li><li><tt>fid</tt> は、イメージ ファイルの読み書きに使用されるファイル識別子です。この変数は <tt>eml.opaque</tt> を使用して宣言されます。この変数がこの方法で宣言された後は、ファイルを操作するために <tt>stdio</tt> ライブラリ関数への引数としてこの変数を使用できます。</li><li><tt>originalImage</tt> は、クラス <tt>uint8</tt> の入力イメージ行列です。このイメージは、<tt>stdio</tt> ライブラリ関数 <tt>fread</tt> を使用して読み込まれます。</li><li><tt>threshHold</tt> は、勾配ベクトルの入力カットオフ ポイントです。</li><li><tt>edgeImage</tt> は、<tt>originalImage</tt> と同じサイズの出力イメージです。</li><li><tt>rc</tt> は、関数 <tt>main</tt> からの出力リターン コードです。</li></ul></div><p>この関数 <tt>main</tt> で、サブ関数 <tt>cstring</tt> を使用して MATLAB 文字配列が C のゼロ終端文字列に変換されていることに注意してください。</p><h2>生のバイナリ イメージ ファイルの作成<a name="8"></a></h2><p>次に、カラー マップなどの情報を含まないバイナリ イメージ ファイルを作成します。このファイルは、後の手順で作成する実行可能ファイルで読み込まれます。</p><pre class="codeinput">emlcurdir = pwd;
+cd(emlcdir);
+
+fid = fopen(<span class="string">'rtwdemo_maggie.bin'</span>,<span class="string">'Wb'</span>);
+fwrite(fid,originalImage,<span class="string">'uint8'</span>);
+fclose(fid);
+</pre><h2>MATLAB コードを実行可能ファイルにコンパイル<a name="9"></a></h2><p>次に、関数 main と Sobel エッジ検出サブルーチンをコンパイルして、実行可能ファイルを作成します。イメージ ファイルの読み書きに <tt>stdio</tt> ライブラリを使用しているため、<tt>stdio.h</tt> をコンパイルの一部として指定する必要があります。</p><p><tt>-s</tt> オプションを介して emlc に提供されるコンフィギュレーション オブジェクトを使用して、Real-Time Workshop オプションと Real-Time Workshop Embedded Coder オプションを設定します。コンフィギュレーション オブジェクトは 2 つあり、これらをプログラムで、またはダイアログから操作できます。この場合は、コンパイラ最適化をオンにします。open('rtwcfg') と open('hwcfg') を使用して、ダイアログからこれらのオプションを操作します。</p><pre class="codeinput">rtwcfg = emlcoder.RTWConfig;
+hwcfg = emlcoder.HardwareImplementation;
+
+rtwcfg.RTWCompilerOptimization = <span class="string">'On'</span>;
+
+emlc(<span class="string">'-s'</span>, rtwcfg, <span class="string">'-s'</span>, hwcfg, <span class="string">'-T'</span>,<span class="string">'rtw:exe'</span>, <span class="keyword">...</span>
+    <span class="string">'-o'</span>, <span class="string">'rtwdemo_emlcsobel'</span>, <span class="string">'main.m'</span>, <span class="string">'stdio.h'</span>)
+</pre><h2>生成されたコードの確認<a name="10"></a></h2><p>上記の手順の実行後、生成されたファイル 'main.c':  <a href="matlab:edit(fullfile(emlcdir,'emcprj','rtwexe','main','main.c'))">matlab:edit(fullfile(emlcdir,'emcprj','rtwexe','main','main.c')) を調べることができます。</a></p><h2>コンパイルしたエッジ検出アルゴリズムの実行<a name="11"></a></h2><p>コンパイルされたエッジ検出アルゴリズムが実行可能ファイルとして存在し、これを呼び出すことができます。  プログラムを実行すると、イメージ ファイルが、エッジ検出されたものに置換されます。</p><pre class="codeinput">system(<span class="string">'rtwdemo_emlcsobel'</span>);
+</pre><h2>変換されたイメージの表示<a name="12"></a></h2><p>新しいイメージを読み込んで表示できます。</p><pre class="codeinput">fid = fopen(<span class="string">'rtwdemo_maggie.bin'</span>,<span class="string">'r'</span>);
+edgeImage = uint8(fread(fid,[512,512],<span class="string">'uint8'</span>));
+fclose(fid);
+h2=figure;
+r = get(h2,<span class="string">'Position'</span>);
+r(1) = scrsz(3)/2+5;
+set(h2,<span class="string">'Position'</span>,r);
+colormap(map);
+image(edgeImage);
+
+cd(emlcurdir);
+</pre><img vspace="5" hspace="5" src="../rtwdemo_emlcbasicdemo_02.png" alt=""> <p class="footer">Copyright 1984-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Generating Code for Embedded MATLAB % This is a demonstration of some aspects of Embedded MATLAB(TM) C-code % generation (emlc). You will generate embeddable C-code from MATLAB code, % compile, run and view the generated C-code, and display the results. % % Copyright 1984-2010 The MathWorks, Inc. % $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:28:58 $  %% Description of the Demonstration % In this example, you will use some standard MATLAB(R) library functions to % detect edges in an image.  Edges are detected by convolving the image with  % a simple convolution kernel devised by Sobel and Feldman. %% Copy Required Files % There are MATLAB programs that are needed to run this demonstration. Copy them % to a temporary directory. This step requires write-permission to the system's  % temporary directory. emlcdir = [tempname filesep 'emlcdir']; if ~exist(emlcdir,'dir')     mkdir(emlcdir); end emlcsrc = ...     fullfile(matlabroot,'toolbox','rtw','rtwdemos','rtwdemo_emlcmain.m'); copyfile(emlcsrc,fullfile(emlcdir,'main.m'),'f'); emlcsrc = ...     fullfile(matlabroot,'toolbox','rtw','rtwdemos','rtwdemo_emlcsobel.m'); copyfile(emlcsrc,emlcdir,'f'); emlcsrc = ...     fullfile(matlabroot,'toolbox','rtw','rtwdemos','rtwdemo_maggie.gif'); copyfile(emlcsrc,emlcdir,'f'); %% Inspect the Sobel Edge-Detection Function % The function that performs the edge detection is in file |rtwdemo_emlcsobel.m|: type(fullfile(emlcdir,'rtwdemo_emlcsobel.m')) %% % The following variables are use in this function: %  % * |originalImage| is the input image matrix of class |uint8|. % * |threshHold| is the input cut-off point for the gradient vector. After % applying the convolution, pixel values below this threshold will be % black, otherwise they will be white. % * |k| is the Sobel edge-detection convolution kernel. % * |H| represents the horizontal edges of the original image. % * |V| represents the vertical edges of the original image. % * |E| represents the pixel gradients of the original image. % * |edgeImage| is the output image of the same size as |originalImage|. % % Changing the value of |threshHold| affects the edge-detection resolution. % %% Display the Original Image % So that you can see the effect of the Sobel filter, you use the sample % image in the following steps. Here you can see the original image. [originalImage map] = imread('rtwdemo_maggie.gif','gif'); scrsz = get(0,'ScreenSize'); h1=figure; r = get(h1,'Position'); r(1) = scrsz(3)/2-r(3)-5; set(h1,'Position',r); colormap(map); image(originalImage); %% Inspect the C Main Function % When using |emlc| to create an executable file, you need to provide the % necessary support files, including in particular a |main| function. In a % typical embedded application, you will hand-write this |main| function % directly in C code. In this demonstration, you will generate the |main| % function from a MATLAB program. This |main| function has responsibility for % loading the original image from disk, calling the Sobel edge-detection % algorithm, then writing the transformed image back to disk. To avoid % complications associated with different file formats, the image will be % stored on disk as a 512*512 array of 'int8' values. type(fullfile(emlcdir,'main.m')) %% % The |main| function shows typical usage of the custom C-code integration % features of |emlc|. These features allow you to interface directly with C % code at a very low level. You can not only call your own C functions from % MATLAB code, but you can also call all the standard library functions. In this % particular demonstration, you will be using the |stdio| library to read % and write files. % % The following variables are use in the |main| function: %  % * |imageSize| is the size, in bytes, of the image. % * |fileName| is the name of the binary image file. The same file name is % used for both input and output. % * |filePerm| is a string specifying the |fopen| file permissions. % * |fid| is the file identifier used for reading and writing image files. % Notice that this variable is declared using |eml.opaque|. Once this % variable has been declared in this way, you can use it as an argument to % the |stdio| library functions for manipulating files.  % * |originalImage| is the input image matrix of class |uint8|. This image % is loaded using the |stdio| library function |fread|. % * |threshHold| is the input cut-off point for the gradient vector. % * |edgeImage| is the output image of the same size as |originalImage|. % * |rc| is the output return code from the |main| function. % % Note in this |main| function the use of the sub-function |cstring| to % convert MATLAB character arrays to C zero-terminated strings.  %% Create the Raw Binary Image File % You will now create a binary image file that does not contain any color % maps or other information. This file will be read by the executable that % you will create in subsequent steps. emlcurdir = pwd; cd(emlcdir);  fid = fopen('rtwdemo_maggie.bin','Wb'); fwrite(fid,originalImage,'uint8'); fclose(fid);  %% Compile the MATLAB code into an Executable File % You will now compile the main function and the Sobel edge-detection % subroutine to create an executable. Since you are using the |stdio| % library to read and write the image files, you need to specify |stdio.h| % as part of the compilation. % % You configure Real-Time Workshop and Real-Time Workshop Embedded Coder % options using configuration objects, which are provided to emlc via % the |-s| option.  There are two configuration objects, and you can % interact with them programmatically or with a dialog.  In this case, % we'll turn on compiler optimizations.  Use open('rtwcfg') and open('hwcfg'), % to interact with the options via a dialog. rtwcfg = emlcoder.RTWConfig; hwcfg = emlcoder.HardwareImplementation;  rtwcfg.RTWCompilerOptimization = 'On';  emlc('-s', rtwcfg, '-s', hwcfg, '-T','rtw:exe', ...     '-o', 'rtwdemo_emlcsobel', 'main.m', 'stdio.h')  %% Inspect the Generated Code % After executing the steps above, you may inspect the generated file 'main.c': % <matlab:edit(fullfile(emlcdir,'emcprj','rtwexe','main','main.c'))>  %% Run the Compiled Edge-Detection Algorithm % The compiled edge-detection algorithm now exists as an executable that % you can invoke.  When you execute the program, it will replace the image % file with an edge-detected version. system('rtwdemo_emlcsobel');  %% Display the Converted Image % You can now load and display the new image. fid = fopen('rtwdemo_maggie.bin','r'); edgeImage = uint8(fread(fid,[512,512],'uint8')); fclose(fid); h2=figure; r = get(h2,'Position'); r(1) = scrsz(3)/2+5; set(h2,'Position',r); colormap(map); image(edgeImage);  cd(emlcurdir); displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

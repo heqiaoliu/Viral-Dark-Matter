@@ -1,0 +1,385 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Computing Statistics for Large Images</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="ipexblockprocstats.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexblockprocstats">Open ipexblockprocstats.m in the Editor</a></div><div class="right"><a href="matlab:echodemo ipexblockprocstats">Run in the Command Window</a></div></div><div class="content"><h1>Computing Statistics for Large Images</h1><!--introduction--><p>The <tt>blockproc</tt> function is well suited for applying an operation to an image blockwise, assembling the results, and returning them as a new image.  Many image processing algorithms, however, require "global" information about the image, which is not available when you are only considering one block of image data at a time.  These constraints can prove to be problematic when working with images that are too large to load completely into memory. This demo explores how to use <tt>blockproc</tt> to compute statistics from large images and then apply that information to more accurately process the images blockwise.</p><p>This demo performs a task similar to that found in the <a href="matlab:showdemo('ipexlanstretch')">Enhancing Multispectral Color Composite Images</a> demo, but adapted for large images using <tt>blockproc</tt>. You will be enhancing the visible bands of the Erdas LAN file <tt>rio.lan</tt>. These types of block processing techniques are typically more useful for large images, but a small image will work for the purpose of this demo.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Step 1: Construct a Truecolor Composite</a></li><li><a href="#3">Step 2: Enhance the Image - First Attempt</a></li><li><a href="#5">Step 3: Examine the Histogram Accumulator Class</a></li><li><a href="#7">Step 4: Use the HistogramAccumulator Class with BLOCKPROC</a></li><li><a href="#8">Step 5: Enhance the Truecolor Composite with a Contrast Stretch</a></li></ul></div><h2>Step 1: Construct a Truecolor Composite<a name="1"></a></h2><p>Using <tt>blockproc</tt>, read the data from <tt>rio.lan</tt>, a file containing Landsat thematic mapper imagery in the Erdas LAN file format. <tt>blockproc</tt> has built-in support for reading TIFF and JPEG2000 files only.  To read other types of files you must write an Image Adapter class to support I/O for your particular file format.  This example uses a pre-built Image Adapter class, the <tt>LanAdapter</tt>, which supports reading LAN files.  For more information on writing Image Adapter classes see <a href="matlab:helpview(fullfile(docroot,'toolbox','images','images.map'),'building_image_adapters')">the tutorial in the Users' Guide</a> describing how the <tt>LanAdapter</tt> class was built.</p><p>The Erdas LAN format contains the visible red, green, and blue spectrum in bands 3, 2, and 1, respectively.  Use <tt>blockproc</tt> to extract the visible bands into an RGB image.</p><pre class="codeinput"><span class="comment">% Create the LanAdapter object associated with rio.lan.</span>
+input_adapter = LanAdapter(<span class="string">'rio.lan'</span>);
+
+<span class="comment">% Select the visible R, G, and B bands.</span>
+input_adapter.SelectedBands = [3 2 1];
+
+<span class="comment">% Create a block function to simply return the block data unchanged.</span>
+identityFcn = @(block_struct) block_struct.data;
+
+<span class="comment">% Create the initial truecolor image.</span>
+truecolor = blockproc(input_adapter,[100 100],identityFcn);
+
+<span class="comment">% Display the un-enhanced results.</span>
+figure;
+imshow(truecolor);
+title(<span class="string">'Truecolor Composite (Un-enhanced)'</span>);
+</pre><img vspace="5" hspace="5" src="ipexblockprocstats_01.png" alt=""> <p>The resulting truecolor image is similar to that of <tt>paris.lan</tt> in the <a href="matlab:showdemo('ipexlanstretch')">Enhancing Multispectral Color Composite Images</a> demo.  The RGB image appears dull, with little contrast.</p><h2>Step 2: Enhance the Image - First Attempt<a name="3"></a></h2><p>First, try to stretch the data across the dynamic range using <tt>blockproc</tt>.  This first attempt simply defines a new function handle that calls <tt>stretchlim</tt> and <tt>imadjust</tt> on each block of data individually.</p><pre class="codeinput">adjustFcn = @(block_struct) imadjust(block_struct.data,<span class="keyword">...</span>
+    stretchlim(block_struct.data));
+truecolor_enhanced = blockproc(input_adapter,[100 100],adjustFcn);
+figure
+imshow(truecolor_enhanced)
+title(<span class="string">'Truecolor Composite with Blockwise Contrast Stretch'</span>)
+</pre><img vspace="5" hspace="5" src="ipexblockprocstats_02.png" alt=""> <p>You can see immediately that the results are incorrect.  The problem is that the <tt>stretchlim</tt> function computes the histogram on the input image and uses this information to compute the stretch limits.  Since each block is adjusted in isolation from its neighbors, each block is computing different limits from its local histogram.</p><h2>Step 3: Examine the Histogram Accumulator Class<a name="5"></a></h2><p>To examine the distribution of data across the dynamic range of the image, you can compute the histogram for each of the three visible bands.</p><p>When working with sufficiently large images, you cannot simply call <tt>imhist</tt> to create an image histogram.  One way to incrementally build the histogram is to use <tt>blockproc</tt> with a class that will sum the histograms of each block as you move over the image.</p><p>Examine the <tt>HistogramAccumulator</tt> class.</p><pre class="codeinput">type <span class="string">HistogramAccumulator</span>
+</pre><pre class="codeoutput">
+% HistogramAccumulator Accumulate incremental histogram.
+%   HistogramAccumulator is a class that incrementally builds up a
+%   histogram for an image.  This class is appropriate for use with 8-bit
+%   or 16-bit integer images and is for educational purposes ONLY.
+
+%   Copyright 2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.1 $  $Date: 2009/11/09 16:24:41 $
+
+classdef HistogramAccumulator &lt; handle
+   
+    properties
+        Histogram
+        Range
+    end
+    
+    methods
+        
+        function obj = HistogramAccumulator()
+            obj.Range = [];
+            obj.Histogram = [];
+        end
+        
+        function addToHistogram(obj,new_data)
+            if isempty(obj.Histogram)
+                obj.Range = double(0:intmax(class(new_data)));
+                obj.Histogram = hist(double(new_data(:)),obj.Range);
+            else
+                new_hist = hist(double(new_data(:)),obj.Range);
+                obj.Histogram = obj.Histogram + new_hist;
+            end
+        end
+    end
+end
+
+</pre><p>The class is a simple wrapper around the <tt>hist</tt> function, allowing you to add data to a histogram incrementally.  It is not specific to <tt>blockproc</tt>.  Observe the following simple use of the <tt>HistogramAccumulator</tt> class.</p><pre class="codeinput"><span class="comment">% Create the HistogramAccumulator object.</span>
+hist_obj = HistogramAccumulator();
+
+<span class="comment">% Split a sample image into 2 halves.</span>
+full_image = imread(<span class="string">'liftingbody.png'</span>);
+top_half = full_image(1:256,:);
+bottom_half = full_image(257:end,:);
+
+<span class="comment">% Compute the histogram incrementally.</span>
+hist_obj.addToHistogram(top_half);
+hist_obj.addToHistogram(bottom_half);
+computed_histogram = hist_obj.Histogram;
+
+<span class="comment">% Compare against the results of IMHIST.</span>
+normal_histogram = imhist(full_image);
+
+<span class="comment">% Examine the results.  The histograms are numerically identical.</span>
+figure
+subplot(1,2,1);
+stem(computed_histogram,<span class="string">'Marker'</span>,<span class="string">'none'</span>);
+title(<span class="string">'Incrementally Computed Histogram'</span>);
+subplot(1,2,2);
+stem(normal_histogram',<span class="string">'Marker'</span>,<span class="string">'none'</span>);
+title(<span class="string">'IMHIST Histogram'</span>);
+</pre><img vspace="5" hspace="5" src="ipexblockprocstats_03.png" alt=""> <h2>Step 4: Use the HistogramAccumulator Class with BLOCKPROC<a name="7"></a></h2><p>Now use the <tt>HistogramAccumulator</tt> class with <tt>blockproc</tt> to build the histogram of the red band of data in <tt>rio.lan</tt>.  You can define a function handle for <tt>blockproc</tt> that will invoke the <tt>addToHistogram</tt> method on each block of data.  By viewing this histogram, you can see that the data is concentrated within a small part of the available dynamic range.  The other visible bands have similar distributions.  This is one reason why the original truecolor composite appears dull.</p><pre class="codeinput"><span class="comment">% Create the HistogramAccumulator object.</span>
+hist_obj = HistogramAccumulator();
+
+<span class="comment">% Setup blockproc function handle</span>
+addToHistFcn = @(block_struct) hist_obj.addToHistogram(block_struct.data);
+
+<span class="comment">% Compute histogram of the red channel.  Notice that the addToHistFcn</span>
+<span class="comment">% function handle does generate any output.  Since the function handle we</span>
+<span class="comment">% are passing to blockproc does not return anything, blockproc will not</span>
+<span class="comment">% return anything either.</span>
+input_adapter.SelectedBands = 3;
+blockproc(input_adapter,[100 100],addToHistFcn);
+red_hist = hist_obj.Histogram;
+
+<span class="comment">% Display results.</span>
+figure
+stem(red_hist,<span class="string">'Marker'</span>,<span class="string">'none'</span>);
+title(<span class="string">'Histogram of Red Band (Band 3)'</span>);
+</pre><img vspace="5" hspace="5" src="ipexblockprocstats_04.png" alt=""> <h2>Step 5: Enhance the Truecolor Composite with a Contrast Stretch<a name="8"></a></h2><p>You can now perform a proper contrast stretch on the image.  For conventional, in-memory workflows, you can simply use the <tt>stretchlim</tt> function to compute the arguments to <tt>imadjust</tt> (like the <tt>ipexlanstretch</tt> demo does).  When working with large images, as we have seen, <tt>stretchlim</tt> is not easily adapted for use with <tt>blockproc</tt> since it relies on the full image histogram.</p><p>Once you have computed the image histograms for each of the visible bands, compute the proper arguments to <tt>imadjust</tt> by hand (similar to how <tt>stretchlim</tt> does).</p><p>First compute the histograms for the green and blue bands.</p><pre class="codeinput"><span class="comment">% Compute histogram for green channel.</span>
+hist_obj = HistogramAccumulator();
+addToHistFcn = @(block_struct) hist_obj.addToHistogram(block_struct.data);
+input_adapter.SelectedBands = 2;
+blockproc(input_adapter,[100 100],addToHistFcn);
+green_hist = hist_obj.Histogram;
+
+<span class="comment">% Compute histogram for blue channel.</span>
+hist_obj = HistogramAccumulator();
+addToHistFcn = @(block_struct) hist_obj.addToHistogram(block_struct.data);
+input_adapter.SelectedBands = 1;
+blockproc(input_adapter,[100 100],addToHistFcn);
+blue_hist = hist_obj.Histogram;
+</pre><p>Now compute the CDF of each histogram and prepare to call <tt>imadjust</tt>.</p><pre class="codeinput">computeCDF = @(histogram) cumsum(histogram) / sum(histogram);
+findLowerLimit = @(cdf) find(cdf &gt; 0.01, 1, <span class="string">'first'</span>);
+findUpperLimit = @(cdf) find(cdf &gt;= 0.99, 1, <span class="string">'first'</span>);
+
+red_cdf = computeCDF(red_hist);
+red_limits(1) = findLowerLimit(red_cdf);
+red_limits(2) = findUpperLimit(red_cdf);
+
+green_cdf = computeCDF(green_hist);
+green_limits(1) = findLowerLimit(green_cdf);
+green_limits(2) = findUpperLimit(green_cdf);
+
+blue_cdf = computeCDF(blue_hist);
+blue_limits(1) = findLowerLimit(blue_cdf);
+blue_limits(2) = findUpperLimit(blue_cdf);
+
+<span class="comment">% Prepare argument for IMADJUST.</span>
+rgb_limits = [red_limits' green_limits' blue_limits'];
+
+<span class="comment">% Scale to [0,1] range.</span>
+rgb_limits = (rgb_limits - 1) / (255);
+</pre><p>Create a new <tt>adjustFcn</tt> that applies the global stretch limits and use <tt>blockproc</tt> to adjust the truecolor image.</p><pre class="codeinput">adjustFcn = @(block_struct) imadjust(block_struct.data,rgb_limits);
+
+<span class="comment">% Select full RGB data.</span>
+input_adapter.SelectedBands = [3 2 1];
+truecolor_enhanced = blockproc(input_adapter,[100 100],adjustFcn);
+figure;
+imshow(truecolor_enhanced)
+title(<span class="string">'Truecolor Composite with Corrected Contrast Stretch'</span>)
+</pre><img vspace="5" hspace="5" src="ipexblockprocstats_05.png" alt=""> <p>The resulting image is much improved, with the data covering more of the dynamic range, and by using <tt>blockproc</tt> you avoid loading the whole image into memory.</p><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Computing Statistics for Large Images
+% The |blockproc| function is well suited for applying an operation to an
+% image blockwise, assembling the results, and returning them as a new
+% image.  Many image processing algorithms, however, require "global"
+% information about the image, which is not available when you are only
+% considering one block of image data at a time.  These constraints can
+% prove to be problematic when working with images that are too large to
+% load completely into memory. This demo explores how to use |blockproc| to
+% compute statistics from large images and then apply that information to
+% more accurately process the images blockwise.
+%
+% This demo performs a task similar to that found in the
+% <matlab:showdemo('ipexlanstretch') Enhancing Multispectral Color
+% Composite Images> demo, but adapted for large images using |blockproc|.
+% You will be enhancing the visible bands of the Erdas LAN file |rio.lan|.
+% These types of block processing techniques are typically more useful for
+% large images, but a small image will work for the purpose of this demo.
+
+% Copyright 2009 The MathWorks, Inc. 
+
+%% Step 1: Construct a Truecolor Composite
+% Using |blockproc|, read the data from |rio.lan|, a file containing
+% Landsat thematic mapper imagery in the Erdas LAN file format.
+% |blockproc| has built-in support for reading TIFF and JPEG2000 files
+% only.  To read other types of files you must write an Image Adapter class
+% to support I/O for your particular file format.  This example uses a
+% pre-built Image Adapter class, the |LanAdapter|, which supports reading
+% LAN files.  For more information on writing Image Adapter classes see
+% <matlab:helpview(fullfile(docroot,'toolbox','images','images.map'),'building_image_adapters')
+% the tutorial in the Users' Guide> describing how the |LanAdapter| class
+% was built.
+%
+% The Erdas LAN format contains the visible red, green, and blue spectrum
+% in bands 3, 2, and 1, respectively.  Use |blockproc| to extract the
+% visible bands into an RGB image.
+
+% Create the LanAdapter object associated with rio.lan.
+input_adapter = LanAdapter('rio.lan');
+
+% Select the visible R, G, and B bands.
+input_adapter.SelectedBands = [3 2 1];
+
+% Create a block function to simply return the block data unchanged.
+identityFcn = @(block_struct) block_struct.data;
+
+% Create the initial truecolor image.
+truecolor = blockproc(input_adapter,[100 100],identityFcn);
+
+% Display the un-enhanced results.
+figure;
+imshow(truecolor);
+title('Truecolor Composite (Un-enhanced)');
+
+%%
+% The resulting truecolor image is similar to that of |paris.lan| in the
+% <matlab:showdemo('ipexlanstretch') Enhancing Multispectral Color
+% Composite Images> demo.  The RGB image appears dull, with little
+% contrast. 
+
+
+%% Step 2: Enhance the Image - First Attempt
+% First, try to stretch the data across the dynamic range using
+% |blockproc|.  This first attempt simply defines a new function handle
+% that calls |stretchlim| and |imadjust| on each block of data
+% individually.
+
+adjustFcn = @(block_struct) imadjust(block_struct.data,...
+    stretchlim(block_struct.data));
+truecolor_enhanced = blockproc(input_adapter,[100 100],adjustFcn);
+figure
+imshow(truecolor_enhanced)
+title('Truecolor Composite with Blockwise Contrast Stretch')
+
+
+%%
+% You can see immediately that the results are incorrect.  The problem is
+% that the |stretchlim| function computes the histogram on the input image
+% and uses this information to compute the stretch limits.  Since each
+% block is adjusted in isolation from its neighbors, each block is
+% computing different limits from its local histogram.
+
+
+%% Step 3: Examine the Histogram Accumulator Class
+% To examine the distribution of data across the dynamic range of the
+% image, you can compute the histogram for each of the three visible bands.
+%
+% When working with sufficiently large images, you cannot simply call
+% |imhist| to create an image histogram.  One way to incrementally build
+% the histogram is to use |blockproc| with a class that will sum the
+% histograms of each block as you move over the image.
+%
+% Examine the |HistogramAccumulator| class.
+
+type HistogramAccumulator
+
+%%
+% The class is a simple wrapper around the |hist| function, allowing you to
+% add data to a histogram incrementally.  It is not specific to
+% |blockproc|.  Observe the following simple use of the
+% |HistogramAccumulator| class.
+
+% Create the HistogramAccumulator object.
+hist_obj = HistogramAccumulator();
+
+% Split a sample image into 2 halves.
+full_image = imread('liftingbody.png');
+top_half = full_image(1:256,:);
+bottom_half = full_image(257:end,:);
+
+% Compute the histogram incrementally.
+hist_obj.addToHistogram(top_half);
+hist_obj.addToHistogram(bottom_half);
+computed_histogram = hist_obj.Histogram;
+
+% Compare against the results of IMHIST.
+normal_histogram = imhist(full_image);
+
+% Examine the results.  The histograms are numerically identical.
+figure
+subplot(1,2,1);
+stem(computed_histogram,'Marker','none');
+title('Incrementally Computed Histogram');
+subplot(1,2,2);
+stem(normal_histogram','Marker','none');
+title('IMHIST Histogram');
+
+
+%% Step 4: Use the HistogramAccumulator Class with BLOCKPROC
+% Now use the |HistogramAccumulator| class with |blockproc| to build the
+% histogram of the red band of data in |rio.lan|.  You can define a
+% function handle for |blockproc| that will invoke the |addToHistogram|
+% method on each block of data.  By viewing this histogram, you can see
+% that the data is concentrated within a small part of the available
+% dynamic range.  The other visible bands have similar distributions.  This
+% is one reason why the original truecolor composite appears dull.
+
+% Create the HistogramAccumulator object.
+hist_obj = HistogramAccumulator();
+
+% Setup blockproc function handle
+addToHistFcn = @(block_struct) hist_obj.addToHistogram(block_struct.data);
+
+% Compute histogram of the red channel.  Notice that the addToHistFcn
+% function handle does generate any output.  Since the function handle we
+% are passing to blockproc does not return anything, blockproc will not
+% return anything either.
+input_adapter.SelectedBands = 3;
+blockproc(input_adapter,[100 100],addToHistFcn);
+red_hist = hist_obj.Histogram;
+
+% Display results.
+figure
+stem(red_hist,'Marker','none');
+title('Histogram of Red Band (Band 3)');
+
+
+%% Step 5: Enhance the Truecolor Composite with a Contrast Stretch
+% You can now perform a proper contrast stretch on the image.  For
+% conventional, in-memory workflows, you can simply use the |stretchlim|
+% function to compute the arguments to |imadjust| (like the
+% |ipexlanstretch| demo does).  When working with large images, as we have
+% seen, |stretchlim| is not easily adapted for use with |blockproc| since
+% it relies on the full image histogram.
+%
+% Once you have computed the image histograms for each of the visible
+% bands, compute the proper arguments to |imadjust| by hand (similar to how
+% |stretchlim| does).
+
+%%
+% First compute the histograms for the green and blue bands.
+
+% Compute histogram for green channel.
+hist_obj = HistogramAccumulator();
+addToHistFcn = @(block_struct) hist_obj.addToHistogram(block_struct.data);
+input_adapter.SelectedBands = 2;
+blockproc(input_adapter,[100 100],addToHistFcn);
+green_hist = hist_obj.Histogram;
+
+% Compute histogram for blue channel.
+hist_obj = HistogramAccumulator();
+addToHistFcn = @(block_struct) hist_obj.addToHistogram(block_struct.data);
+input_adapter.SelectedBands = 1;
+blockproc(input_adapter,[100 100],addToHistFcn);
+blue_hist = hist_obj.Histogram;
+
+%%
+% Now compute the CDF of each histogram and prepare to call |imadjust|.
+
+computeCDF = @(histogram) cumsum(histogram) / sum(histogram);
+findLowerLimit = @(cdf) find(cdf > 0.01, 1, 'first');
+findUpperLimit = @(cdf) find(cdf >= 0.99, 1, 'first');
+
+red_cdf = computeCDF(red_hist);
+red_limits(1) = findLowerLimit(red_cdf);
+red_limits(2) = findUpperLimit(red_cdf);
+
+green_cdf = computeCDF(green_hist);
+green_limits(1) = findLowerLimit(green_cdf);
+green_limits(2) = findUpperLimit(green_cdf);
+
+blue_cdf = computeCDF(blue_hist);
+blue_limits(1) = findLowerLimit(blue_cdf);
+blue_limits(2) = findUpperLimit(blue_cdf);
+
+% Prepare argument for IMADJUST.
+rgb_limits = [red_limits' green_limits' blue_limits'];
+
+% Scale to [0,1] range.
+rgb_limits = (rgb_limits - 1) / (255);
+
+%%
+% Create a new |adjustFcn| that applies the global stretch limits and use
+% |blockproc| to adjust the truecolor image.
+
+adjustFcn = @(block_struct) imadjust(block_struct.data,rgb_limits);
+
+% Select full RGB data.
+input_adapter.SelectedBands = [3 2 1];
+truecolor_enhanced = blockproc(input_adapter,[100 100],adjustFcn);
+figure;
+imshow(truecolor_enhanced)
+title('Truecolor Composite with Corrected Contrast Stretch')
+
+%% 
+% The resulting image is much improved, with the data covering more of the
+% dynamic range, and by using |blockproc| you avoid loading the whole image
+% into memory.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,20 @@
+% This file contains heuristics for guiding the depfun algorithm. 
+
+% prune all calls from toolbox/matlab to some toolbox other than matlab, shared, or compiler
+exclude if $caller in [$toolbox/matlab, $toolbox/daq] and ...
+           $file in $toolbox and ...
+           $file not in [$toolbox/matlab, $toolbox/shared, $toolbox/compiler] ...
+           and not ($file in $toolbox/distcomp and $caller in $toolbox/matlab)
+
+% prune calls into shared/controllib that we know to be invalid
+exclude if $caller in $toolbox/daq and $file in $toolbox/shared/controllib
+exclude if $caller in $toolbox/matlab/timeseries and $file in $toolbox/shared/controllib
+
+% If the file is not a .fig, but an 'm' file, look for a corresponding .fig file
+include $dir/$name.fig if ($ext == .m or $ext == .p or $ext == $mex) and $dir/$name.fig exists
+
+% prune calls into toolbox/simulink, toolbox/shared/simulink and toolbox/shared/dastudio
+exclude if $file in $toolbox/shared/simulink 
+exclude if $file in $toolbox/shared/dastudio
+exclude if $file in $toolbox/simulink
+exclude if $file in $toolbox/dastudio

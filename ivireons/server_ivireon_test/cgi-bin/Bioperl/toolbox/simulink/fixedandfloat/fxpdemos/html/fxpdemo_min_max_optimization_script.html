@@ -1,0 +1,116 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Fixed-Point Optimizations Using Specified Minimum and Maximum Values</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="fxpdemo_min_max_optimization_script.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit fxpdemo_min_max_optimization_script">Open fxpdemo_min_max_optimization_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo fxpdemo_min_max_optimization_script">Run in the Command Window</a></div></div><div class="content"><h1>Fixed-Point Optimizations Using Specified Minimum and Maximum Values</h1><!--introduction--><p>This demo shows how to optimize fixed-point operations in generated code using minimum and maximum values that you specify in a model.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Overview</a></li><li><a href="#2">Open Model</a></li><li><a href="#3">Inspect Model</a></li><li><a href="#4">Generate Code without Optimization</a></li><li><a href="#5">Inspect Code without Optimization</a></li><li><a href="#7">Enable Optimization</a></li><li><a href="#8">Generate Code with Optimization</a></li><li><a href="#9">Examine Optimized Code</a></li><li><a href="#11">Examine Other Operations</a></li></ul></div><h2>Overview<a name="1"></a></h2><p>Minimum and maximum values can represent environmental limits or mechanical limits, such as the output ranges of sensors.  The Real-Time Workshop Embedded Coder software can use these values to generate more efficient code by eliminating unreachable code branches and unnecessary utility functions.</p><p><b>Note:</b> You must ensure that the specified minimum and maximum values are accurate and trustworthy.  Otherwise, optimization might result in numerical mismatch with simulation.</p><p>The benefits of optimizing the generated code are:</p><div><ul><li>Reducing the ROM and RAM consumption.</li><li>Improving the execution speed.</li></ul></div><h2>Open Model<a name="2"></a></h2><p>Open the model <a href="matlab:fxpdemo_min_max_optimization">fxpdemo_min_max_optimization</a>.</p><pre class="codeinput">open_system(<span class="string">'fxpdemo_min_max_optimization'</span>);
+</pre><img vspace="5" hspace="5" src="fxpdemo_min_max_optimization_script_01.png" alt=""> <h2>Inspect Model<a name="3"></a></h2><p>In this model, there are minimum and maximum values specified at the input ports upstream of the various fixed-point blocks.  By utilizing these values, every fixed-point operation in the model is optimized in some way.</p><h2>Generate Code without Optimization<a name="4"></a></h2><p>First, without using the specified minimum and maximum values, generate code for this model.  Double-click the blue button.</p><pre class="codeinput">rtwbuild(<span class="string">'fxpdemo_min_max_optimization'</span>);
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model: fxpdemo_min_max_optimization
+### Successful completion of Real-Time Workshop code generation for model: fxpdemo_min_max_optimization
+</pre><h2>Inspect Code without Optimization<a name="5"></a></h2><p>An HTML Code Generation Report opened.  Examine the code corresponding to the block "Product with reduced fraction length output data type". Right-click on this block and select <b>Real-Time Workshop &gt; Navigate to code...</b>.</p><pre class="codeinput">rtwtrace(<span class="string">'fxpdemo_min_max_optimization/Product with reduced fraction length output data type'</span>);
+</pre><p>The generated code is:</p><pre>rtY.Out1 = mul_u32_u32_u32_sr10(rtU.In1, rtU.In2);</pre><p>To implement this fixed-point multiplication operation, the Real-Time Workshop Embedded Coder software must generate a utility function <tt>mul_u32_u32_u32_sr10</tt>. Also, to implement <tt>mul_u32_u32_u32_sr10</tt>, it must generate a second utility function, <tt>mul_wide_u32</tt>.  These functions consist of many lines of code and require several temporary variables.</p><h2>Enable Optimization<a name="7"></a></h2><div><ol><li>Double-click the yellow button to open the Configuration Parameters   dialog box.</li><li>In this dialog box, under <b>Code generation</b>, select   <b>Optimize using specified minimum and maximum values</b>.</li></ol></div><pre class="codeinput">set_param(<span class="string">'fxpdemo_min_max_optimization'</span>, <span class="string">'UseSpecifiedMinMax'</span>, <span class="string">'on'</span>);
+</pre><h2>Generate Code with Optimization<a name="8"></a></h2><p>Now regenerate the code using the specified minimum and maximum values.</p><p>Double-click the blue button.</p><pre class="codeinput">rtwbuild(<span class="string">'fxpdemo_min_max_optimization'</span>);
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model: fxpdemo_min_max_optimization
+### Successful completion of Real-Time Workshop code generation for model: fxpdemo_min_max_optimization
+</pre><h2>Examine Optimized Code<a name="9"></a></h2><p>Right-click on block "Product with reduced fraction length output data type" and select <b>Real-Time Workshop &gt; Navigate to code...</b>.</p><pre class="codeinput">rtwtrace(<span class="string">'fxpdemo_min_max_optimization/Product with reduced fraction length output data type'</span>);
+</pre><p>The generated code is:</p><pre>rtY.Out1 = rtU.In1 * rtU.In2 &gt;&gt; 10;</pre><p>Using the specified minimum and maximum values, the Real-Time Workshop Embedded Coder software determines that it can safely implement the reduced fraction length at the output with a right shift, and does not generate utility functions.</p><h2>Examine Other Operations<a name="11"></a></h2><p>Examine other operations in the generated code to see how the Real-Time Workshop Embedded Coder software uses the specified minimum and maximum values.  The Real-Time Workshop Embedded Coder software now implements each fixed-point operation with simple C operations and eliminates unnecessary helper functions and code branches.</p><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Fixed-Point Optimizations Using Specified Minimum and Maximum Values
+% This demo shows how to optimize fixed-point operations in generated code
+% using minimum and maximum values that you specify in a model.
+
+%   Copyright 2010 The MathWorks, Inc.
+%   $Revision: 1.1.6.1.4.1 $  $Date: 2010/06/30 19:38:13 $
+
+%% Overview
+% Minimum and maximum values can represent environmental limits or
+% mechanical limits, such as the output ranges of sensors.  The Real-Time
+% Workshop Embedded Coder software can use these values to generate more
+% efficient code by eliminating unreachable code branches and unnecessary
+% utility functions.
+%
+% *Note:* You must ensure that the specified minimum and maximum values are
+% accurate and trustworthy.  Otherwise, optimization might result in
+% numerical mismatch with simulation.
+%
+% The benefits of optimizing the generated code are:
+%
+% * Reducing the ROM and RAM consumption.
+% * Improving the execution speed.
+
+%% Open Model
+% Open the model <matlab:fxpdemo_min_max_optimization fxpdemo_min_max_optimization>.  
+open_system('fxpdemo_min_max_optimization');
+
+%% Inspect Model
+% In this model, there are minimum and maximum values specified at the
+% input ports upstream of the various fixed-point blocks.  By utilizing
+% these values, every fixed-point operation in the model is optimized in
+% some way.
+
+%% Generate Code without Optimization
+% First, without using the specified minimum and maximum values,
+% generate code for this model.  Double-click the blue button.
+rtwbuild('fxpdemo_min_max_optimization');
+
+%% Inspect Code without Optimization
+% An HTML Code Generation Report opened.  Examine the code corresponding to
+% the block "Product with reduced fraction length output data type".
+% Right-click on this block and select *Real-Time Workshop > Navigate to
+% code...*.
+rtwtrace('fxpdemo_min_max_optimization/Product with reduced fraction length output data type');
+
+%%
+% The generated code is:
+%
+%  rtY.Out1 = mul_u32_u32_u32_sr10(rtU.In1, rtU.In2);
+%
+% To implement this fixed-point multiplication operation, the Real-Time
+% Workshop Embedded Coder software must generate a utility function
+% |mul_u32_u32_u32_sr10|. Also, to implement |mul_u32_u32_u32_sr10|, it
+% must generate a second utility function, |mul_wide_u32|.  These functions
+% consist of many lines of code and require several temporary variables.
+
+%% Enable Optimization
+% # Double-click the yellow button to open the Configuration Parameters
+%   dialog box.  
+% # In this dialog box, under *Code generation*, select 
+%   *Optimize using specified minimum and maximum values*.
+%
+set_param('fxpdemo_min_max_optimization', 'UseSpecifiedMinMax', 'on');
+
+%% Generate Code with Optimization
+% Now regenerate the code using the specified minimum and maximum values.
+%
+% Double-click the blue button.
+rtwbuild('fxpdemo_min_max_optimization');
+
+%% Examine Optimized Code
+% Right-click on block "Product with reduced fraction length output data
+% type" and select *Real-Time Workshop > Navigate to code...*.
+rtwtrace('fxpdemo_min_max_optimization/Product with reduced fraction length output data type');
+
+%%
+% The generated code is:
+%
+%  rtY.Out1 = rtU.In1 * rtU.In2 >> 10;
+%
+% Using the specified minimum and maximum values, the Real-Time Workshop
+% Embedded Coder software determines that it can safely implement the
+% reduced fraction length at the output with a right shift, and does not
+% generate utility functions.
+
+%% Examine Other Operations
+% Examine other operations in the generated code to see how the Real-Time
+% Workshop Embedded Coder software uses the specified minimum and maximum
+% values.  The Real-Time Workshop Embedded Coder software now implements
+% each fixed-point operation with simple C operations and eliminates
+% unnecessary helper functions and code branches.
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

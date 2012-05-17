@@ -1,0 +1,167 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Automated LQG Tracker Design in the SISO Design Tool</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="autotunedemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit autotunedemo">Open autotunedemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo autotunedemo">Run in the Command Window</a></div></div><div class="content"><h1>Automated LQG Tracker Design in the SISO Design Tool</h1><!--introduction--><p>This demo shows how to use the LQG synthesis method in SISOTOOL to design a feedback controller for a disk drive read/write head.</p><p>For details about the system and model, see Chapter 14 of "Digital Control of Dynamic Systems," by Franklin, Powell, and Workman.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Disk Drive Model</a></li><li><a href="#3">Design Overview</a></li><li><a href="#4">Creating a SISOTOOL Design Task</a></li><li><a href="#8">Design a Full-Order LQG Tracker</a></li><li><a href="#16">Design a Reduced-Order LQG Tracker</a></li></ul></div><h2>Disk Drive Model<a name="1"></a></h2><p>Below is a picture of the system to be modeled.</p><p><img vspace="5" hspace="5" src="../Figures/diskdemofigures_01.png" alt=""> </p><p>The model input is the current ic driving the voice coil motor, and the output is the position error signal (PES, in % of track width). To learn more about the 10th order model, see <a href="diskdemo.html">"Digital Servo Control of a Hard-Disk Drive"</a>. Because the model contains a small time delay and SISOTOOL does not yet support models with a time delay, we remove the time delay in the input to design a feedback controller.</p><pre class="codeinput">load <span class="string">diskdemo</span>
+Gr = tf(1e6,[1 12.5 0]);
+Gf1 = tf(w1*[a1 b1*w1],[1 2*z1*w1 w1^2]); <span class="comment">% first  resonance</span>
+Gf2 = tf(w2*[a2 b2*w2],[1 2*z2*w2 w2^2]); <span class="comment">% second resonance</span>
+Gf3 = tf(w3*[a3 b3*w3],[1 2*z3*w3 w3^2]); <span class="comment">% third  resonance</span>
+Gf4 = tf(w4*[a4 b4*w4],[1 2*z4*w4 w4^2]); <span class="comment">% fourth resonance</span>
+G = (ss(Gf1) + Gf2 + Gf3 + Gf4) * Gr;     <span class="comment">% convert to state space for accuracy</span>
+</pre><h2>Design Overview<a name="3"></a></h2><p>We want to get a rough design of a full-ordered LQG tracker, which places the read/write head at the correct position. We also want to tune the LQG tracker to achieve specific performance requirements and reduce the controller order as much as possible. For example, turn the LQG tracker into a PI controller format.</p><h2>Creating a SISOTOOL Design Task<a name="4"></a></h2><p>Open SISOTOOL by typing the following command at the MATLAB&reg; prompt:</p><p>sisotool(G)</p><p>A SISO Design Task is added to the Control and Estimation Tools Manager.  You also see a SISO Design Tool dialog that contains graphical tuning tools.  Go to the 'Analysis Plot' tab in SISOTOOL and select to plot the step response of the closed loop system.  Details about how to use SISO Design Tool are described in <a href="GSSISOTool.html">"Getting Started with the SISO Design Tool"</a>.</p><p>Select the SISO Design Task node in the tree, and then select the 'Automated Tuning' tab.  There are four compensator design methods available in the 'Design Method' list.  In this example, we use the LQG synthesis design method.</p><p><img vspace="5" hspace="5" src="autotune_cetm_combo.PNG" alt=""> </p><h2>Design a Full-Order LQG Tracker<a name="8"></a></h2><p><b>Step 1</b> Select 'LQG Synthesis' in the 'Design Method' list.</p><p>In the 'Compensator' area, the initial controller is set to 1. This results in a stable closed-loop system with large oscillations. See the closed-loop step response plot.</p><p><img vspace="5" hspace="5" src="autotune_ltiview_init.PNG" alt=""> </p><p><b>Step 2</b> Determine LQG Design Specifications.</p><p>In the 'Specifications' area, use sliders to qualitatively set requirements on the controller performance:</p><p>1. Controller Response: Drag the slider to the left (Aggressive) results a more aggressive controller that reduces the overshoot and settling time in the closed-loop response. However, if you model is not sufficiently accurate, an aggressive controller reduces the stability margin (robustness).</p><p>2. Measurement Noise: Drag the slider to the left (Small) indicates that you consider your measurement noise to be small. Therefore, the controller has more confidence in the states estimated by the Kalman filter and responds more aggressively. However, if you consider your measurements to be noisy, drag the slider to the right to cause the controller to react more slowly to changes.</p><p>3. Desired LQG Controller Order: Drag the slider to set the desired order of the LQG tracker. The LQG tracker automatically contains an integrator. Try reducing the controller order until you begin to lose closed-loop stability.</p><p>As a first iteration in the design, use default slider settings.</p><p><img vspace="5" hspace="5" src="autotune_cetm_LQG.PNG" alt=""> </p><p><b>Step 3</b> Click the 'Update Compensator' button.</p><p>The new compensator is displayed in the 'Compensator' area, and the step response plot is updated.</p><p><img vspace="5" hspace="5" src="autotune_ltiview_LQG.PNG" alt=""> </p><p><b>Step 4</b> Tune Closed-Loop Performance of the LQG Tracker.</p><p>To design a more aggressive controller, move the Controller Response slider to the far left. This reduces the overshoot by 50% and reduces the settling time by 70%.</p><p><img vspace="5" hspace="5" src="autotune_cetm_LQG_FullAgg.PNG" alt=""> </p><h2>Design a Reduced-Order LQG Tracker<a name="16"></a></h2><p>Set Desired LQG Controller Order to 1 and click the 'Update Compensator' button.  The new compensator is essentially a PI controller: 0.57(1+s)/s. This produces a heavily oscillating closed-loop system.</p><p><img vspace="5" hspace="5" src="autotune_cetm_LQG_RedAggSISO.PNG" alt=""> </p><p><img vspace="5" hspace="5" src="autotune_cetm_LQG_RedAgg.PNG" alt=""> </p><p>To make the controller less aggressive, move the Controller Response slider to the right.  The new compensator is essentially a PI controller: 0.001(1+s)/s.</p><p><img vspace="5" hspace="5" src="autotune_cetm_LQG_RedRobSISO.PNG" alt=""> </p><p><img vspace="5" hspace="5" src="autotune_cetm_LQG_RedRob.PNG" alt=""> </p><p>The response plot shows that the PI controller design provides a good starting point for optimization-based design.  For information, see <a href="GSSISOTool.html">"Getting Started with the SISO Design Tool"</a>.</p><p class="footer">Copyright 2005-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Automated LQG Tracker Design in the SISO Design Tool 
+% This demo shows how to use the LQG synthesis method in SISOTOOL to
+% design a feedback controller for a disk drive read/write head. 
+%
+% For details about the system and model, see Chapter 14 of "Digital
+% Control of Dynamic Systems," by Franklin, Powell, and Workman.
+%
+% Copyright 2005-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.6 $ $Date: 2007/11/09 19:48:00 $
+
+%% Disk Drive Model
+% Below is a picture of the system to be modeled.
+%
+% <<../Figures/diskdemofigures_01.png>>
+
+%% 
+% The model input is the current ic driving the voice coil motor, and the
+% output is the position error signal (PES, in % of track width). To learn
+% more about the 10th order model, see <diskdemo.html "Digital Servo
+% Control of a Hard-Disk Drive">. Because the model contains a small time
+% delay and SISOTOOL does not yet support models with a time delay, we 
+% remove the time delay in the input to design a feedback controller.   
+load diskdemo
+Gr = tf(1e6,[1 12.5 0]);
+Gf1 = tf(w1*[a1 b1*w1],[1 2*z1*w1 w1^2]); % first  resonance
+Gf2 = tf(w2*[a2 b2*w2],[1 2*z2*w2 w2^2]); % second resonance
+Gf3 = tf(w3*[a3 b3*w3],[1 2*z3*w3 w3^2]); % third  resonance
+Gf4 = tf(w4*[a4 b4*w4],[1 2*z4*w4 w4^2]); % fourth resonance
+G = (ss(Gf1) + Gf2 + Gf3 + Gf4) * Gr;     % convert to state space for accuracy
+
+%% Design Overview
+% We want to get a rough design of a full-ordered LQG tracker, which
+% places the read/write head at the correct position.
+% We also want to tune the LQG tracker to achieve specific
+% performance requirements and reduce the controller order as much as
+% possible. For example, turn the LQG tracker into a PI controller format.
+
+%% Creating a SISOTOOL Design Task
+% Open SISOTOOL by typing the following command at the MATLAB(R) prompt:
+% 
+% sisotool(G)
+
+%%
+% A SISO Design Task is added to the Control and Estimation Tools
+% Manager.  You also see a SISO Design Tool dialog that contains
+% graphical tuning tools.  Go to the 'Analysis Plot' tab in SISOTOOL and
+% select to plot the step response of the closed loop system.  Details
+% about how to use SISO Design Tool are described in <GSSISOTool.html
+% "Getting Started with the SISO Design Tool">. 
+
+%%
+% Select the SISO Design Task node in the tree, and then select the
+% 'Automated Tuning' tab.  There are four compensator design methods available
+% in the 'Design Method' list.  In this example, we use the LQG synthesis 
+% design method.
+
+%%
+% <<autotune_cetm_combo.PNG>>
+
+%% Design a Full-Order LQG Tracker
+% *Step 1* Select 'LQG Synthesis' in the 'Design Method' list.  
+%
+% In the 'Compensator' area, the initial controller is set to 1. This
+% results in a stable closed-loop system with large oscillations.
+% See the closed-loop step response plot.  
+
+%%
+% <<autotune_ltiview_init.PNG>>
+
+%% 
+% *Step 2* Determine LQG Design Specifications.
+%
+% In the 'Specifications' area, use sliders to qualitatively set requirements 
+% on the controller performance:
+%
+% 1. Controller Response: Drag the slider to the left (Aggressive)
+% results a more aggressive controller that reduces the overshoot and 
+% settling time in the closed-loop response. However, if you model is not
+% sufficiently accurate, an aggressive controller reduces the stability
+% margin (robustness).
+%
+% 2. Measurement Noise: Drag the slider to the left (Small) indicates
+% that you consider your measurement noise to be small. Therefore,  
+% the controller has more confidence in the states estimated by the Kalman
+% filter and responds more aggressively. However, if you consider your
+% measurements to be noisy, drag the slider to the right to cause the
+% controller to react more slowly to changes.
+%
+% 3. Desired LQG Controller Order: Drag the slider to set the desired order
+% of the LQG tracker. The LQG tracker automatically contains an integrator. 
+% Try reducing the controller order until you begin to lose closed-loop stability.  
+%
+% As a first iteration in the design, use default slider settings.   
+
+%%
+% <<autotune_cetm_LQG.PNG>>
+
+%%
+% *Step 3* Click the 'Update Compensator' button.
+%
+% The new compensator is displayed in the 'Compensator' area, and the
+% step response plot is updated.
+
+%%
+% <<autotune_ltiview_LQG.PNG>>
+
+%%
+% *Step 4* Tune Closed-Loop Performance of the LQG Tracker.  
+%
+% To design a more aggressive controller, move the Controller Response slider 
+% to the far left. This reduces the overshoot by 50% and reduces the settling
+% time by 70%.
+
+%%
+% <<autotune_cetm_LQG_FullAgg.PNG>>
+
+%% Design a Reduced-Order LQG Tracker
+%
+% Set Desired LQG Controller Order to 1 and click the 'Update Compensator'
+% button.  The new compensator is essentially a PI controller: 0.57(1+s)/s.
+% This produces a heavily oscillating closed-loop system.  
+
+%%
+% <<autotune_cetm_LQG_RedAggSISO.PNG>>
+
+%%
+% <<autotune_cetm_LQG_RedAgg.PNG>>
+
+%%
+% To make the controller less aggressive, move the Controller Response
+% slider to the right.  The new compensator is essentially a PI controller:
+% 0.001(1+s)/s.  
+
+%%
+% <<autotune_cetm_LQG_RedRobSISO.PNG>>
+
+%%
+% <<autotune_cetm_LQG_RedRob.PNG>>
+
+%%
+% The response plot shows that the PI controller design provides a good
+% starting point for optimization-based design.  For information, see
+% <GSSISOTool.html "Getting Started with the SISO Design Tool">.
+
+%%
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

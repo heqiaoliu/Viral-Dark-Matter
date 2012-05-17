@@ -1,0 +1,200 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Verifying Frequency-Domain Characteristics of an Aircraft</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdaircraftpad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdaircraftpad">Open scdaircraftpad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdaircraftpad">Run in the Command Window</a></div></div><div class="content"><h1>Verifying Frequency-Domain Characteristics of an Aircraft</h1><!--introduction--><p>The Simulink&reg; Control Design&#8482; software provides blocks that you can add to Simulink&reg; models to check that the model's linear response satisfies frequency-domain characteristics during simulation. In this demo, the gain and phase margins of an aircraft velocity control loop are checked as the fuel load changes.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Aircraft Model</a></li><li><a href="#3">Verifying Loop Gain and Phase Margins</a></li><li><a href="#5">Logging the Linear Systems</a></li></ul></div><h2>Aircraft Model<a name="1"></a></h2><p>Open the Simulink model of an aircraft:</p><pre class="codeinput">open_system(<span class="string">'scdaircraft'</span>)
+</pre><img vspace="5" hspace="5" src="scdaircraftpad_01.png" alt=""> <p>The aircraft model is based on a long-haul passenger aircraft flying at cruising altitude and speed. The aircraft starts with a full fuel load and follows a pre-specified eight hour velocity profile. The Simulink model is a much simplified version of a velocity control loop which adjusts the fuel flow rate to control the aircraft velocity. The model includes elements to model fuel consumption and resulting changes in aircraft mass as well as nonlinear draft effects limiting aircraft velocity. Constants used in the model, such as the drag coefficient, are defined in the model workspace and initializated from a script.</p><h2>Verifying Loop Gain and Phase Margins<a name="3"></a></h2><p>The aircraft model contains a <tt>Check Gain and Phase Margins</tt> block from the Simulink Control Design Model Verification library. This block computes the linearization of the loop seen by the <tt>Velocity Controller</tt> block every 30 minutes of simulated time.</p><p><img vspace="5" hspace="5" src="../html_extra/scdaircraft/LinearizationTab.png" alt=""> </p><p>The block computes the loop gain and phase margins and checks that:</p><div><ul><li>The gain margin is greater than 30 dB</li></ul></div><div><ul><li>The phase margin is greater than 60 degrees</li></ul></div><p>When computing the margins, the loop feedback sign must be specified. To determine the feedback sign, check if the path defined by the IOs includes the feedback summation:</p><div><ul><li>If the path includes the summation block, use positive feedback.</li></ul></div><div><ul><li>If the path does not include the summation block, use the feedback defined by the summation block.</li></ul></div><p>The linearization IOs specified in the <tt>Check Gain and Phase Margins</tt> block includes the summation block with negative feedback. Therefore, the feedback sign used to compute the gain and phase margins must be positive.</p><p><img vspace="5" hspace="5" src="../html_extra/scdaircraft/BoundsTab.png" alt=""> </p><p>The block shows the computed gain and phase margins in a tabular format. Clicking <b>Show Plot</b> button opens the tabular display.</p><p>The <b>Assertion</b> tab in the block specifies that a warning be thrown when the assertion fails, i.e., the gain and phase margins are not satisfied.</p><p><img vspace="5" hspace="5" src="../html_extra/scdaircraft/AssertionTab.png" alt=""> </p><p>The model also includes a <tt>Nichols Plot</tt> block from the Simulink Control Design Linear Analysis Plots library, which computes the loop response as the fuel mass drops during the simulation. The <tt>Generate dynamic range events</tt> block generates a rising edge whenever the fuel mass is a multiple of 10% of the maximum fuel mass. These rising edges trigger a linearization and display the results on the Nichols plot. The <b>Show Plot</b> in the Block Parameters dialog box opens the Nichols plot.</p><p>The <tt>Signal Builder</tt> block in the model defines the velocity profile for the aircraft. If Simulink Verification and Validation&#8482; software is installed, double-clicking the block shows the Verification Manager Tool which displays the check blocks included in the model. See <a href="http://www.mathworks.com/access/helpdesk/help/toolbox/slvnv/ug/f6010dfi2.html">Using the Verification Manager</a> for more information.</p><p><img vspace="5" hspace="5" src="../html_extra/scdaircraft/SignalBuilderDlg.png" alt=""> </p><p>To check if the specified gain and phase margins are satisfied, simulate the model by clicking the <tt>Start simulation</tt> button in the <tt>Signal Builder</tt> block window or the Simulink model.</p><pre class="codeinput">sim(<span class="string">'scdaircraft'</span>);
+</pre><pre class="codeoutput">Warning: Assertion detected in 'scdaircraft/Check Gain and Phase Margins' at
+time 27020.4 
+</pre><p><img vspace="5" hspace="5" src="../html_extra/scdaircraft/TabularDisplay.png" alt=""> </p><p><img vspace="5" hspace="5" src="../html_extra/scdaircraft/NicholsPlot.png" alt=""> </p><p>The tabular display shows:</p><div><ul><li>The times when the control loop is linearized.</li></ul></div><div><ul><li>The computed gain and phase margins.</li></ul></div><p>Margins that violate the specified bounds are shown in red. The phase margin bound is violated towards the end of the simulation when the fuel mass and airplane velocity have dropped. The Nichols plot indicates the small loop response variations as the fuel load and aircraft velocity change.</p><p>The table shows that the linearizations are not computed at exactly every 30 min but at small variations of 30 min. This is because zero-crossing detection for the block is not enabled. Enabling zero-crossing for the block ensures that the linearizations are computed at exactly 30 min intervals but may increase the time the simulation takes to run.</p><p>You can select the <b>Enable zero-crossing detection</b> option in the Block Parameters dialog box or use the block command line API to enable zero-crossing detection:</p><pre class="codeinput">set_param(<span class="string">'scdaircraft/Check Gain and Phase Margins'</span>,<span class="string">'ZeroCross'</span>,<span class="string">'on'</span>)
+sim(<span class="string">'scdaircraft'</span>);
+</pre><pre class="codeoutput">Warning: Assertion detected in 'scdaircraft/Check Gain and Phase Margins' at
+time 27000 
+</pre><h2>Logging the Linear Systems<a name="5"></a></h2><p>The <b>Logging</b> tab in the <tt>Check Gain and Phase Margins</tt> block specifies that the computed linear systems be saved to a workspace variable.</p><p><img vspace="5" hspace="5" src="../html_extra/scdaircraft/LoggingTab.png" alt=""> </p><p>The linear systems are logged in a structure with <tt>time</tt> and <tt>values</tt> fields.</p><pre class="codeinput">LinearAircraft
+</pre><pre class="codeoutput">
+LinearAircraft = 
+
+         time: [17x1 double]
+       values: [4-D ss]
+    blockName: 'scdaircraft/Check Gain and Phase Margins'
+
+</pre><p>The <tt>values</tt> field stores the linear systems as an array of LTI state-space systems (see <a href="matlab:helpview([docroot,'/toolbox/control/control.map'],'concept_of_an_lti_array')">Arrays of LTI Models</a>) in Control System Toolbox documentation for more information).</p><p>You can retrieve the individual systems by indexing into the <tt>values</tt> field.</p><pre class="codeinput">L = LinearAircraft.values(:,:,17)
+</pre><pre class="codeoutput"> 
+a = 
+                 scdaircraft/  scdaircraft/  scdaircraft/
+   scdaircraft/      -0.01122             0             0
+   scdaircraft/      -0.01184             0             0
+   scdaircraft/        0.7492             0       -0.4326
+ 
+b = 
+                 Velocity Con
+   scdaircraft/        0.3774
+   scdaircraft/             0
+   scdaircraft/             0
+ 
+c = 
+                 scdaircraft/  scdaircraft/  scdaircraft/
+   Velocity Con   -1.998e-015             1       -0.4326
+ 
+d = 
+                 Velocity Con
+   Velocity Con             0
+ 
+Continuous-time model.
+</pre><p>Close the Simulink model:</p><pre class="codeinput">bdclose(<span class="string">'scdaircraft'</span>)
+clear(<span class="string">'LinearAircraft'</span>,<span class="string">'L'</span>)
+</pre><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Verifying Frequency-Domain Characteristics of an Aircraft
+%
+% The Simulink(R) Control Design(TM) software provides blocks that you can
+% add to Simulink(R) models to check that the model's linear response 
+% satisfies frequency-domain characteristics during simulation. In this demo,
+% the gain and phase margins of an aircraft velocity control loop are checked
+% as the fuel load changes. 
+ 
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.8.1 $ $Date: 2010/05/10 17:56:21 $
+
+%% Aircraft Model
+%
+% Open the Simulink model of an aircraft:
+
+open_system('scdaircraft')
+%%
+%
+% The aircraft model is based on a long-haul passenger aircraft flying at cruising 
+% altitude and speed. The aircraft starts with a full fuel load and follows  
+% a pre-specified eight hour velocity profile. The Simulink model is a 
+% much simplified version of a velocity control loop
+% which adjusts the fuel flow rate to control the aircraft velocity. The
+% model includes elements to model fuel consumption and resulting changes in 
+% aircraft mass as well as nonlinear draft effects limiting aircraft
+% velocity. Constants used in the model, such as the drag coefficient, are 
+% defined in the model workspace and initializated from a script. 
+
+%% Verifying Loop Gain and Phase Margins
+%
+% The aircraft model contains a |Check Gain and Phase Margins| block from 
+% the Simulink Control Design Model Verification library. This block computes
+% the linearization of the loop seen by the |Velocity Controller| block 
+% every 30 minutes of simulated time.
+%
+% <<../html_extra/scdaircraft/LinearizationTab.png>>
+%
+% The block computes the loop gain and phase margins and
+% checks that:
+%
+% * The gain margin is greater than 30 dB
+%
+% * The phase margin is greater than 60 degrees
+%
+% When computing the margins, the loop feedback sign must be specified. To determine 
+% the feedback sign, check if the path defined by the IOs includes
+% the feedback summation:
+%
+% * If the path includes the summation block, use positive feedback.
+%
+% * If the path does not include the summation block, use the feedback defined by
+% the summation block.
+%
+% The linearization IOs specified in the |Check Gain and Phase Margins| block includes 
+% the summation block with negative feedback. Therefore, the feedback sign used to compute 
+% the gain and phase margins must be positive. 
+%
+% <<../html_extra/scdaircraft/BoundsTab.png>>
+%
+% The block shows the computed gain and phase margins in a
+% tabular format. Clicking *Show Plot* button opens the tabular
+% display. 
+%
+% The *Assertion* tab in the block specifies that a warning be thrown when 
+% the assertion fails, i.e., the gain and phase margins are not satisfied.
+%
+% <<../html_extra/scdaircraft/AssertionTab.png>>
+%
+% The model also includes a |Nichols Plot| block from the Simulink Control Design 
+% Linear Analysis Plots library, which computes the loop response as the 
+% fuel mass drops during the simulation. The |Generate dynamic range events| block 
+% generates a rising edge whenever the fuel mass is a 
+% multiple of 10% of the maximum fuel mass. These rising edges trigger a linearization 
+% and display the results on the Nichols plot. The *Show Plot* in the Block 
+% Parameters dialog box opens the Nichols plot. 
+%
+% The |Signal Builder| block in the model defines the 
+% velocity profile for the aircraft. If Simulink Verification and Validation(TM) 
+% software is installed, double-clicking the block shows the Verification Manager Tool 
+% which displays the check blocks included in the model. See
+% <http://www.mathworks.com/access/helpdesk/help/toolbox/slvnv/ug/f6010dfi2.html
+% Using the Verification Manager> for more information.
+%
+% <<../html_extra/scdaircraft/SignalBuilderDlg.png>>
+%
+% To check if the specified gain and phase margins are satisfied, simulate
+% the model by clicking the |Start simulation| button in the |Signal Builder| block window
+% or the Simulink model.  
+
+sim('scdaircraft');
+
+%%
+% <<../html_extra/scdaircraft/TabularDisplay.png>>
+%
+% <<../html_extra/scdaircraft/NicholsPlot.png>>
+%
+% The tabular display shows:
+% 
+% * The times when the control loop is linearized.
+% 
+% * The computed gain and phase margins. 
+%
+% Margins that violate the specified bounds are shown in red. The phase 
+% margin bound is violated towards the end of the simulation when the fuel 
+% mass and airplane velocity have dropped. The Nichols plot indicates the
+% small loop response variations as the fuel load and aircraft velocity
+% change. 
+%
+% The table shows that the linearizations are not computed at
+% exactly every 30 min but at small variations of 30 min. This is
+% because zero-crossing detection for the block is not enabled. Enabling
+% zero-crossing for the block ensures that the linearizations are computed
+% at exactly 30 min intervals but may increase the time the simulation
+% takes to run.
+%
+% You can select the *Enable zero-crossing detection* option in the Block 
+% Parameters dialog box or use the block command line API to enable
+% zero-crossing detection:
+set_param('scdaircraft/Check Gain and Phase Margins','ZeroCross','on')
+sim('scdaircraft');
+
+%% Logging the Linear Systems
+% The *Logging* tab in the |Check Gain and Phase Margins| block specifies 
+% that the computed linear systems be saved to a workspace variable.  
+%
+% <<../html_extra/scdaircraft/LoggingTab.png>>
+%
+% The linear systems are logged in a structure with |time| and |values| fields.
+LinearAircraft
+
+%%
+% The |values| field stores the linear systems as an array of LTI state-space
+% systems (see <matlab:helpview([docroot,'/toolbox/control/control.map'],'concept_of_an_lti_array') Arrays of LTI Models>)
+% in Control System Toolbox documentation for more information). 
+%
+% You can retrieve the individual systems by indexing into the |values| field.
+L = LinearAircraft.values(:,:,17)
+
+%%
+% Close the Simulink model:
+bdclose('scdaircraft')
+clear('LinearAircraft','L')
+displayEndOfDemoMessage(mfilename)
+
+
+
+##### SOURCE END #####
+--></body></html>

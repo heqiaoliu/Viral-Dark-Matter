@@ -1,0 +1,120 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   <!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>デジタル波形生成: 正弦波の近似</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="sldemo_wavethd_script.m"><link rel="stylesheet" type="text/css" href="../../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sldemo_wavethd_script">エディターで sldemo_wavethd_script.m を開く</a></div><div class="right"><a href="matlab:echodemo sldemo_wavethd_script">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>デジタル波形生成: 正弦波の近似</h1><!--introduction--><p>デジタル アナログ コンバーター (DAC) に結合された組み込みプロセッサーとデジタル信号プロセッサー (DSP) を使用した、アナログ波形のリアルタイム直接デジタル合成が、非常に小規模なシステムにおいても一般的になりつつあります。  組み込みシステムや計測器で使用する波形作成は、MATLAB&reg; と Siumulink&reg; を密接に統合することにより効率化することができます。  実際に Real-Time Workshop&reg; でターゲット ハードウェアに実装する前に、波形生成アルゴリズムと関連データをデスクトップで作成、解析することができます。  このデモでは、組み込みシステムと、任意の波形生成機器におけるデジタル波形合成アプリケーションで使用する、正弦波データ テーブルの設計と評価に必要な主要手順のいくつかを紹介します。</p><p>可能な場合、正弦波をデジタル的に最も正確に合成する方法は、omega*t を間隔 0 ～ 2*pi に畳み込んで、フル精度の sin() 関数を直接各タイム ステップに対して計算することです。  リアルタイム システムでは、この計算負荷が一般的に大きすぎるため、このアプローチは使えません。  この障壁を取り除く一般的な方法の 1 つは、0 から 2*pi、または半波形または 1/4 波形のデータで対称性を利用し、値のテーブルを使用して sin() 関数の動作を近似することです。</p><p>考慮すべきトレードオフとしては、アルゴリズムの効率性、必要なデータ ROM サイズ、実装の精度/スペクトル純度などがあります。 独自の波形を設計する場合にも、同様の解析が必要です。  テーブル データとルックアップ アルゴリズムだけでは、現場での性能は決まりません。  その他に、リアルタイム クロックや、D/C コンバーターの精度や安定性への考慮も、全体の性能評価には必要です。  Signal Processing Toolbox™ と Signal Processing Blockset™ は、この分野において、MATLAB とSimulink の機能を補完します。</p><p>正弦波の動作を近似する別の一般的な方法は、CORDIC 近似を使用することです。 CORDIC は COordinate Rotation DIgital Computer の頭文字を取ったものです。 Givens 回転に基づく CORDIC アルゴリズムは、Shift-Add 反復演算のみを必要とするため、最もハードウェア効率に優れたアルゴリズムの 1 つです。 Fixed-Point Toolbox のライセンスがある場合は、<a href="matlab:showdemo('fi_sin_cos_demo')">fi_sin_cos_demo</a> で CORDIC 近似に関するチュートリアル スタイルのデモを見ることができます。</p><p>このデモで使用されている歪解析は、次の書籍内で紹介されている原理に基づいています。&quot;Digital Sine-Wave Synthesis Using the DSP56001/DSP56002&quot;, by Andreas Chrysafis, Motorola&reg; Inc. 1988</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">倍精度浮動小数点でのテーブルの作成</a></li><li><a href="#2">正弦波近似をモデルに付加</a></li><li><a href="#3">波形精度についての詳しい考察</a></li><li><a href="#4">同じテーブルを固定小数点で実装</a></li><li><a href="#5">さまざまなテーブルと方法の結果の比較</a></li><li><a href="#6">事前設定された Sine Wave ブロックの使用</a></li><li><a href="#7">Clock 入力による正弦関数の使用</a></li><li><a href="#8">直接ルックアップと線形内挿の動作の考察</a></li><li><a href="#9">次のステップ</a></li></ul></div><h2>倍精度浮動小数点でのテーブルの作成<a name="1"></a></h2><p>以下のコマンドを実行すると、256 点の正弦波が作成され、これらの点で初めてサンプリングされたときに、線形内挿を使用してステップあたり 2.5 点のデルタでジャンプすることにより、その正弦波の全高調波ひずみが測定されます。 正弦値を CORDIC 正弦近似に置き換えることで、同様の計算を行うことができます。 周波数ベースの用途では、スペクトル純度の方がテーブル内の絶対誤差よりも重要な場合があります。</p><p>ファイル <a href="matlab:edit('ssinthd.m')">ssinthd.m</a> はこのデモの基本関数です。 内挿ありまたは内挿なしのデジタル正弦波生成の全高調波ひずみ (THD) を計算するために使用されます。 この THD アルゴリズムは正確な結果を導くために、整数個の波に行われます。 使用される波サイクルの数は A です。ステップ サイズ [delta] は A/B で A 波を横断するとテーブル内のすべての点に少なくとも 1 回はヒットするので、全サイクルにわたって平均 THD を正確に見つけることが必要です。</p><p>THD の計算に使用する関係:</p><pre>    THD = (ET - EF) / ET</pre><p>ここで ET = エネルギー総量、EF = 基本エネルギー</p><p>ET と EF のエネルギー差異は、疑似エネルギーです。</p><pre class="codeinput">N     = 256;
+angle =  2*pi * (0:(N-1))/N;
+
+s     = sin( angle )';
+thd_ref_1    = ssinthd( s,   1,   N, 1, <span class="string">'direct'</span> )
+thd_ref_2p5  = ssinthd( s, 5/2, 2*N, 5, <span class="string">'linear'</span> )
+
+cs    = cordicsin( angle, 50 )';
+thd_ref_1c   = ssinthd(cs,   1,   N, 1, <span class="string">'direct'</span> )
+thd_ref_2p5c = ssinthd(cs, 5/2, 2*N, 5, <span class="string">'linear'</span> )
+</pre><pre class="codeoutput">
+thd_ref_1 =
+
+  4.1695e-032
+
+
+thd_ref_2p5 =
+
+  1.4176e-009
+
+
+thd_ref_1c =
+
+  1.2479e-030
+
+
+thd_ref_2p5c =
+
+  1.4176e-009
+
+</pre><h2>正弦波近似をモデルに付加<a name="2"></a></h2><p>上記で設計した正弦波を Simulink モデルに含め、線形補間を使用した場合と CORDIC 近似を使用した場合に、直接ルックアップとしてどのように機能するかを確認できます。 このモデルでは、浮動小数点テーブルの出力が sin() 関数と比較されます。  THD 計算から予想されるとおり、線形内挿は、sin() 関数と比較して直接テーブル ルックアップよりも誤差が小さくなります。 CORDIC 近似は、線形補間法に比べると誤差が小さくなります。 このマージンは、CORDIC 正弦近似を計算するときの反復数に依存します。 通常、反復数を増加すると、精度を向上させることができます (計算時間も増加します)。 CORDIC 近似は、明示的な乗数を必要としないので、 乗数が効率的でない場合や、ハードウェアに存在しない場合に使用されます。</p><p><a href="matlab:open_system('sldemo_tonegen');">sldemo_tonegen モデルを開く</a></p><pre class="codeinput">open_system(<span class="string">'sldemo_tonegen'</span>);
+set_param(<span class="string">'sldemo_tonegen'</span>, <span class="string">'StopFcn'</span>,<span class="string">''</span>);
+sim(<span class="string">'sldemo_tonegen'</span>);
+figure(<span class="string">'Color'</span>,[1,1,1]);
+subplot(3,1,1), plot(tonegenOut.time, tonegenOut.signals(1).values); grid
+title(<span class="string">'Difference between direct look-up and reference signal'</span>);
+subplot(3,1,2), plot(tonegenOut.time, tonegenOut.signals(2).values); grid
+title(<span class="string">'Difference between interpolated look-up and reference signal'</span>);
+subplot(3,1,3), plot(tonegenOut.time, tonegenOut.signals(3).values); grid
+title(<span class="string">'Difference between CORDIC sine and reference signal'</span>);
+</pre><img vspace="5" hspace="5" src="../sldemo_wavethd_script_01.png" alt=""> <img vspace="5" hspace="5" src="../sldemo_wavethd_script_02.png" alt=""> <h2>波形精度についての詳しい考察<a name="3"></a></h2><p>シミュレーション時間の 4.8 ～ 5.2 秒 (たとえば) の信号にズームインすると、使用されているさまざまなアルゴリズムによるさまざまな特性に気付くことができます。</p><pre class="codeinput">ax = get(gcf,<span class="string">'Children'</span>);
+set(ax(3),<span class="string">'xlim'</span>,[4.8, 5.2])
+set(ax(2),<span class="string">'xlim'</span>,[4.8, 5.2])
+set(ax(1),<span class="string">'xlim'</span>,[4.8, 5.2])
+</pre><img vspace="5" hspace="5" src="../sldemo_wavethd_script_03.png" alt=""> <h2>同じテーブルを固定小数点で実装<a name="4"></a></h2><p>次に、[最近値] への丸めを使用して、浮動小数点テーブルを 24 ビットの分数に変換します。  新しいテーブルの全高調波ひずみが、直接ルックアップ モードでステップあたり 1、2、3 点で、次に、固定小数点線形内挿でテストされます。</p><pre class="codeinput">bits = 24;
+is   = num2fixpt( s, sfrac(bits), [], <span class="string">'Nearest'</span>, <span class="string">'on'</span>);
+
+thd_direct1 = ssinthd(is, 1, N, 1, <span class="string">'direct'</span>)
+thd_direct2 = ssinthd(is, 2, N, 2, <span class="string">'direct'</span>)
+thd_direct3 = ssinthd(is, 3, N, 3, <span class="string">'direct'</span>)
+
+thd_linterp_2p5 = ssinthd(is, 5/2, 2*N, 5, <span class="string">'fixptlinear'</span>)
+</pre><pre class="codeoutput">
+thd_direct1 =
+
+  2.6423e-015
+
+
+thd_direct2 =
+
+  2.8660e-015
+
+
+thd_direct3 =
+
+  2.6423e-015
+
+
+thd_linterp_2p5 =
+
+  1.4175e-009
+
+</pre><h2>さまざまなテーブルと方法の結果の比較<a name="5"></a></h2><p>ステップあたり 8.25 点のテーブル ステップ レート (33/4) を選択し、直接モードと線形モードの両方で倍精度および固定小数点テーブルをジャンプし、ゆがみ結果を比較します。</p><pre class="codeinput">thd_double_direct  = ssinthd( s, 33/4, 4*N, 33, <span class="string">'direct'</span>)
+thd_sfrac24_direct = ssinthd(is, 33/4, 4*N, 33, <span class="string">'direct'</span>)
+
+thd_double_linear  = ssinthd( s, 33/4, 4*N, 33, <span class="string">'linear'</span>)
+thd_sfrac24_linear = ssinthd(is, 33/4, 4*N, 33, <span class="string">'fixptlinear'</span>)
+</pre><pre class="codeoutput">
+thd_double_direct =
+
+  4.7061e-005
+
+
+thd_sfrac24_direct =
+
+  4.7061e-005
+
+
+thd_double_linear =
+
+  7.9741e-010
+
+
+thd_sfrac24_linear =
+
+  8.1751e-010
+
+</pre><h2>事前設定された Sine Wave ブロックの使用<a name="6"></a></h2><p>Simulink には、連続モードと離散モードの Sine Wave ソース ブロックに加え、正弦と余弦の対称性を利用する線形内挿ルックアップ テーブルを使用して関数近似を実装する固定小数点正弦および余弦関数ブロックもあります。 デモ sldemo_tonegen_fixpt では、サンプリングした正弦波ソースを参照信号として使用し、補間を使用した場合と使用しない場合のルックアップ テーブル、および固定小数点データ型の CORDIC 正弦近似と比較しています。</p><p><a href="matlab:open_system('sldemo_tonegen_fixpt');">sldemo_tonegen_fixpt モデルを開く</a></p><pre class="codeinput">open_system(<span class="string">'sldemo_tonegen_fixpt'</span>);
+set_param(<span class="string">'sldemo_tonegen_fixpt'</span>, <span class="string">'StopFcn'</span>,<span class="string">''</span>);
+sim(<span class="string">'sldemo_tonegen_fixpt'</span>);
+figure(<span class="string">'Color'</span>,[1,1,1]);
+subplot(3,1,1), plot(tonegenOut.time, tonegenOut.signals(1).values); grid
+title(<span class="string">'Difference between direct look-up and reference signal'</span>);
+subplot(3,1,2), plot(tonegenOut.time, tonegenOut.signals(2).values); grid
+title(<span class="string">'Difference between interpolated look-up and reference signal'</span>);
+subplot(3,1,3), plot(tonegenOut.time, tonegenOut.signals(3).values); grid
+title(<span class="string">'Difference between CORDIC sine and reference signal'</span>);
+</pre><img vspace="5" hspace="5" src="../sldemo_wavethd_script_04.png" alt=""> <img vspace="5" hspace="5" src="../sldemo_wavethd_script_05.png" alt=""> <h2>Clock 入力による正弦関数の使用<a name="7"></a></h2><p>また、モデルでは正弦波ソース参照を sin() 関数と比較しています。この関数の入力角度はラジアン単位で、Clock を使用して計算された時間をベースとします。 この節では、Clock 入力が 2*pi の周期にわたって、sin() 関数から繰り返し可能な結果を返すという仮定をテストしています。 次のプロットは、入力が時間をベースとする場合に、sin() 関数で誤差が蓄積することを示しています。 さらに、サンプリングした正弦波ソースを波形発生器として使用した方がより正確であることを示しています。</p><pre class="codeinput">subplot(1,1,1), plot(tonegenOut.time, tonegenOut.signals(4).values); grid
+title(<span class="string">'Difference between time based sin() and reference signal'</span>);
+</pre><img vspace="5" hspace="5" src="../sldemo_wavethd_script_06.png" alt=""> <h2>直接ルックアップと線形補間の動作の考察<a name="8"></a></h2><p>ファイル <a href="matlab:edit('sldemo_sweeptable_thd.m')">sldemo_sweeptable_thd.m</a> によって実行される固定小数点テーブルの全周波数スイープについて考えた方が、この設計の動作をより深く理解できるでしょう。  24 ビットの分数固定小数点テーブルの全高調波ひずみは、ステップ サイズごとに測定され、一度に D 点進みます。ここで D は、1 から N/2 まで 0.25 点ごとに増加する数字です。  N は この例では 256 点であり、1、2、2.5、3 の場合についてはすでに上記で済んでいます。  周波数は離散であるため、サンプル レートの関数です。</p><p>プロット内のひずみ動作のモードに注意してください。 これらは常識的な認識と一致し、 テーブルから 1 点で正確に取得する場合、誤差は最小です。線形内挿では、点と点の間の直接ルックアップの場合よりも誤差が小さくなります。  直感的に理解しにくいのは、ナイキスト周波数までの各モードの誤差が比較的一定であることです。</p><pre class="codeinput">figure(<span class="string">'Color'</span>,[1,1,1])
+tic, sldemo_sweeptable_thd(24, 256), toc
+</pre><pre class="codeoutput">Elapsed time is 2.409249 seconds.
+</pre><img vspace="5" hspace="5" src="../sldemo_wavethd_script_07.png" alt=""> <h2>次のステップ<a name="9"></a></h2><p>このデモをさらに掘り下げるには、異なるテーブル精度と要素カウントを試してみて、それぞれの影響を調べます。 CORDIC 近似を使用して、異なる反復回数を試し、精度と計算時間に対する影響を確認します。 Real-Time Workshop から可能な自動コード生成と Real-Time Workshop&reg; Embedded Coder™ を使用した量産コード生成により、波形合成アルゴリズムのさまざまな実装オプションを調べることができます。 Embedded Target 製品は、さまざまなリアルタイム プロセッサーや DSP への直接接続を提供しています。たとえば、ターゲットのリアルタイム実行中に Simulink ブロック線図へ接続し直すことができます。 Signal Processing Toolbox と Signal Processing Blockset は、MATLAB および Simulink と共に広範囲にわたるサンプルベースおよびフレームベースの信号処理システムを設計、実装するための機能を、事前にパッケージ化して提供しています。</p><pre class="codeinput">bdclose(<span class="string">'sldemo_tonegen'</span>);
+bdclose(<span class="string">'sldemo_tonegen_fixpt'</span>)
+</pre><p class="footer">Copyright 1990-2009 The MathWorks, Inc.<br> Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Digital Waveform Generation: Approximating a Sine Wave %  % Real-Time direct digital synthesis of analog waveforms using  % embedded processors and digital signal processors (DSPs) connected  % to digital-to-analog converters (DACs) is becoming pervasive even  % in the smallest systems.  Developing waveforms for use in embedded  % systems or laboratory instruments can be streamlined using the tight  % integration of MATLAB(R) and Simulink(R).  You can develop and analyze the  % waveform generation algorithm and its associated data at your desktop  % before implementing it with Real-Time Workshop(R) on target hardware.  This  % demonstration goes through some of the main steps needed to design and  % evaluate a sine wave data table for use in digital waveform synthesis  % applications in embedded systems and arbitrary waveform generation % instruments.   % % When feasible, the most accurate way to digitally synthesize a sine % wave is to compute the full precision sin() function directly for each  % time step, folding omega*t into the interval 0 to 2*pi.  In real-time  % systems, the computational burden is typically too large to permit  % this approach.  One popular way around this obstacle is to use a table  % of values to approximate the behavior of the sin() function, either  % from 0 to 2*pi, or even half wave or quarter wave data to leverage % symmetry. % % Tradeoffs to consider include algorithm efficiency, data ROM size % required, and accuracy/spectral purity of the implementation. Similar % analysis is needed when performing your own waveform designs.  The  % table data and look-up algorithm alone do not determine performance  % in the field.  Additional considerations such as the accuracy and  % stability of the real-time clock, and digital to analog converter are  % also needed in order to assess overall performance.  The Signal Processing Toolbox(TM) % and the Signal Processing Blockset(TM) complement the  % capabilities of MATLAB and Simulink for work in this area. %  % Another popular way to approximate the behavior of sine wave is  % to use the CORDIC approximation method. CORDIC is an acronym for  % COordinate Rotation DIgital Computer. The Givens rotation-based CORDIC  % algorithm is among one of the most hardware-efficient algorithms  % because it requires only shift-add iterative operations. If you have Fixed-  % Point Toolbox license then you can see <matlab:showdemo('fi_sin_cos_demo') fi_sin_cos_demo> for  % a tutorial style demo on CORDIC approximation. % % The distortion analysis in this demo is based on principles presented  % in "Digital Sine-Wave Synthesis Using the DSP56001/DSP56002", by  % Andreas Chrysafis, Motorola(R) Inc. 1988  % Copyright 1990-2009 The MathWorks, Inc. % $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:29:19 $  %% Create a Table in Double Precision Floating Point % The following commands make a 256 point sine wave and measure its  % total harmonic distortion when sampled first on the points and then  % by jumping with a delta of 2.5 points per step using linear  % interpolation. Similar computations are done by replacing the sine values with % CORDIC sine approximation. For frequency-based applications,  % spectral purity can be more important than absolute error in the table. % % The file  <matlab:edit('ssinthd.m') ssinthd.m> is the core function in this demo. % It is used for calculating total harmonic distortion (THD) for digital  % sine wave generation with or without interpolation. This THD algorithm  % proceeds over an integral number of waves to achieve accurate results. The  % number of wave cycles used is A.  Since the step size 'delta' is A/B and  % traversing A waves will hit all points in the table at least one time, which  % is needed to accurately find the average THD across a full cycle. % % The relationship used to calculate THD is: % %      THD = (ET - EF) / ET % % where ET = total energy, and  %       EF = fundamental energy % % The energy difference between ET and EF is spurious energy. %   N     = 256; angle =  2*pi * (0:(N-1))/N;  s     = sin( angle )'; thd_ref_1    = ssinthd( s,   1,   N, 1, 'direct' ) thd_ref_2p5  = ssinthd( s, 5/2, 2*N, 5, 'linear' )  cs    = cordicsin( angle, 50 )'; thd_ref_1c   = ssinthd(cs,   1,   N, 1, 'direct' ) thd_ref_2p5c = ssinthd(cs, 5/2, 2*N, 5, 'linear' )  %% Put the Sine Wave Approximations in a Model % You can put the sine wave designed above into a Simulink model and % see how it works as a direct lookup, with linear interpolation, and with % CORDIC approximation. This model compares the output of the floating point % tables to the sin() function.  As expected from the THD calculations, the linear % interpolation has a lower error than the direct table lookup in  % comparison to the sin() function. The CORDIC approximation shows a lower % error margin when compared to the linear interpolation method. This margin depends % on the number of iterations when computing the CORDIC sin approximation. % You can typically achieve greater accuracy by increasing the number of  % iterations (corresponding to a longer computation time). The CORDIC  % approximation eliminates the need for explicit multipliers. It is used % when multipliers are less efficient or non-existent in hardware. % % <matlab:open_system('sldemo_tonegen'); Open the sldemo_tonegen model>  open_system('sldemo_tonegen'); set_param('sldemo_tonegen', 'StopFcn',''); sim('sldemo_tonegen'); figure('Color',[1,1,1]); subplot(3,1,1), plot(tonegenOut.time, tonegenOut.signals(1).values); grid title('Difference between direct look-up and reference signal'); subplot(3,1,2), plot(tonegenOut.time, tonegenOut.signals(2).values); grid title('Difference between interpolated look-up and reference signal'); subplot(3,1,3), plot(tonegenOut.time, tonegenOut.signals(3).values); grid title('Difference between CORDIC sine and reference signal');  %% Taking a Closer Look at Waveform Accuracy % Zooming in on the signals between 4.8 and 5.2 seconds of simulation % time (for example), you can see a different characteristic due to the  % different algorithms used:  ax = get(gcf,'Children'); set(ax(3),'xlim',[4.8, 5.2]) set(ax(2),'xlim',[4.8, 5.2]) set(ax(1),'xlim',[4.8, 5.2])  %% The Same Table, Implemented in Fixed Point % Now convert the floating point table into a 24 bit fractional  % number using 'nearest' rounding.  The new table is tested for  % total harmonic distortion in direct lookup mode at 1, 2, and 3  % points per step, then with fixed point linear interpolation.  bits = 24; is   = num2fixpt( s, sfrac(bits), [], 'Nearest', 'on');  thd_direct1 = ssinthd(is, 1, N, 1, 'direct') thd_direct2 = ssinthd(is, 2, N, 2, 'direct') thd_direct3 = ssinthd(is, 3, N, 3, 'direct')  thd_linterp_2p5 = ssinthd(is, 5/2, 2*N, 5, 'fixptlinear')  %% Compare Results for Different Tables and Methods % Choosing a table step rate of 8.25 points per step (33/4), jump through  % the double precision and fixed point tables in both direct and linear  % modes and compare distortion results: %  thd_double_direct  = ssinthd( s, 33/4, 4*N, 33, 'direct') thd_sfrac24_direct = ssinthd(is, 33/4, 4*N, 33, 'direct')  thd_double_linear  = ssinthd( s, 33/4, 4*N, 33, 'linear') thd_sfrac24_linear = ssinthd(is, 33/4, 4*N, 33, 'fixptlinear')  %% Using Preconfigured Sine Wave Blocks % Simulink also includes a Sine Wave source block with continuous and  % discrete modes, plus fixed point Sin and Cosine function blocks that  % implement the function approximation with a linearly interpolated  % lookup table that exploits the quarter wave symmetry of sine and cosine. % Demo sldemo_tonegen_fixpt uses a sampled sine wave source as the reference  % signal and compares it with a lookup table with or without interpolation,  % and with CORDIC sine approximation in fixed point data types. % % <matlab:open_system('sldemo_tonegen_fixpt'); Open the sldemo_tonegen_fixpt model>  open_system('sldemo_tonegen_fixpt'); set_param('sldemo_tonegen_fixpt', 'StopFcn',''); sim('sldemo_tonegen_fixpt'); figure('Color',[1,1,1]); subplot(3,1,1), plot(tonegenOut.time, tonegenOut.signals(1).values); grid title('Difference between direct look-up and reference signal'); subplot(3,1,2), plot(tonegenOut.time, tonegenOut.signals(2).values); grid title('Difference between interpolated look-up and reference signal'); subplot(3,1,3), plot(tonegenOut.time, tonegenOut.signals(3).values); grid title('Difference between CORDIC sine and reference signal');  %% Use of Sine Function with a Clock Input % The model also compares the sine wave source reference with the sin() function % whose input angle in radians is time based (computed using a clock).  % This section tests the assumption that the clock input would return  % repeatable results from the sin() function for period 2*pi. The following  % plot shows that the sin() function accumulates error when its  % input is time based. This also shows that a sampled sine wave source is  % more accurate to use as a waveform generator.   subplot(1,1,1), plot(tonegenOut.time, tonegenOut.signals(4).values); grid title('Difference between time based sin() and reference signal');   %% Survey of Behavior for Direct Lookup and Linear Interpolation % The file <matlab:edit('sldemo_sweeptable_thd.m') sldemo_sweeptable_thd.m> % performs a full frequency sweep of the fixed point tables and will let % us more thoroughly understand the behavior of this design.  Total harmonic  % distortion of the 24-bit fractional fixed point table is measured at  % each step size, moving through it D points at a time, where D is a  % number from 1 to N/2, incrementing by 0.25 points.  N is 256 points in  % this example; the 1, 2, 2.5, and 3 cases were done above.  Frequency is  % discrete and therefore a function of the sample rate. % % Notice the modes of the distortion behavior in the plot. They match with % common sense: when retrieving from the table precisely at a point,  % the error is smallest; linear interpolation has a smaller error than % direct lookup in between points.  What is not intuitive is that the error  % is relatively constant for each of the modes up to the Nyquist frequency.  figure('Color',[1,1,1]) tic, sldemo_sweeptable_thd(24, 256), toc  %% Next Steps % To take this demonstration further, try different table precision and  % element counts to see the effect of each. Using CORDIC approximation,  % try different numbers of iterations to see the effects on accuracy and  % computation time. You can investigate different implementation options  % for waveform synthesis algorithms using automatic code generation available  % from the Real-Time Workshop and production code generation using  % Real-Time Workshop(R) Embedded Coder(TM). Embedded Target products offer  % direct connections to a variety of real-time processors and DSPs, including  % connection back to the Simulink diagram while the target is running in  % real-time. The Signal Processing Toolbox and Signal Processing Blockset  % offer prepackaged capabilities for designing and implementing a wide variety  % of sample-based and frame-based signal processing systems with MATLAB and Simulink.  bdclose('sldemo_tonegen'); bdclose('sldemo_tonegen_fixpt')   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

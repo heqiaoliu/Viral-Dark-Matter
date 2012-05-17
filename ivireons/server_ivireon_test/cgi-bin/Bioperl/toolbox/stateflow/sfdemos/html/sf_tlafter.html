@@ -1,0 +1,64 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Temporal Logic Using the AFTER Function</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_tlafter.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_tlafter.mdl</div><div class="right"><a href="matlab:sf_tlafter">Open this model</a></div></div><div class="content"><h1>Temporal Logic Using the AFTER Function</h1><!--introduction--><p>This simple demonstration compares the difference between two Stateflow&reg; charts: one chart uses temporal logic and the AFTER function to achieve the goal, and the other chart achieves the same goal without using temporal logic.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">With Temporal Logic Operators</a></li><li><a href="#3">Without Temporal Logic Operators</a></li></ul></div><img vspace="5" hspace="5" src="sf_tlafter_01.png" alt=""> <h2>With Temporal Logic Operators<a name="2"></a></h2><p>The AFTER function allows you to easily obtain the number of events that have occurred within that chart and then used as a condition for an event transition. For example, in this demonstration, a transition from the 'Off' to the 'On' state will occur after 10 events (labeled as 'secs') have passed as long as the input, 'step', is less than 1. In this case the input 'step' is created using a Step function block from Simulink&reg; and the event 'secs' is defined by using a Pulse Generator. The value of this step will be zero until 60 seconds of simulation have gone by. After 60 seconds pass, the step is created and the value of the step input is 1. Since one of the transition conditions in the chart is not met ('step' &lt; 1) then the transition does not take place anymore and you can notice a halt in the chart activity.</p><img vspace="5" hspace="5" src="sf_tlafter_02.png" alt=""> <h2>Without Temporal Logic Operators<a name="3"></a></h2><p>The same effect is achieved without the use of temporal logic. The difference is that an additional variable and transition need to be included in order to count the number of times an event takes place. In this case, the local variable 'count_after' is used to obtain the number of times the event 'secs' occurs. The transition will then take place if 'count_after' is greater than 10 and the value of step (which is the input) is less than 1.</p><img vspace="5" hspace="5" src="sf_tlafter_03.png" alt=""> <p class="footer">Copyright 2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Temporal Logic Using the AFTER Function
+% 
+% This simple demonstration compares the difference between two Stateflow(R)
+% charts: one chart uses temporal logic and the AFTER function to achieve the
+% goal, and the other chart achieves the same goal without using temporal
+% logic.
+
+% Copyright 2007 The MathWorks, Inc.
+
+%% 
+
+mdl = 'sf_tlafter';
+open_system(mdl);
+close_system([mdl, '/Scope']);
+
+root = sfroot;
+chart1 = find(root, '-isa', 'Stateflow.Chart', 'Name', 'Temporal Logic');
+chart2 = find(root, '-isa', 'Stateflow.Chart', 'Name', 'Without Temporal Logic');
+
+chart1.visible = 0;
+chart2.visible = 0;
+
+%% With Temporal Logic Operators
+%
+% The AFTER function allows you to easily obtain the number of events that
+% have occurred within that chart and then used as a condition for an event
+% transition. For example, in this demonstration, a transition from the 'Off'
+% to the 'On' state will occur after 10 events (labeled as 'secs') have
+% passed as long as the input, 'step', is less than 1. In this case the input
+% 'step' is created using a Step function block from Simulink(R) and the event
+% 'secs' is defined by using a Pulse Generator. The value of this step will
+% be zero until 60 seconds of simulation have gone by. After 60 seconds pass,
+% the step is created and the value of the step input is 1. Since one of the
+% transition conditions in the chart is not met ('step' < 1) then the
+% transition does not take place anymore and you can notice a halt in the
+% chart activity.
+
+chart1.visible = 1;
+
+%% Without Temporal Logic Operators
+%
+% The same effect is achieved without the use of temporal logic. The
+% difference is that an additional variable and transition need to be
+% included in order to count the number of times an event takes place. In
+% this case, the local variable 'count_after' is used to obtain the number of
+% times the event 'secs' occurs. The transition will then take place if
+% 'count_after' is greater than 10 and the value of step (which is the input)
+% is less than 1.
+
+chart2.visible = 1;
+
+##### SOURCE END #####
+--></body></html>

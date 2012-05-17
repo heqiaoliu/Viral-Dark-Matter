@@ -1,0 +1,71 @@
+%% $RCSfile: sfun_frmad.tlc,v $
+%% $Revision: 1.1.6.1 $
+%% $Date: 2009/03/31 00:16:44 $
+%%
+%% Abstract: Frame-based A/D Conversion
+%%    An example of a frame-based A/D converter. Contains place-holders
+%%    for adding actual code for a frame-based A/D converter
+%%
+%% Copyright 1990-2009 The MathWorks, Inc.
+
+%implements sfun_frmad "C"
+
+%% Function: BlockTypeSetup ====================================================
+%% Abstract:
+%%      Cache an extern declarations to frame-based AD routines
+%%
+%function BlockTypeSetup(block, system) void
+  %openfile buffer
+  #include "sfun_frmad_wrapper.h"
+  %closefile buffer
+  %<LibCacheExtern(buffer)>
+%endfunction
+
+%% Function: Start =============================================================
+%%
+%function Start(block, system) Output
+  /* Frame-based A/D converter %<Name>:
+   *  Set up converter for a frame size of %<SFcnParamSettings.FrameSize>
+   * (For now, simply generate a noisy multi-channel frame-based signal).   
+   */
+  
+%endfunction
+
+%% Function: Outputs ===========================================================
+%%
+%function Outputs(block, system) Output
+  /* Frame-based A/D converter  %<Name>:
+   *  Start conversion and wait till it completes
+   * (For now, simply generate a noisy multi-channel frame-based signal).
+   */
+   %assign y        = LibBlockOutputSignalAddr(0, "", "", 0)
+   %assign fnName   = SFcnParamSettings.Function
+   %assign frmSize  = SFcnParamSettings.FrameSize
+   %assign ts       = SFcnParamSettings.Ts
+   %assign noisA    = SFcnParamSettings.NoiseAmp
+   %assign noisF    = SFcnParamSettings.NoiseFreq
+   %assign AmpDims  = LibGetRecordDimensions(Parameter[0])
+   %assign nAmpRows = AmpDims[0]
+   %assign nAmpCols = AmpDims[1]
+   %assign nAmps    = nAmpRows * nAmpCols
+   %assign count    = LibBlockIWork(IWORK, "", "", 0)
+   %%
+   %if fnName == "Constant"
+     sfun_frmad_const_wrapper(%<y>, %<frmSize>, %<ts>, %<count>,
+                              nAmps, %<LibBlockParameterAddr(Amplitude,"","",0)>,
+			      %<noisA>, %<noisF>);
+   %else
+     %assign FreqDims  = LibGetRecordDimensions(Parameter[1])
+     %assign nFreqRows = FreqDims[0]
+     %assign nFreqCols = FreqDims[1]
+     %assign nFreqs    = nFreqRows * nFreqCols
+     sfun_frmad_sine_wrapper(%<y>, %<frmSize>, %<ts>, %<count>,
+                              %<nAmps>, %<LibBlockParameterAddr(Amplitude,"","",0)>,
+			      %<nFreqs>, %<LibBlockParameterAddr(Frequency,"","",0)>,
+			      %<noisA>, %<noisF>);
+   %endif
+   %<count> = %<count> + %<frmSize>;
+   %%
+%endfunction
+
+%% [EOF] sfun_frmad.tlc

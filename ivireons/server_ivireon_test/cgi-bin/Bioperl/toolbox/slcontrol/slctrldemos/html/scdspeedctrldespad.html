@@ -1,0 +1,181 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Single Loop Feedback/Prefilter Compensator Design</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdspeedctrldespad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdspeedctrldespad">Open scdspeedctrldespad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdspeedctrldespad">Run in the Command Window</a></div></div><div class="content"><h1>Single Loop Feedback/Prefilter Compensator Design</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Opening the Model</a></li><li><a href="#4">Design Overview</a></li><li><a href="#5">Creating a SISO Design Task</a></li><li><a href="#7">Starting a New Design</a></li><li><a href="#31">Completing the Design</a></li><li><a href="#33">Completed Design</a></li><li><a href="#42">Writing the Design to Simulink</a></li></ul></div><h2>Opening the Model<a name="1"></a></h2><p>Take a few moments to explore the model.</p><p><a href="matlab:open_system('scdspeedctrl')">Open the engine speed control model</a></p><pre class="codeinput">open_system(<span class="string">'scdspeedctrl'</span>);
+</pre><img vspace="5" hspace="5" src="scdspeedctrldespad_01.png" alt=""> <img vspace="5" hspace="5" src="scdspeedctrldespad_02.png" alt=""> <h2>Design Overview<a name="4"></a></h2><p>This demonstration introduces the process of designing a single loop control system with both feedback and prefilter compensators.  The goal of the design is to</p><div><ul><li>Track the reference signal from a Simulink&reg; step block <tt>scdspeedctrl/Speed Reference</tt>.  The design requirement is to have a settling time of under 5 seconds and zero steady state error to the step reference input.</li><li>Reject a non-measured output disturbance specified in the subsystem <tt>scdspeedctrl/External Disturbance</tt>.  The design requirement is to reduce the peak deviation to 190 RPM and to have zero steady state error for a step disturbance input.</li></ul></div><p>In this example the stabilization of the feedback loop and the rejection of the output disturbance is achieved by designing the PID compensator <tt>scdspeedctrl/PID Controller</tt>.  The prefilter <tt>scdspeedctrl/Reference Filter</tt> is used to tune the response of the feedback system to changes in the reference tracking.</p><h2>Creating a SISO Design Task<a name="5"></a></h2><p>In this example you will use a Simulink Compensator Design Task to create a SISO Design Task to tune the compensators in this feedback system. There are two alternatives for creating the SISO Design Task</p><div><ul><li>Launch a preconfigured Simulink&reg; Control Design&#8482; task by double clicking on the subsystem in the lower left corner of the model.</li><li>Work through the following procedure to create the SISO Design Task.</li></ul></div><h2>Starting a New Design<a name="7"></a></h2><p><b>Step 1</b> Start a new Simulink Compensator Design Task for the model <tt>scdspeedctrl.mdl</tt> by choosing <b>Tools -&gt; Control Design -&gt; Compensator Design</b> from the Simulink model.</p><p><b>Step 2</b> Select the following blocks to tune:</p><div><ul><li><tt>scdspeedctrl/Reference Filter</tt></li></ul></div><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/referencefilter.png" alt=""> </p><div><ul><li><tt>scdspeedctrl/PID Controller</tt></li></ul></div><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/pidcontroller.png" alt=""> </p><p><b>Step 3</b> Select the closed loop signals:</p><div><ul><li>Input: <tt>scdspeedctrl/Speed Reference</tt> output port 1</li></ul></div><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/referenceinput.png" alt=""> </p><div><ul><li>Input <tt>scdspeedctrl/External Disturbance/Step Disturbance</tt> output port 1</li></ul></div><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/disturbanceinput.png" alt=""> </p><div><ul><li>Output <tt>scdspeedctrl/Speed Output</tt> output port 1</li></ul></div><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/measuredoutput.png" alt=""> </p><p><b>Step 4</b> In the <b>Operating Points</b> panel select <b>Default Operating Point</b>.</p><p><b>Step 5</b> Click on the <b>Tune Blocks...</b> button to launch the Design Configuration Wizard.</p><p>To tune the Open Loop at the outport 1 of <tt>scdspeedctrl/ PID Controller</tt>, select Open Loop 1 for Plot 1 and select Open-Loop Bode as its Plot Type.</p><p>To tune the closed loop between the <tt>Speed Reference</tt> and the engine speed output, click the <b>Select New Open/Closed Loop to Tune...</b> button. In the <b>Select New Loop to Tune</b> dialog, make the following selections:</p><div><ul><li>Select the Loop Type: Closed-Loop (default)</li><li>Closed Loop Input: <tt>scdspeedctrl/Speed Reference</tt></li><li>Closed Loop Output: <tt>scdspeedctrl/Speed Output</tt></li><li>Initial Block to Tune: <tt>scdspeedctrl/Reference Filter</tt></li></ul></div><p>The fully configured dialog is shown below:</p><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/closedloopselectdlg.png" alt=""> </p><p>In the wizard select Closed Loop 1 for Plot 2 and select Closed-Loop Bode as its Plot Type.  The completed first step in the wizard is shown below:</p><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/selectloopstep.png" alt=""> </p><p>In step 2 of the wizard select Step responses for Plot 1 and Plot 2. Then in the Contents of Plots table</p><div><ul><li>Select Plot 1 for the <tt>Closed Loop from scdspeedctrl/External Disturbance/Step Disturbance to scdspeedctrl/Speed Output</tt></li><li>Select Plot 2 for the <tt>Closed Loop from /Speed Reference</tt></li></ul></div><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/selectanalysisstep.png" alt=""> </p><p>After completing the wizard a <b>SISO Design Task</b> node is created.  Use this task node to complete the design.</p><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/sisotasknode.png" alt=""> </p><h2>Completing the Design<a name="31"></a></h2><p>The SISO Design Task contains 4 methods to tune a control system:</p><div><ul><li>Use the <b>Compensator Editor</b> panel to manually tune the parameters of each compensator.  See the demo <a href="scdcompeditorpad.html">"Tuning Simulink Blocks in the Compensator Editor"</a>.</li><li>Configure Design Plots in the <b>Graphical Tuning</b> panel and the them to design the poles, zeros, and gains of the compensators using Root Locus, Open/Closed-Loop Bode Plots, and Nichols plots.</li><li>Use the <b>Optimization based tuning</b> option in the <b>Automated Tuning</b> panel (requires Simulink&reg; Design Optimization&#8482;) to tune the compensators using both time and frequency domain design requirements.  See the demo <a href="../../../sldo/sldodemos/optim/html/speedctrl_demopad.html">"Engine Speed Controller Tuning"</a>.</li><li>Use the <b>PID tuning</b>, <b>IMC tuning</b>, and <b>LQG synthesis</b> options in the <b>Automated Tuning</b> panel to compute initial parameters for the compensators based on tuning parameters such as closed-loop time constants.</li></ul></div><h2>Completed Design<a name="33"></a></h2><p>The design requirements can be met with the following controller parameters</p><div><ul><li><tt>scdspeedctrl/PID Controller</tt> has parameters:</li></ul></div><pre>         P = 0.0012191</pre><pre>         I = 0.0030038</pre><div><ul><li><tt>scdspeedctrl/Reference Filter</tt>:</li></ul></div><pre>         Numerator = 10;</pre><pre>         Denominator = [1 10];</pre><p>The responses of the closed loop system are shown below:</p><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/analysisresp.png" alt=""> </p><h2>Writing the Design to Simulink<a name="42"></a></h2><p>You can then test the design on the nonlinear model by clicking the <b>Update Simulink Block Parameters</b> button.  This writes the parameters back to the Simulink model.</p><pre class="codeinput">bdclose(<span class="string">'scdspeedctrl'</span>)
+</pre><p class="footer">Copyright 2005-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Single Loop Feedback/Prefilter Compensator Design
+%
+% Copyright 2005-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.10 $ $Date: 2009/11/09 16:35:43 $
+
+%% Opening the Model
+% Take a few moments to explore the model. 
+%%
+% <matlab:open_system('scdspeedctrl') Open the engine speed control model>
+open_system('scdspeedctrl');
+%%
+%% Design Overview
+% This demonstration introduces the process of designing a single loop
+% control system with both feedback and prefilter compensators.  The goal of
+% the design is to
+%
+% * Track the reference signal from a Simulink(R) step block
+% |scdspeedctrl/Speed Reference|.  The design requirement is to have a
+% settling time of under 5 seconds and zero steady state error to the step
+% reference input.
+% * Reject a non-measured output disturbance specified in the 
+% subsystem |scdspeedctrl/External Disturbance|.  The design requirement is
+% to reduce the peak deviation to 190 RPM and to have zero steady state
+% error for a step disturbance input.
+%
+% In this example the stabilization of the feedback loop and the rejection 
+% of the output disturbance is achieved by designing the PID compensator
+% |scdspeedctrl/PID Controller|.  The prefilter
+% |scdspeedctrl/Reference Filter| is used to tune the response of the
+% feedback system to changes in the reference tracking.
+
+%% Creating a SISO Design Task
+% In this example you will use a Simulink Compensator Design Task to
+% create a SISO Design Task to tune the compensators in this feedback system.
+% There are two alternatives for creating the SISO Design Task
+%% 
+% * Launch a preconfigured Simulink(R) Control Design(TM) task by double clicking
+% on the subsystem in the lower left corner of the model.
+% * Work through the following procedure to create the SISO Design
+% Task.
+%
+%% Starting a New Design
+% *Step 1* Start a new Simulink Compensator Design Task for the model
+% |scdspeedctrl.mdl| by choosing *Tools -> Control Design -> Compensator
+% Design* from the Simulink model.
+%% 
+% *Step 2* Select the following blocks to tune:
+%% 
+% * |scdspeedctrl/Reference Filter|
+%%
+% <<../html_extra/scdspeedctrl/referencefilter.png>>
+
+%%
+% * |scdspeedctrl/PID Controller|
+%%
+% <<../html_extra/scdspeedctrl/pidcontroller.png>>
+%% 
+% *Step 3* Select the closed loop signals:
+%%
+% * Input: |scdspeedctrl/Speed Reference| output port 1
+%%
+% <<../html_extra/scdspeedctrl/referenceinput.png>>
+
+%%
+% * Input |scdspeedctrl/External Disturbance/Step Disturbance| output port
+% 1
+%%
+% <<../html_extra/scdspeedctrl/disturbanceinput.png>>
+
+%%
+% * Output |scdspeedctrl/Speed Output| output port 1
+%%
+% <<../html_extra/scdspeedctrl/measuredoutput.png>>
+%%
+% *Step 4* In the *Operating Points* panel select *Default
+% Operating Point*.
+%%
+% *Step 5* Click on the *Tune Blocks...* button to launch the Design
+% Configuration Wizard.  
+%%
+% To tune the Open Loop at the outport 1 of |scdspeedctrl/
+% PID Controller|, select Open Loop 1 for Plot 1 and select
+% Open-Loop Bode as its Plot Type.
+%%
+% To tune the closed loop between the |Speed Reference| and the engine
+% speed output, click the *Select New Open/Closed Loop to Tune...* button. 
+% In the *Select New Loop to Tune* dialog, make the following selections:
+%% 
+% * Select the Loop Type: Closed-Loop (default)  
+% * Closed Loop Input: |scdspeedctrl/Speed Reference|
+% * Closed Loop Output: |scdspeedctrl/Speed Output|
+% * Initial Block to Tune: |scdspeedctrl/Reference Filter|
+%
+%% 
+% The fully configured dialog is shown below:
+%
+% <<../html_extra/scdspeedctrl/closedloopselectdlg.png>>
+
+%%
+% In the wizard select Closed Loop 1 for Plot 2 and select Closed-Loop Bode
+% as its Plot Type.  The completed first step in the wizard is shown below:
+% 
+%%
+% <<../html_extra/scdspeedctrl/selectloopstep.png>>
+
+%%
+% In step 2 of the wizard select Step responses for Plot 1 and Plot 2.
+% Then in the Contents of Plots table
+%%
+% * Select Plot 1 for the |Closed Loop from
+% scdspeedctrl/External Disturbance/Step Disturbance to scdspeedctrl/Speed
+% Output|
+% * Select Plot 2 for the |Closed Loop from /Speed Reference|
+%
+% <<../html_extra/scdspeedctrl/selectanalysisstep.png>>
+
+%%
+% After completing the wizard a *SISO Design Task* node is created.  Use this
+% task node to complete the design.
+%
+% <<../html_extra/scdspeedctrl/sisotasknode.png>>
+
+%% Completing the Design
+% The SISO Design Task contains 4 methods to tune a control system:
+%%
+% * Use the *Compensator Editor* panel to manually tune the parameters of each
+% compensator.  See the demo <scdcompeditorpad.html "Tuning Simulink Blocks
+% in the Compensator Editor">.
+% * Configure Design Plots in the *Graphical Tuning* panel and the them to
+% design the poles, zeros, and gains of the compensators using Root
+% Locus, Open/Closed-Loop Bode Plots, and Nichols plots.
+% * Use the *Optimization based tuning* option in the *Automated Tuning*
+% panel (requires Simulink(R) Design Optimization(TM)) to tune the compensators using
+% both time and frequency domain design requirements.  See the demo
+% <../../../sldo/sldodemos/optim/html/speedctrl_demopad.html "Engine Speed Controller Tuning">.
+% * Use the *PID tuning*, *IMC tuning*, and *LQG synthesis* options in the *Automated
+% Tuning* panel to compute initial parameters for the compensators based on
+% tuning parameters such as closed-loop time constants.
+
+%% Completed Design
+% The design requirements can be met with the following controller
+% parameters
+%%
+% * |scdspeedctrl/PID Controller| has parameters:
+%%
+%           P = 0.0012191
+%%
+%           I = 0.0030038
+%%
+% * |scdspeedctrl/Reference Filter|:
+%%
+%           Numerator = 10;
+%%
+%           Denominator = [1 10];
+%%
+% The responses of the closed loop system are shown below:
+%%
+% <<../html_extra/scdspeedctrl/analysisresp.png>>
+
+%% Writing the Design to Simulink
+% You can then test the design on the nonlinear model by clicking the
+% *Update Simulink Block Parameters* button.  This writes the parameters back to
+% the Simulink model.
+bdclose('scdspeedctrl')
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

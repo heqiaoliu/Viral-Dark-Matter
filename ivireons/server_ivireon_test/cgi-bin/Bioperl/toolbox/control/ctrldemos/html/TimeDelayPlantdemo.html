@@ -1,0 +1,135 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Compensator Design for Plant Models with Time Delays</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="TimeDelayPlantdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit TimeDelayPlantdemo">Open TimeDelayPlantdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo TimeDelayPlantdemo">Run in the Command Window</a></div></div><div class="content"><h1>Compensator Design for Plant Models with Time Delays</h1><!--introduction--><p>This demo highlights a variety of analysis and design tools available for plant models with time delays in the SISO Design Tool.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analysis and Design of Feedback Systems with Time Delays</a></li><li><a href="#4">Working with Time Delay Systems in the SISO Design Tool</a></li><li><a href="#5">Tools that Support Time Delay</a></li><li><a href="#7">Tools that Require Time Delays to be Approximated</a></li><li><a href="#11">Summary</a></li></ul></div><h2>Analysis and Design of Feedback Systems with Time Delays<a name="1"></a></h2><p>Consider the standard feedback configuration where the plant model</p><p><img src="TimeDelayPlantdemo_eq30462.png" alt="$$ G(s) = e^{-0.5s}\frac{1}{s+1} $$"></p><p>has a time delay.</p><p><img vspace="5" hspace="5" src="../Figures/TimeDelayPlantDemo_Fig01.png" alt=""> </p><p>When working with time delay systems it is advantageous to work with analysis and design tools that directly support time delays so that performance and stability can be evaluated exactly. However, many control design techniques and algorithms cannot directly handle time delays. A common workaround consists of replacing delays by their Pade approximations (all-pass filters). Because this approximation is only valid at low frequencies, it is important to choose the right approximation order and check the approximation validity.</p><p>The SISO Design Tool provides a variety of design and analysis tools. Some of these tools support time delays exactly while others support time delays indirectly through approximations.  The SISO Design Tool allows you to utilize all these tools simultaneously and lets you visualize the compromises made when using approximations. A brief overview of working with time delays in the SISO Design tool will be given.</p><h2>Working with Time Delay Systems in the SISO Design Tool<a name="4"></a></h2><p>The first step to begin working with the SISO Design Tool is to define the plant model and start the tool</p><p><tt>&gt;&gt; G = tf(1,[1,1],'InputDelay',0.5);</tt></p><p><tt>&gt;&gt; sisotool({'bode'},G)</tt></p><h2>Tools that Support Time Delay<a name="5"></a></h2><p>Examples of the tools which support time delays directly include:</p><div><ul><li>Bode and Nichols Editors</li><li>Time Response Plots</li><li>Frequency Response Plots</li></ul></div><p>Shown below is the Bode Editor. In particular, by examining phase of the response we can see the roll off effect resulting from the exact representation of the delay.</p><p><img vspace="5" hspace="5" src="../Figures/TimeDelayPlantDemo_Fig02.png" alt=""> </p><p>Next we will examine the closed-loop step response and the open-loop Nyquist plot using the analysis views shown below. These plots are configured using the "Analysis Plots" tab.  First, lets evaluate the step response. Notice the initial portion of step response shows the exact representation of 0.5 second delay. Now lets focus on the Nyquist plot around the origin. Notice the response wrapping around the origin in a spiral fashion. This is the result of the exact representation of the time delay.</p><p><img vspace="5" hspace="5" src="../Figures/TimeDelayPlantDemo_Fig03.png" alt=""> </p><h2>Tools that Require Time Delays to be Approximated<a name="7"></a></h2><p>Examples of the tools which approximate time delays include:</p><div><ul><li>Root Locus Editor</li><li>Pole/Zero Plots</li><li>Many of the Automated Tuning Methods</li></ul></div><p>The drawback when using approximations is that the results are not exact and depend on the validity of the approximation. Each tool in the SISO Design Tool provides a warning pane to clearly inform you when a tool is using an approximation. We will now examine some of these tools and demonstrate how the approximation settings can be changed.</p><p>First lets examine the Root Locus editor. To bring up the Root Locus editor use the Graphical Tuning tab. Shown at the top of the Root Locus editor is the notification that tool is utilizing an approximation. This notification can be minimized by clicking on the collapse icon to the left.</p><p><img vspace="5" hspace="5" src="../Figures/TimeDelayPlantDemo_Fig04.png" alt=""> </p><p>To change the approximation settings we can click on the hyperlink in the notification which will launch the SISO Design Tool Preferences dialog. Here we can set the Pade order of the approximation explicitly or allow the order to be computed by specify a frequency for which we want the approximation to be accurate.</p><p><img vspace="5" hspace="5" src="../Figures/TimeDelayPlantDemo_Fig05.png" alt=""> </p><p>By changing the Pade order from 2 to 4 and clicking apply we see that the number of plant poles and zeros in the Root Locus editor increased due to the higher order approximation.</p><p><img vspace="5" hspace="5" src="../Figures/TimeDelayPlantDemo_Fig06.png" alt=""> </p><h2>Summary<a name="11"></a></h2><p>The SISO Design Tool provides you a set of design and analysis tools for time delay systems. The tools which support time delays allow you to exactly analyze the performance and stability of the system.  Tools which do not support time delays utilize a Pade approximation of the time delay. The accuracy of the Pade approximation can be set using the preferences of the SISO Design Tool. Overall the SISO Design Tool gives deep insight into time delay control systems and the impact of approximations on evaluating performance and stability.</p><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Compensator Design for Plant Models with Time Delays
+% This demo highlights a variety of analysis and design tools
+% available for plant models with time delays in the SISO Design Tool.
+
+% Copyright 2009 The MathWorks, Inc.
+% $Revision: 1.1.8.3 $  $Date: 2009/08/29 08:21:48 $
+
+%% Analysis and Design of Feedback Systems with Time Delays
+% Consider the standard feedback configuration where the plant model
+%
+% $$ G(s) = e^{-0.5s}\frac{1}{s+1} $$ 
+%
+% has a time delay.
+%
+% <<../Figures/TimeDelayPlantDemo_Fig01.png>>
+
+%%
+% When working with time delay systems it is advantageous to work with
+% analysis and design tools that directly support time delays so that
+% performance and stability can be evaluated exactly. However, many control
+% design techniques and algorithms cannot directly handle time delays. A
+% common workaround consists of replacing delays by their Pade
+% approximations (all-pass filters). Because this approximation is only
+% valid at low frequencies, it is important to choose the right
+% approximation order and check the approximation validity.
+
+%%
+% The SISO Design Tool provides a variety of design and analysis tools.
+% Some of these tools support time delays exactly while others support
+% time delays indirectly through approximations.  The SISO Design Tool
+% allows you to utilize all these tools simultaneously and lets you
+% visualize the compromises made when using approximations. A brief
+% overview of working with time delays in the SISO Design tool will be
+% given.
+
+
+
+%% Working with Time Delay Systems in the SISO Design Tool
+% The first step to begin working with the SISO Design Tool is to define
+% the plant model and start the tool
+%
+% |>> G = tf(1,[1,1],'InputDelay',0.5);|
+%
+% |>> sisotool({'bode'},G)|
+
+%% Tools that Support Time Delay 
+% Examples of the tools which support time delays directly include:
+%
+% * Bode and Nichols Editors
+% * Time Response Plots
+% * Frequency Response Plots
+%
+% Shown below is the Bode Editor. In particular, by examining phase of the
+% response we can see the roll off effect resulting from the exact
+% representation of the delay.
+%
+% <<../Figures/TimeDelayPlantDemo_Fig02.png>>
+
+%%
+% Next we will examine the closed-loop step response and the open-loop
+% Nyquist plot using the analysis views shown below. These plots are
+% configured using the "Analysis Plots" tab.  First, lets evaluate the step
+% response. Notice the initial portion of step response shows the exact
+% representation of 0.5 second delay. Now lets focus on the Nyquist plot
+% around the origin. Notice the response wrapping around the origin in a
+% spiral fashion. This is the result of the exact representation of the
+% time delay.
+%
+% <<../Figures/TimeDelayPlantDemo_Fig03.png>>
+
+%% Tools that Require Time Delays to be Approximated
+% Examples of the tools which approximate time delays include:
+%
+% * Root Locus Editor
+% * Pole/Zero Plots
+% * Many of the Automated Tuning Methods
+%
+% The drawback when using approximations is that the results are not exact
+% and depend on the validity of the approximation. Each tool in the SISO
+% Design Tool provides a warning pane to clearly inform you when a tool is
+% using an approximation. We will now examine some of these tools and
+% demonstrate how the approximation settings can be changed.
+
+%%
+% First lets examine the Root Locus editor. To bring up the Root Locus
+% editor use the Graphical Tuning tab. Shown at the top of the Root Locus
+% editor is the notification that tool is utilizing an approximation. This
+% notification can be minimized by clicking on the collapse icon to the
+% left.
+%
+% <<../Figures/TimeDelayPlantDemo_Fig04.png>>
+
+
+%%
+% To change the approximation settings we can click on the hyperlink in the
+% notification which will launch the SISO Design Tool Preferences dialog.
+% Here we can set the Pade order of the approximation explicitly or allow
+% the order to be computed by specify a frequency for which we want the
+% approximation to be accurate.
+%
+% <<../Figures/TimeDelayPlantDemo_Fig05.png>>
+%
+
+%%
+% By changing the Pade order from 2 to 4 and clicking apply we see that the
+% number of plant poles and zeros in the Root Locus editor increased due to
+% the higher order approximation.
+%
+% <<../Figures/TimeDelayPlantDemo_Fig06.png>>
+
+%% Summary
+% The SISO Design Tool provides you a set of design and analysis tools for
+% time delay systems. The tools which support time delays allow you to
+% exactly analyze the performance and stability of the system.  Tools which
+% do not support time delays utilize a Pade approximation of the time
+% delay. The accuracy of the Pade approximation can be set using the
+% preferences of the SISO Design Tool. Overall the SISO Design Tool gives
+% deep insight into time delay control systems and the impact of
+% approximations on evaluating performance and stability.
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,161 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Logging States in Structure Format</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="sldemo_state_logging_script.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sldemo_state_logging_script">Open sldemo_state_logging_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo sldemo_state_logging_script">Run in the Command Window</a></div></div><div class="content"><h1>Logging States in Structure Format</h1><!--introduction--><p>This demo illustrates the advantages of logging state trajectories of a Simulink&reg; model in structure format over the traditional method of logging the states in array format, as a matrix with N columns, where N is the number of states. The ordering of the states along the columns in the logged matrix depends on the block sorted order, which is determined by Simulink Engine during compilation. Various factors may affect the sorted order of the blocks, which in turns alters the ordering of the states.</p><p>This demo illustrates how logging the states in Structure format, which stores the block names together with the state trajectories, can help avoid the state ordering problem.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Problem with Logging in Array Format</a></li><li><a href="#4">Using Structure Format Logging</a></li><li><a href="#7">Obtaining States Matrix with Fixed State Order</a></li></ul></div><h2>Problem with Logging in Array Format<a name="1"></a></h2><p>By default Simulink logs the state trajectories in array format, as the data in this form as an M-by-N matrix is easy to manipulate in MATLAB&reg;. The ordering of the state variables along the columns of the logged matrix depend on the block sorted order. MATLAB code that expects a fixed mapping between the columns of the matrix and the states, can break when the block sorted order changes due to changes in the model.</p><p>Consider for example, the following two block diagrams:</p><pre class="codeinput">mdl1 = <span class="string">'sldemo_state_logging1'</span>;
+mdl2 = <span class="string">'sldemo_state_logging2'</span>;
+open_system(mdl1);
+open_system(mdl2);
+</pre><img vspace="5" hspace="5" src="sldemo_state_logging_script_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_state_logging_script_02.png" alt=""> <p>The two diagrams have the same blocks, the only difference is the ordering of output ports. Simulate the models and log the states in array format:</p><pre class="codeinput">opts1 = simset(simget(mdl1),<span class="string">'SaveFormat'</span>,<span class="string">'Array'</span>);
+[t1,x1] = sim(mdl1, [], opts1);
+
+opts2 = simset(simget(mdl2),<span class="string">'SaveFormat'</span>,<span class="string">'Array'</span>);
+[t2,x2] = sim(mdl2, [], opts2);
+</pre><p>Note that the relative ordering of the integrator blocks is different in the two block diagrams. This causes the logged states <tt>x1</tt> and <tt>x2</tt> to differ, because the mapping between the columns and the states is different!</p><pre class="codeinput">isequal(x1, x2)
+</pre><pre class="codeoutput">
+ans =
+
+     0
+
+</pre><h2>Using Structure Format Logging<a name="4"></a></h2><p>Let us now simulate the models again, but this time log the states in structure format:</p><pre class="codeinput">opts1 = simset(simget(mdl1),<span class="string">'SaveFormat'</span>,<span class="string">'Structure'</span>);
+[t1,x1s]=sim(mdl1,[],opts1); x1s
+
+opts2 = simset(simget(mdl2),<span class="string">'SaveFormat'</span>,<span class="string">'Structure'</span>);
+[t2,x2s]=sim(mdl2,[],opts2); x2s
+</pre><pre class="codeoutput">
+x1s = 
+
+       time: []
+    signals: [1x2 struct]
+
+
+x2s = 
+
+       time: []
+    signals: [1x2 struct]
+
+</pre><p>The state trajectories are logged into <tt>xs.signals(k).values</tt> along with the name of the block <tt>xs.signals(k).blockName</tt> corresponding to these states. We can extract the states into a matrix (like in array format) like this:</p><pre class="codeinput">x1a = [x1s.signals.values];
+x2a = [x2s.signals.values];
+</pre><p>However we still have not address the state ordering problem (<tt>x1a</tt> and <tt>x2a</tt> are the same as <tt>x1</tt> and <tt>x2</tt> obtained via array format):</p><pre class="codeinput">isequal(x1a, x2a)
+</pre><pre class="codeoutput">
+ans =
+
+     0
+
+</pre><h2>Obtaining States Matrix with Fixed State Order<a name="7"></a></h2><p>To fix the state ordering problem, we use the block names stored along with the values to map the states to a fixed order such as alphabetical order of the block names:</p><pre class="codeinput">[unused, idx1] = sort({x1s.signals.blockName});
+x1 = [x1s.signals(idx1).values];
+
+[unused, idx2] = sort({x2s.signals.blockName});
+x2 = [x2s.signals(idx2).values];
+
+isequal(x1, x2)
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><p>By re-ordering the signals arrays in <tt>x1</tt> and <tt>x2</tt> to be in alphabetical order of the block names, and extracting the values fields, in that order, into the matrices <tt>x1</tt> and <tt>x2</tt>, we have a mechanism for logging the states into a matrix with a fixed mapping of the states to columns of the logged matrix.</p><p class="footer">Copyright 1990-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Logging States in Structure Format
+% This demo illustrates the advantages of logging state trajectories of a Simulink(R)
+% model in structure format over the traditional method of logging the states in
+% array format, as a matrix with N columns, where N is the number of states.
+% The ordering of the states along the columns in the logged matrix depends on
+% the block sorted order, which is determined by Simulink Engine during
+% compilation. Various factors may affect the sorted order of the blocks, which
+% in turns alters the ordering of the states.
+%
+% This demo illustrates how logging the states in Structure format, which stores
+% the block names together with the state trajectories, can help avoid the state
+% ordering problem.  
+
+%   Copyright 1990-2008 The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2008/12/01 07:49:32 $
+
+%% Problem with Logging in Array Format 
+% By default Simulink logs the state trajectories in array format, as the data
+% in this form as an M-by-N matrix is easy to manipulate in MATLAB(R). The ordering of
+% the state variables along the columns of the logged matrix depend on the block
+% sorted order. MATLAB code that expects a fixed mapping between the columns of
+% the matrix and the states, can break when the block sorted order changes due
+% to changes in the model.
+% 
+% Consider for example, the following two block diagrams:
+
+mdl1 = 'sldemo_state_logging1';
+mdl2 = 'sldemo_state_logging2';
+open_system(mdl1);
+open_system(mdl2);
+
+%%
+% The two diagrams have the same blocks, the only difference is the ordering of
+% output ports. Simulate the models and log the states in array format: 
+
+opts1 = simset(simget(mdl1),'SaveFormat','Array');
+[t1,x1] = sim(mdl1, [], opts1);
+
+opts2 = simset(simget(mdl2),'SaveFormat','Array');
+[t2,x2] = sim(mdl2, [], opts2);
+
+%%
+% Note that the relative ordering of the integrator blocks is different
+% in the two block diagrams. This causes the logged states |x1| and |x2| to
+% differ, because the mapping between the columns and the states is
+% different!
+
+isequal(x1, x2)
+
+%% Using Structure Format Logging
+% Let us now simulate the models again, but this time log the states in
+% structure format:
+
+opts1 = simset(simget(mdl1),'SaveFormat','Structure');
+[t1,x1s]=sim(mdl1,[],opts1); x1s
+
+opts2 = simset(simget(mdl2),'SaveFormat','Structure');
+[t2,x2s]=sim(mdl2,[],opts2); x2s
+
+%%
+% The state trajectories are logged into |xs.signals(k).values| along with the
+% name of the block |xs.signals(k).blockName| corresponding to these states. We
+% can extract the states into a matrix (like in array format) like this:
+
+x1a = [x1s.signals.values];
+x2a = [x2s.signals.values];
+
+%%
+% However we still have not address the state ordering problem (|x1a| and |x2a|
+% are the same as |x1| and |x2| obtained via array format):
+
+isequal(x1a, x2a)
+
+%% Obtaining States Matrix with Fixed State Order
+% To fix the state ordering problem, we use the block names stored along with
+% the values to map the states to a fixed order such as alphabetical order of
+% the block names: 
+
+[unused, idx1] = sort({x1s.signals.blockName});
+x1 = [x1s.signals(idx1).values];
+
+[unused, idx2] = sort({x2s.signals.blockName});
+x2 = [x2s.signals(idx2).values];
+
+isequal(x1, x2)
+
+%%
+% By re-ordering the signals arrays in |x1| and |x2| to be in alphabetical order
+% of the block names, and extracting the values fields, in that order, into the
+% matrices |x1| and |x2|, we have a mechanism for logging the states into a
+% matrix with a fixed mapping of the states to columns of the logged matrix.
+
+
+displayEndOfDemoMessage(mfilename)
+
+
+##### SOURCE END #####
+--></body></html>

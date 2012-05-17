@@ -1,0 +1,489 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Estimating Simple Models from Real Laboratory Process Data</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="iddemo1.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit iddemo1">Open iddemo1.m in the Editor</a></div><div class="right"><a href="matlab:echodemo iddemo1">Run in the Command Window</a></div></div><div class="content"><h1>Estimating Simple Models from Real Laboratory Process Data</h1><!--introduction--><p>In this demo we show how System Identification Toolbox&#8482; can be used to develop and analyze simple models from a real laboratory process data. We start with a small description of the process, learn how to import the data to the toolbox and preprocess/condition it and then proceed systematically to estimate parametric and non parametric models. Once the models have been identified we compare the estimated models and also validate the model to the actual output data from the experiment.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">System Description</a></li><li><a href="#2">Setting up Data for Analysis</a></li><li><a href="#8">Preprocessing the Data</a></li><li><a href="#13">Estimating Non-Parametric and Parametric Models</a></li><li><a href="#20">Analyzing the Estimated Model</a></li><li><a href="#26">Estimating Models with a Prescribed Structure</a></li><li><a href="#28">Validating the Estimated Model to Experimental Output</a></li><li><a href="#31">Comparing Estimated Models</a></li><li><a href="#46">Additional Information</a></li></ul></div><h2>System Description<a name="1"></a></h2><p>This case study concerns data collected from a laboratory scale "hairdryer". (Feedback's Process Trainer PT326; See also page 525 in Ljung, 1999). The process works as follows: Air is fanned through a tube and heated at the inlet. The air temperature is measured by a thermocouple at the outlet. The input (<tt>u</tt>) is the power over the heating device, which is just a mesh of resistor wires. The output is the outlet air temperature (or rather the voltage from the thermocouple).</p><h2>Setting up Data for Analysis<a name="2"></a></h2><p>First we load the input-output data to the MATLAB&reg; Workspace.</p><pre class="codeinput">load <span class="string">dryer2</span>;
+</pre><p>Vector <tt>y2</tt>, the output, now contains 1000 measurements of temperature in the outlet airstream. Vector <tt>u2</tt> contains 1000 input data points, consisting of the voltage applied to the heater. The input was generated as a binary random sequence that switches from one level to the other with probability 0.2. The sampling interval is 0.08 seconds.</p><p>The next step is to set up the data as an iddata object</p><pre class="codeinput">dry = iddata(y2,u2,0.08);
+</pre><p>To get information about the data, just type the name of the <tt>iddata</tt> object at the MATLAB command window:</p><pre class="codeinput">dry
+</pre><pre class="codeoutput">
+Time domain data set with 1000 samples.
+Sampling interval: 0.08                 
+                                        
+Outputs      Unit (if specified)        
+   y1                                   
+                                        
+Inputs       Unit (if specified)        
+   u1                                   
+                                        
+</pre><p>To inspect the properties of the above iddata object, use the <tt>get</tt> command:</p><pre class="codeinput">get(dry)
+</pre><pre class="codeoutput">
+ans = 
+
+              Domain: 'Time'
+                Name: ''
+          OutputData: [1000x1 double]
+                   y: 'Same as OutputData'
+          OutputName: {'y1'}
+          OutputUnit: {''}
+           InputData: [1000x1 double]
+                   u: 'Same as InputData'
+           InputName: {'u1'}
+           InputUnit: {''}
+              Period: Inf
+         InterSample: 'zoh'
+                  Ts: 0.0800
+              Tstart: []
+    SamplingInstants: [1000x0 double]
+            TimeUnit: ''
+      ExperimentName: 'Exp1'
+               Notes: {}
+            UserData: []
+
+</pre><p>For better book-keeping, it is good practice to give names to the input and output channels and Time units. These names would be propagated throughout the analysis of this iddata object:</p><pre class="codeinput">dry.InputName = <span class="string">'Power'</span>;
+dry.OutputName = <span class="string">'Temperature'</span>;
+dry.TimeUnit = <span class="string">'Seconds'</span>;
+dry.InputUnit = <span class="string">'Watt'</span>;
+dry.OutputUnit = <span class="string">'^o C'</span>;
+</pre><p>Now that we have the data set ready, we choose the first 300 data points for model estimation.</p><pre class="codeinput">ze = dry(1:300)
+</pre><pre class="codeoutput">
+Time domain data set with 300 samples.
+Sampling interval: 0.08 Seconds        
+                                       
+Outputs           Unit (if specified)  
+   Temperature       ^o C              
+                                       
+Inputs            Unit (if specified)  
+   Power             Watt              
+                                       
+</pre><h2>Preprocessing the Data<a name="8"></a></h2><p>Plot the interval from sample 200 to 300:</p><pre class="codeinput">plot(ze(200:300));
+</pre><img vspace="5" hspace="5" src="iddemo1_01.png" alt=""> <p><b>Figure 1:</b> A snapshot of the measured hair-dryer data.</p><p>From the above plot, it can be observed that the data is not zero mean. So let us remove the constant levels and make the data zero mean.</p><pre class="codeinput">ze = detrend(ze);
+</pre><p>The same data set after it has been detrended:</p><pre class="codeinput">plot(ze(200:300)) <span class="comment">%show samples from 200 to 300 of detrended data</span>
+</pre><img vspace="5" hspace="5" src="iddemo1_02.png" alt=""> <p><b>Figure 2:</b> Detrended estimation data.</p><h2>Estimating Non-Parametric and Parametric Models<a name="13"></a></h2><p>Now that the dataset has been detrended and there are no obvious outliers, let us first estimate the impulse response of the system by correlation analysis to get some idea of time constants and the like:</p><pre class="codeinput">impulse(ze,<span class="string">'sd'</span>,3); <span class="comment">%impulse response with 3 standard deviations confidence region</span>
+</pre><img vspace="5" hspace="5" src="iddemo1_03.png" alt=""> <p><b>Figure 3:</b> Impulse response of the system estimated using <tt>ze</tt>.</p><p>The dashed dotted lines mark a 99% confidence interval. There is a time delay (dead-time) of 3 samples before the output responds to the input (significant output outside the confidence interval). Adding <tt>'fill'</tt> as an extra argument to the  <tt>impulse</tt> command gives an alternate display.</p><pre class="codeinput">impulse(ze,<span class="string">'sd'</span>,3,<span class="string">'fill'</span>);
+</pre><img vspace="5" hspace="5" src="iddemo1_04.png" alt=""> <p>The simplest way to get started on a parametric estimation routine is to build a state-space model where the model-order is automatically determined, using a prediction error method. Let us estimate a model using the <tt>pem</tt> technique:</p><pre class="codeinput">m1 = pem(ze);
+</pre><p>To inspect the properties of the estimated model, just enter the model-name at the command window:</p><pre class="codeinput">m1
+</pre><pre class="codeoutput">State-space model:  x(t+Ts) = A x(t) + B u(t) + K e(t)
+                       y(t) = C x(t) + D u(t) + e(t)
+ 
+A = 
+                        x1           x2           x3
+           x1      0.95246     -0.21026     0.053065
+           x2      0.25434       0.6483      0.23707
+           x3    -0.051355     -0.66102      0.13742
+ 
+ 
+B = 
+                     Power
+           x1   0.00031518
+           x2      0.01563
+           x3     0.057909
+ 
+ 
+C = 
+                        x1           x2           x3
+  Temperature      -14.058     0.094752     0.042548
+ 
+ 
+D = 
+                     Power
+  Temperature            0
+ 
+ 
+K = 
+               Temperature
+           x1    -0.066092
+           x2    0.0094344
+           x3     0.092941
+ 
+ 
+x(0) = 
+                          
+           x1            0
+           x2            0
+           x3            0
+ 
+Estimated using PEM using SearchMethod = Auto from data set ze
+Loss function 0.00148033 and FPE 0.00156915                   
+Sampling interval: 0.08 Seconds                               
+                                                              
+</pre><p>To retrieve the properties of this model, for example to obtain the <tt>A</tt> matrix of the discrete state-space object generated above, we can use the dot operator:</p><pre>     A = m1.a;</pre><p>Refer the demo on 'Data and Model Objects in System Identification Toolbox' for more information regarding model objects. To find out which properties of the model object can be retrieved, use <tt>get</tt> command:</p><pre class="codeinput">get(m1)
+</pre><pre class="codeoutput">  The free model parameterization means that the matrix elements
+  have no well defined variance. To display the standard deviations
+  of the matrix elements, first convert to canonical form by
+  Model.ss = 'can'.
+
+ans = 
+
+                     A: [3x3 double]
+                     B: [3x1 double]
+                     C: [-14.0584 0.0948 0.0425]
+                     D: 0
+                     K: [3x1 double]
+                    X0: [3x1 double]
+                    dA: []
+                    dB: []
+                    dC: []
+                    dD: []
+                    dK: []
+                   dX0: []
+    SSParameterization: 'Free'
+                    As: [3x3 double]
+                    Bs: [3x1 double]
+                    Cs: [NaN NaN NaN]
+                    Ds: 0
+                    Ks: [3x1 double]
+                   X0s: [3x1 double]
+             StateName: {3x1 cell}
+          InitialState: 'Auto'
+                    nk: 1
+      DisturbanceModel: 'Estimate'
+      CanonicalIndices: 'Auto'
+                  Name: ''
+                    Ts: 0.0800
+             InputName: {'Power'}
+             InputUnit: {'Watt'}
+            OutputName: {'Temperature'}
+            OutputUnit: {'^o C'}
+              TimeUnit: 'Seconds'
+       ParameterVector: [18x1 double]
+                 PName: {}
+      CovarianceMatrix: []
+         NoiseVariance: 0.0015
+            InputDelay: 0
+             Algorithm: [1x1 struct]
+        EstimationInfo: [1x1 struct]
+                 Notes: {}
+              UserData: []
+
+</pre><p>Observe the property named 'SSParameterization'. The 'free' parameterization means that the matrix elements have no well defined variance. To display the standard deviations of the matrix elements, convert the model to a canonical form, by doing:</p><p>Model.SSParameterization = 'Canonical'</p><h2>Analyzing the Estimated Model<a name="20"></a></h2><p>The Bode plot of the generated model can be obtained using the <tt>bode</tt> function as shown below:</p><pre class="codeinput">bode(m1)
+</pre><img vspace="5" hspace="5" src="iddemo1_05.png" alt=""> <p><b>Figure 4:</b> Bode response of the estimated model with automatically chosen model order.</p><p>An alternative is to consider the <tt>nyquist</tt> plot, and mark uncertainty regions at certain frequencies with ellipses, corresponding to 3 (say) standard deviations:</p><pre class="codeinput">nyquist(m1,<span class="string">'sd'</span>,3)
+</pre><img vspace="5" hspace="5" src="iddemo1_06.png" alt=""> <p><b>Figure 5:</b> Nyquist plot of estimated model showing the uncertainty regions at certain frequencies.</p><p>The step response of the model <tt>m1</tt> estimated above may also be compared with a step response that is directly computed from the data in a non-parametric way:</p><pre class="codeinput">step(m1,<span class="string">'b'</span>,ze,<span class="string">'r'</span>);
+</pre><img vspace="5" hspace="5" src="iddemo1_07.png" alt=""> <p><b>Figure 6:</b> Step response of the estimated model compared against the non-parametric step response</p><h2>Estimating Models with a Prescribed Structure<a name="26"></a></h2><p>System Identification Toolbox can also be used to obtain a model with a prescribed structure. For example, a difference equation model with 2 poles, 1 zero and 3 delays can be obtained using the <tt>arx</tt> function as shown below:</p><pre class="codeinput">m2 = arx(ze,[2 2 3]);
+</pre><p>To look at the model, enter the model name at the command window.</p><pre class="codeinput">m2
+</pre><pre class="codeoutput">Discrete-time IDPOLY model: A(q)y(t) = B(q)u(t) + e(t)
+A(q) = 1 - 1.274 q^-1 + 0.3935 q^-2                   
+                                                      
+B(q) = 0.06662 q^-3 + 0.04448 q^-4                    
+                                                      
+Estimated using ARX on data set ze                    
+Loss function 0.00166284 and FPE 0.00170718           
+Sampling interval: 0.08 Seconds                       
+                                                      
+</pre><h2>Validating the Estimated Model to Experimental Output<a name="28"></a></h2><p>How good is an estimated model? One way to find out is to simulate it and compare the model output with measured output. Select a portion of the original data that was not used in building the model, say from samples 800 to 900. Once the validation data has been preprocessed, we use the <tt>compare</tt> function as shown below to view the quality of prediction:</p><pre class="codeinput">zv = dry(800:900); <span class="comment">% select an independent data set for validation</span>
+zv = detrend(zv); <span class="comment">% preprocess the validation data</span>
+compare(zv,m1); <span class="comment">% perform comparison of simulated output</span>
+</pre><img vspace="5" hspace="5" src="iddemo1_08.png" alt=""> <p><b>Figure 7:</b> Simulation of model output compared against a validation data set.</p><p>It can be observed here that the agreement is very good. The "Fit" value shown is calculated as:</p><p><tt>Fit = 100*(1 - norm(yh - y)/norm(y-mean(y)))</tt></p><p>where <tt>y</tt> is the measured output (=|zv.y|), and <tt>yh</tt> is the output of the model <tt>m1</tt>.</p><h2>Comparing Estimated Models<a name="31"></a></h2><p>To compare the performance of the models that we have estimated, for example <tt>m1</tt> and <tt>m2</tt> with the validation data <tt>zv</tt>, we can again use the <tt>compare</tt> command:</p><pre class="codeinput">compare(zv,m1,<span class="string">'b'</span>,m2,<span class="string">'r'</span>);
+</pre><img vspace="5" hspace="5" src="iddemo1_09.png" alt=""> <p><b>Figure 8:</b> Comparing the predictions of models <tt>m1</tt> and <tt>m2</tt> on validation data set <tt>ze</tt>.</p><p>The pole-zero plots for the two models can be obtained using <tt>pzmap</tt>:</p><pre class="codeinput">pzmap(m1,<span class="string">'b'</span>,m2,<span class="string">'r'</span>);
+</pre><img vspace="5" hspace="5" src="iddemo1_10.png" alt=""> <p><b>Figure 9:</b> Poles and zeros of the two models <tt>m1</tt> and <tt>m2</tt>.</p><p>The uncertainties in the poles and zeroes can also be obtained. In the following statement, '3' refers to the number of standard deviations.</p><pre class="codeinput">pzmap(m1,<span class="string">'b'</span>,m2,<span class="string">'r'</span>,<span class="string">'sd'</span>,3);
+</pre><img vspace="5" hspace="5" src="iddemo1_11.png" alt=""> <p><b>Figure 10:</b> Pole-zero map with uncertainty regions.</p><p>To zoom in on the unit circle use:</p><pre class="codeinput">pzmap(m1,<span class="string">'b'</span>,m2,<span class="string">'r'</span>,<span class="string">'sd'</span>,3,<span class="string">'axis'</span>,1);
+</pre><img vspace="5" hspace="5" src="iddemo1_12.png" alt=""> <p><b>Figure 11:</b> Pole-zero map zoomed around unit circle.</p><p>The frequency functions corresponding to the two models can be displayed as:</p><pre class="codeinput">bode(m1,m2)
+</pre><img vspace="5" hspace="5" src="iddemo1_13.png" alt=""> <p><b>Figure 12:</b> Bode responses of models <tt>m1</tt> and <tt>m2</tt>.</p><p>The frequency functions above that are obtained from the models can be compared with one that is obtained using a non-parametric spectral analysis method (<tt>spa</tt>):</p><pre class="codeinput">gs = spa(ze);
+</pre><p>The <tt>spa</tt> command results produces an IDFRD object. The bode function can again be used for a comparison with the transfer functions of the models obtained.</p><pre class="codeinput">bode(m1,m2,gs);
+legend(<span class="string">'m1'</span>,<span class="string">'m2'</span>,<span class="string">'gs'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo1_14.png" alt=""> <p><b>Figure 13:</b> Bode responses of <tt>m1</tt> and <tt>m2</tt> compared against the non-parametric spectral estimation model <tt>gs</tt>.</p><p>The frequency responses from the three models/methods are very close. This indicates that this response is reliable.</p><p>Also, a Nyquist plot can be analyzed with the uncertainty regions marked at certain frequencies:</p><pre class="codeinput">nyquist(m1,m2,gs,<span class="string">'sd'</span>,3)
+</pre><img vspace="5" hspace="5" src="iddemo1_15.png" alt=""> <p><b>Figure 14:</b> Nyquist plots of models <tt>m1</tt>, <tt>m2</tt> and <tt>gs</tt>.</p><h2>Additional Information<a name="46"></a></h2><p>For more information on identification of dynamic systems with System Identification Toolbox visit the <a href="http://www.mathworks.com/products/sysid/">System Identification Toolbox</a> product information page.</p><p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Estimating Simple Models from Real Laboratory Process Data
+% In this demo we show how System Identification Toolbox(TM) can be
+% used to develop and analyze simple models from a real laboratory process
+% data. We start with a small description of the process, learn how to
+% import the data to the toolbox and preprocess/condition it and then proceed
+% systematically to estimate parametric and non parametric models. Once the
+% models have been identified we compare the estimated models and also
+% validate the model to the actual output data from the experiment.
+
+% Copyright 1986-2009 The MathWorks, Inc.
+% $Revision: 1.9.4.12 $ $Date: 2009/10/16 04:54:09 $
+
+%% System Description
+% This case study concerns data collected from a laboratory scale
+% "hairdryer". (Feedback's Process Trainer PT326; See also page
+% 525 in Ljung, 1999). The process works as follows: Air is fanned
+% through a tube and heated at the inlet. The air temperature is
+% measured by a thermocouple at the outlet. The input (|u|) is the
+% power over the heating device, which is just a mesh of resistor
+% wires. The output is the outlet air temperature (or rather the
+% voltage from the thermocouple).
+
+
+%% Setting up Data for Analysis
+% First we load the input-output data to the MATLAB(R) Workspace.
+
+load dryer2;
+
+%%
+% Vector |y2|, the output, now contains 1000 measurements of temperature in
+% the outlet airstream. Vector |u2| contains 1000 input data points, consisting
+% of the voltage applied to the heater. The input was generated as a binary
+% random sequence that switches from one level to the other with probability
+% 0.2. The sampling interval is 0.08 seconds.
+%
+% The next step is to set up the data as an iddata object
+
+dry = iddata(y2,u2,0.08);
+
+%%
+% To get information about the data, just type the name of the |iddata| object
+% at the MATLAB command window:
+
+dry
+
+%%
+% To inspect the properties of the above iddata object, use the |get|
+% command:
+
+get(dry)
+
+%%
+% For better book-keeping, it is good practice to give names to the input
+% and output channels and Time units. These names would be propagated
+% throughout the analysis of this iddata object:
+
+dry.InputName = 'Power';
+dry.OutputName = 'Temperature';
+dry.TimeUnit = 'Seconds';
+dry.InputUnit = 'Watt';
+dry.OutputUnit = '^o C';
+
+%%
+% Now that we have the data set ready, we choose the first 300 data points
+% for model estimation.
+
+ze = dry(1:300)
+
+
+%% Preprocessing the Data
+% Plot the interval from sample 200 to 300:
+%
+plot(ze(200:300));
+
+%%
+% *Figure 1:* A snapshot of the measured hair-dryer data.
+
+%%
+% From the above plot, it can be observed that the data is not zero mean.
+% So let us remove the constant levels and make the data zero mean.
+
+ze = detrend(ze);
+
+%%
+% The same data set after it has been detrended:
+
+plot(ze(200:300)) %show samples from 200 to 300 of detrended data
+
+%%
+% *Figure 2:* Detrended estimation data.
+
+
+%% Estimating Non-Parametric and Parametric Models
+% Now that the dataset has been detrended and there are no obvious
+% outliers, let us first estimate the impulse response of the system
+% by correlation analysis to get some idea of time constants and the like:
+
+impulse(ze,'sd',3); %impulse response with 3 standard deviations confidence region
+
+%%
+% *Figure 3:* Impulse response of the system estimated using |ze|.
+
+%%
+% The dashed dotted lines mark a 99% confidence interval. There is a time
+% delay (dead-time) of 3 samples before the output responds to the input
+% (significant output outside the confidence interval). Adding |'fill'| as
+% an extra argument to the  |impulse| command gives an alternate display.
+
+impulse(ze,'sd',3,'fill');
+
+%%
+% The simplest way to get started on a parametric estimation routine is to
+% build a state-space model where the model-order is automatically
+% determined, using a prediction error method. Let us estimate a model
+% using the |pem| technique:
+
+m1 = pem(ze);
+
+%%
+% To inspect the properties of the estimated model, just enter the
+% model-name at the command window:
+
+m1
+
+%%
+% To retrieve the properties of this model, for example to obtain the |A|
+% matrix of the discrete state-space object generated above, we can use the
+% dot operator:
+%
+%       A = m1.a;
+%
+% Refer the demo on 'Data and Model Objects in System Identification
+% Toolbox' for more information regarding model objects. To find out which
+% properties of the model object can be retrieved, use |get| command:
+
+get(m1)
+
+%%
+% Observe the property named 'SSParameterization'. The 'free'
+% parameterization means that the matrix elements have no well defined
+% variance. To display the standard deviations of the matrix elements,
+% convert the model to a canonical form, by doing: 
+%
+% Model.SSParameterization = 'Canonical'
+
+%% Analyzing the Estimated Model
+%
+% The Bode plot of the generated model can be obtained using the
+% |bode| function as shown below:
+
+bode(m1)
+
+%%
+% *Figure 4:* Bode response of the estimated model with automatically chosen model order.
+
+%%
+% An alternative is to consider the |nyquist| plot, and mark uncertainty
+% regions at certain frequencies with ellipses, corresponding to 3 (say)
+% standard deviations:
+
+nyquist(m1,'sd',3)
+
+%%
+% *Figure 5:* Nyquist plot of estimated model showing the uncertainty regions at certain frequencies.
+
+%%
+% The step response of the model |m1| estimated above may also be compared
+% with a step response that is directly computed from the data in a
+% non-parametric way:
+
+step(m1,'b',ze,'r');
+
+%%
+% *Figure 6:* Step response of the estimated model compared against the non-parametric step response
+
+
+%% Estimating Models with a Prescribed Structure
+% System Identification Toolbox can also be used to obtain a model with
+% a prescribed structure. For example, a difference equation model with 2
+% poles, 1 zero and 3 delays can be obtained using the |arx| function as
+% shown below:
+
+m2 = arx(ze,[2 2 3]);
+
+%%
+% To look at the model, enter the model name at the command window.
+
+m2
+
+
+%% Validating the Estimated Model to Experimental Output
+% How good is an estimated model? One way to find out is to simulate it and
+% compare the model output with measured output. Select a portion of the
+% original data that was not used in building the model, say from samples
+% 800 to 900. Once the validation data has been preprocessed, we use the
+% |compare| function as shown below to view the quality of prediction:
+
+zv = dry(800:900); % select an independent data set for validation
+zv = detrend(zv); % preprocess the validation data
+compare(zv,m1); % perform comparison of simulated output
+
+%%
+% *Figure 7:* Simulation of model output compared against a validation data set.
+
+%%
+% It can be observed here that the agreement is very good. The "Fit" value
+% shown is calculated as:
+%
+% |Fit = 100*(1 - norm(yh - y)/norm(y-mean(y)))|
+%
+% where |y| is the measured output (=|zv.y|), and |yh| is the output of the
+% model |m1|.
+
+%% Comparing Estimated Models
+% To compare the performance of the models that we have estimated, for
+% example |m1| and |m2| with the validation data |zv|, we can again use the
+% |compare| command:
+
+compare(zv,m1,'b',m2,'r');
+
+%%
+% *Figure 8:* Comparing the predictions of models |m1| and |m2| on
+% validation data set |ze|.
+
+%%
+% The pole-zero plots for the two models can be obtained using |pzmap|:
+
+pzmap(m1,'b',m2,'r');
+
+%%
+% *Figure 9:* Poles and zeros of the two models |m1| and |m2|.
+
+%%
+% The uncertainties in the poles and zeroes can also be obtained. In the
+% following statement, '3' refers to the number of standard deviations.
+
+pzmap(m1,'b',m2,'r','sd',3);
+
+%%
+% *Figure 10:* Pole-zero map with uncertainty regions.
+
+%%
+% To zoom in on the unit circle use:
+
+pzmap(m1,'b',m2,'r','sd',3,'axis',1);
+
+%%
+% *Figure 11:* Pole-zero map zoomed around unit circle.
+
+%%
+% The frequency functions corresponding to the two models can be displayed
+% as:
+
+bode(m1,m2)
+
+%%
+% *Figure 12:* Bode responses of models |m1| and |m2|.
+
+%%
+% The frequency functions above that are obtained from the models can be
+% compared with one that is obtained using a non-parametric spectral
+% analysis method (|spa|):
+
+gs = spa(ze);
+
+%%
+% The |spa| command results produces an IDFRD object. The bode function can
+% again be used for a comparison with the transfer functions of the models
+% obtained.
+%
+bode(m1,m2,gs);
+legend('m1','m2','gs')
+
+%%
+% *Figure 13:* Bode responses of |m1| and |m2| compared against the
+% non-parametric spectral estimation model |gs|.
+
+%%
+% The frequency responses from the three models/methods are very close.
+% This indicates that this response is reliable.
+%
+% Also, a Nyquist plot can be analyzed with the uncertainty regions marked
+% at certain frequencies:
+
+nyquist(m1,m2,gs,'sd',3)
+
+%%
+% *Figure 14:* Nyquist plots of models |m1|, |m2| and |gs|.
+
+
+%% Additional Information
+% For more information on identification of dynamic systems with System
+% Identification Toolbox visit the
+% <http://www.mathworks.com/products/sysid/ System Identification Toolbox> product
+% information page.
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

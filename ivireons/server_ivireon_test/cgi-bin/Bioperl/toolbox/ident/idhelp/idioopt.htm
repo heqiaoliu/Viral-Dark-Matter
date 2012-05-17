@@ -1,0 +1,83 @@
+<!-- $Revision: 1.3.2.3 $ -->
+<title>Options for Iteration Control</title>
+<center><h3>Options for Iteration Control</h3></center>
+Enter the optional variables in the edit boxes.
+Default values are obtained by leaving the space empty, or entering the word 'Default'.
+ Press Apply to accept the variables as entered.
+<dl>
+<dt><b>Search Method</b>
+<dd>The search method used by the
+iterative search algorithm. Assignable values:
+<ul>
+ <li>Choose automatically (<tt>auto</tt>) - An automatic choice of a
+     search method (default) from among <tt>gn</tt>, <tt>lm</tt>, <tt>gna</tt> 
+     and <tt>grad</tt> line search schemes. </li>
+ <li>Gauss-Newton (<tt>gn</tt>): Gauss Newton direction based line
+     search scheme</li>
+ <li>Adaptive Gauss-Newton method (<tt>gna</tt>) - Gauss-Newton direction with
+     an adaptive cut-off of singular values</li>
+ <li>Levenberg-Marquardt method (<tt>lm</tt>) – Traditional Levenberg-Marquardt
+     direction based linear search</li>
+ <li>Trust Region Reflective Newton (<tt>lsqnonlin</tt>) - Nonlinear
+     least-squares method, provided by Optimization
+     Toolbox.
+     </li>
+ <li>Gradient Search (<tt>grad</tt>) – steepest descent direction based
+     line search.</li>
+</ul>
+
+<dd>Note: 'lsqnonlin' requires Optimization Toolbox&#8482;. It minimizes <tt>Trace</tt> criterion only (see below).  
+<BR><BR>
+<dt><b>Minimization Criterion</b>
+<dd>Minimization criterion for iterative search. Assignable values:
+<ul>
+ <li> <tt>Determinant</tt> (default) - <tt>det(E'*E)</tt> is minimized (with some 
+      normalization), where E is the prediction error matrix. This leads to maximum 
+      likelihood estimate of parameter values under the assumption of residuals being Gaussian.</li>
+ <li> <tt>Trace</tt> - Weighted least squares: <tt>trace(E'*E*W)</tt> is minimized 
+      (with some normalization), where E is the matrix of prediction errors over the 
+      available time span. Weighting <tt>W</tt> is specified through the "Weighting" 
+      Algorithm property (see below).</li>
+</ul>
+
+<dd> The two criteria are equivalent for single-output models. This setting provides a way of
+controlling relative weighting of outputs in a multi-output model.
+<BR><BR>
+    
+<dt><b>Weighting</b>
+<dd> Weighting <tt>W</tt> applied to trace minimization. When 
+  minimization criterion = <tt>Trace</tt>, <tt>trace(E'*E*W)</tt> is minimized. Weighting 
+  should be specified as a positive semi-definite matrix. It can be used to specify 
+  relative importance of outputs in multi-output models (or reliability of 
+  corresponding data). For such a use, specify a diagonal matrix for Weighting. 
+  Weighting is not useful in single-output models. By default, <tt>W</tt> is an identity matrix 
+  of size equal to number of model outputs (implying all outputs are to be given equal   
+  importance during estimation). Note that weighting does not apply to determinant 
+  minimization criterion.
+<BR><BR>
+    
+<dt><b>FixedParameter</b>
+    <dd>A row vector containing the indices or names of the parameters to be kept fixed
+    during the minimization. Default is no fixed parameters.
+    The indices are discussed in the manual section Enumeration of Estimated Parameters.
+    See also IDPROPS ALGORITHM.<br>
+Examples: <tt>[5,8,12]</tt>  or <tt>{'A(1,2)','K(2,3)'}</tt>
+<BR>
+Note the curly brackets for string parameter names.
+</dl><p>
+The next three options are all described under Algorithm Properties in the documentation.
+<dl>
+<dt><b>MaxIter</b>
+    <dd>The maximum number of iterations to be performed. Default value 20.
+<dt><b>Tolerance</b>
+    <dd>When the expected improvement in the criterion is less than <tt>Tolerance</tt> 
+    (measured in percent) the iterations are terminated. Default value 0.01.  
+<dt><b>LimitError</b>
+    <dd>Robustification of the quadratic criterion of fit. Residuals that are larger than
+    <tt>LimitError</tt> times the estimated standard deviation carry a linear rather than
+    quadratic weight. <tt>LimitError = 0</tt> disables the robustification and gives a pure
+    quadratic criterion. Default value 0.
+</dl>
+<p><b><a href="idhtop.htm">Help topics.</a> </b><p>
+
+(file idioopt.htm)

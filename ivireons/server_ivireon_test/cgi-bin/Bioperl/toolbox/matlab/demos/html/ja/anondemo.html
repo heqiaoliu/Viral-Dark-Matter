@@ -1,0 +1,49 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>無名関数</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="anondemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit anondemo">エディターで anondemo.m を開く</a></div><div class="right"><a href="matlab:echodemo anondemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>無名関数</h1><!--introduction--><p>このデモでは、関数 <tt>inline</tt> を使用するよりも、はるかに簡単な新しい方法により、コマンド ラインで関数を定義する方法の例を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">関数の積分</a></li><li><a href="#6">関数の最小化</a></li><li><a href="#8">2 次元関数</a></li><li><a href="#9">関数構成</a></li></ul></div><h2>関数の積分<a name="1"></a></h2><p>関数 10*x があるとします。</p><p><img src="../anondemo_eq25577.png" alt="$$h(x)= 10x$$"></p><p>10 だけではなく、x に任意の乗算を行う場合、変数 g (g が最初に 10 に設定されます) を作成し、新しい関数を作成します。</p><p><img src="../anondemo_eq89542.png" alt="$$h(x)= g * x$$"></p><p>関数ハンドル h を作成して MATLAB&reg; 上でこの計算を行いましょう。</p><pre class="codeinput">g=10;
+h=@(x) g*x;
+</pre><p>ハンドルを quad に渡すことで関数の積分が可能です。</p><pre class="codeinput">quad(h,1,10)
+</pre><pre class="codeoutput">
+ans =
+
+   495
+
+</pre><p>別の関数を想定します。</p><p><img src="../anondemo_eq41389.png" alt="$$f(x)= sin(\alpha x)$$"></p><p><tt>alpha = 0.9</tt> として、この関数への関数ハンドルを作成します。</p><pre class="codeinput">alpha=0.9;
+f=@(x) sin(alpha*x);
+</pre><p>関数をプロットしてその下の領域を塗りつぶします。</p><pre class="codeinput">x=0:pi/100:pi;
+area(x,f(x)); <span class="comment">% You can evaluate f without feval</span>
+title(<span class="string">'f(x)= sin(\alpha x), \alpha =.9'</span>);
+</pre><img vspace="5" hspace="5" src="../anondemo_01.png" alt=""> <p>値の区間で関数の下の領域を quad を使って計算できます。</p><pre class="codeinput">quad(f,0,pi)
+</pre><pre class="codeoutput">
+ans =
+
+    2.1678
+
+</pre><h2>関数の最小化<a name="6"></a></h2><p>以下の関数を想定します。</p><p><img src="../anondemo_eq76345.png" alt="$$f(x)=a x^2 + bx + c$$"></p><p>ただし、<tt>a=1, b=-2, and c=1</tt> です。</p><p>この関数に対する関数ハンドルを作成します。</p><pre class="codeinput">a=1;b=-2;c=1;
+f=@(x)(a*x.^2+b*x+c);
+</pre><pre class="codeinput">ezplot(f); <span class="comment">% Plot the function</span>
+title(<span class="string">'f(x)=ax^2+bx+c, a=1,b=-2,c=1'</span>);
+hold <span class="string">on</span>;
+
+<span class="comment">% Find and plot the minimum</span>
+minimum=fminbnd(f,-2,2); <span class="comment">% We can pass the function handle direct to the minimization routine</span>
+plot(minimum,f(minimum),<span class="string">'d'</span>); <span class="comment">% We can evaluate the function without using feval</span>
+grid;
+hold <span class="string">off</span>;
+</pre><img vspace="5" hspace="5" src="../anondemo_02.png" alt=""> <h2>2 次元関数<a name="8"></a></h2><p>多変数の関数へのハンドルを作成することが可能です。</p><pre class="codeinput">a=pi;b=15;
+f=@(x,y) (a*x+b*y);
+ezsurf(f);
+title(<span class="string">'f(x,y)=ax+by, a=\pi, b=15'</span>);
+</pre><img vspace="5" hspace="5" src="../anondemo_03.png" alt=""> <h2>関数構成<a name="9"></a></h2><p>関数の関数ハンドルも作成することができます。</p><pre class="codeinput">f=@(x) x.^2;
+g=@(x) 3*x;
+h=@(x) g(f(x));
+h(3)
+</pre><pre class="codeoutput">
+ans =
+
+    27
+
+</pre><p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Anonymous Functions % This demo shows some examples of how to define functions at the % command line in a new much simpler way than with the |inline| % function.  % Copyright 1984-2007 The MathWorks, Inc.  % $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:28:52 $   %% Integrating a Function % Consider the function 10*x. % % $$h(x)= 10x$$ % % If we want to allow any multiplier of x, not just 10, we might % create a variable g (where g is initially set to 10), and create a % new function % % $$h(x)= g * x$$ % % Let's do this in MATLAB(R) by creating a function handle h. g=10; h=@(x) g*x;  %% % You can integrate the function by passing its handle to quad. quad(h,1,10)  %% % Consider another function: % % $$f(x)= sin(\alpha x)$$ %  % Create a function handle to this function where |alpha = 0.9|. alpha=0.9; f=@(x) sin(alpha*x);   %% % Plot the function and shade the area under it. x=0:pi/100:pi; area(x,f(x)); % You can evaluate f without feval title('f(x)= sin(\alpha x), \alpha =.9');  %% % We can use quad to calculate the area under the function between a % range of values. quad(f,0,pi)  %% Minimizing a Function % Consider the function: %  % $$f(x)=a x^2 + bx + c$$  % % where |a=1, b=-2, and c=1| % % Create a function handle for it. a=1;b=-2;c=1; f=@(x)(a*x.^2+b*x+c);  %% ezplot(f); % Plot the function title('f(x)=ax^2+bx+c, a=1,b=-2,c=1'); hold on;  % Find and plot the minimum minimum=fminbnd(f,-2,2); % We can pass the function handle direct to the minimization routine plot(minimum,f(minimum),'d'); % We can evaluate the function without using feval grid; hold off;  %% 2D Functions % We can create handles to functions of many variables a=pi;b=15; f=@(x,y) (a*x+b*y);  ezsurf(f); title('f(x,y)=ax+by, a=\pi, b=15');  %% Function Composition % We can also create handles to functions of functions  f=@(x) x.^2; g=@(x) 3*x; h=@(x) g(f(x)); h(3)   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

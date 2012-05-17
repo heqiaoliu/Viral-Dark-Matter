@@ -1,0 +1,259 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Model Reference Variants</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_mdlref_variants.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_mdlref_variants.mdl</div><div class="right"><a href="matlab:sldemo_mdlref_variants">Open this model</a></div></div><div class="content"><h1>Model Reference Variants</h1><!--introduction--><p>This demo illustrates model reference variants. A Model block is used to reference one Simulink&reg; model from another Simulink model. A Model block can have different variants. A <i>variant</i> describes one of N possible modes a Model block can operate in. Each variant of the Model block references a specific model with optional model-specific arguments. Only one variant is active for simulation. You can switch the active variant of a Model block by changing the values of variables in the base workspace, or by manually overriding variant selection using the Model block dialog.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Demo Requirements</a></li><li><a href="#2">Overview of Model Variants</a></li><li><a href="#3">Specifying Variants for a Model Block</a></li><li><a href="#5">Switching Active Variants</a></li><li><a href="#8">Enumerations and Reuse</a></li></ul></div><h2>Demo Requirements<a name="1"></a></h2><p>During this demo, Simulink and Real-Time Workshop&reg; may generate code in a Simulink project directory created in the current working directory.  If you do not want to (or cannot) generate files in this directory, you should change the working directory to a suitable directory.</p><h2>Overview of Model Variants<a name="2"></a></h2><p>A Model block is used to reference one Simulink model (the <i>child</i> <i>model</i>) from another Simulink model (the <i>parent</i> <i>model</i>).  A Model block can have different variants.  The variants comprise a set of models that have the potential to be referenced by the Model block. In this example, there are two models that are potentially referenced by the Model block named Controller.</p><p>Each <i>variant</i> in a Model block is associated with a <tt>Simulink.Variant</tt> object. <tt>Simulink.Variant</tt> objects are created in the MATLAB&reg; base workspace. For example:</p><p><tt>V_NONLINEAR_CONTROLLER=Simulink.Variant('CTRL=1');</tt></p><p>where the constructor argument <tt>('CTRL=1')</tt> defines the condition when the variant is active. In this case, defining:</p><p><tt>CTRL=1</tt></p><p>in the base workspace would activate the <tt>V_NONLINEAR_CONTROLLER</tt> variant. The condition argument can be a <i>simple</i> <i>expression</i> consisting of scalar variables, enumerations, equality, inequality, &amp;&amp;, ||, and ~.  Parenthesis () can be used for precedence grouping.</p><p>For a given Model block, one variant is active during simulation. The <i>active</i> <i>variant</i> is determined by evaluating the variant object conditions in the MATLAB base workspace. Alternatively, you can instruct the Model block to use a specific variant by selecting the <b>Override variant conditions and use following variant</b> checkbox.</p><h2>Specifying Variants for a Model Block<a name="3"></a></h2><p>The model used in this demo requires the following variables be defined in the MATLAB base workspace:</p><p><tt>V_NONLINEAR_CONTROLLER=Simulink.Variant('CTRL==1');</tt></p><p><tt>V_SECOND_ORDER_CONTROLLER=Simulink.Variant('CTRL==2');</tt></p><p><tt>CTRL=1;</tt></p><p>Opening the demo model <a href="matlab:open_system('sldemo_mdlref_variants')"><tt>sldemo_mdlref_variants</tt></a> will run the <b>PreLoadFcn</b> defined in <tt>File -&gt; ModelProperties -&gt; Callbacks</tt>. This will populate the base workspace with the variables for the Model block named Controller:</p><pre class="codeoutput"> 
+V_NONLINEAR_CONTROLLER =
+ 
+Simulink.Variant
+    Condition: 'CTRL==1'
+
+ 
+V_SECOND_ORDER_CONTROLLER =
+ 
+Simulink.Variant
+    Condition: 'CTRL==2'
+
+
+CTRL =
+
+     1
+
+</pre><img vspace="5" hspace="5" src="sldemo_mdlref_variants_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_mdlref_variants_02.png" alt=""> <p><b>Figure 1:</b> The demo model, <tt>sldemo_mdlref_variants</tt></p><p>Right-click the model block Controller and select the menu item <b>ModelReference Parameters...</b> to <a href="matlab:open_system('sldemo_mdlref_variants/Controller','parameter');">open the Model block dialog</a>.</p><p>The dialog specifies two potential variants.  The two variants are in turn associated with the two <tt>Simulink.Variant</tt> objects <tt>V_NONLINEAR_CONTROLLER</tt> and <tt>V_SECOND_ORDER_CONTROLLER</tt>, which exist in the base workspace.  These objects have a property named <b>Condition</b>, an expression that evaluates to a boolean and that determines which variant is active.  The <b>Condition</b> is also shown in the Model block dialog.  In this example, the <b>Condition</b>'s of <tt>V_NONLINEAR_CONTROLLER</tt> and <tt>V_SECOND_ORDER_CONTROLLER</tt> are <tt>CTRL == 1</tt> and <tt>CTRL == 2</tt>, respectively.  The variable <tt>CTRL</tt> resides in the base workspace, and may be a standard MATLAB variable or a <tt>Simulink.Parameter</tt>.</p><h2>Switching Active Variants<a name="5"></a></h2><p>To simulate using the <tt>sldemo_mrv_nonlinear_controller</tt>, define:</p><p><tt>CTRL=1</tt></p><p>in the base workspace and then simulate the model.</p><img vspace="5" hspace="5" src="sldemo_mdlref_variants_03.png" alt=""> <p><b>Figure 2:</b> Simulation using the <tt>sldemo_mrv_nonlinear_controller</tt> variant</p><p>To simulate using the <tt>sldemo_second_order_controller</tt>, define</p><p><tt>CTRL=2</tt></p><p>in the base workspace and then simulate the model.</p><img vspace="5" hspace="5" src="sldemo_mdlref_variants_04.png" alt=""> <p><b>Figure 3:</b> Simulation using the <tt>sldemo_mrv_second_order_controller</tt> variant</p><h2>Enumerations and Reuse<a name="8"></a></h2><p>The sldemo_mdlref_variants_enum model illustrates <tt>Simulink.Variant</tt> capabilities:</p><p>1. <b>Enumerations:</b> MATLAB enumeration classes can be used to improve    readability in the conditions of the variant object.</p><p>2. <b>Reuse:</b> <tt>Simulink.Variant</tt> objects can be reused in different Model blocks.</p><p>This demo requires the following variables be defined in the MATLAB base workspace:</p><p><tt>VE_NONLINEAR_CONTROLLER=Simulink.Variant('E_CTRL==sldemo_mrv_CONTROLLER_TYPE.NONLINEAR')</tt></p><p><tt>VE_SECOND_ORDER_CONTROLLER=Simulink.Variant('E_CTRL==sldemo_mrv_CONTROLLER_TYPE.SECOND_ORDER')</tt></p><p><tt>E_CTRL=sldemo_mrv_CONTROLLER_TYPE.SECOND_ORDER</tt></p><p><tt>VE_PROTOTYPE=Simulink.Variant('E_CURRENT_BUILD==sldemo_mrv_BUILD_TYPE.PROTOTYPE')</tt></p><p><tt>VE_PRODUCTION=Simulink.Variant('E_CURRENT_BUILD==sldemo_mrv_BUILD_TYPE.PRODUCTION')</tt></p><p><tt>E_CURRENT_BUILD=sldemo_mrv_BUILD_TYPE.PRODUCTION</tt></p><p>In these Simulink.Variant's, we use the enumeration classes, <a href="matlab:edit('sldemo_mrv_BUILD_TYPE.m');">sldemo_mrv_BUILD_TYPE.m</a>, and <a href="matlab:edit('sldemo_mrv_CONTROLLER_TYPE.m');">sldemo_mrv_CONTROLLER_TYPE.m</a> within the <tt>Simulink.Variant</tt> <b>Condition</b> properties to improve readability.</p><p>The <tt>VE_PROTOTYPE</tt> and <tt>VE_PRODUCTION</tt> <tt>Simulink.Variant</tt> objects are reused across the three filter Model blocks, Filter1, Filter2, and Filter3.</p><p>Opening the demo model <a href="matlab:open_system('sldemo_mdlref_variants_enum')"><tt>sldemo_mdlref_variants_enum</tt></a> will run the <b>PreLoadFcn</b> defined in <tt>File -&gt; ModelProperties -&gt; Callbacks</tt>. This will populate the base workspace with variables for the Model blocks, which are displayed in the MATLAB Command Window:</p><pre class="codeoutput"> 
+VE_NONLINEAR_CONTROLLER =
+ 
+Simulink.Variant
+    Condition: 'E_CTRL==sldemo_mrv_CONTROLLER_TYPE.NONLINEAR'
+
+ 
+VE_SECOND_ORDER_CONTROLLER =
+ 
+Simulink.Variant
+    Condition: 'E_CTRL==sldemo_mrv_CONTROLLER_TYPE.SECOND_ORDER'
+
+
+E_CTRL = 
+
+    SECOND_ORDER
+
+ 
+VE_PROTOTYPE =
+ 
+Simulink.Variant
+    Condition: 'E_CURRENT_BUILD==sldemo_mrv_BUILD_TYPE.PROTOTYPE'
+
+ 
+VE_PRODUCTION =
+ 
+Simulink.Variant
+    Condition: 'E_CURRENT_BUILD==sldemo_mrv_BUILD_TYPE.PRODUCTION'
+
+
+E_CURRENT_BUILD = 
+
+    PRODUCTION
+
+</pre><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Model Reference Variants
+% This demo illustrates model reference variants. A Model block is used to
+% reference one Simulink(R) model from another Simulink model. A Model block can
+% have different variants. A _variant_ describes one of N possible modes a Model
+% block can operate in. Each variant of the Model block references a specific
+% model with optional model-specific arguments. Only one variant is active for
+% simulation. You can switch the active variant of a Model block by changing the
+% values of variables in the base workspace, or by manually overriding variant
+% selection using the Model block dialog.
+%
+
+% Copyright 2009 The MathWorks, Inc.
+% $Revision: 1.1.6.5 $  $Date: 2009/12/28 04:39:13 $
+
+%% Demo Requirements
+% During this demo, Simulink and Real-Time Workshop(R) may generate code in a
+% Simulink project directory created in the current working directory.  If you
+% do not want to (or cannot) generate files in this directory, you should change
+% the working directory to a suitable directory.
+
+startdir = pwd;
+tempdir = tempname;
+addpath(startdir)
+mkdir(tempdir)
+cd(tempdir)
+
+
+%% Overview of Model Variants
+% A Model block is used to reference one Simulink model (the _child_ _model_)
+% from another Simulink model (the _parent_ _model_).  A Model block can have
+% different variants.  The variants comprise a set of models that have the
+% potential to be referenced by the Model block. In this example, there are two
+% models that are potentially referenced by the Model block named Controller.
+%
+% Each _variant_ in a Model block is associated with a |Simulink.Variant| object.
+% |Simulink.Variant| objects are created in the MATLAB(R) base workspace. For example:
+%
+% |V_NONLINEAR_CONTROLLER=Simulink.Variant('CTRL=1');|
+%
+% where the constructor argument |('CTRL=1')| defines the condition when the
+% variant is active. In this case, defining:
+%
+% |CTRL=1|
+%
+% in the base workspace would activate the |V_NONLINEAR_CONTROLLER| variant. The
+% condition argument can be a _simple_ _expression_ consisting of scalar variables,
+% enumerations, equality, inequality, &&, ||, and ~.  Parenthesis () can be used
+% for precedence grouping.
+%
+% For a given Model block, one variant is active during simulation. The
+% _active_ _variant_ is determined by evaluating the variant object conditions
+% in the MATLAB base workspace. Alternatively, you can instruct the Model block
+% to use a specific variant by selecting the *Override variant conditions and
+% use following variant* checkbox.
+%
+
+%% Specifying Variants for a Model Block
+%
+% The model used in this demo requires the following variables be defined
+% in the MATLAB base workspace:
+%
+% |V_NONLINEAR_CONTROLLER=Simulink.Variant('CTRL==1');|
+%
+% |V_SECOND_ORDER_CONTROLLER=Simulink.Variant('CTRL==2');|
+%
+% |CTRL=1;|
+%
+% Opening the demo model <matlab:open_system('sldemo_mdlref_variants')
+% |sldemo_mdlref_variants|> will run the *PreLoadFcn* defined in |File ->
+% ModelProperties -> Callbacks|. This will populate the base workspace with the
+% variables for the Model block named Controller:
+%
+open_system('sldemo_mdlref_variants')
+
+%%
+% *Figure 1:* The demo model, |sldemo_mdlref_variants|
+%
+% Right-click the model block Controller and select the menu item
+% *ModelReference Parameters...* to
+% <matlab:open_system('sldemo_mdlref_variants/Controller','parameter');
+% open the Model block dialog>.
+%
+% The dialog specifies two potential variants.  The two variants are in turn
+% associated with the two |Simulink.Variant| objects |V_NONLINEAR_CONTROLLER|
+% and |V_SECOND_ORDER_CONTROLLER|, which exist in the base workspace.  These
+% objects have a property named *Condition*, an expression that evaluates to a
+% boolean and that determines which variant is active.  The *Condition* is also
+% shown in the Model block dialog.  In this example, the *Condition*'s of
+% |V_NONLINEAR_CONTROLLER| and |V_SECOND_ORDER_CONTROLLER| are |CTRL == 1| and
+% |CTRL == 2|, respectively.  The variable |CTRL| resides in the base workspace,
+% and may be a standard MATLAB variable or a |Simulink.Parameter|.
+%
+
+%% Switching Active Variants
+%
+% To simulate using the |sldemo_mrv_nonlinear_controller|, define:
+%
+% |CTRL=1|
+%
+% in the base workspace and then simulate the model.
+%
+open_system('sldemo_mdlref_variants/Controller','parameter');
+close_system('sldemo_mdlref_variants/Controller')
+CTRL=1; %#ok (used by sldemo_mdlref_variants)
+sim sldemo_mdlref_variants;
+%%
+% *Figure 2:* Simulation using the |sldemo_mrv_nonlinear_controller| variant
+%
+% To simulate using the |sldemo_second_order_controller|, define
+%
+% |CTRL=2|
+%
+% in the base workspace and then simulate the model.
+%
+CTRL=2; %#ok (used by sldemo_mdlref_variants)
+sim sldemo_mdlref_variants;
+
+%%
+% *Figure 3:* Simulation using the |sldemo_mrv_second_order_controller| variant
+%
+
+%% Enumerations and Reuse
+% The sldemo_mdlref_variants_enum model illustrates |Simulink.Variant|
+% capabilities:
+%
+% 1. *Enumerations:* MATLAB enumeration classes can be used to improve
+%    readability in the conditions of the variant object.
+%
+% 2. *Reuse:* |Simulink.Variant| objects can be reused in different Model blocks.
+%
+% This demo requires the following variables be defined in the MATLAB base
+% workspace:
+%
+% |VE_NONLINEAR_CONTROLLER=Simulink.Variant('E_CTRL==sldemo_mrv_CONTROLLER_TYPE.NONLINEAR')|
+%
+% |VE_SECOND_ORDER_CONTROLLER=Simulink.Variant('E_CTRL==sldemo_mrv_CONTROLLER_TYPE.SECOND_ORDER')|
+%
+% |E_CTRL=sldemo_mrv_CONTROLLER_TYPE.SECOND_ORDER|
+%
+% |VE_PROTOTYPE=Simulink.Variant('E_CURRENT_BUILD==sldemo_mrv_BUILD_TYPE.PROTOTYPE')|
+%
+% |VE_PRODUCTION=Simulink.Variant('E_CURRENT_BUILD==sldemo_mrv_BUILD_TYPE.PRODUCTION')|
+%
+% |E_CURRENT_BUILD=sldemo_mrv_BUILD_TYPE.PRODUCTION|
+%
+% In these Simulink.Variant's, we use the enumeration classes,
+% <matlab:edit('sldemo_mrv_BUILD_TYPE.m'); sldemo_mrv_BUILD_TYPE.m>, and
+% <matlab:edit('sldemo_mrv_CONTROLLER_TYPE.m');
+% sldemo_mrv_CONTROLLER_TYPE.m> within the |Simulink.Variant| *Condition* properties
+% to improve readability.
+%
+% The |VE_PROTOTYPE| and |VE_PRODUCTION| |Simulink.Variant| objects are reused across the
+% three filter Model blocks, Filter1, Filter2, and Filter3.
+%
+% Opening the demo model <matlab:open_system('sldemo_mdlref_variants_enum')
+% |sldemo_mdlref_variants_enum|> will run the *PreLoadFcn* defined in |File ->
+% ModelProperties -> Callbacks|. This will populate the base workspace with
+% variables for the Model blocks, which are displayed in the MATLAB Command
+% Window:
+
+open_system('sldemo_mdlref_variants_enum')
+
+%REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH-%
+% Cleanup %
+%REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH-%
+
+% Close models
+close_system('sldemo_mdlref_variants',0);
+close_system('sldemo_mrv_nonlinear_controller',0)
+close_system('sldemo_mrv_second_order_controller',0)
+close_system('sldemo_mdlref_variants_enum',0);
+close_system('sldemo_mrv_sig_filter1_production',0);
+close_system('sldemo_mrv_sig_filter1_prototype',0);
+close_system('sldemo_mrv_sig_filter2_production',0);
+close_system('sldemo_mrv_sig_filter2_prototype',0);
+close_system('sldemo_mrv_sig_filter3_production',0);
+close_system('sldemo_mrv_sig_filter3_prototype',0);
+
+% Clear variables created by models
+clear CTRL E_CTRL E_CURRENT_BUILD VE_NONLINEAR_CONTROLLER VE_PRODUCTION 
+clear VE_PROTOTYPE VE_SECOND_ORDER_CONTROLLER V_NONLINEAR_CONTROLLER
+clear V_SECOND_ORDER_CONTROLLER tout
+
+% Clear demo MEX files that may have been created when referencing
+% models with the Simulation Mode parameter set to Accelerated.
+% This need to be done before attempting to remove the tempdir
+% which contains the generated MEX files.
+clear mex
+
+% Remove tempdir and restore path
+cd(startdir);
+rmpath(startdir);
+rmdir(tempdir,'s');
+clear startdir tempdir
+
+##### SOURCE END #####
+--></body></html>

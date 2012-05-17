@@ -1,0 +1,475 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>COST 207 and GSM/EDGE Channel Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="chandemo_cost207.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit chandemo_cost207">Open chandemo_cost207.m in the Editor</a></div><div class="right"><a href="matlab:echodemo chandemo_cost207">Run in the Command Window</a></div></div><div class="content"><h1>COST 207 and GSM/EDGE Channel Models</h1><!--introduction--><p>This demo shows how to simulate multipath fading channels based on the COST 207 and GSM/EDGE channel models, using the Rayleigh and Rician multipath fading channel objects and the Doppler objects from Communications Toolbox&#8482;.  It also shows how to visualize these channels using the channel visualization tool.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">COST 207 Channel Models: Overview</a></li><li><a href="#2">COST 207 Channel Simulation: Methodology</a></li><li><a href="#3">Initialization of Simulation-Specific Parameters</a></li><li><a href="#4">Construction of Doppler Objects</a></li><li><a href="#7">RAx4 Channel Model: Rural Area with 4 Taps</a></li><li><a href="#10">BUx6 Channel Model: Bad Urban with 6 Taps</a></li><li><a href="#13">HTx12 Channel Model: Hilly Terrain with 12 Taps</a></li><li><a href="#15">GSM/EDGE Channel Models</a></li></ul></div><h2>COST 207 Channel Models: Overview<a name="1"></a></h2><p>The COST 207 channel models [1] for mobile radio were standardized to enable different communications designers to simulate their systems using a common set of channel models.  Four propagation models are defined: rural area (RA), typical urban area (TU), bad urban area (BU), and hilly terrain (HT).  The RA case comprises two distinct channel models, while the other cases each comprise four channel models, for a total of 14 channel models.</p><p>Each channel model has several taps.  Each tap is characterized by a relative delay (with respect to the first path delay), a relative power, and a Doppler spectrum category.  The possible Doppler categories are CLASS, RICE, GAUS1, and GAUS2.  The CLASS Doppler category refers to the "classical" spectrum, which is also often termed the Jakes spectrum.  The RICE Doppler spectrum is equivalent to the CLASS Doppler spectrum, but with an impulse at the frequency corresponding to the Doppler shift of the line-of-sight component.  The GAUS1 and GAUS2 Doppler categories are special cases of the bi-Gaussian spectrum, i.e. the sum of two Gaussian functions in frequency.</p><h2>COST 207 Channel Simulation: Methodology<a name="2"></a></h2><p>We review the methodology to simulate a given COST 207 channel model.  At first, Doppler spectrum objects relevant to the given COST 207 model are constructed.  Then, a Rayleigh or Rician multipath fading channel object is constructed, and its properties initialized to produce the desired channel model.  Data is then processed by the channel object, in order to visualize some properties of the channel using the channel visualization tool.</p><h2>Initialization of Simulation-Specific Parameters<a name="3"></a></h2><p>The simulation sampling rate and the maximum Doppler shift are specified, and kept the same for the remainder of the demo.  The input to the channel simulator is oversampled by a factor of four.</p><pre class="codeinput">M = 8;                      <span class="comment">% Modulation order</span>
+hModem = modem.pskmod(M);   <span class="comment">% 8-PSK modulator object</span>
+
+Rsym = 9600;                <span class="comment">% Input symbol rate</span>
+Rbit = Rsym * log2(M);      <span class="comment">% Input bit rate</span>
+Nos = 4;                    <span class="comment">% Oversampling factor</span>
+ts = (1/Rbit) / Nos;        <span class="comment">% Input sample period</span>
+
+v = 120 * 1e3/3600;         <span class="comment">% Mobile speed (m/s)</span>
+fc = 1800e6;                <span class="comment">% Carrier frequency</span>
+c = 3e8;                    <span class="comment">% Speed of light in free space</span>
+fd = v*fc/c;                <span class="comment">% Maximum Doppler shift of diffuse component</span>
+</pre><h2>Construction of Doppler Objects<a name="4"></a></h2><p>We construct Doppler objects that will be used by the channel objects to produce the desired Doppler spectrum category.  These Doppler objects are part of the Doppler package of Communications Toolbox.  Type <tt>help doppler</tt> for information about the Doppler package, and <tt>help doppler/types</tt> to get the list of supported Doppler spectrum types.</p><p>The command below constructs a Doppler object of type Jakes, which is used to emulate the CLASS Doppler category.</p><pre class="codeinput">dopjakes = doppler.jakes
+</pre><pre class="codeoutput"> 
+dopjakes =
+ 
+    SpectrumType: 'Jakes'
+
+</pre><p>The following lines instantiate and initialize a bi-Gaussian Doppler object with parameters corresponding to that of the GAUS1 Doppler category.</p><pre class="codeinput">dopgauss1 = doppler.bigaussian;
+dopgauss1.CenterFreqGaussian1 = -0.8;
+dopgauss1.CenterFreqGaussian2 = 0.4;
+dopgauss1.SigmaGaussian1 = 0.05;
+dopgauss1.SigmaGaussian2 = 0.1;
+dopgauss1.GainGaussian1 = sqrt(2*pi*(dopgauss1.SigmaGaussian1)^2);
+dopgauss1.GainGaussian2 = 1/10 * sqrt(2*pi*(dopgauss1.SigmaGaussian2)^2)
+</pre><pre class="codeoutput"> 
+dopgauss1 =
+ 
+           SpectrumType: 'BiGaussian'
+         SigmaGaussian1: 0.0500
+         SigmaGaussian2: 0.1000
+    CenterFreqGaussian1: -0.8000
+    CenterFreqGaussian2: 0.4000
+          GainGaussian1: 0.1253
+          GainGaussian2: 0.0251
+
+</pre><p>Similarly, a bi-Gaussian Doppler object with parameters corresponding to that of the GAUS2 model is constructed below.</p><pre class="codeinput">dopgauss2 = doppler.bigaussian;
+dopgauss2.CenterFreqGaussian1 = 0.7;
+dopgauss2.CenterFreqGaussian2 = -0.4;
+dopgauss2.SigmaGaussian1 = 0.1;
+dopgauss2.SigmaGaussian2 = 0.15;
+dopgauss2.GainGaussian1 = sqrt(2*pi*(dopgauss1.SigmaGaussian1)^2);
+dopgauss2.GainGaussian2 = 1/10^1.5 * sqrt(2*pi*(dopgauss1.SigmaGaussian2)^2)
+</pre><pre class="codeoutput"> 
+dopgauss2 =
+ 
+           SpectrumType: 'BiGaussian'
+         SigmaGaussian1: 0.1000
+         SigmaGaussian2: 0.1500
+    CenterFreqGaussian1: 0.7000
+    CenterFreqGaussian2: -0.4000
+          GainGaussian1: 0.1253
+          GainGaussian2: 0.0079
+
+</pre><h2>RAx4 Channel Model: Rural Area with 4 Taps<a name="7"></a></h2><p>The rural area (RA) models are characterized by Rician fading on the first path, and Rayleigh fading on the remaining paths.  The first path has a RICE Doppler spectrum, while the remaining paths have a CLASS Doppler spectrum.  The line-of-sight component of the first path has a Doppler shift of 0.7 times the maximum Doppler shift of the diffuse component.</p><p>The code below constructs a Rician channel object according to the RA model with 4 taps.  By default, a Rician channel object has a RICE (Jakes + impulse) spectrum on the first path, and a CLASS (Jakes) spectrum on subsequent paths.</p><pre class="codeinput">kFactor = 0.87/0.13;    <span class="comment">% Note: we use the value from 3GPP TS 45.005 V7.9.0</span>
+fdLOS = 0.7 * fd;
+RAx4PathDelays = [0.0 0.2 0.4 0.6] * 1e-6;
+RAx4AvgPathGaindB = [0 -2 -10 -20];
+
+chan = ricianchan(ts, fd, kFactor, RAx4PathDelays, RAx4AvgPathGaindB, fdLOS)
+</pre><pre class="codeoutput"> 
+chan =
+ 
+               ChannelType: 'Rician'
+         InputSamplePeriod: 8.6806e-006
+           DopplerSpectrum: [1x1 doppler.jakes]
+           MaxDopplerShift: 200.0000
+                PathDelays: [0 2.0000e-007 4.0000e-007 6.0000e-007]
+             AvgPathGaindB: [0 -2 -10 -20]
+                   KFactor: 6.6923
+    DirectPathDopplerShift: 140
+       DirectPathInitPhase: 0
+        NormalizePathGains: 1
+              StoreHistory: 0
+            StorePathGains: 0
+                 PathGains: [1x4 double]
+        ChannelFilterDelay: 4
+      ResetBeforeFiltering: 1
+       NumSamplesProcessed: 0
+
+</pre><p>The code below simulates the RAx4 channel and visualizes the Doppler spectrum of the first path using the channel visualization tool.</p><pre class="codeinput"><span class="comment">% This setting is needed to store quantities used by the channel</span>
+<span class="comment">% visualization tool.</span>
+chan.StoreHistory = 1;
+<span class="comment">% After each frame is processed, the channel is not reset: this is necessary</span>
+<span class="comment">% to preserve continuity across frames.</span>
+chan.ResetBeforeFiltering = 0;
+<span class="comment">% This setting makes the total average power of all path gains be equal to 1.</span>
+chan.NormalizePathGains = 1;
+
+Nframes = 12;
+Nsamples = 1e4;
+<span class="keyword">for</span> iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+    <span class="comment">% Select the Doppler spectrum as the current visualization.</span>
+    <span class="keyword">if</span> iFrames == 1, channel_vis(chan, <span class="string">'visualization'</span>, <span class="string">'doppler'</span>); <span class="keyword">end</span>;
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="chandemo_cost207_01.png" alt=""> <p>We then visualize the scattering function.</p><pre class="codeinput">channel_vis(chan, <span class="string">'visualization'</span>, <span class="string">'scattering'</span>);
+
+Nframes = 6;
+<span class="keyword">for</span> iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="chandemo_cost207_02.png" alt=""> <h2>BUx6 Channel Model: Bad Urban with 6 Taps<a name="10"></a></h2><p>The bad urban (BU) models are characterized by Rayleigh fading on all paths.  In the case of the BU channels with 6 taps, the first two paths have a CLASS (Jakes) Doppler spectrum, the next two paths have a GAUS1 Doppler spectrum, and the remaining two paths a GAUS2 Doppler spectrum.</p><p>The code below constructs a Rayleigh channel object according to the BU model with 6 taps.  It uses the Doppler objects created earlier to specify the <tt>DopplerSpectrum</tt> property of the constructed channel object.</p><pre class="codeinput">channel_vis(chan, <span class="string">'close'</span>);
+
+chan = rayleighchan(ts, fd);
+
+<span class="comment">% Assign profile-specific properties to channel object.</span>
+chan.PathDelays = [0.0 0.4 1.0 1.6 5.0 6.6] * 1e-6;
+chan.AvgPathGaindB = [-3 0 -3 -5 -2 -4];
+chan.DopplerSpectrum = [dopjakes dopjakes dopgauss1 dopgauss1 dopgauss2 dopgauss2]
+</pre><pre class="codeoutput"> 
+chan =
+ 
+             ChannelType: 'Rayleigh'
+       InputSamplePeriod: 8.6806e-006
+         DopplerSpectrum: [6x1 doppler.baseclass]
+         MaxDopplerShift: 200.0000
+              PathDelays: [1x6 double]
+           AvgPathGaindB: [-3 0 -3 -5 -2 -4]
+      NormalizePathGains: 1
+            StoreHistory: 0
+          StorePathGains: 0
+               PathGains: [1x6 double]
+      ChannelFilterDelay: 4
+    ResetBeforeFiltering: 1
+     NumSamplesProcessed: 0
+
+</pre><p>The code below simulates the BUx6 channel and visualizes the Doppler spectrum of the third path using the channel visualization tool.</p><pre class="codeinput">chan.StoreHistory = 1;
+chan.ResetBeforeFiltering = 0;
+chan.NormalizePathGains = 1;
+
+Nframes = 12;
+<span class="keyword">for</span> iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+    <span class="comment">% Select the Doppler spectrum of the third path as the current visualization.</span>
+    <span class="keyword">if</span> iFrames == 1, channel_vis(chan, <span class="string">'visualization'</span>, <span class="string">'doppler'</span>, 3); <span class="keyword">end</span>;
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="chandemo_cost207_03.png" alt=""> <p>We then visualize the scattering function.</p><pre class="codeinput">channel_vis(chan, <span class="string">'visualization'</span>, <span class="string">'scattering'</span>);
+
+Nframes = 6;
+<span class="keyword">for</span> iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="chandemo_cost207_04.png" alt=""> <h2>HTx12 Channel Model: Hilly Terrain with 12 Taps<a name="13"></a></h2><p>The hilly terrain (HT) models are also characterized by Rayleigh fading on all paths.  The HT channels with 12 taps have a mixture of CLASS, GAUS1, and GAUS2 taps.</p><p>We use the function <tt>stdchan</tt> to construct a channel object according to the HT model with 12 taps.  For a list of standardized channel models supported by <tt>stdchan</tt>, type <tt>help stdchan</tt>.</p><pre class="codeinput">channel_vis(chan, <span class="string">'close'</span>);
+
+chan = stdchan(ts, fd, <span class="string">'cost207HTx12'</span>)
+</pre><pre class="codeoutput"> 
+chan =
+ 
+             ChannelType: 'Rayleigh'
+       InputSamplePeriod: 8.6806e-006
+         DopplerSpectrum: [12x1 doppler.baseclass]
+         MaxDopplerShift: 200.0000
+              PathDelays: [1x12 double]
+           AvgPathGaindB: [-10 -8 -6 -4 0 0 -4 -8 -9 -10 -12 -14]
+      NormalizePathGains: 1
+            StoreHistory: 0
+          StorePathGains: 0
+               PathGains: [1x12 double]
+      ChannelFilterDelay: 4
+    ResetBeforeFiltering: 1
+     NumSamplesProcessed: 0
+
+</pre><p>We bring up the channel visualization tool and visualize the scattering function.</p><pre class="codeinput">chan.StoreHistory = 1;
+chan.ResetBeforeFiltering = 0;
+chan.NormalizePathGains = 1;
+
+Nframes = 6;
+<span class="keyword">for</span> iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+    <span class="keyword">if</span> iFrames == 1, channel_vis(chan, <span class="string">'visualization'</span>, <span class="string">'scattering'</span>); <span class="keyword">end</span>;
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="chandemo_cost207_05.png" alt=""> <h2>GSM/EDGE Channel Models<a name="15"></a></h2><p>The <tt>stdchan</tt> function also provides support for GSM/EDGE channel models [2], [3], among other standardized models.  Several GSM/EDGE channel models are based on the COST 207 channel models, but with the assumption that each Rayleigh-fading tap has a Jakes Doppler spectrum.</p><p>Below we construct a channel object according to the Profile for equalization test, i.e. EQx [2], [3], and visualize its scattering function.</p><pre class="codeinput">channel_vis(chan, <span class="string">'close'</span>);
+
+chan = stdchan(ts, fd, <span class="string">'gsmEQx6'</span>);
+
+chan.StoreHistory = 1;
+chan.ResetBeforeFiltering = 0;
+chan.NormalizePathGains = 1;
+
+Nframes = 6;
+<span class="keyword">for</span> iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+    <span class="keyword">if</span> iFrames == 1, channel_vis(chan, <span class="string">'visualization'</span>, <span class="string">'scattering'</span>); <span class="keyword">end</span>;
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="chandemo_cost207_06.png" alt=""> <p>References:</p><pre> [1] COST 207, "Digital land mobile radio communications," Office
+     for Official Publications of the European Communities, Final report,
+     Luxembourg, 1989.
+ [2] 3GPP TS 05.05 V8.20.0 (2005-11): 3rd Generation Partnership
+     Project; Technical Specification Group GSM/EDGE Radio Access(TM)
+     Network; Radio transmission and reception (Release 1999).
+ [3] 3GPP TS 45.005 V7.9.0 (2007-2): 3rd Generation Partnership
+     Project; Technical Specification Group GSM/EDGE Radio Access
+     Network; Radio transmission and reception (Release 7).</pre><p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% COST 207 and GSM/EDGE Channel Models
+% This demo shows how to simulate multipath fading channels based on the
+% COST 207 and GSM/EDGE channel models, using the Rayleigh and Rician
+% multipath fading channel objects and the Doppler objects from 
+% Communications Toolbox(TM).  It also shows how to visualize these channels
+% using the channel visualization tool.
+
+% Copyright 2007-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.4 $ $Date: 2009/05/23 07:50:08 $
+
+%% COST 207 Channel Models: Overview
+% The COST 207 channel models [1] for mobile radio were standardized to
+% enable different communications designers to simulate their systems using
+% a common set of channel models.  Four propagation models are defined:
+% rural area (RA), typical urban area (TU), bad urban area (BU), and hilly
+% terrain (HT).  The RA case comprises two distinct channel models,
+% while the other cases each comprise four channel models, for a total of
+% 14 channel models. 
+%
+% Each channel model has several taps.  Each tap is characterized by a
+% relative delay (with respect to the first path delay), a relative power,
+% and a Doppler spectrum category.  The possible Doppler categories are
+% CLASS, RICE, GAUS1, and GAUS2.  The CLASS Doppler category refers to the
+% "classical" spectrum, which is also often termed the Jakes spectrum.  The
+% RICE Doppler spectrum is equivalent to the CLASS Doppler spectrum, but
+% with an impulse at the frequency corresponding to the Doppler shift of
+% the line-of-sight component.  The GAUS1 and GAUS2 Doppler categories are
+% special cases of the bi-Gaussian spectrum, i.e. the sum of two Gaussian
+% functions in frequency.
+
+%% COST 207 Channel Simulation: Methodology
+% We review the methodology to simulate a given COST 207 channel model.  At
+% first, Doppler spectrum objects relevant to the given COST 207 model are
+% constructed.  Then, a Rayleigh or Rician multipath fading channel object
+% is constructed, and its properties initialized to produce the desired
+% channel model.  Data is then processed by the channel object, in order to
+% visualize some properties of the channel using the channel visualization
+% tool.
+
+%% Initialization of Simulation-Specific Parameters 
+% The simulation sampling rate and the maximum Doppler shift are specified,
+% and kept the same for the remainder of the demo.  The input to the channel
+% simulator is oversampled by a factor of four.
+
+M = 8;                      % Modulation order
+hModem = modem.pskmod(M);   % 8-PSK modulator object
+
+Rsym = 9600;                % Input symbol rate
+Rbit = Rsym * log2(M);      % Input bit rate
+Nos = 4;                    % Oversampling factor
+ts = (1/Rbit) / Nos;        % Input sample period
+
+v = 120 * 1e3/3600;         % Mobile speed (m/s)
+fc = 1800e6;                % Carrier frequency
+c = 3e8;                    % Speed of light in free space
+fd = v*fc/c;                % Maximum Doppler shift of diffuse component
+
+%% Construction of Doppler Objects
+% We construct Doppler objects that will be used by the channel objects to
+% produce the desired Doppler spectrum category.  These Doppler objects are
+% part of the Doppler package of Communications Toolbox.  Type |help doppler| 
+% for information about the Doppler package, and |help doppler/types| to
+% get the list of supported Doppler spectrum types. 
+% 
+% The command below constructs a Doppler object of type Jakes, which is used to
+% emulate the CLASS Doppler category.
+
+dopjakes = doppler.jakes
+
+%%
+% The following lines instantiate and initialize a bi-Gaussian Doppler object
+% with parameters corresponding to that of the GAUS1 Doppler category. 
+
+dopgauss1 = doppler.bigaussian;
+dopgauss1.CenterFreqGaussian1 = -0.8;
+dopgauss1.CenterFreqGaussian2 = 0.4;
+dopgauss1.SigmaGaussian1 = 0.05;
+dopgauss1.SigmaGaussian2 = 0.1;
+dopgauss1.GainGaussian1 = sqrt(2*pi*(dopgauss1.SigmaGaussian1)^2);
+dopgauss1.GainGaussian2 = 1/10 * sqrt(2*pi*(dopgauss1.SigmaGaussian2)^2)
+
+%% 
+% Similarly, a bi-Gaussian Doppler object with parameters corresponding to
+% that of the GAUS2 model is constructed below.
+
+dopgauss2 = doppler.bigaussian;
+dopgauss2.CenterFreqGaussian1 = 0.7;
+dopgauss2.CenterFreqGaussian2 = -0.4;
+dopgauss2.SigmaGaussian1 = 0.1;
+dopgauss2.SigmaGaussian2 = 0.15;
+dopgauss2.GainGaussian1 = sqrt(2*pi*(dopgauss1.SigmaGaussian1)^2);
+dopgauss2.GainGaussian2 = 1/10^1.5 * sqrt(2*pi*(dopgauss1.SigmaGaussian2)^2)
+
+%% RAx4 Channel Model: Rural Area with 4 Taps
+% The rural area (RA) models are characterized by Rician fading on the
+% first path, and Rayleigh fading on the remaining paths.  The first path
+% has a RICE Doppler spectrum, while the remaining paths have a CLASS
+% Doppler spectrum.  The line-of-sight component of the first path has a
+% Doppler shift of 0.7 times the maximum Doppler shift of the diffuse
+% component.
+%
+% The code below constructs a Rician channel object according to the RA
+% model with 4 taps.  By default, a Rician channel object has a RICE (Jakes
+% + impulse) spectrum on the first path, and a CLASS (Jakes) spectrum on
+% subsequent paths.
+
+kFactor = 0.87/0.13;    % Note: we use the value from 3GPP TS 45.005 V7.9.0
+fdLOS = 0.7 * fd;
+RAx4PathDelays = [0.0 0.2 0.4 0.6] * 1e-6;
+RAx4AvgPathGaindB = [0 -2 -10 -20];
+
+chan = ricianchan(ts, fd, kFactor, RAx4PathDelays, RAx4AvgPathGaindB, fdLOS)
+
+%%
+% The code below simulates the RAx4 channel and visualizes the Doppler spectrum
+% of the first path using the channel visualization tool.
+
+% This setting is needed to store quantities used by the channel
+% visualization tool.
+chan.StoreHistory = 1;
+% After each frame is processed, the channel is not reset: this is necessary
+% to preserve continuity across frames.
+chan.ResetBeforeFiltering = 0;
+% This setting makes the total average power of all path gains be equal to 1.
+chan.NormalizePathGains = 1;
+
+Nframes = 12;
+Nsamples = 1e4;
+for iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+    % Select the Doppler spectrum as the current visualization.
+    if iFrames == 1, channel_vis(chan, 'visualization', 'doppler'); end;
+end
+
+%% 
+% We then visualize the scattering function.
+
+channel_vis(chan, 'visualization', 'scattering');
+
+Nframes = 6;
+for iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+end
+
+
+%% BUx6 Channel Model: Bad Urban with 6 Taps
+% The bad urban (BU) models are characterized by Rayleigh fading on all
+% paths.  In the case of the BU channels with 6 taps, the first two paths
+% have a CLASS (Jakes) Doppler spectrum, the next two paths have a GAUS1
+% Doppler spectrum, and the remaining two paths a GAUS2 Doppler spectrum.
+%
+% The code below constructs a Rayleigh channel object according to the BU
+% model with 6 taps.  It uses the Doppler objects created earlier to specify
+% the |DopplerSpectrum| property of the constructed channel object.
+
+channel_vis(chan, 'close');
+
+chan = rayleighchan(ts, fd);
+
+% Assign profile-specific properties to channel object.
+chan.PathDelays = [0.0 0.4 1.0 1.6 5.0 6.6] * 1e-6;
+chan.AvgPathGaindB = [-3 0 -3 -5 -2 -4];
+chan.DopplerSpectrum = [dopjakes dopjakes dopgauss1 dopgauss1 dopgauss2 dopgauss2]
+
+
+%%
+% The code below simulates the BUx6 channel and visualizes the Doppler spectrum
+% of the third path using the channel visualization tool.
+
+chan.StoreHistory = 1;
+chan.ResetBeforeFiltering = 0;
+chan.NormalizePathGains = 1;
+
+Nframes = 12;
+for iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+    % Select the Doppler spectrum of the third path as the current visualization.
+    if iFrames == 1, channel_vis(chan, 'visualization', 'doppler', 3); end;
+end
+
+%% 
+% We then visualize the scattering function.
+
+channel_vis(chan, 'visualization', 'scattering');
+
+Nframes = 6;
+for iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+end
+
+
+%% HTx12 Channel Model: Hilly Terrain with 12 Taps
+% The hilly terrain (HT) models are also characterized by Rayleigh fading
+% on all paths.  The HT channels with 12 taps have a mixture of CLASS,
+% GAUS1, and GAUS2 taps.
+%
+% We use the function |stdchan| to construct a channel object according to the
+% HT model with 12 taps.  For a list of standardized channel models
+% supported by |stdchan|, type |help stdchan|.
+
+channel_vis(chan, 'close');
+
+chan = stdchan(ts, fd, 'cost207HTx12')
+
+%% 
+% We bring up the channel visualization tool and visualize the scattering
+% function.
+
+chan.StoreHistory = 1;
+chan.ResetBeforeFiltering = 0;
+chan.NormalizePathGains = 1;
+
+Nframes = 6;
+for iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+    if iFrames == 1, channel_vis(chan, 'visualization', 'scattering'); end;
+end
+
+%% GSM/EDGE Channel Models
+% The |stdchan| function also provides support for GSM/EDGE channel models
+% [2], [3], among other standardized models.  Several GSM/EDGE channel
+% models are based on the COST 207 channel models, but with the assumption
+% that each Rayleigh-fading tap has a Jakes Doppler spectrum.
+%
+% Below we construct a channel object according to the Profile for
+% equalization test, i.e. EQx [2], [3], and visualize its scattering function.
+
+channel_vis(chan, 'close');
+
+chan = stdchan(ts, fd, 'gsmEQx6');
+
+chan.StoreHistory = 1;
+chan.ResetBeforeFiltering = 0;
+chan.NormalizePathGains = 1;
+
+Nframes = 6;
+for iFrames = 1:Nframes
+    y = filter(chan, modulate(hModem, randi([0 M-1],Nsamples,1)));
+    plot(chan);
+    if iFrames == 1, channel_vis(chan, 'visualization', 'scattering'); end;
+end
+
+
+%%
+% References:
+%
+%   [1] COST 207, "Digital land mobile radio communications," Office
+%       for Official Publications of the European Communities, Final report,
+%       Luxembourg, 1989.
+%   [2] 3GPP TS 05.05 V8.20.0 (2005-11): 3rd Generation Partnership
+%       Project; Technical Specification Group GSM/EDGE Radio Access(TM)
+%       Network; Radio transmission and reception (Release 1999).
+%   [3] 3GPP TS 45.005 V7.9.0 (2007-2): 3rd Generation Partnership
+%       Project; Technical Specification Group GSM/EDGE Radio Access
+%       Network; Radio transmission and reception (Release 7).
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

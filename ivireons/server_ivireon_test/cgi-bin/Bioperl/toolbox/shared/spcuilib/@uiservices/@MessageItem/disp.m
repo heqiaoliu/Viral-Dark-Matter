@@ -1,0 +1,10 @@
+function disp(h)
+%DISP Display MessageItem
+
+% Copyright 2004-2006 The MathWorks, Inc.
+% $Revision: 1.1.6.1 $ $Date: 2006/10/18 03:22:29 $
+
+disp('MessageItem:');
+get(h)
+
+% [EOF]

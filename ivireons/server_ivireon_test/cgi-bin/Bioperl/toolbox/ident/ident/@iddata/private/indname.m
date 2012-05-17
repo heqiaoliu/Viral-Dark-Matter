@@ -1,0 +1,55 @@
+function [ind,newname,newno] = indname(indu,names,type,mode,datnewnam)
+%INDNAME manipulates channel names
+%
+%   [IND,NEWNAME,NEWNO] = INDNAME(Indu,Names,Type,Mode,Datnewnam)
+
+%   Copyright 1986-2001 The MathWorks, Inc.
+%   $Revision: 1.6.4.2 $  $Date: 2008/10/02 18:47:12 $
+
+if nargin<4,mode='disp';end
+if nargin>4
+    if strcmp(type,'Input')
+        sym = 'u';
+    elseif strcmp(type,'Output')
+        sym = 'y';
+    else
+        sym = 'Exp';
+    end
+end
+
+nuinp = length(names);
+kadd = nuinp+1;
+if ischar(indu),indu={indu};end
+indtemp=[];newname=cell(0,1);newno=[];
+for kk=1:length(indu)
+    tf = strmatch(indu{kk},names,'exact');
+    if isempty(tf)
+        if strcmp(mode,'silent')
+            newname = [newname;{indu{kk}}];
+            newno=[newno,kk];
+        elseif strcmp(mode,'disp')
+            disp(['Warning: ',type,' ',indu{kk}, ' not found'])
+        elseif strcmp(mode,'add')
+            tf = kadd;
+            kadd = kadd + 1;
+            newno=[newno,kk];
+        end
+    end
+    indtemp=[indtemp,tf];
+    newn = {indu{kk}};
+    if nargin==5
+        if length(datnewnam)<kk
+            ctrlMsgUtils.error('Ident:iddata:indnameCheck1',type)
+        end
+        tv = datnewnam{kk};
+        if (length(tv)>length(sym) && ...
+                all(tv(1:length(sym))==sym) && abs(abs(tv(length(sym)+1))-53)<5)
+            % do nothing?
+        else
+            newn = {tv};
+        end
+    end
+
+    newname = [newname; newn];
+end
+ind = indtemp;

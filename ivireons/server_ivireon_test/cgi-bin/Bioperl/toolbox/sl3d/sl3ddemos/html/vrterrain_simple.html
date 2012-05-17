@@ -1,0 +1,339 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Terrain Visualization</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="vrterrain_simple.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit vrterrain_simple">Open vrterrain_simple.m in the Editor</a></div><div class="right"><a href="matlab:echodemo vrterrain_simple">Run in the Command Window</a></div></div><div class="content"><h1>Terrain Visualization</h1><!--introduction--><p>This demonstration illustrates the possibility to convert generally available Digital Elevation Models into VRML format for use in virtual reality scenes.</p><p>As a source of terrain data, South San Francisco DEM model included in the Mapping Toolbox&#8482; has been used. A simple pre-created Boeing&reg; 747&reg; model is included in the scene to show the technique of creating virtual scenes from several sources on-the-fly.</p><p>This demo requires Mapping Toolbox.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Reading DEM Data</a></li><li><a href="#2">Data Preparation</a></li><li><a href="#3">Create a Virtual World from the Template</a></li><li><a href="#4">Create Terrain Node Fields (Shape, Appearance, Material)</a></li><li><a href="#5">Create the Terrain Texture</a></li><li><a href="#6">Assign Texture to the VRTerrain Appearance Field</a></li><li><a href="#7">Add the Airplane to the Virtual Scene</a></li><li><a href="#8">Determine the Highest Peak in the Terrain Data</a></li><li><a href="#9">Position the Airplane 200 Meters Above the Peak</a></li><li><a href="#10">Add the Coordinate System Triad to the Virtual Scene</a></li><li><a href="#11">Change the Template File WorldInfo Information</a></li><li><a href="#12">Save the Created World to a New WRL File</a></li><li><a href="#13">Close and Delete the Virtual World Used to Create the Scene</a></li><li><a href="#14">Copy Files Inlined in the Created File to the Current Directory</a></li><li><a href="#15">Open and View the Virtual World File We Have Just Created</a></li><li><a href="#16">Cleanup</a></li></ul></div><h2>Reading DEM Data<a name="1"></a></h2><pre class="codeinput"><span class="comment">% gunzip the South San Francisco DEM file to a temporary directory</span>
+filenames = gunzip(<span class="string">'sanfranciscos.dem.gz'</span>, tempdir);
+demFilename = filenames{1};
+
+<span class="comment">% read every other point of the 1:24,000 DEM file</span>
+[~, ~, Z] = usgs24kdem(demFilename, 1);
+
+<span class="comment">% delete the temporary gunzipped file</span>
+delete(demFilename);
+</pre><h2>Data Preparation<a name="2"></a></h2><p>Manipulation of the data to prepare it for creating virtual world</p><pre class="codeinput">demdata=Z;
+[xdim zdim] = size(demdata);
+xspace = 30; <span class="comment">% scaling in meters for x dimension</span>
+zspace = 30; <span class="comment">% scaling in meters for z dimension</span>
+<span class="comment">% reshape the data into a one-dimensional array</span>
+demdata = demdata(:);
+</pre><h2>Create a Virtual World from the Template<a name="3"></a></h2><pre class="codeinput"><span class="comment">% bring up template</span>
+myworld = vrworld(<span class="string">'vr_template_terrain.wrl'</span>);
+<span class="comment">% open the virtual world</span>
+open(myworld);
+<span class="comment">% create a handle to a node VRTerrain, the node that will contain the DEM data</span>
+Terrain_node = vrnode(myworld,<span class="string">'VRTerrain'</span>);
+</pre><h2>Create Terrain Node Fields (Shape, Appearance, Material)<a name="4"></a></h2><pre class="codeinput"><span class="comment">% create a child of VRTerrain - shape</span>
+newShape = vrnode(Terrain_node, <span class="string">'children'</span>, <span class="string">'Terrain_Shape'</span>, <span class="string">'Shape'</span>);
+<span class="comment">% create appearance field for the shape</span>
+newAppear = vrnode(newShape, <span class="string">'appearance'</span>, <span class="string">'Terrain_Appearance'</span>, <span class="string">'Appearance'</span>);
+<span class="comment">% create material field for the appearance</span>
+newMat = vrnode(newAppear, <span class="string">'material'</span>, <span class="string">'Terrain_Material'</span>,<span class="string">'Material'</span>);
+<span class="comment">% assign properties for the material field</span>
+newMat.ambientIntensity = 0.25;
+newMat.diffuseColor = [0.9 0.6 0.6];
+newMat.shininess = 0.078125;
+newMat.specularColor = [0.0955906 0.0955906 0.0955906];
+<span class="comment">% create geometry field for the shape</span>
+newEGrid = vrnode(newShape, <span class="string">'geometry'</span>, <span class="string">'DEM_EGrid'</span>,<span class="string">'ElevationGrid'</span>);
+<span class="comment">% assign properties for the geometry field - use DEM data</span>
+newEGrid.creaseAngle = 3.14;
+newEGrid.xDimension = xdim;
+newEGrid.zDimension = zdim;
+newEGrid.xSpacing = xspace;
+newEGrid.zSpacing = zspace;
+newEGrid.height = demdata;
+newEGrid.ccw = <span class="string">'TRUE'</span>;
+<span class="comment">% This setting will make the terrain surface visible from both sides</span>
+newEGrid.solid = <span class="string">'FALSE'</span>;
+</pre><h2>Create the Terrain Texture<a name="5"></a></h2><p>For coloring the terrain texture we will use the DEMCMAP function available in Mapping Toolbox.</p><pre class="codeinput"><span class="comment">% terrain elevation is used to color the image</span>
+cmap = demcmap(Z, 256);
+
+<span class="comment">% create texture subdirectory of the current directory</span>
+<span class="comment">% output arguments used only to avoid warning message when the directory</span>
+<span class="comment">% already exists</span>
+[~, ~] = mkdir(<span class="string">'texture'</span>);
+
+<span class="comment">% scale the height values to use the full colormap range</span>
+<span class="comment">% scaling relies on the fact that this terrain begins at zero height</span>
+Zscaled = Z .* (size(cmap,1)-1) ./ max(Z(:));
+
+<span class="comment">% save the texture into PNG image in the texture subdirectory</span>
+<span class="comment">% rotate the image left to match image orientation needed in VRML model</span>
+<span class="comment">% elements of Zscaled represent indices into cmap</span>
+imwrite(rot90(Zscaled), cmap, <span class="string">'texture/sanfrancisco_elev.png'</span>);
+</pre><h2>Assign Texture to the VRTerrain Appearance Field<a name="6"></a></h2><p>Texture image file is created by the code above, here it is included in the VRML scene, as a texture field of the terrain Appearance node:</p><pre class="codeinput">newTexture = vrnode(newAppear, <span class="string">'texture'</span>, <span class="string">'Terrain_texture'</span>,<span class="string">'ImageTexture'</span>);
+newTexture.url = <span class="string">'texture/sanfrancisco_elev.png'</span>;
+</pre><h2>Add the Airplane to the Virtual Scene<a name="7"></a></h2><pre class="codeinput"><span class="comment">% create a new Transform node, called "Boeing"</span>
+plane = vrnode(myworld, <span class="string">'Boeing'</span>, <span class="string">'Transform'</span>);
+plane_inline = vrnode(plane, <span class="string">'children'</span>, <span class="string">'Boeing_Inline'</span>, <span class="string">'Inline'</span>);
+<span class="comment">% a simple model of Boeing is prepared in the /vrdemos directory</span>
+plane_inline.url=<span class="string">'b747.wrl'</span>;
+</pre><h2>Determine the Highest Peak in the Terrain Data<a name="8"></a></h2><pre class="codeinput">ypeak = max(Z(:));
+[xmax zmax] = find(Z==ypeak);
+<span class="comment">% use the first peak, if more vertices have the same maximum height</span>
+<span class="comment">% convert matrix indices to meters in x and z directions in VRML</span>
+xpeak=xspace*(xmax(1)-1);
+zpeak=zspace*(zmax(1)-1);
+</pre><h2>Position the Airplane 200 Meters Above the Peak<a name="9"></a></h2><pre class="codeinput">plane.translation = [xpeak ypeak+200 zpeak];
+<span class="comment">% scale the size of the airplane by a factor of 20, so that it</span>
+<span class="comment">% is visible in the virtual scene without any extra zooming</span>
+plane.scale = [20 20 20];
+</pre><h2>Add the Coordinate System Triad to the Virtual Scene<a name="10"></a></h2><p>It is sometimes useful to temporarily include in the scene a triad that can help with the orientation of objects added to the scene. In the /vrdemos directory, there is a "triad.wrl" file for this purpose, that you can inline in your model.</p><p>The triad consists of 3 lines (1 meter long) running from one vertex along the x, y and z directions. The lines are coloured as follows: +x - red +y - green +z - blue</p><p>If the triad is included in the scene at the top level of the scene hierarchy, it denotes the global scene coordinates. If it is included as a child of a transform node, it denotes the local coordinate system (orientation) of that node in the scene.</p><pre class="codeinput"><span class="comment">% add the triad to the scene at the top level of the hierarchy</span>
+triad = vrnode(myworld, <span class="string">'Triad1'</span>, <span class="string">'Transform'</span>);
+triad_inline = vrnode(triad, <span class="string">'children'</span>, <span class="string">'Triad_Inline'</span>, <span class="string">'Inline'</span>);
+triad_inline.url=<span class="string">'triad.wrl'</span>;
+<span class="comment">% scale the size of the triad so that it is visible</span>
+<span class="comment">% in the virtual scene without any extra zooming</span>
+triad.scale = [xdim*xspace/8 min(xdim*xspace/8, zdim*zspace/8) zdim*zspace/8];
+<span class="comment">% position the triad at the center of Boeing 747</span>
+triad.translation=[xpeak ypeak+200 zpeak];
+</pre><h2>Change the Template File WorldInfo Information<a name="11"></a></h2><p>Change the title of the scene to reflect the changes we made</p><pre class="codeinput">myworld.World_Info.title = <span class="string">'B747 Flying over the San Francisco Area'</span>;
+</pre><h2>Save the Created World to a New WRL File<a name="12"></a></h2><pre class="codeinput">save (myworld, <span class="string">'vrterrain_sanfrancisco.wrl'</span>);
+</pre><h2>Close and Delete the Virtual World Used to Create the Scene<a name="13"></a></h2><pre class="codeinput">close(myworld);
+delete(myworld);
+</pre><h2>Copy Files Inlined in the Created File to the Current Directory<a name="14"></a></h2><p>Inlined models are in the vrdemos directory.</p><p>Because files are inlined using relative path, we must copy them to the same directory where the newly created scene file exists.</p><p>If you copy the terrain model to a different location, don't forget to copy also these files, as well as texture file(s) to be found in the texture subdirectory.</p><pre class="codeinput"><span class="comment">% copy triad.wrl and b747.wrl from /vrdemos to the current directory</span>
+pt = fileparts(which(<span class="string">'vrterrain_simple.m'</span>));
+copyfile(fullfile(pt, <span class="string">'triad.wrl'</span>), pwd, <span class="string">'f'</span>);
+copyfile(fullfile(pt, <span class="string">'b747.wrl'</span>), pwd, <span class="string">'f'</span>);
+</pre><h2>Open and View the Virtual World File We Have Just Created<a name="15"></a></h2><p>There are several alternatives how to open a virtual scene file:</p><pre class="codeinput"><span class="comment">% This is how to open a VRML file in the external viewer:</span>
+<span class="comment">% vrview('terrain.wrl', '-web');</span>
+
+<span class="comment">% This is how to open a VRML file in the internal viewer:</span>
+<span class="comment">% vrview('terrain.wrl', '-internal');</span>
+
+<span class="comment">% This is how to open the VRML file in the default viewer:</span>
+createdworld = vrview(<span class="string">'vrterrain_sanfrancisco.wrl'</span>);
+<span class="comment">% Set Antialiasing on to smooth the terrain texture</span>
+myfig = get(createdworld,<span class="string">'Figures'</span>);
+set(myfig, <span class="string">'Antialiasing'</span>, <span class="string">'on'</span>);
+</pre><img vspace="5" hspace="5" src="vrterrain_simple_01.png" alt=""> <h2>Cleanup<a name="16"></a></h2><p>This demonstration example created a new virtual model in the working directory.</p><p>The newly created virtual scene is left open so that you can explore it.</p><pre class="codeinput"><span class="comment">% clear all used variables</span>
+clear <span class="string">Terrain_node</span> <span class="string">Z</span> <span class="string">Zscaled</span> <span class="string">cmap</span> <span class="string">createdworld</span> <span class="string">demFilename</span> <span class="string">demdata</span> <span class="string">ex</span> <span class="string">filenames</span> <span class="keyword">...</span>
+  <span class="string">id</span> <span class="string">lat</span> <span class="string">lon</span> <span class="string">mess</span> <span class="string">myfig</span> <span class="string">myworld</span> <span class="string">newAppear</span> <span class="string">newEGrid</span> <span class="keyword">...</span>
+  <span class="string">newMat</span> <span class="string">newShape</span> <span class="string">newTexture</span> <span class="string">nm</span> <span class="string">ok</span> <span class="string">plane</span> <span class="string">plane_inline</span> <span class="string">pt</span> <span class="string">triad</span> <span class="keyword">...</span>
+  <span class="string">triad_inline</span> <span class="string">ve</span> <span class="string">xdim</span> <span class="string">xmax</span> <span class="string">xpeak</span> <span class="string">xspace</span> <span class="string">ypeak</span> <span class="string">zdim</span> <span class="string">zmax</span> <span class="string">zpeak</span> <span class="string">zspace</span>
+</pre><p class="footer">Copyright 1998-2009 HUMUSOFT s.r.o. and The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Terrain Visualization
+% This demonstration illustrates the possibility to convert generally
+% available Digital Elevation Models into VRML format for use in virtual 
+% reality scenes.
+%
+% As a source of terrain data, South San Francisco DEM model included in
+% the Mapping Toolbox(TM) has been used. A simple pre-created Boeing(R) 747(R) model 
+% is included in the scene to show the technique of creating virtual scenes
+% from several sources on-the-fly.
+%
+% This demo requires Mapping Toolbox.
+
+% Copyright 1998-2009 HUMUSOFT s.r.o. and The MathWorks, Inc.
+% $Revision: 1.1.6.3 $ $Date: 2009/05/07 18:29:58 $ $Author: batserve $
+
+%% Reading DEM Data
+
+% gunzip the South San Francisco DEM file to a temporary directory
+filenames = gunzip('sanfranciscos.dem.gz', tempdir);
+demFilename = filenames{1};
+
+% read every other point of the 1:24,000 DEM file
+[~, ~, Z] = usgs24kdem(demFilename, 1);
+
+% delete the temporary gunzipped file
+delete(demFilename);
+
+%% Data Preparation 
+%
+% Manipulation of the data to prepare it for creating virtual world
+demdata=Z;
+[xdim zdim] = size(demdata);
+xspace = 30; % scaling in meters for x dimension
+zspace = 30; % scaling in meters for z dimension
+% reshape the data into a one-dimensional array
+demdata = demdata(:); 
+
+%% Create a Virtual World from the Template
+
+% bring up template
+myworld = vrworld('vr_template_terrain.wrl'); 
+% open the virtual world
+open(myworld); 
+% create a handle to a node VRTerrain, the node that will contain the DEM data
+Terrain_node = vrnode(myworld,'VRTerrain'); 
+
+%% Create Terrain Node Fields (Shape, Appearance, Material)
+
+% create a child of VRTerrain - shape
+newShape = vrnode(Terrain_node, 'children', 'Terrain_Shape', 'Shape');   
+% create appearance field for the shape
+newAppear = vrnode(newShape, 'appearance', 'Terrain_Appearance', 'Appearance'); 
+% create material field for the appearance
+newMat = vrnode(newAppear, 'material', 'Terrain_Material','Material'); 
+% assign properties for the material field
+newMat.ambientIntensity = 0.25;
+newMat.diffuseColor = [0.9 0.6 0.6];
+newMat.shininess = 0.078125;
+newMat.specularColor = [0.0955906 0.0955906 0.0955906];            
+% create geometry field for the shape
+newEGrid = vrnode(newShape, 'geometry', 'DEM_EGrid','ElevationGrid');
+% assign properties for the geometry field - use DEM data
+newEGrid.creaseAngle = 3.14;
+newEGrid.xDimension = xdim;
+newEGrid.zDimension = zdim;
+newEGrid.xSpacing = xspace;
+newEGrid.zSpacing = zspace;
+newEGrid.height = demdata;
+newEGrid.ccw = 'TRUE';
+% This setting will make the terrain surface visible from both sides
+newEGrid.solid = 'FALSE';
+
+%% Create the Terrain Texture
+%
+% For coloring the terrain texture we will use the DEMCMAP function 
+% available in Mapping Toolbox.
+
+% terrain elevation is used to color the image
+cmap = demcmap(Z, 256);
+
+% create texture subdirectory of the current directory
+% output arguments used only to avoid warning message when the directory
+% already exists
+[~, ~] = mkdir('texture');
+
+% scale the height values to use the full colormap range
+% scaling relies on the fact that this terrain begins at zero height
+Zscaled = Z .* (size(cmap,1)-1) ./ max(Z(:));
+
+% save the texture into PNG image in the texture subdirectory 
+% rotate the image left to match image orientation needed in VRML model
+% elements of Zscaled represent indices into cmap
+imwrite(rot90(Zscaled), cmap, 'texture/sanfrancisco_elev.png'); 
+
+%% Assign Texture to the VRTerrain Appearance Field
+%
+% Texture image file is created by the code above, here it is included
+% in the VRML scene, as a texture field of the terrain Appearance node:
+
+newTexture = vrnode(newAppear, 'texture', 'Terrain_texture','ImageTexture'); 
+newTexture.url = 'texture/sanfrancisco_elev.png';
+
+%% Add the Airplane to the Virtual Scene
+
+% create a new Transform node, called "Boeing"
+plane = vrnode(myworld, 'Boeing', 'Transform');
+plane_inline = vrnode(plane, 'children', 'Boeing_Inline', 'Inline');
+% a simple model of Boeing is prepared in the /vrdemos directory
+plane_inline.url='b747.wrl';
+
+%% Determine the Highest Peak in the Terrain Data
+
+ypeak = max(Z(:));
+[xmax zmax] = find(Z==ypeak);
+% use the first peak, if more vertices have the same maximum height
+% convert matrix indices to meters in x and z directions in VRML
+xpeak=xspace*(xmax(1)-1);
+zpeak=zspace*(zmax(1)-1);
+
+%% Position the Airplane 200 Meters Above the Peak
+
+plane.translation = [xpeak ypeak+200 zpeak];
+% scale the size of the airplane by a factor of 20, so that it
+% is visible in the virtual scene without any extra zooming
+plane.scale = [20 20 20]; 
+
+%% Add the Coordinate System Triad to the Virtual Scene
+%
+% It is sometimes useful to temporarily include in the scene a triad
+% that can help with the orientation of objects added to the scene.
+% In the /vrdemos directory, there is a "triad.wrl" file for this purpose,
+% that you can inline in your model.
+% 
+% The triad consists of 3 lines (1 meter long) running from one vertex 
+% along the x, y and z directions. The lines are coloured as follows:
+% +x - red
+% +y - green
+% +z - blue
+% 
+% If the triad is included in the scene at the top level of the scene
+% hierarchy, it denotes the global scene coordinates. 
+% If it is included as a child of a transform node, it denotes the local
+% coordinate system (orientation) of that node in the scene.
+
+% add the triad to the scene at the top level of the hierarchy
+triad = vrnode(myworld, 'Triad1', 'Transform');
+triad_inline = vrnode(triad, 'children', 'Triad_Inline', 'Inline');
+triad_inline.url='triad.wrl';
+% scale the size of the triad so that it is visible 
+% in the virtual scene without any extra zooming
+triad.scale = [xdim*xspace/8 min(xdim*xspace/8, zdim*zspace/8) zdim*zspace/8]; 
+% position the triad at the center of Boeing 747
+triad.translation=[xpeak ypeak+200 zpeak];
+
+%% Change the Template File WorldInfo Information
+%
+% Change the title of the scene to reflect the changes we made
+
+myworld.World_Info.title = 'B747 Flying over the San Francisco Area';
+
+%% Save the Created World to a New WRL File
+
+save (myworld, 'vrterrain_sanfrancisco.wrl');
+
+%% Close and Delete the Virtual World Used to Create the Scene
+
+close(myworld);
+delete(myworld);
+
+%% Copy Files Inlined in the Created File to the Current Directory
+%
+% Inlined models are in the vrdemos directory.
+%
+% Because files are inlined using relative path, we must copy them to the 
+% same directory where the newly created scene file exists. 
+%
+% If you copy the terrain model to a different location, don't forget to
+% copy also these files, as well as texture file(s) to be found in the
+% texture subdirectory.
+
+% copy triad.wrl and b747.wrl from /vrdemos to the current directory
+pt = fileparts(which('vrterrain_simple.m'));
+copyfile(fullfile(pt, 'triad.wrl'), pwd, 'f');
+copyfile(fullfile(pt, 'b747.wrl'), pwd, 'f');
+
+%% Open and View the Virtual World File We Have Just Created
+%
+% There are several alternatives how to open a virtual scene file:
+
+% This is how to open a VRML file in the external viewer:
+% vrview('terrain.wrl', '-web');
+
+% This is how to open a VRML file in the internal viewer:
+% vrview('terrain.wrl', '-internal');
+
+% This is how to open the VRML file in the default viewer:
+createdworld = vrview('vrterrain_sanfrancisco.wrl');
+% Set Antialiasing on to smooth the terrain texture 
+myfig = get(createdworld,'Figures');
+set(myfig, 'Antialiasing', 'on');
+
+%% Cleanup
+%
+% This demonstration example created a new virtual model in the working
+% directory. 
+%
+% The newly created virtual scene is left open so that you can explore it. 
+
+% clear all used variables
+clear Terrain_node Z Zscaled cmap createdworld demFilename demdata ex filenames ...
+  id lat lon mess myfig myworld newAppear newEGrid ...
+  newMat newShape newTexture nm ok plane plane_inline pt triad ...
+  triad_inline ve xdim xmax xpeak xspace ypeak zdim zmax zpeak zspace
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

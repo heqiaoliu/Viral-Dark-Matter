@@ -1,0 +1,191 @@
+<HTML>
+<HEAD>
+<TITLE>RTW Report - rt_nonfinite.c </TITLE>
+<STYLE> .LineNumber { font-style: italic; color: #888888 } </STYLE>
+<STYLE> .Comment { font-style: italic; color: #117755 } </STYLE>
+<STYLE> .PreProcessor { font-style: bold;   color: #992211 } </STYLE>
+<STYLE> .Keyword { font-style: bold;   color: #112266 } </STYLE>
+<STYLE> .Datatype { font-style: bold;   color: #112266 } </STYLE>
+</HEAD>
+<BODY BGCOLOR="#eeeeee" TEXT=#1122aa>
+<P>
+<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="6" WIDTH="100%" HEIGHT="100%"><TR><TD WIDTH="100%" VALIGN="top" BGCOLOR="#ffffff">
+<PRE>
+<SPAN class="LineNumber">    1   </SPAN><SPAN class="Comment">/*
+<SPAN class="LineNumber">    2   </SPAN> * rt_nonfinite.c
+<SPAN class="LineNumber">    3   </SPAN> *
+<SPAN class="LineNumber">    4   </SPAN> * Real-Time Workshop code generation for Simulink model &quot;fi_mdl_radix2fft_withscaling.mdl&quot;.
+<SPAN class="LineNumber">    5   </SPAN> *
+<SPAN class="LineNumber">    6   </SPAN> * Model Version              : 1.12
+<SPAN class="LineNumber">    7   </SPAN> * Real-Time Workshop version : 6.1  (R14SP2)  01-Nov-2004
+<SPAN class="LineNumber">    8   </SPAN> * C source code generated on : Tue Dec  7 16:22:22 2004
+<SPAN class="LineNumber">    9   </SPAN> *
+<SPAN class="LineNumber">   10   </SPAN> */</SPAN>
+<SPAN class="LineNumber">   11   </SPAN>
+<SPAN class="LineNumber">   12   </SPAN><SPAN class="Comment">/*
+<SPAN class="LineNumber">   13   </SPAN> * Abstract:
+<SPAN class="LineNumber">   14   </SPAN> *      Real-Time Workshop function to initialize non-finites,
+<SPAN class="LineNumber">   15   </SPAN> *      (Inf, NaN and -Inf).
+<SPAN class="LineNumber">   16   </SPAN> */</SPAN>
+<SPAN class="LineNumber">   17   </SPAN><FONT COLOR=#992211>#</FONT><SPAN class="PreProcessor">include</SPAN> <FONT COLOR=#992211>&quot;rt_nonfinite.h&quot;</FONT>
+<SPAN class="LineNumber">   18   </SPAN>
+<SPAN class="LineNumber">   19   </SPAN>real_T <A NAME=var_rtInf>rtInf</A>;
+<SPAN class="LineNumber">   20   </SPAN>real_T <A NAME=var_rtMinusInf>rtMinusInf</A>;
+<SPAN class="LineNumber">   21   </SPAN>real_T <A NAME=var_rtNaN>rtNaN</A>;
+<SPAN class="LineNumber">   22   </SPAN>
+<SPAN class="LineNumber">   23   </SPAN>real32_T rtInfF;
+<SPAN class="LineNumber">   24   </SPAN>real32_T rtMinusInfF;
+<SPAN class="LineNumber">   25   </SPAN>real32_T rtNaNF;
+<SPAN class="LineNumber">   26   </SPAN>
+<SPAN class="LineNumber">   27   </SPAN><SPAN class="Comment">/* Function: rt_InitInfAndNaN ==================================================
+<SPAN class="LineNumber">   28   </SPAN> * Abstract:
+<SPAN class="LineNumber">   29   </SPAN> *	Initialize the rtInf, rtMinusInf, and rtNaN needed by the
+<SPAN class="LineNumber">   30   </SPAN> *	generated code. NaN is initialized as non-signaling. Assumes IEEE.
+<SPAN class="LineNumber">   31   </SPAN> */</SPAN>
+<SPAN class="LineNumber">   32   </SPAN><SPAN class="Datatype">void</SPAN> <A NAME=fcn_rt_InitInfAndNaN>rt_InitInfAndNaN</A>(int_T realSize) <B>{</B>
+<SPAN class="LineNumber">   33   </SPAN>  <SPAN class="Datatype">short</SPAN> one = 1;
+<SPAN class="LineNumber">   34   </SPAN>  <SPAN class="Keyword">enum</SPAN> <B>{</B>
+<SPAN class="LineNumber">   35   </SPAN>    LittleEndian,
+<SPAN class="LineNumber">   36   </SPAN>    BigEndian
+<SPAN class="LineNumber">   37   </SPAN>  <B>}</B> machByteOrder = (*((<SPAN class="Datatype">char</SPAN> *) &amp;one) == 1) ? LittleEndian : BigEndian;
+<SPAN class="LineNumber">   38   </SPAN>
+<SPAN class="LineNumber">   39   </SPAN>  <SPAN class="Keyword">switch</SPAN> (machByteOrder) <B>{</B>
+<SPAN class="LineNumber">   40   </SPAN>    <SPAN class="Keyword">case</SPAN> LittleEndian: <B>{</B>
+<SPAN class="LineNumber">   41   </SPAN>      <SPAN class="Keyword">typedef</SPAN> <SPAN class="Keyword">struct</SPAN> <B>{</B>
+<SPAN class="LineNumber">   42   </SPAN>        uint32_T fraction : 23;
+<SPAN class="LineNumber">   43   </SPAN>        uint32_T exponent : 8;
+<SPAN class="LineNumber">   44   </SPAN>        uint32_T sign : 1;
+<SPAN class="LineNumber">   45   </SPAN>      <B>}</B> <A NAME=type_LittleEndianIEEESingle>LittleEndianIEEESingle</A>;
+<SPAN class="LineNumber">   46   </SPAN>
+<SPAN class="LineNumber">   47   </SPAN>      <SPAN class="Keyword">typedef</SPAN> <SPAN class="Keyword">struct</SPAN> <B>{</B>
+<SPAN class="LineNumber">   48   </SPAN>        <SPAN class="Keyword">struct</SPAN> <B>{</B>
+<SPAN class="LineNumber">   49   </SPAN>          uint32_T fraction2;
+<SPAN class="LineNumber">   50   </SPAN>        <B>}</B> wordH;
+<SPAN class="LineNumber">   51   </SPAN>        <SPAN class="Keyword">struct</SPAN> <B>{</B>
+<SPAN class="LineNumber">   52   </SPAN>          uint32_T fraction1 : 20;
+<SPAN class="LineNumber">   53   </SPAN>          uint32_T exponent : 11;
+<SPAN class="LineNumber">   54   </SPAN>          uint32_T sign : 1;
+<SPAN class="LineNumber">   55   </SPAN>        <B>}</B> wordL;
+<SPAN class="LineNumber">   56   </SPAN>      <B>}</B> <A NAME=type_LittleEndianIEEEDouble>LittleEndianIEEEDouble</A>;
+<SPAN class="LineNumber">   57   </SPAN>
+<SPAN class="LineNumber">   58   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;rtInfF).sign = 0;
+<SPAN class="LineNumber">   59   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;rtInfF).exponent = 0xFF;
+<SPAN class="LineNumber">   60   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;rtInfF).fraction = 0;
+<SPAN class="LineNumber">   61   </SPAN>      rtMinusInfF = rtInfF;
+<SPAN class="LineNumber">   62   </SPAN>      rtNaNF = rtInfF;
+<SPAN class="LineNumber">   63   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;rtMinusInfF).sign = 1;
+<SPAN class="LineNumber">   64   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;rtNaNF).fraction = 0x7FFFFF;
+<SPAN class="LineNumber">   65   </SPAN>
+<SPAN class="LineNumber">   66   </SPAN>      <SPAN class="Keyword">if</SPAN> (realSize == 4) <B>{</B>
+<SPAN class="LineNumber">   67   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).sign = 0;
+<SPAN class="LineNumber">   68   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).exponent = 0xFF;
+<SPAN class="LineNumber">   69   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).fraction = 0;
+<SPAN class="LineNumber">   70   </SPAN>        <A HREF=rt_nonfinite_c.html#var_rtMinusInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtMinusInf</FONT></A> = <A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>;
+<SPAN class="LineNumber">   71   </SPAN>        <A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A> = <A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>;
+<SPAN class="LineNumber">   72   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtMinusInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtMinusInf</FONT></A>).sign = 1;
+<SPAN class="LineNumber">   73   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).fraction = 0x7FFFFF;
+<SPAN class="LineNumber">   74   </SPAN>      <B>}</B> <SPAN class="Keyword">else</SPAN> <B>{</B>
+<SPAN class="LineNumber">   75   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).wordL.sign = 0;
+<SPAN class="LineNumber">   76   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).wordL.exponent = 0x7FF;
+<SPAN class="LineNumber">   77   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).wordL.fraction1 = 0;
+<SPAN class="LineNumber">   78   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).wordH.fraction2 = 0;
+<SPAN class="LineNumber">   79   </SPAN>
+<SPAN class="LineNumber">   80   </SPAN>        <A HREF=rt_nonfinite_c.html#var_rtMinusInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtMinusInf</FONT></A> = <A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>;
+<SPAN class="LineNumber">   81   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtMinusInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtMinusInf</FONT></A>).wordL.sign = 1;
+<SPAN class="LineNumber">   82   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).wordL.sign = 0;
+<SPAN class="LineNumber">   83   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).wordL.exponent = 0x7FF;
+<SPAN class="LineNumber">   84   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).wordL.fraction1 = 0xFFFFF;
+<SPAN class="LineNumber">   85   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_LittleEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">LittleEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).wordH.fraction2 = 0xFFFFFFFF;
+<SPAN class="LineNumber">   86   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">   87   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">   88   </SPAN>    <SPAN class="Keyword">break</SPAN>;
+<SPAN class="LineNumber">   89   </SPAN>    <SPAN class="Keyword">case</SPAN> BigEndian: <B>{</B>
+<SPAN class="LineNumber">   90   </SPAN>      <SPAN class="Keyword">typedef</SPAN> <SPAN class="Keyword">struct</SPAN> <B>{</B>
+<SPAN class="LineNumber">   91   </SPAN>        uint32_T sign : 1;
+<SPAN class="LineNumber">   92   </SPAN>        uint32_T exponent : 8;
+<SPAN class="LineNumber">   93   </SPAN>        uint32_T fraction : 23;
+<SPAN class="LineNumber">   94   </SPAN>      <B>}</B> <A NAME=type_BigEndianIEEESingle>BigEndianIEEESingle</A>;
+<SPAN class="LineNumber">   95   </SPAN>
+<SPAN class="LineNumber">   96   </SPAN>      <SPAN class="Keyword">typedef</SPAN> <SPAN class="Keyword">struct</SPAN> <B>{</B>
+<SPAN class="LineNumber">   97   </SPAN>        <SPAN class="Keyword">struct</SPAN> <B>{</B>
+<SPAN class="LineNumber">   98   </SPAN>          uint32_T sign : 1;
+<SPAN class="LineNumber">   99   </SPAN>          uint32_T exponent : 11;
+<SPAN class="LineNumber">  100   </SPAN>          uint32_T fraction1 : 20;
+<SPAN class="LineNumber">  101   </SPAN>        <B>}</B> wordL;
+<SPAN class="LineNumber">  102   </SPAN>        <SPAN class="Keyword">struct</SPAN> <B>{</B>
+<SPAN class="LineNumber">  103   </SPAN>          uint32_T fraction2;
+<SPAN class="LineNumber">  104   </SPAN>        <B>}</B> wordH;
+<SPAN class="LineNumber">  105   </SPAN>      <B>}</B> <A NAME=type_BigEndianIEEEDouble>BigEndianIEEEDouble</A>;
+<SPAN class="LineNumber">  106   </SPAN>
+<SPAN class="LineNumber">  107   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;rtInfF).sign = 0;
+<SPAN class="LineNumber">  108   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;rtInfF).exponent = 0xFF;
+<SPAN class="LineNumber">  109   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;rtInfF).fraction = 0;
+<SPAN class="LineNumber">  110   </SPAN>      rtMinusInfF = rtInfF;
+<SPAN class="LineNumber">  111   </SPAN>      rtNaNF = rtInfF;
+<SPAN class="LineNumber">  112   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;rtMinusInfF).sign = 1;
+<SPAN class="LineNumber">  113   </SPAN>      (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;rtNaNF).fraction = 0x7FFFFF;
+<SPAN class="LineNumber">  114   </SPAN>
+<SPAN class="LineNumber">  115   </SPAN>      <SPAN class="Keyword">if</SPAN> (realSize == 4) <B>{</B>
+<SPAN class="LineNumber">  116   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).sign = 0;
+<SPAN class="LineNumber">  117   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).exponent = 0xFF;
+<SPAN class="LineNumber">  118   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).fraction = 0;
+<SPAN class="LineNumber">  119   </SPAN>        <A HREF=rt_nonfinite_c.html#var_rtMinusInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtMinusInf</FONT></A> = <A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>;
+<SPAN class="LineNumber">  120   </SPAN>        <A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A> = <A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>;
+<SPAN class="LineNumber">  121   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtMinusInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtMinusInf</FONT></A>).sign = 1;
+<SPAN class="LineNumber">  122   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEESingle TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEESingle</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).fraction = 0x7FFFFF;
+<SPAN class="LineNumber">  123   </SPAN>      <B>}</B> <SPAN class="Keyword">else</SPAN> <B>{</B>
+<SPAN class="LineNumber">  124   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).wordL.sign = 0;
+<SPAN class="LineNumber">  125   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).wordL.exponent = 0x7FF;
+<SPAN class="LineNumber">  126   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).wordL.fraction1 = 0;
+<SPAN class="LineNumber">  127   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>).wordH.fraction2 = 0;
+<SPAN class="LineNumber">  128   </SPAN>
+<SPAN class="LineNumber">  129   </SPAN>        <A HREF=rt_nonfinite_c.html#var_rtMinusInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtMinusInf</FONT></A> = <A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A>;
+<SPAN class="LineNumber">  130   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtMinusInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtMinusInf</FONT></A>).wordL.sign = 1;
+<SPAN class="LineNumber">  131   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).wordL.sign = 0;
+<SPAN class="LineNumber">  132   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).wordL.exponent = 0x7FF;
+<SPAN class="LineNumber">  133   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).wordL.fraction1 = 0xFFFFF;
+<SPAN class="LineNumber">  134   </SPAN>        (*(<A HREF=rt_nonfinite_c.html#type_BigEndianIEEEDouble TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">BigEndianIEEEDouble</FONT></A>*)&amp;<A HREF=rt_nonfinite_c.html#var_rtNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtNaN</FONT></A>).wordH.fraction2 = 0xFFFFFFFF;
+<SPAN class="LineNumber">  135   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">  136   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">  137   </SPAN>    <SPAN class="Keyword">break</SPAN>;
+<SPAN class="LineNumber">  138   </SPAN>  <B>}</B>
+<SPAN class="LineNumber">  139   </SPAN><B>}</B>
+<SPAN class="LineNumber">  140   </SPAN>
+<SPAN class="LineNumber">  141   </SPAN><SPAN class="Comment">/* Function: rtIsInf ==================================================
+<SPAN class="LineNumber">  142   </SPAN> * Abstract:
+<SPAN class="LineNumber">  143   </SPAN> *	Test if value is infinite
+<SPAN class="LineNumber">  144   </SPAN> */</SPAN>
+<SPAN class="LineNumber">  145   </SPAN>boolean_T rtIsInf(real_T <A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>) <B>{</B>
+<SPAN class="LineNumber">  146   </SPAN>  <SPAN class="Keyword">return</SPAN>(<A NAME=var_value>value</A>==<A HREF=rt_nonfinite_c.html#var_rtInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtInf</FONT></A> || <A NAME=var_value>value</A>==<A HREF=rt_nonfinite_c.html#var_rtMinusInf TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtMinusInf</FONT></A>);
+<SPAN class="LineNumber">  147   </SPAN><B>}</B>
+<SPAN class="LineNumber">  148   </SPAN>
+<SPAN class="LineNumber">  149   </SPAN><SPAN class="Comment">/* Function: rtIsInfF =================================================
+<SPAN class="LineNumber">  150   </SPAN> * Abstract:
+<SPAN class="LineNumber">  151   </SPAN> *	Test if single-precision value is infinite
+<SPAN class="LineNumber">  152   </SPAN> */</SPAN>
+<SPAN class="LineNumber">  153   </SPAN>boolean_T rtIsInfF(real32_T <A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>) <B>{</B>
+<SPAN class="LineNumber">  154   </SPAN>  <SPAN class="Keyword">return</SPAN>((<A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>)==rtInfF || (<A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>)==rtMinusInfF);
+<SPAN class="LineNumber">  155   </SPAN><B>}</B>
+<SPAN class="LineNumber">  156   </SPAN>
+<SPAN class="LineNumber">  157   </SPAN><SPAN class="Comment">/* Function: rtIsNaN ==================================================
+<SPAN class="LineNumber">  158   </SPAN> * Abstract:
+<SPAN class="LineNumber">  159   </SPAN> *	Test if value is not a number
+<SPAN class="LineNumber">  160   </SPAN> */</SPAN>
+<SPAN class="LineNumber">  161   </SPAN>boolean_T rtIsNaN(real_T <A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>) <B>{</B>
+<SPAN class="LineNumber">  162   </SPAN>  <SPAN class="Keyword">return</SPAN>(<A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>!=<A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>);
+<SPAN class="LineNumber">  163   </SPAN><B>}</B>
+<SPAN class="LineNumber">  164   </SPAN>
+<SPAN class="LineNumber">  165   </SPAN><SPAN class="Comment">/* Function: rtIsNaNF =================================================
+<SPAN class="LineNumber">  166   </SPAN> * Abstract:
+<SPAN class="LineNumber">  167   </SPAN> *	Test if single-precision value is not a number
+<SPAN class="LineNumber">  168   </SPAN> */</SPAN>
+<SPAN class="LineNumber">  169   </SPAN>boolean_T rtIsNaNF(real32_T <A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>) <B>{</B>
+<SPAN class="LineNumber">  170   </SPAN>  <SPAN class="Keyword">return</SPAN>(<A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>!=<A HREF=rt_nonfinite_c.html#var_value TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">value</FONT></A>);
+<SPAN class="LineNumber">  171   </SPAN><B>}</B>
+<SPAN class="LineNumber">  172   </SPAN>
+<SPAN class="LineNumber">  173   </SPAN><SPAN class="Comment">/* end rt_nonfinite.c */</SPAN>
+</PRE>
+</TD></TR></TABLE>
+<P>
+</BODY>
+</HTML>

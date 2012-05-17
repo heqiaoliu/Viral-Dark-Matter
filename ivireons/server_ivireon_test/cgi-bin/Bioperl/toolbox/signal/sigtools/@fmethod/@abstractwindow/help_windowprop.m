@@ -1,0 +1,19 @@
+function help_windowprop(this)
+%HELP_WINDOWPROP   
+
+%   Author(s): J. Schickler
+%   Copyright 2005 The MathWorks, Inc.
+%   $Revision: 1.1.6.1 $  $Date: 2005/06/30 17:37:25 $
+
+scale_str = sprintf('%s\n%s\n%s\n%s\n%s\n%s', ...
+    '    HD = DESIGN(..., ''Window'', WIN) uses the value in WIN to window the', ...
+    '    impulse response.  WIN can be a vector of length N+1, where N is the', ...
+    '    filter order, a string or function handle which specifies the function', ...
+    '    which will be used to generate the window.  This function must take N+1', ...
+    '    as its first input.  Additional inputs can be passed by specifying a', ...
+    '    cell array.  WIN is @hamming by default.');
+
+disp(scale_str);
+disp(' ');
+
+% [EOF]

@@ -1,0 +1,70 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   <!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>機体の定常化と線形化</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="aero_guidance_trimlinearize.m"><link rel="stylesheet" type="text/css" href="../../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit aero_guidance_trimlinearize">エディターで aero_guidance_trimlinearize.m を開く</a></div><div class="right"><a href="matlab:echodemo aero_guidance_trimlinearize">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>機体の定常化と線形化</h1><!--introduction--><p>Simulink&reg; Control Design™ の使用による機体の定常化と線形化</p><p>標準的な設計手法で自動操縦を設計するには、定常化した多くの飛行条件に対する機体のピッチのダイナミクスの線形モデルが必要です。 MATLAB&reg; では、定常化条件を決定し、線形状態空間モデルを非線形 Simulink&reg; および Aerospace Blockset™ モデルから直接導き出すことができます。 時間を節約でき、モデルの検証にも役立ちます。 Simulink Control Design で提供されている関数を使用することにより、機体の動作を開ループ周波数 (または時間) 応答の観点から可視化できます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">誘導モデルの初期化</a></li><li><a href="#2">状態値の定義</a></li><li><a href="#3">操作点と状態仕様の設定</a></li><li><a href="#4">操作点の検索、I/O の設定、線形化</a></li><li><a href="#5">定常化した状態の選択、LTI オブジェクトの作成、ボード線図のプロット</a></li></ul></div><h2>誘導モデルの初期化<a name="1"></a></h2><p>最初の問題は、昇降舵の偏差と、結果として得られる定常化した本体比 (q) を見つけることです。これにより、ミサイルが設定速度で飛行しているときの所定の入射角値が生成されます。 定常化条件が見つかると、その定常化条件周りの状態での摂動のダイナミクスに対する線形モデルを導出できます。</p><pre class="codeinput">open_system(<span class="string">'aero_guidance_airframe'</span>);
+</pre><img vspace="5" hspace="5" src="../aero_guidance_trimlinearize_01.png" alt=""> <h2>状態値の定義<a name="2"></a></h2><pre class="codeinput">h_ini     = 10000/m2ft;      <span class="comment">% Trim Height [m]</span>
+M_ini     = 3;               <span class="comment">% Trim Mach Number</span>
+alpha_ini = -10*d2r;         <span class="comment">% Trim Incidence [rad]</span>
+theta_ini = 0*d2r;           <span class="comment">% Trim Flightpath Angle [rad]</span>
+v_ini = M_ini*(340+(295-340)*h_ini/11000); 	<span class="comment">% Total Velocity [m/s]</span>
+
+q_ini = 0;               <span class="comment">% Initial pitch Body Rate [rad/sec]</span>
+</pre><h2>操作点と状態仕様の設定<a name="3"></a></h2><p>最初の状態仕様は Position 状態、2 番目の状態仕様は Theta です。  どちらも既知のものですが、定常状態にはありません。  3 番目の状態仕様は、変数 w が定常状態にあるボディ軸の角度比です。</p><pre class="codeinput">opspec = operspec(<span class="string">'aero_guidance_airframe'</span>);
+opspec.State(1).Known = [1;1];
+opspec.State(1).SteadyState = [0;0];
+opspec.State(2).Known = 1;
+opspec.State(2).SteadyState = 0;
+opspec.State(3).Known = [1 1];
+opspec.State(3).SteadyState = [0 1];
+</pre><h2>操作点の検索、I/O の設定、線形化<a name="4"></a></h2><pre class="codeinput">op = findop(<span class="string">'aero_guidance_airframe'</span>,opspec);
+
+io(1) = linio(<span class="string">'aero_guidance_airframe/Fin Deflection'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'aero_guidance_airframe/Selector'</span>,1,<span class="string">'out'</span>);
+io(3) = linio(sprintf([<span class="string">'aero_guidance_airframe/Aerodynamics &amp;\n'</span>, <span class="keyword">...</span>
+                    <span class="string">'Equations of Motion'</span>]),3,<span class="string">'out'</span>);
+
+sys = linearize(<span class="string">'aero_guidance_airframe'</span>,op,io);
+</pre><pre class="codeoutput">
+ Operating Point Search Report:
+---------------------------------
+
+ Operating Report for the Model aero_guidance_airframe.
+ (Time-Varying Components Evaluated at time t=0)
+
+Operating point specifications were successfully met.
+States: 
+----------
+(1.) aero_guidance_airframe/Aerodynamics &amp; Equations of Motion/ Equations of Motion (Body Axes)/Position
+      x:             0      dx:           968
+      x:    -3.05e+003      dx:          -171
+(2.) aero_guidance_airframe/Aerodynamics &amp; Equations of Motion/ Equations of Motion (Body Axes)/Theta
+      x:             0      dx:        -0.216
+(3.) aero_guidance_airframe/Aerodynamics &amp; Equations of Motion/ Equations of Motion (Body Axes)/U,w
+      x:           968      dx:         -14.1
+      x:          -171      dx:    -7.44e-008 (0)
+(4.) aero_guidance_airframe/Aerodynamics &amp; Equations of Motion/ Equations of Motion (Body Axes)/q
+      x:        -0.216      dx:     3.36e-008 (0)
+
+Inputs: 
+----------
+(1.) aero_guidance_airframe/Fin Deflection
+      u:         0.136    [-Inf Inf]
+
+Outputs: 
+----------
+(1.) aero_guidance_airframe/q
+      y:        -0.216    [-Inf Inf]
+(2.) aero_guidance_airframe/az
+      y:           199    [-Inf Inf]
+
+</pre><h2>定常化した状態の選択、LTI オブジェクトの作成、ボード線図のプロット<a name="5"></a></h2><pre class="codeinput">airframe = ss(sys.A(3:4,3:4),sys.B(3:4,:),sys.C(:,3:4),sys.D);
+
+set(airframe,<span class="string">'inputname'</span>,{<span class="string">'Elevator'</span>}, <span class="keyword">...</span>
+             <span class="string">'outputname'</span>,[{<span class="string">'az'</span>} {<span class="string">'q'</span>}]);
+
+ltiview(<span class="string">'bode'</span>,airframe);
+
+bdclose(<span class="string">'aero_guidance_airframe'</span>);
+</pre><img vspace="5" hspace="5" src="../aero_guidance_trimlinearize_02.png" alt=""> <p class="footer">Copyright 1990-2007 The MathWorks, Inc.<br> Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Airframe Trim and Linearize % Trim and linearize an airframe using Simulink(R) Control Design(TM) % % Copyright 1990-2007 The MathWorks, Inc. % $Revision: 1.1.4.9.2.1 $ $Date: 2010/07/29 21:29:07 $ % % Designing an autopilot using classical design techniques requires linear  % models of the airframe pitch dynamics for a number of trimmed flight  % conditions. MATLAB(R) can determine the trim conditions and derive linear % state-space models directly from the nonlinear Simulink(R) and Aerospace Blockset(TM)  % model. This saves time and helps to validate the model. The  % functions provided by Simulink Control Design allow you to visualize  % the behavior of the airframe in terms of open-loop frequency (or time)  % responses.  %% Initialize Guidance Model % % The first problem is to find the elevator deflection, and the % resulting trimmed body rate (q), which will generate a given % incidence value when the missile is travelling at a set speed. % Once the trim condition is found, a linear model can be derived % for the dynamics of the perturbations in the states around  % the trim condition.   open_system('aero_guidance_airframe');   %% Define State Values %  h_ini     = 10000/m2ft;      % Trim Height [m] M_ini     = 3;               % Trim Mach Number alpha_ini = -10*d2r;         % Trim Incidence [rad] theta_ini = 0*d2r;           % Trim Flightpath Angle [rad] v_ini = M_ini*(340+(295-340)*h_ini/11000); 	% Total Velocity [m/s]  q_ini = 0;               % Initial pitch Body Rate [rad/sec]   %% Set Operating Point and State Specifications % % The first state specifications are Position states, the second state  % specification is Theta.  Both are known, but not at steady state.  The  % third state specifications are body axis angular rates of which the  % variable w is at steady state. %  opspec = operspec('aero_guidance_airframe'); opspec.State(1).Known = [1;1]; opspec.State(1).SteadyState = [0;0]; opspec.State(2).Known = 1; opspec.State(2).SteadyState = 0; opspec.State(3).Known = [1 1]; opspec.State(3).SteadyState = [0 1];  %% Search for Operating Point, Set I/O, then Linearize %  op = findop('aero_guidance_airframe',opspec);  io(1) = linio('aero_guidance_airframe/Fin Deflection',1,'in'); io(2) = linio('aero_guidance_airframe/Selector',1,'out'); io(3) = linio(sprintf(['aero_guidance_airframe/Aerodynamics &\n', ...                     'Equations of Motion']),3,'out');  sys = linearize('aero_guidance_airframe',op,io);  %% Select Trimmed States, Create LTI Object, and Plot Bode Response %  airframe = ss(sys.A(3:4,3:4),sys.B(3:4,:),sys.C(:,3:4),sys.D);  set(airframe,'inputname',{'Elevator'}, ...              'outputname',[{'az'} {'q'}]);  ltiview('bode',airframe);  bdclose('aero_guidance_airframe');   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

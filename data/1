@@ -1,0 +1,344 @@
+<?php    /*
+    view 
+    author: Nick Turner & Heqiao Liu
+    site: viral_dark_matter data_input
+    page: view.php
+    last updated: 11/18/2011 by Nick Turner 
+        */
+require("common.php"); 
+require_authentication(); ?>
+<!DOCTYPE html>
+<html lang="en">
+<head> 
+<?php require "head.html"; ?>
+<script src="js/Highcharts-2.1.9/js/highcharts.js" type="text/javascript"></script>
+<script src="js/jquery.form.js" type="text/javascript"></script>
+<script src="js/Highcharts-2.1.9/js/modules/exporting.js" type="text/javascript"></script>
+<script src="getPlateInfo.js" type="text/javascript"></script>
+<script src="viewtool.js" type="text/javascript" ></script>
+<script src="toollib.js" type="text/javascript" >
+<script type="text/javascript" >
+
+/*
+    This section generates a chart from the csv file. 
+    It uses jquery and highcharts.
+*/
+var chart;
+
+function gengraph(obj,selectList,wellname) {
+
+    $('div#container').addClass('gengraph');
+    minheight(selectList.length*wellname.length);   
+    var options = {},
+        cnm, // clone name
+        wnm, // well name
+        x = selectList.length,
+        y = wellname.length,
+        dp, // datapoint
+        seriesObj = new Array(); // create series object for chart
+
+    // Translate 2 separate arrays, clonename and wellname, into a javascript object and attach it to chart 
+    // e.g. options.series: seriesObj
+    for(var i=0;i<x;i++){
+	if(i<selectList.length)
+	     cnm = selectList[i];
+        for(var j=0;j<y;j++){
+            wnm = wellname[j];
+            dp = new Array();
+            for(var k=0;k<24;k++) {
+                dp[k] = parseFloat(obj[cnm][wnm][k]);
+            }
+            seriesObj.push({name:(cnm+" "+wnm),data:dp});
+        }
+    }
+
+
+    options = {
+        chart: {
+            renderTo: 'container',
+            defaultSeriesType: 'spline',
+        },
+	    labels: {
+	        items: [{
+            }],
+            style: {
+                color: '#808080',
+            }
+	    },
+        title: {
+            text: 'Viral Dark Matter'
+        },
+        subtitle: {
+            text: 'EDT1111, VCID: 5604',
+        },
+        xAxis: {
+            categories: ['0', '27', '54', '81', '108', '135', '161', '188', '215', '242', '269', '295', '322', '349', '376', '403', '430', '456', '483', '510', '537', '564', '591', '617' ],
+            title: {
+                text: 'Time'
+            }
+        },
+        yAxis: [{
+//            type:'logarithmic',
+//	    tickInterval:,
+            title: {
+                text: 'Growth (O.D.)'
+            },
+            plotLines: [{
+                value: 0,
+                width: 1,
+                color: '#808080'
+            }]
+        },
+        {
+            title: {text:'deviation'},
+            tickInterval:0.5,
+            opposite:true
+        }],
+        series: seriesObj
+    };
+ /*
+    var filename = $('#extra input').val();
+    $.get(filename, function(data) {
+    var lines = data.split('\n');
+     
+        // Iterate over the lines and add categories or series
+        $.each(lines, function(lineNo, line) {
+        var items = line.split(',');
+
+        // the rest of the lines contain data with their name in the first position
+            var series = {
+                data: []
+            };
+            $.each(items, function(itemNo, item) {
+                if (itemNo == 0) {
+                    series.name = item;
+                } else {
+                    series.data.push(parseFloat(item));
+                    //series.data.push(item);
+                }
+            });
+            // Prevents black series from being added to chart.
+            if(series.name.substring(0,3) != "") options.series.push(series);
+        });
+        // Create the chart */
+        chart = new Highcharts.Chart(options);
+	
+//    }); 
+}
+
+/*
+    This section processes the form to send to create_flatfile.php.
+*/
+
+
+$(function() {  
+    $('#submit_btn').click(function() {  
+	// validate and process form here  
+        var datastring = "", // For POST value clone, e.g. $_POST['clone'] and its value is a ; seperated string. EDT1111;EDT2222;EDT3333 etc.
+            tempstring = "", // For POST value well e.g. A1;A2;A3;A4;E1;E2; ...
+            file = $('select#file').val(),
+            clone = $('select#clone').val(),
+            counter = 0,
+            selectList = new Array(),
+            wellname = new Array();
+
+        //For each clone, push onto clonename array (for use when we get the data back from the database) and append to the POST variable clone
+        $('p.selected').each(function() {
+	    if($(this).hasClass("beid")){
+              var labelName= (this).id;
+              datastring = datastring+labelName+";";
+	      if((this).title!="")
+		 labelName+="/"+(this).title;
+	      alert (labelName);
+	      selectList.push(labelName);
+	    }
+	    if($(this).hasClass("vcid")){
+	      if((this).title==""){
+                var labelName = (this).id;
+                tempstring = tempstring+labelName+";";
+	        if((this).title!="")
+		  labelName=(this).title+"/"+labelName;
+                selectList.push(labelName);
+	      }
+	    }
+        });
+	if(datastring.length!=0)
+	  datastring="&clone="+datastring;
+	if(tempstring.length!=0)
+	  datastring+="&vcid="+tempstring;
+        console.log(datastring+"\n");
+        console.log(datastring+"\n");
+	tempstring="";
+        // For each well, push onto wellname array and append to POST variable well.  
+        $('td.selected').each(function() {
+            $this = (this).id;
+            tempstring = tempstring+$this+";";
+            wellname.push($this);
+        });
+        datastring+="&well="+tempstring;
+            type: "POST",
+            url: "pregraph_hq.php",
+            data: datastring,
+            dataType: "json",
+            success: function(dataObj) {
+
+                //display message back to user here
+                console.log("inside success");
+                console.log(dataObj);
+                gengraph(dataObj,selectList,wellname);
+            }
+        });
+        return false;
+    });  
+ }; 
+
+    function minheight(number) {
+    if (number > 20 ){
+            var height = (600 + (number-20)*3).toString()+"px";
+            alert(height);
+            $('div#container').css("min-height", height);
+    }
+}
+
+$(function(){
+    var mtime=new Array('0', '27', '54', '81', '108', '135', '161', '188', '215', '242', '269', '295', '322', '349', '376', '403', '430', '456', '483', '510', '537', '564', '591', '617' );
+    var htime=new Array(); 
+    for(var i=0;i<24;i++)
+      htime[i]=(parseFloat(mtime[i])/60).toFixed(2).toString(); 
+    var hOrm=0;
+  $("button#chgx").click(function(){
+    if(hOrm==0){
+      chart.xAxis[0].setCategories(htime);
+    //  chart.xAxis[0].setTitle({text:'Time(hours)'});
+      hOrm=1;
+    }
+    else{
+      chart.xAxis[0].setCategories(mtime);
+    //  chart.xAxis[0].setTitle({text:'Time(minutes)'});
+      hOrm=0;
+    }
+  });
+});
+
+$(function(){
+  $("button#csv").click(function(){
+    alert ("haha");
+  });  
+});
+
+</script>
+
+
+<?php
+
+ /* database information */
+$server   = "localhost";
+$user     = "nturner";
+$password = "LOB4steR";
+
+trim($server);
+trim($user);
+trim($password);
+
+function error( $msg )
+{
+    print( "<h2>ERROR: $msg</h2>\n" );
+    exit();
+}
+
+/* Make a connection to the database server: */
+$db = mysql_connect( $server, $user, $password );
+
+if ( ! $db )
+    error( "Cannot open connection to $user@$server" );
+
+/* Choose the database to work with: */
+if (!mysql_select_db( "viral_dark_matter", $db ))
+   error( "Cannot select database 'viral_dark_matter'." );
+?>
+
+</head>
+
+<body id="view">
+<?php require "header.html" ?>
+<nav>
+  <?php require "nav.html" ?>
+</nav>
+<section id="mainarea">
+    <article id="description" >
+        <p>Select the clone from the list on the left.  Then select the wells from the grid and click generate to see a graph of the data.</p>
+    </article><!-- /#description -->
+<div id="selectClones">
+    <form id="clones" action="" method="" >
+    <!--<form action="create_flatfile.php" id="clones" method="POST" >-->
+
+        <table id="clones">
+            <tr>
+               <td><form>EDT<input id="edtin" type="text" maxlength="4"><br/></form></td>
+               <td><form>VCID<input id="edtid" type="text" maxlength="5"><br/></form></td>
+            </tr>
+        </table>
+    <div id="gcContainer">
+    <?php
+    echo "<div id=\"cloneSelect\">";
+    $result=mysql_query("SELECT bact_external_id,vc_id From bacteria ORDER BY bact_external_id DESC");
+    while ($row =mysql_fetch_array($result)) {
+        echo "<p class=\"beid\"  id=\"".$row['bact_external_id']."\" title=\"".$row['vc_id']."\">".$row['bact_external_id']."</p>";
+    }
+    echo "</div>";
+    echo "<div id=\"vcidSelect\">";
+    $result=mysql_query("SELECT vc_id,bact_external_id From bacteria ORDER BY vc_id DESC");
+    while ($row =mysql_fetch_array($result)) {
+        echo "<p class=\"vcid\"  id=\"".$row['vc_id']."\" title=\"".$row['bact_external_id']."\">".$row['vc_id']."</p>";
+    }
+    echo "</div>";
+    ?>
+        <div class="gridwrapper">
+        <input type="button" name="uncheckAll" id="clearButton" value="Select All"></input>
+        <p id="welldetail">well info</p> 
+        <table id="Tclones" width="650" >
+	    <?php
+	    	for($i=0;$i<8;$i++){
+		    $rowindex=chr(65+$i);
+		    echo "<tr id=\"R".$rowindex."\">";
+		    for($j=0;$j<13;$j++){
+		      if($j==0){
+   			echo "<td id=\"".$rowindex."\" class=\"selectRow\">".$rowindex."</td>";
+		      }
+		      else{
+		        $temp=$rowindex.$j;
+		 	$result=mysql_query("select medium_supplement_name, supplement_conc from well left join medium_supplement on supplement_id where well_num='".'$temp');
+                        echo "<td id=\"".$temp."\" class=\"".$rowindex." sel\" >".$temp."</td>";
+                        }
+      		      }
+		    echo "</tr>";
+	    	}
+	    ?>
+            <tr>
+                <td><input type="submit" name="submit" class="button" id="submit_btn" value="Generate" onclick="return false;" ></td>
+            </tr>
+        </table>
+    </div> <!-- /#gridwrapper -->
+    </div> <!-- /#gcContainer -->
+</form>
+    <figure id="graph">
+        <div id="container" style="width: 100%; height: 40px">Click Generate above to see a graph.</div>
+        <button id="avg" onclick="return false;">get average</button>
+        <button id="dev" onclick="return false;">get deviation</button>
+        <button id="chgx" onclick="return false;">change xAxis</button>
+        <button id="chgYintvl" onclick="return false;">change Yinterval to log</button>
+	<button id="csv" onclick="return false;">download as csvfile</button>
+    </figure>
+    <div id="extra">
+        <input type="hidden" />
+        <p></p>
+    </div>
+
+</section><!-- /#mainarea -->
+<footer>
+    <ul>
+        <li><a href="input.php" id="Ffirst">external link</a></li>
+    </ul>
+</footer>
+</body>
+</html>

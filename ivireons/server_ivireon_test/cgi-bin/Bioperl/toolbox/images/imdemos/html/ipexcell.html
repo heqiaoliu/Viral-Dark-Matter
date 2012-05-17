@@ -1,0 +1,139 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Detecting a Cell Using Image Segmentation</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="ipexcell.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexcell">Open ipexcell.m in the Editor</a></div><div class="right"><a href="matlab:echodemo ipexcell">Run in the Command Window</a></div></div><div class="content"><h1>Detecting a Cell Using Image Segmentation</h1><!--introduction--><p>An object can be easily detected in an image if the object has sufficient contrast from the background. We use edge detection and basic morphology tools to detect a prostate cancer cell.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Step 1: Read Image</a></li><li><a href="#2">Step 2: Detect Entire Cell</a></li><li><a href="#3">Step 3: Dilate the Image</a></li><li><a href="#5">Step 4: Fill Interior Gaps</a></li><li><a href="#6">Step 5: Remove Connected Objects on Border</a></li><li><a href="#7">Step 6: Smoothen the Object</a></li></ul></div><h2>Step 1: Read Image<a name="1"></a></h2><p>Read in the <tt>cell.tif</tt> image, which is an image of a prostate cancer cell.</p><pre class="codeinput">I = imread(<span class="string">'cell.tif'</span>);
+figure, imshow(I), title(<span class="string">'original image'</span>);
+text(size(I,2),size(I,1)+15, <span class="keyword">...</span>
+    <span class="string">'Image courtesy of Alan Partin'</span>, <span class="keyword">...</span>
+    <span class="string">'FontSize'</span>,7,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>);
+text(size(I,2),size(I,1)+25, <span class="keyword">...</span><span class="comment">.</span>
+    <span class="string">'Johns Hopkins University'</span>, <span class="keyword">...</span>
+    <span class="string">'FontSize'</span>,7,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>);
+</pre><img vspace="5" hspace="5" src="ipexcell_01.png" alt=""> <h2>Step 2: Detect Entire Cell<a name="2"></a></h2><p>Two cells are present in this image, but only one cell can be seen in its entirety. We will detect this cell. Another word for object detection is segmentation. The object to be segmented differs greatly in contrast from the background image. Changes in contrast can be detected by operators that calculate the gradient of an image.  The gradient image can be calculated and a threshold can be applied to create a binary mask containing the segmented cell.  First, we use <tt>edge</tt> and the Sobel operator to calculate the threshold value. We then tune the threshold value and use <tt>edge</tt> again to obtain a binary mask that contains the segmented cell.</p><pre class="codeinput">[junk threshold] = edge(I, <span class="string">'sobel'</span>);
+fudgeFactor = .5;
+BWs = edge(I,<span class="string">'sobel'</span>, threshold * fudgeFactor);
+figure, imshow(BWs), title(<span class="string">'binary gradient mask'</span>);
+</pre><img vspace="5" hspace="5" src="ipexcell_02.png" alt=""> <h2>Step 3: Dilate the Image<a name="3"></a></h2><p>The binary gradient mask shows lines of high contrast in the image. These lines do not quite delineate the outline of the object of interest. Compared to the original image, you can see gaps in the lines surrounding the object in the gradient mask. These linear gaps will disappear if the Sobel image is dilated using linear structuring elements, which we can create with the <tt>strel</tt> function.</p><pre class="codeinput">se90 = strel(<span class="string">'line'</span>, 3, 90);
+se0 = strel(<span class="string">'line'</span>, 3, 0);
+</pre><p>The binary gradient mask is dilated using the vertical structuring element followed by the horizontal structuring element. The <tt>imdilate</tt> function dilates the image.</p><pre class="codeinput">BWsdil = imdilate(BWs, [se90 se0]);
+figure, imshow(BWsdil), title(<span class="string">'dilated gradient mask'</span>);
+</pre><img vspace="5" hspace="5" src="ipexcell_03.png" alt=""> <h2>Step 4: Fill Interior Gaps<a name="5"></a></h2><p>The dilated gradient mask shows the outline of the cell quite nicely, but there are still holes in the interior of the cell. To fill these holes we use the imfill function.</p><pre class="codeinput">BWdfill = imfill(BWsdil, <span class="string">'holes'</span>);
+figure, imshow(BWdfill);
+title(<span class="string">'binary image with filled holes'</span>);
+</pre><img vspace="5" hspace="5" src="ipexcell_04.png" alt=""> <h2>Step 5: Remove Connected Objects on Border<a name="6"></a></h2><p>The cell of interest has been successfully segmented, but it is not the only object that has been found. Any objects that are connected to the border of the image can be removed using the imclearborder function. The connectivity in the imclearborder function was set to 4 to remove diagonal connections.</p><pre class="codeinput">BWnobord = imclearborder(BWdfill, 4);
+figure, imshow(BWnobord), title(<span class="string">'cleared border image'</span>);
+</pre><img vspace="5" hspace="5" src="ipexcell_05.png" alt=""> <h2>Step 6: Smoothen the Object<a name="7"></a></h2><p>Finally, in order to make the segmented object look natural, we smoothen the object by eroding the image twice with a diamond structuring element. We create the diamond structuring element using the <tt>strel</tt> function.</p><pre class="codeinput">seD = strel(<span class="string">'diamond'</span>,1);
+BWfinal = imerode(BWnobord,seD);
+BWfinal = imerode(BWfinal,seD);
+figure, imshow(BWfinal), title(<span class="string">'segmented image'</span>);
+</pre><img vspace="5" hspace="5" src="ipexcell_06.png" alt=""> <p>An alternate method for displaying the segmented object would be to place an outline around the segmented cell. The outline is created by the <tt>bwperim</tt> function.</p><pre class="codeinput">BWoutline = bwperim(BWfinal);
+Segout = I;
+Segout(BWoutline) = 255;
+figure, imshow(Segout), title(<span class="string">'outlined original image'</span>);
+</pre><img vspace="5" hspace="5" src="ipexcell_07.png" alt=""> <p class="footer">Copyright 2004-2005 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Detecting a Cell Using Image Segmentation
+% An object can be easily detected in an image if the object has sufficient
+% contrast from the background. We use edge detection and basic morphology
+% tools to detect a prostate cancer cell.
+%
+% Copyright 2004-2005 The MathWorks, Inc.
+
+
+%% Step 1: Read Image
+% Read in the |cell.tif| image, which is an image of a prostate cancer
+% cell.
+
+I = imread('cell.tif');
+figure, imshow(I), title('original image');
+text(size(I,2),size(I,1)+15, ...
+    'Image courtesy of Alan Partin', ...
+    'FontSize',7,'HorizontalAlignment','right');
+text(size(I,2),size(I,1)+25, ....
+    'Johns Hopkins University', ...
+    'FontSize',7,'HorizontalAlignment','right');
+
+%% Step 2: Detect Entire Cell
+% Two cells are present in this image, but only one cell can be seen in its
+% entirety. We will detect this cell. Another word for object detection is
+% segmentation. The object to be segmented differs greatly in contrast from
+% the background image. Changes in contrast can be detected by operators that
+% calculate the gradient of an image.  The gradient image can be calculated
+% and a threshold can be applied to create a binary mask containing the segmented
+% cell.  First, we use |edge| and the Sobel operator to calculate the threshold
+% value. We then tune the threshold value and use |edge| again to obtain a
+% binary mask that contains the segmented cell.
+
+[junk threshold] = edge(I, 'sobel');
+fudgeFactor = .5;
+BWs = edge(I,'sobel', threshold * fudgeFactor);
+figure, imshow(BWs), title('binary gradient mask');
+
+%% Step 3: Dilate the Image
+% The binary gradient mask shows lines of high contrast in the image. These
+% lines do not quite delineate the outline of the object of interest.
+% Compared to the original image, you can see gaps in the lines surrounding
+% the object in the gradient mask. These linear gaps will disappear if the
+% Sobel image is dilated using linear structuring elements, which we can
+% create with the |strel| function.
+
+se90 = strel('line', 3, 90);
+se0 = strel('line', 3, 0);
+
+%%
+% The binary gradient mask is dilated using the vertical structuring
+% element followed by the horizontal structuring element. The |imdilate|
+% function dilates the image.
+
+BWsdil = imdilate(BWs, [se90 se0]);
+figure, imshow(BWsdil), title('dilated gradient mask');
+
+%% Step 4: Fill Interior Gaps 
+% The dilated gradient mask shows the outline of the cell quite nicely, but
+% there are still holes in the interior of the cell. To fill these holes we
+% use the imfill function.
+
+BWdfill = imfill(BWsdil, 'holes');
+figure, imshow(BWdfill);
+title('binary image with filled holes');
+
+%% Step 5: Remove Connected Objects on Border
+% The cell of interest has been successfully segmented, but it is not the
+% only object that has been found. Any objects that are connected to the
+% border of the image can be removed using the imclearborder function. The
+% connectivity in the imclearborder function was set to 4 to remove
+% diagonal connections.
+
+BWnobord = imclearborder(BWdfill, 4);
+figure, imshow(BWnobord), title('cleared border image');
+
+%% Step 6: Smoothen the Object
+% Finally, in order to make the segmented object look natural, we smoothen
+% the object by eroding the image twice with a diamond structuring element.
+% We create the diamond structuring element using the |strel| function.
+
+seD = strel('diamond',1);
+BWfinal = imerode(BWnobord,seD);
+BWfinal = imerode(BWfinal,seD);
+figure, imshow(BWfinal), title('segmented image');
+
+%%
+% An alternate method for displaying the segmented object would be to place
+% an outline around the segmented cell. The outline is created by the
+% |bwperim| function.
+
+BWoutline = bwperim(BWfinal);
+Segout = I; 
+Segout(BWoutline) = 255; 
+figure, imshow(Segout), title('outlined original image');
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

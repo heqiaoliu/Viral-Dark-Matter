@@ -1,0 +1,309 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling Computational Delay and Sampling Effects</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdcompdelay_engspeed.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdcompdelay_engspeed">Open scdcompdelay_engspeed.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdcompdelay_engspeed">Run in the Command Window</a></div></div><div class="content"><h1>Modeling Computational Delay and Sampling Effects</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#3">Simulating using Discrete and Continuous Controllers</a></li><li><a href="#14">Designing the Compensator in the Discrete Domain</a></li><li><a href="#18">Accounting for the Delays and Sampling Continuous Time Domain</a></li><li><a href="#34">Comparing the Responses</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>Computational delays and sampling effects can critically effect the performance of a control system. Typically, the closed-loop responses of a system become oscillatory and unstable if these factors are not taken into account. Therefore, when modeling a control system, you should include computational delays and sampling effects to accurately design and simulate a closed-loop system.</p><p>There are two approaches for designing compensators with the effects of computational delay and sampling. The first approach is to design a controller in the discrete domain to capture the effects of sampling by discretizing the plant. The second approach is to design a controller in the continuous domain.  This approach is sometimes more convenient, but in this case you need to account for the effects of computational delay and sampling. In this demonstration, you apply both approaches to redesign a control system using Simulink&reg; Control Design&#8482;.</p><h2>Simulating using Discrete and Continuous Controllers<a name="3"></a></h2><p>In the following example model, the initial compensator has the following gains from the compensator in the demo <a href="scdspeedctrldespad.html">"Single Loop Feedback/Prefilter Design"</a>:</p><pre>         P = 0.0018222</pre><pre>         I = 0.0052662</pre><p>The first model has a discrete implementation of the control system.</p><pre class="codeinput">mdl = <span class="string">'scdspeed_compdelay'</span>;
+open_system(mdl);
+</pre><img vspace="5" hspace="5" src="scdcompdelay_engspeed_01.png" alt=""> <p>In this model, the block <tt>scdspeed_compdelay/Computational Delay</tt> models the effects of the computational delay. The delay is equal to the sample time of the controller, which is the worst case.  A zero order hold block <tt>scdspeed_compdelay/Zero-Order Hold</tt> models the effect of sampling on the response of the system.  Finally, the speed controller (implemented with the PID Controller block)  is discretized using a Forward Euler sampling method.</p><p>You can see the effect of the sampling by simulating the response of the system.</p><p>First, discretize the controller at Ts = 0.1:</p><pre class="codeinput">Ts = 0.1;
+sim(mdl);
+T2 = simout.time;
+Y2 = simout.signals.values;
+</pre><p>Next, discretize the controller at a increased sample time Ts = 0.25 seconds:</p><pre class="codeinput">Ts = 0.25;
+sim(mdl);
+T3 = simout.time;
+Y3 = simout.signals.values;
+</pre><p>The second model is a continuous model.</p><pre class="codeinput">mdl_continuous = <span class="string">'scdspeed_contcomp'</span>;
+open_system(mdl_continuous);
+</pre><img vspace="5" hspace="5" src="scdcompdelay_engspeed_02.png" alt=""> <p>Simulate the response of the continuous model:</p><pre class="codeinput">sim(mdl_continuous);
+T1 = simout.time;
+Y1 = simout.signals.values;
+</pre><p>Plot the simulation of both the discrete and continuous models.  Note that the response becomes more oscillatory as the sample time is increased.</p><pre class="codeinput">plot(T1,Y1,<span class="string">'k'</span>,T2,Y2,<span class="string">'r'</span>,T3,Y3,<span class="string">'g'</span>)
+xlabel(<span class="string">'Time (sec.)'</span>)
+ylabel(<span class="string">'Engine Speed Response'</span>);
+legend(<span class="string">'Continuous Controller'</span>,<span class="string">'Ts = 0.1'</span>,<span class="string">'Ts = 0.25'</span>);
+grid
+</pre><img vspace="5" hspace="5" src="scdcompdelay_engspeed_03.png" alt=""> <h2>Designing the Compensator in the Discrete Domain<a name="14"></a></h2><p>To remove the oscillatory effects of the closed-loop system with the slowest sample time of Ts = 0.25, you need to redesign the compensator. First, redesign using a discretized version of the plant. You can redesign the compensator in a fashion similar to the demo entitled <a href="scdspeedctrldespad.html">"Single Loop Feedback/Prefilter Design"</a>. The tuned compensator has the following gains:</p><pre>         P = 0.00066155</pre><pre>         I = 0.0019118795</pre><pre class="codeinput">set_param(<span class="string">'scdspeed_compdelay/PID Controller'</span>,<span class="string">'P'</span>,<span class="string">'0.00066155'</span>);
+set_param(<span class="string">'scdspeed_compdelay/PID Controller'</span>,<span class="string">'I'</span>,<span class="string">'0.0019118795'</span>);
+</pre><p>Simulate the resulting closed-loop system with a sample time Ts = 0.25. You examine these results later in this demo.</p><pre class="codeinput">Ts = 0.25;
+sim(mdl);
+Td = simout.time;
+Yd = simout.signals.values;
+</pre><h2>Accounting for the Delays and Sampling Continuous Time Domain<a name="18"></a></h2><p>As a second approach, redesign the controller with the continuous equivalents of the unit delay and zero order hold.</p><p>Set the zero order hold dynamics</p><p><img src="scdcompdelay_engspeed_eq08329.png" alt="$$ZOH(s) = \frac{1-e^{-sT_s}}{sT_s}$$"></p><p>on the block <tt>scdspeed_compdelay/Zero-Order Hold</tt> by right clicking on the block and select <b>Linear Analysis-&gt;Specify Linearization</b>.  The following block dialog opens to specify the zero-order hold dynamics.</p><p><img vspace="5" hspace="5" src="../html_extra/scdcompdelay/blockspecification.png" alt=""> </p><p>Also, specify the linearization as a zero order hold <tt>scdspeed_compdelay/Zero-Order Hold</tt> with continuous representation.  The following code is equivalent to entering these specifications into the specification dialog.</p><pre class="codeinput">zohblk = <span class="string">'scdspeed_compdelay/Zero-Order Hold'</span>;
+set_param(zohblk,<span class="string">'SCDEnableBlockLinearizationSpecification'</span>,<span class="string">'on'</span>);
+rep = struct(<span class="string">'Specification'</span>,<span class="string">'(1-ss(1,''InputDelay'',Ts))*ss(0,1,1,0)/Ts'</span>,<span class="keyword">...</span>
+             <span class="string">'Type'</span>,<span class="string">'Expression'</span>,<span class="keyword">...</span>
+             <span class="string">'ParameterNames'</span>,<span class="string">''</span>,<span class="keyword">...</span>
+             <span class="string">'ParameterValues'</span>,<span class="string">''</span>);
+set_param(zohblk,<span class="string">'SCDBlockLinearizationSpecification'</span>,rep);
+</pre><p>Specify the linearization of the delay block <tt>scdspeed_compdelay/Computational Delay</tt> with a continuous transport delay.</p><p><img src="scdcompdelay_engspeed_eq30806.png" alt="$$DELAY(s) = e^{-sT_s}$$"></p><p>Use these commands to specify the block linearization:</p><pre class="codeinput">delayblk = <span class="string">'scdspeed_compdelay/Computational Delay'</span>;
+set_param(delayblk,<span class="string">'SCDEnableBlockLinearizationSpecification'</span>,<span class="string">'on'</span>);
+rep = struct(<span class="string">'Specification'</span>,<span class="string">'ss(1,''InputDelay'',Ts)'</span>,<span class="keyword">...</span>
+             <span class="string">'Type'</span>,<span class="string">'Expression'</span>,<span class="keyword">...</span>
+             <span class="string">'ParameterNames'</span>,<span class="string">''</span>,<span class="keyword">...</span>
+             <span class="string">'ParameterValues'</span>,<span class="string">''</span>);
+set_param(delayblk,<span class="string">'SCDBlockLinearizationSpecification'</span>,rep);
+</pre><p>The analysis of the controller design then remains in the continuous domain.  Now, linearize the model with delays of Ts = 0.1 and 0.25. First, set the linearization I/O points:</p><pre class="codeinput">io(1) = linio(<span class="string">'scdspeed_compdelay/PID Controller'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'scdspeed_compdelay/Zero-Order Hold'</span>,1,<span class="string">'out'</span>,<span class="string">'on'</span>);
+</pre><p>Linearize the model at Ts = 0.1:</p><pre class="codeinput">Ts = 0.1;
+sys2 = linearize(mdl,io);
+</pre><p>Linearize the model at Ts = 0.25:</p><pre class="codeinput">Ts = 0.25;
+sys3 = linearize(mdl,io);
+</pre><p>Finally, linearize the model without the effects of sampling and the computational delay:</p><pre class="codeinput">io(1) = linio(<span class="string">'scdspeed_contcomp/PID Controller'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'scdspeed_contcomp/rad//s to rpm'</span>,1,<span class="string">'out'</span>,<span class="string">'on'</span>);
+sys1 = linearize(mdl_continuous,io);
+</pre><p>You can use the linear models of the engine to examine the effects of the computational delay on the frequency response. In this case, the phase response of the system is significantly reduced due to the delay introduced by sampling.</p><pre class="codeinput">p = bodeoptions(<span class="string">'cstprefs'</span>);
+p.Grid = <span class="string">'on'</span>;
+p.PhaseMatching = <span class="string">'on'</span>;
+bodeplot(sys1,<span class="string">'k'</span>,sys2,<span class="string">'r'</span>,sys3,<span class="string">'g'</span>, {1e-2,1e2},p);
+legend(<span class="string">'Continuous Model'</span>,<span class="string">'Ts = 0.1'</span>,<span class="string">'Ts = 0.25'</span>,<span class="string">'Location'</span>,<span class="string">'SouthWest'</span>);
+</pre><img vspace="5" hspace="5" src="scdcompdelay_engspeed_04.png" alt=""> <p>Using the model with the slowest sample time, redesign the compensator using the techinques in the demo <a href="scdspeedctrldespad.html">"Single Loop Feedback/Prefilter Design"</a>. This gives the following PI Gains:</p><pre class="codeinput">set_param(<span class="string">'scdspeed_compdelay/PID Controller'</span>,<span class="string">'P'</span>,<span class="string">'0.00065912'</span>);
+set_param(<span class="string">'scdspeed_compdelay/PID Controller'</span>,<span class="string">'I'</span>,<span class="string">'0.001898342'</span>);
+</pre><p>Simulate the resulting closed loop system with a sample time Ts = 0.25:</p><pre class="codeinput">sim(mdl);
+Tc = simout.time;
+Yc = simout.signals.values;
+</pre><h2>Comparing the Responses<a name="34"></a></h2><p>Plot the responses of the design. The redesign of the control system using both approaches yields similar controllers. This example shows the effects of the computational delay and discretization. These effects reduce the stability margins of the system, but when you properly model a control system you can achieve the desired closed-loop behavior.</p><pre class="codeinput">plot(T1,Y1,<span class="string">'k'</span>,T3,Y3,<span class="string">'b'</span>,Td,Yd,<span class="string">'m'</span>,Tc,Yc,<span class="string">'r'</span>)
+xlabel(<span class="string">'Time (sec.)'</span>)
+ylabel(<span class="string">'Engine Speed Response'</span>);
+h = legend(<span class="string">'cont. compensator (orig)'</span>,<span class="string">'disc. compensator (orig)'</span>, <span class="keyword">...</span>
+    <span class="string">'disc. compensator (disc. redesign)'</span>,<span class="keyword">...</span>
+    <span class="string">'disc. compensator (cont. redesign)'</span>,<span class="keyword">...</span>
+    <span class="string">'Location'</span>,<span class="string">'SouthEast'</span>);
+grid
+
+bdclose(<span class="string">'scdspeed_contcomp'</span>)
+bdclose(<span class="string">'scdspeed_compdelay'</span>)
+</pre><img vspace="5" hspace="5" src="scdcompdelay_engspeed_05.png" alt=""> <p class="footer">Copyright 2005-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling Computational Delay and Sampling Effects
+%   Copyright 2005-2008 The MathWorks, Inc.
+% $Revision: 1.1.6.12 $ $Date: 2009/11/09 16:35:35 $
+
+%% Introduction 
+% Computational delays and sampling effects can critically effect the
+% performance of a control system. Typically, the closed-loop responses of
+% a system become oscillatory and unstable if these factors are not
+% taken into account. Therefore, when modeling a control system,
+% you should include computational delays and sampling effects to
+% accurately design and simulate a closed-loop system.
+
+%%
+% There are two approaches for designing compensators with the effects of
+% computational delay and sampling. The first approach is to design a
+% controller in the discrete domain to capture the effects of sampling by
+% discretizing the plant. The second approach is to design a controller in
+% the continuous domain.  This approach is sometimes more convenient, but
+% in this case you need to account for the effects of computational delay
+% and sampling. In this demonstration, you apply both approaches to
+% redesign a control system using Simulink(R) Control Design(TM). 
+
+%% Simulating using Discrete and Continuous Controllers
+% In the following example model, the initial compensator has the following gains from
+% the compensator in the demo <scdspeedctrldespad.html "Single Loop
+% Feedback/Prefilter Design">:
+
+%% 
+%           P = 0.0018222
+%%
+%           I = 0.0052662
+
+%% 
+% The first model has a discrete implementation of the control system.
+mdl = 'scdspeed_compdelay';
+open_system(mdl);
+
+%% 
+% In this model, the block |scdspeed_compdelay/Computational Delay| models
+% the effects of the computational delay. The delay is equal to the sample
+% time of the controller, which is the worst case.  A zero order hold block
+% |scdspeed_compdelay/Zero-Order Hold| models the effect of sampling on the
+% response of the system.  Finally, the speed controller (implemented with
+% the PID Controller block)  is discretized using a Forward Euler
+% sampling method.
+
+%%
+% You can see the effect of the sampling by simulating the response of the
+% system.  
+
+%% 
+% First, discretize the controller at Ts = 0.1:
+Ts = 0.1;
+sim(mdl);
+T2 = simout.time;
+Y2 = simout.signals.values;
+%%
+% Next, discretize the controller at a increased sample time Ts = 0.25
+% seconds:
+Ts = 0.25;
+sim(mdl);
+T3 = simout.time;
+Y3 = simout.signals.values;
+
+%%
+% The second model is a continuous model.
+mdl_continuous = 'scdspeed_contcomp';
+open_system(mdl_continuous);
+
+%% 
+% Simulate the response of the continuous model:
+sim(mdl_continuous);
+T1 = simout.time;
+Y1 = simout.signals.values;
+
+%%
+% Plot the simulation of both the discrete and continuous models.  Note
+% that the response becomes more oscillatory as the sample time is
+% increased.
+plot(T1,Y1,'k',T2,Y2,'r',T3,Y3,'g')
+xlabel('Time (sec.)')
+ylabel('Engine Speed Response');
+legend('Continuous Controller','Ts = 0.1','Ts = 0.25');
+grid
+
+%% Designing the Compensator in the Discrete Domain
+% To remove the oscillatory effects of the closed-loop system with the
+% slowest sample time of Ts = 0.25, you need to redesign the compensator.
+% First, redesign using a discretized version of the plant.
+% You can redesign the compensator in a fashion similar to the demo
+% entitled <scdspeedctrldespad.html "Single Loop Feedback/Prefilter
+% Design">. The tuned compensator has the following gains:
+%% 
+%           P = 0.00066155
+%%
+%           I = 0.0019118795
+set_param('scdspeed_compdelay/PID Controller','P','0.00066155');
+set_param('scdspeed_compdelay/PID Controller','I','0.0019118795');
+
+%% 
+% Simulate the resulting closed-loop system with a sample time Ts = 0.25. 
+% You examine these results later in this demo.
+Ts = 0.25;
+sim(mdl);
+Td = simout.time;
+Yd = simout.signals.values;
+
+%% Accounting for the Delays and Sampling Continuous Time Domain
+% As a second approach, redesign the controller with the
+% continuous equivalents of the unit delay and zero order hold.
+
+%% 
+% Set the zero order hold dynamics
+%%
+% 
+% $$ZOH(s) = \frac{1-e^{-sT_s}}{sT_s}$$
+%
+
+%%
+% on the block |scdspeed_compdelay/Zero-Order Hold| by right clicking on the
+% block and select *Linear Analysis->Specify Linearization*.  The following
+% block dialog opens to specify the zero-order hold dynamics.
+
+%%
+% <<../html_extra/scdcompdelay/blockspecification.png>>
+
+%%
+% Also, specify the linearization as a zero order hold
+% |scdspeed_compdelay/Zero-Order Hold| with continuous representation.  The
+% following code is equivalent to entering these specifications into the
+% specification dialog.
+zohblk = 'scdspeed_compdelay/Zero-Order Hold';
+set_param(zohblk,'SCDEnableBlockLinearizationSpecification','on');
+rep = struct('Specification','(1-ss(1,''InputDelay'',Ts))*ss(0,1,1,0)/Ts',...
+             'Type','Expression',...
+             'ParameterNames','',...
+             'ParameterValues','');
+set_param(zohblk,'SCDBlockLinearizationSpecification',rep);
+
+%%
+% Specify the linearization of the delay block
+% |scdspeed_compdelay/Computational Delay| with a continuous transport
+% delay. 
+%%
+% 
+% $$DELAY(s) = e^{-sT_s}$$
+%
+
+%%
+% Use these commands to specify the block linearization:
+delayblk = 'scdspeed_compdelay/Computational Delay';
+set_param(delayblk,'SCDEnableBlockLinearizationSpecification','on');
+rep = struct('Specification','ss(1,''InputDelay'',Ts)',...
+             'Type','Expression',...
+             'ParameterNames','',...
+             'ParameterValues','');
+set_param(delayblk,'SCDBlockLinearizationSpecification',rep);
+
+%%
+% The analysis of the controller design then remains in the continuous
+% domain.  Now, linearize the model with delays of Ts = 0.1 and 0.25.
+% First, set the linearization I/O points:
+io(1) = linio('scdspeed_compdelay/PID Controller',1,'in');
+io(2) = linio('scdspeed_compdelay/Zero-Order Hold',1,'out','on');
+
+%% 
+% Linearize the model at Ts = 0.1:
+Ts = 0.1;
+sys2 = linearize(mdl,io);
+
+%%
+% Linearize the model at Ts = 0.25:
+Ts = 0.25;
+sys3 = linearize(mdl,io);
+
+%%
+% Finally, linearize the model without the effects of sampling and the computational
+% delay:
+io(1) = linio('scdspeed_contcomp/PID Controller',1,'in');
+io(2) = linio('scdspeed_contcomp/rad//s to rpm',1,'out','on');
+sys1 = linearize(mdl_continuous,io);
+
+%%
+% You can use the linear models of the engine to examine the effects of the
+% computational delay on the frequency response. In this case, the phase
+% response of the system is significantly reduced due to the delay
+% introduced by sampling. 
+p = bodeoptions('cstprefs');
+p.Grid = 'on';
+p.PhaseMatching = 'on';
+bodeplot(sys1,'k',sys2,'r',sys3,'g', {1e-2,1e2},p);
+legend('Continuous Model','Ts = 0.1','Ts = 0.25','Location','SouthWest');
+
+%%
+% Using the model with the slowest sample time, redesign the compensator 
+% using the techinques in the demo
+% <scdspeedctrldespad.html "Single Loop Feedback/Prefilter Design">. This
+% gives the following PI Gains:
+set_param('scdspeed_compdelay/PID Controller','P','0.00065912');
+set_param('scdspeed_compdelay/PID Controller','I','0.001898342');
+
+%%
+% Simulate the resulting closed loop system with a sample time Ts = 0.25:
+sim(mdl);
+Tc = simout.time;
+Yc = simout.signals.values;
+
+%% Comparing the Responses
+% Plot the responses of the design. The redesign of the control system
+% using both approaches yields similar controllers. This example shows the
+% effects of the computational delay and discretization. These effects
+% reduce the stability margins of the system, but when you properly model a
+% control system you can achieve the desired closed-loop behavior. 
+plot(T1,Y1,'k',T3,Y3,'b',Td,Yd,'m',Tc,Yc,'r')
+xlabel('Time (sec.)')
+ylabel('Engine Speed Response');
+h = legend('cont. compensator (orig)','disc. compensator (orig)', ...
+    'disc. compensator (disc. redesign)',...
+    'disc. compensator (cont. redesign)',...
+    'Location','SouthEast');
+grid
+
+bdclose('scdspeed_contcomp')
+bdclose('scdspeed_compdelay')
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

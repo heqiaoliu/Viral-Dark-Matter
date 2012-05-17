@@ -1,0 +1,61 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Scheduling Simulink&reg; Algorithms Using Stateflow&reg;</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_slscheduler.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_slscheduler.mdl</div><div class="right"><a href="matlab:sf_slscheduler">Open this model</a></div></div><div class="content"><h1>Scheduling Simulink&reg; Algorithms Using Stateflow&reg;</h1><p>This model demonstrates how you can schedule a Simulink algorithm using Stateflow.</p><img vspace="5" hspace="5" src="sf_slscheduler_01.png" alt=""> <p>The Stateflow chart <tt>Chart</tt> consists of a Simulink algorithm which needs to run at different rates at different times in the simulation. Stateflow is ideally suited to designing the transition logic which determines when these rate transitions happen. The Simulink algorithm on the other hand is used for the actual data processing. Note that we are merely passing in chart inputs and outputs to the Simulink subsystem. For the purposes of this demonstration, the Simulink algorithm merely adds the input to the output each time it is called.</p><img vspace="5" hspace="5" src="sf_slscheduler_02.png" alt=""> <p>Upon running the simulation, we see the counter counting at varying rates as shown below:</p><img vspace="5" hspace="5" src="sf_slscheduler_03.png" alt=""> <p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Scheduling Simulink(R) Algorithms Using Stateflow(R)
+% 
+% This model demonstrates how you can schedule a Simulink algorithm using
+% Stateflow.
+
+%   Copyright 2009 The MathWorks, Inc.
+
+clear all
+close all
+bdclose all
+
+model = 'sf_slscheduler';
+
+open_system(model);
+r = sfroot;
+m = r.find('-isa', 'Stateflow.Machine', 'Name', model);
+
+c = m.find('-isa', 'Stateflow.Chart', 'Name', 'Chart');
+c.Visible = 0;
+
+% close all scopes
+close_system(find_system(gcs, 'BlockType', 'Scope'));
+
+%% 
+% The Stateflow chart |Chart| consists of a Simulink algorithm which needs
+% to run at different rates at different times in the simulation. Stateflow
+% is ideally suited to designing the transition logic which determines when
+% these rate transitions happen. The Simulink algorithm on the other hand
+% is used for the actual data processing. Note that we are merely passing
+% in chart inputs and outputs to the Simulink subsystem. For the purposes
+% of this demonstration, the Simulink algorithm merely adds the input to
+% the output each time it is called.
+
+c.Visible = 1;
+
+%% 
+% Upon running the simulation, we see the counter counting at varying rates
+% as shown below:
+
+evalc('sim(gcs)');
+open_system('sf_slscheduler/Scope');
+
+%% 
+
+bdclose all;
+clear all;
+close all;
+
+##### SOURCE END #####
+--></body></html>

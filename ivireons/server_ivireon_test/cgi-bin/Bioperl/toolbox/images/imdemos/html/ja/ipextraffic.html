@@ -1,0 +1,80 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>交通量のビデオ内の車の検出</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipextraffic.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipextraffic">エディターで ipextraffic.m を開く</a></div><div class="right"><a href="matlab:echodemo ipextraffic">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>交通量のビデオ内の車の検出</h1><!--introduction--><p>ビデオや一連のイメージの可視化や解析を行うために Image Processing Toolbox™ を使用することができます。この例では、交通量のビデオ内の明るい色の車を検出するために、<tt>mmreader</tt> (MATLAB&reg;)、<tt>implay</tt>、および他の Image Processing Toolbox 関数を使用します。関数 <tt>mmreader</tt> は、プラットフォーム固有の機能を持っており、プラットフォームによっては提供される Motion JPEG2000 ビデオを読み込めない場合があります。ユーザーのプラットフォームでサポートされる形式の情報については、<tt>mmreader</tt> の<a href="matlab:doc('mmreader')">ドキュメンテーション</a>を参照してください。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">手順 1: MMREADER を使用したビデオへのアクセス</a></li><li><a href="#3">手順 2: IMPLAY を使用したビデオの探索</a></li><li><a href="#4">手順 3: アルゴリズムの開発</a></li><li><a href="#7">手順 4: ビデオへのアルゴリズムの適用</a></li><li><a href="#8">手順 5: 結果の可視化</a></li></ul></div><h2>手順 1: MMREADER を使用したビデオへのアクセス<a name="1"></a></h2><p>関数 <tt>mmreader</tt> は、マルチメディア ファイルからのビデオ データを読み込める、マルチメディア reader オブジェクトを作成します。ユーザーのプラットフォームでサポートされる形式の情報については、<tt>mmreader</tt> の<a href="matlab:doc('mmreader')">ドキュメンテーション</a>を参照してください。</p><p>関数 <tt>mmreader</tt> を使用してビデオにアクセスし、基本情報を取得します。</p><pre class="codeinput">trafficObj = mmreader(<span class="string">'traffic.mj2'</span>)
+</pre><pre class="codeoutput">
+Summary of Multimedia Reader Object for 'traffic.mj2'.
+
+  Video Parameters:  15.00 frames per second, RGB24 160x120.
+                     120 total video frames available.
+
+</pre><p>get メソッドは、秒数による長さなど、ビデオに関する情報を提供します。</p><pre class="codeinput">get(trafficObj)
+</pre><pre class="codeoutput">  General Settings:
+    Duration = 8
+    Name = traffic.mj2
+    Path = B:\matlab\toolbox\images\imdemos
+    Tag = 
+    Type = VideoReader
+    UserData = []
+
+  Video Settings:
+    BitsPerPixel = 24
+    FrameRate = 15
+    Height = 120
+    NumberOfFrames = 120
+    VideoFormat = RGB24
+    Width = 160
+
+</pre><h2>手順 2: IMPLAY を使用したビデオの探索<a name="3"></a></h2><p><tt>implay</tt> を使用してビデオを検索します。</p><pre class="codeinput">implay(<span class="string">'traffic.mj2'</span>);
+</pre><img vspace="5" hspace="5" src="../ipextraffic_01.png" alt=""> <h2>手順 3: アルゴリズムの開発<a name="4"></a></h2><p>ビデオ データで作業をする際、ビデオからの代表フレームを選択し、そのフレームにアルゴリズムを開発すると便利です。このアルゴリズムは、ビデオのすべてのフレームの処理に適用できます。</p><p>この車のタグ付けアプリケーションでは、明るい色と暗い色の車を含むフレームを検査します。交通量ビデオのフレームのようにイメージが多数のオブジェクトを持つ場合、対象オブジェクトを検出しようとする前にイメージをできるだけ単純化すると便利です。車のタグ付けアプリケーションの 1 つの方法としては、明るい色の車 (暗い色の車、車線、ガラスなど) でないイメージのすべてのオブジェクトの表示を抑えることです。通常、いろいろな技術を組み合わせて、これらの余分なオブジェクトを削除します。</p><p>ビデオ フレームから暗い色の車を削除する 1 つの方法は、関数 <tt>imextendedmax</tt> を使用することです。この関数は、指定されたしきい値以上の強度値を持つ領域を識別するバイナリ イメージを返します。これは局所的な最大値と呼ばれます。このしきい値以下のピクセル値を持つイメージ内の他のすべてのオブジェクトは、背景になります。暗い色の車を削除するには、イメージ内のこれらのオブジェクトの平均ピクセル値を決定します (関数 <tt>rgb2gray</tt> を使用して、オリジナル ビデオを RGB からグレースケールに変換します)。<tt>implay</tt> のピクセル領域ツールを使用して、ピクセル値を表示できます。関数 <tt>imextendedmax</tt> を呼び出す際、平均ピクセル値 (またはそれよりわずかに大きい値) をしきい値として指定します。このデモでは、値を 50 に設定します。</p><pre class="codeinput">darkCarValue = 50;
+darkCar = rgb2gray(read(trafficObj,71));
+noDarkCar = imextendedmax(darkCar, darkCarValue);
+imshow(darkCar)
+figure, imshow(noDarkCar)
+</pre><img vspace="5" hspace="5" src="../ipextraffic_02.png" alt=""> <img vspace="5" hspace="5" src="../ipextraffic_03.png" alt=""> <p>処理されたイメージでは、暗い色の車のオブジェクトのほとんどが削除されたにもかかわらず、車線マークなど他の余分のオブジェクトは残っていることに注意してください。局所的な最大値処理では、ピクセル値はしきい値以上なので、車線マークは削除されません。これらのオブジェクトを削除するには、形態学的関数 <tt>imopen</tt> を使用できます。この関数は形態学的処理を使用して、バイナリ イメージから小さなオブジェクトを削除し、大きなオブジェクトを保存します。形態学的処理を使用する際、操作で使用する構造体要素のサイズおよび形状を決定する必要があります。車線マークは長くて薄いオブジェクトなので、車線マークの幅に対応する半径を持つ円盤型の構造化要素を使用します。関数 <tt>implay</tt> のピクセル領域ツールを使用して、これらのオブジェクトの幅を推定します。このデモでは、値を 2 に設定します。</p><pre class="codeinput">sedisk = strel(<span class="string">'disk'</span>,2);
+noSmallStructures = imopen(noDarkCar, sedisk);
+imshow(noSmallStructures)
+</pre><img vspace="5" hspace="5" src="../ipextraffic_04.png" alt=""> <p>アルゴリズムを完了するには、関数 <tt>regionprops</tt> を使用して、<tt>noSmallStructures</tt> (明るい色の車のみ) 内でオブジェクトの中央を検出します。この情報を使用して、タグをオリジナル ビデオの明るい色の車に合わせます。</p><h2>手順 4: ビデオへのアルゴリズムの適用<a name="7"></a></h2><p>車のタグ付けアプリケーションでは、ループでビデオが一度に 1 フレームずつ処理されます (通常のビデオは多数のフレームを含んでいるため、一度にすべてのフレームを読み込んで処理するためには大量のメモリを必要とするからです)。</p><p>小さいビデオ (この例でのように) は一度に処理できます。この機能を提供する多数の関数があります。詳細については、<a href="http://www.mathworks.com/access/helpdesk/help/toolbox/images/f14-17682.html"> ドキュメンテーション</a>を参照してください。</p><p>より高速な処理には、処理されるビデオの格納に使用されるメモリを事前配分します。</p><pre class="codeinput">nframes = get(trafficObj, <span class="string">'NumberOfFrames'</span>);
+I = read(trafficObj, 1);
+taggedCars = zeros([size(I,1) size(I,2) 3 nframes], class(I));
+
+<span class="keyword">for</span> k = 1 : nframes
+    singleFrame = read(trafficObj, k);
+
+    <span class="comment">% Convert to grayscale to do morphological processing.</span>
+    I = rgb2gray(singleFrame);
+
+    <span class="comment">% Remove dark cars.</span>
+    noDarkCars = imextendedmax(I, darkCarValue);
+
+    <span class="comment">% Remove lane markings and other non-disk shaped structures.</span>
+    noSmallStructures = imopen(noDarkCars, sedisk);
+
+    <span class="comment">% Remove small structures.</span>
+    noSmallStructures = bwareaopen(noSmallStructures, 150);
+
+    <span class="comment">% Get the area and centroid of each remaining object in the frame. The</span>
+    <span class="comment">% object with the largest area is the light-colored car.  Create a copy</span>
+    <span class="comment">% of the original frame and tag the car by changing the centroid pixel</span>
+    <span class="comment">% value to red.</span>
+    taggedCars(:,:,:,k) = singleFrame;
+
+    stats = regionprops(noSmallStructures, {<span class="string">'Centroid'</span>,<span class="string">'Area'</span>});
+    <span class="keyword">if</span> ~isempty([stats.Area])
+        areaArray = [stats.Area];
+        [junk,idx] = max(areaArray);
+        c = stats(idx).Centroid;
+        c = floor(fliplr(c));
+        width = 2;
+        row = c(1)-width:c(1)+width;
+        col = c(2)-width:c(2)+width;
+        taggedCars(row,col,1,k) = 255;
+        taggedCars(row,col,2,k) = 0;
+        taggedCars(row,col,3,k) = 0;
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><h2>手順 5: 結果の可視化<a name="8"></a></h2><p>オリジナル ビデオのフレーム レートを取得し、そのフレーム レートを使用して <tt>implay</tt> で <tt>taggedCars</tt> を表示します。</p><pre class="codeinput">frameRate = get(trafficObj,<span class="string">'FrameRate'</span>);
+implay(taggedCars,frameRate);
+</pre><img vspace="5" hspace="5" src="../ipextraffic_05.png" alt=""> <p class="footer">Copyright 2007-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Detecting Cars in a Video of Traffic % You can use Image Processing Toolbox(TM) to visualize and analyze videos % or image sequences. This example uses |mmreader| (MATLAB(R)), |implay|, % and other Image Processing Toolbox functions to detect light-colored cars % in a video of traffic. Note that |mmreader| has platform-specific % capabilities and may not be able to read the supplied Motion JPEG2000 % video on some platforms. See <matlab:doc('mmreader') the documentation> % for |mmreader| for information on which formats are supported on your % platform.  % Copyright 2007-2010 The MathWorks, Inc.  %% Step 1: Access Video with MMREADER % The |mmreader| function constructs a multimedia reader object that can % read video data from a multimedia file.  See <matlab:doc('mmreader') the % documentation> for |mmreader| for information on which formats are % supported on your platform. %    % Use |mmreader| to access the video and get basic information about it.  trafficObj = mmreader('traffic.mj2')  %% % The get method provides more information on the video such as its % duration in seconds. get(trafficObj)  %% Step 2: Explore Video with IMPLAY % Explore the video in |implay|.   implay('traffic.mj2');  %% Step 3: Develop Your Algorithm % When working with video data, it can be helpful to select a % representative frame from the video and develop your algorithm on that % frame. Then, this algorithm can be applied to the processing of all the % frames in the video. % % For this car-tagging application, examine a frame that includes both % light-colored and dark-colored cars. When an image has many structures, % like the traffic video frames, it is useful to simplify the image as much % as possible before trying to detect an object of interest. One way to do % this for the car tagging application is to suppress all objects in the % image that are not light-colored cars (dark-colored cars, lanes, grass, % etc.). Typically, it takes a combination of techniques to remove these % extraneous objects.  % % One way to remove the dark-colored cars from the video frames is to use % the |imextendedmax| function. This function returns a binary image that % identifies regions with intensity values above a specified threshold, % called regional maxima. All other objects in the image with pixel values % below this threshold become the background. To eliminate the dark-colored % cars, determine the average pixel value for these objects in the image. % (Use |rgb2gray| to convert the original video from RGB to grayscale.) You % can use the pixel region tool in |implay| to view pixel values. Specify the % average pixel value (or a value slightly higher) as the threshold when % you call |imextendedmax|. For this demo, set the value to 50.  darkCarValue = 50; darkCar = rgb2gray(read(trafficObj,71)); noDarkCar = imextendedmax(darkCar, darkCarValue); imshow(darkCar) figure, imshow(noDarkCar)  %% % In the processed image, note how most of the dark-colored car objects are % removed but many other extraneous objects remain, particularly the % lane-markings. The regional maxima processing will not remove the lane % markings because their pixel values are above the threshold. To remove % these objects, you can use the morphological function |imopen|. This % function uses morphological processing to remove small objects from a % binary image while preserving large objects. When using morphological % processing, you must decide on the size and shape of the structuring % element used in the operation. Because the lane-markings are long and % thin objects, use a disk-shaped structuring element with radius % corresponding to the width of the lane markings. You can use the pixel % region tool in |implay| to estimate the width of these objects. For this % demo, set the value to 2.   sedisk = strel('disk',2); noSmallStructures = imopen(noDarkCar, sedisk); imshow(noSmallStructures)  %% % To complete the algorithm, use |regionprops| to find the centroid of the % objects in |noSmallStructures| (should just be the light-colored cars). % Use this information to position the tag on the light-colored cars in the % original video.   %% Step 4: Apply the Algorithm to the Video % The car-tagging application processes the video one frame at a time in a % loop. (Because a typical video contains a large number of frames, it % would take a lot of memory to read and process all the frames at once.) % % A small video (like the one in this example) could be processed at once, % and there are many functions that provide this capability. For more % information, see <http://www.mathworks.com/access/helpdesk/help/toolbox/images/f14-17682.html the Documentation>. % % For faster processing, preallocate the memory used to store the processed % video.  nframes = get(trafficObj, 'NumberOfFrames'); I = read(trafficObj, 1); taggedCars = zeros([size(I,1) size(I,2) 3 nframes], class(I));  for k = 1 : nframes     singleFrame = read(trafficObj, k);          % Convert to grayscale to do morphological processing.     I = rgb2gray(singleFrame);          % Remove dark cars.     noDarkCars = imextendedmax(I, darkCarValue);           % Remove lane markings and other non-disk shaped structures.     noSmallStructures = imopen(noDarkCars, sedisk);      % Remove small structures.     noSmallStructures = bwareaopen(noSmallStructures, 150);         % Get the area and centroid of each remaining object in the frame. The     % object with the largest area is the light-colored car.  Create a copy     % of the original frame and tag the car by changing the centroid pixel     % value to red.     taggedCars(:,:,:,k) = singleFrame;         stats = regionprops(noSmallStructures, {'Centroid','Area'});     if ~isempty([stats.Area])         areaArray = [stats.Area];         [junk,idx] = max(areaArray);         c = stats(idx).Centroid;         c = floor(fliplr(c));         width = 2;         row = c(1)-width:c(1)+width;         col = c(2)-width:c(2)+width;         taggedCars(row,col,1,k) = 255;         taggedCars(row,col,2,k) = 0;         taggedCars(row,col,3,k) = 0;     end end  %% Step 5: Visualize Results % Get the frame rate of the original video and use it to % see |taggedCars| in |implay|.   frameRate = get(trafficObj,'FrameRate'); implay(taggedCars,frameRate);  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,282 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>EVM Measurements for an EDGE System</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="EVMDemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit EVMDemo">Open EVMDemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo EVMDemo">Run in the Command Window</a></div></div><div class="content"><h1>EVM Measurements for an EDGE System</h1><!--introduction--><p>This demonstration shows how to use the <a href="matlab:doc('COMMMEASURE.EVM')">COMMMEASURE.EVM</a> object to measure the error vector magnitude (EVM) of a simulated EDGE [ <a href="#8">1</a> ] transmitter.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Error Vector Magnitude (EVM)</a></li><li><a href="#2">System Parameters</a></li><li><a href="#4">Initialization</a></li><li><a href="#7">Simulation</a></li><li><a href="#8">Selected Bibliography</a></li></ul></div><h2>Error Vector Magnitude (EVM)<a name="1"></a></h2><p>The error vector magnitude (EVM) is a measure of the difference between a reference waveform, which is the error-free modulated signal, and the actual transmitted waveform.  EVM is used to quantify the modulation accuracy of a transmitter.  [ <a href="#8">2</a> ] requires that a mobile EDGE transmitter shall not have an RMS EVM value worse than 10% for any burst. It also specifies that the peak EVM, which is defined as the average of burst maximum EVMs, shall be less than or equal to 30%, and that the 95th percentile value shall be less than or equal to 15%.</p><h2>System Parameters<a name="2"></a></h2><p>An EDGE system has the following system parameters.</p><pre class="codeinput">Tnormal = 6/1625000;     <span class="comment">% Normal symbol duration in seconds</span>
+M = 8;                   <span class="comment">% Modulation order (8-PSK)</span>
+</pre><p>[ <a href="#8">2</a> ] specifies that the measurements are performed during the useful part of the burst, excluding tail bits, over at least 200 bursts. To account for filter delays, we include 9 more symbols in the simulation of the transmitted symbol.  We chose to oversample the transmitted signal by four.  We assume an SNR of 60 dB to account for transmitter and test hardware imperfections.</p><pre class="codeinput">burstLen1 = 174+78+174;  <span class="comment">% Number of symbols in the useful part of the burst</span>
+burstLen2 = burstLen1+9; <span class="comment">% Number of symbols in the burst</span>
+numBursts = 200;         <span class="comment">% Number of bursts</span>
+Nsamp  = 4;              <span class="comment">% Number of samples that represents a symbol</span>
+Fs = Nsamp/Tnormal;      <span class="comment">% Final sampling rate</span>
+SNR = 60;                <span class="comment">% Simulated signal-to-noise ratio in dB</span>
+</pre><h2>Initialization<a name="4"></a></h2><p>Section 3.2 of [ <a href="#8">1</a> ] defines the constellation for the 8-PSK symbols. We use 'User-defined' symbol order for the MODEM.PSKMOD object to create the required symbol mapping.  The 8-PSK symbols are continuously rotated with <img src="EVMDemo_eq39319.png" alt="$$3\pi/8$"> radians per symbol before pulse shaping.</p><p>Section 3.5 of [ <a href="#8">1</a> ] defines the pulse shape as a linearized GMSK pulse, i.e. the main component in a Laurent decomposition of the GMSK modulation [ <a href="#8">3</a> ].  We use a helper function to compute the filter coefficients and use a direct-form FIR digital filter, DFILT.DFFIR, to create the pulse shaping filter.  We normalize the filter to obtain unity gain at the main tap.</p><p>We use a local random number stream to produce reproducible results.</p><pre class="codeinput"><span class="comment">% Create an 8-PSK modulator</span>
+hMod = modem.pskmod(<span class="string">'M'</span>, 8, <span class="string">'SymbolOrder'</span>, <span class="string">'User-define'</span>, <span class="keyword">...</span>
+    <span class="string">'SymbolMapping'</span>, [7 3 2 0 1 5 4 6]);
+
+<span class="comment">% Calculate the phase rotation vector</span>
+phaseRotation1 = exp(1i*(0:burstLen2-1)'*3*pi/8);
+phaseRotation2 = exp(1i*(0:burstLen1-1)'*3*pi/8);
+
+<span class="comment">% Create a linearized GMSK pulse shaping filter</span>
+c0 = commEDGE_getLinearizedGMSKPulse(Nsamp);
+hLinGMSK = dfilt.dffir(c0/max(c0));
+
+<span class="comment">% Create a local random stream to be used by random number generators</span>
+hStr = RandStream(<span class="string">'mt19937ar'</span>, <span class="string">'Seed'</span>, 55408);
+</pre><p><b>Measurement filter</b></p><p>Section 4.6.2 of [ <a href="#8">2</a> ] defines the measurement filter as a raised cosine filter with a roll-off factor of 0.25.  We use the FDESIGN.PULSESHAPING object to create this filter.  Since the window is defined over 7.5 symbol durations, we design the filter to be eight symbols long.  The measurement filter is windowed by multiplying its impulse response by a raised cosine window.  We use a helper function to create the window.</p><pre class="codeinput"><span class="comment">% Design a raised cosine filter with roll off factor 0.25</span>
+Nsym = 8;       <span class="comment">% Filter order in symbols</span>
+beta = 0.25;    <span class="comment">% Roll-off factor</span>
+measFiltDef = fdesign.pulseshaping(Nsamp, <span class="string">'Raised Cosine'</span>, <span class="keyword">...</span>
+    <span class="string">'Nsym,Beta'</span>, Nsym, beta, Nsamp/Tnormal);
+hMeasFilt = design(measFiltDef);
+
+<span class="comment">% Apply the window and normalize the filter gain</span>
+w = commEDGE_getRaisedCosineWindow(Nsamp);
+hMeasFilt.Numerator = hMeasFilt.Numerator.*w;
+</pre><p><b>EVM Measurements Object</b></p><p>The Communications Toolbox&#8482; provides COMMMEASURE.EVM object to calculate RMS EVM, Maximum EVM, and Xth percentile EVM values.  By default, the object calculates the 95th percentile EVM value.</p><pre class="codeinput">hEVM = commmeasure.EVM
+</pre><pre class="codeoutput">
+hEVM = 
+
+                   Type: 'EVM Measurements'
+    NormalizationOption: 'Average reference signal power'
+                 RMSEVM: NaN
+             MaximumEVM: 0
+             Percentile: 95
+          PercentileEVM: NaN
+        NumberOfSymbols: 0
+
+</pre><h2>Simulation<a name="7"></a></h2><p>We first generate random symbols, modulate these symbols, and apply symbol rotation.  We then pulse shape the rotated symbols and add white Gaussian noise. Before EVM measurements, we pass these signals through the measurement filter.  The EVM object assumes that received symbols, sd, and reference symbols, xd, are synchronized, and sampled at the same rate.  Also, the measurements should be performed on the useful part of the burst.  For our simulation, the useful part starts after the filter delay and extends burstLen1 symbols.  We downsample the received signal, s, and transmitted signal, xUp, and synchronize them given the filter delays.</p><p>[ <a href="#8">2</a> ] requires the RMS EVM and the peak EVM measurements to be performed over a burst.  Since, the EVM object calculates the RMS EVM and Maximum EVM continuously, we need to reset the RMS EVM and Maximum EVM measurement after processing each burst.  We calculate the worst case RMS EVM and average maximum EVM outside the EVM object.</p><p>We ran the simulation for 200 bursts.  We see that the simulated transmitter meets the criteria mentioned in <a href="#1">Error Vector Magnitude</a> section above.</p><pre class="codeinput"><span class="comment">% Calculate delays</span>
+refSigDelay = (length(hLinGMSK.Numerator) - 1) / 2;
+delayXUptoS = (length(hMeasFilt.Numerator) - 1)/2;
+rcvSigDelay = refSigDelay + delayXUptoS;
+
+<span class="comment">% Initialize total peak EVM</span>
+totalMaxEVM = 0;
+maxRMSEVM = 0;
+
+<span class="comment">% Loop over bursts</span>
+<span class="keyword">for</span> p=1:numBursts
+    <span class="comment">% Generate random data</span>
+    d = randi(hStr, [0 hMod.M-1], burstLen2, 1);
+    <span class="comment">% Modulate</span>
+    x = modulate(hMod, d);
+    <span class="comment">% Rotate phase</span>
+    x = x .* phaseRotation1;
+    <span class="comment">% Pulse shape</span>
+    xUp = filter(hLinGMSK, upsample(x, Nsamp));
+    <span class="comment">% Add noise</span>
+    r = awgn(xUp, SNR, <span class="string">'measured'</span>, hStr);
+    <span class="comment">% Pass through the measurement filter</span>
+    s = filter(hMeasFilt, r);
+    <span class="comment">% Downsample both received and reference signals.  Account for the filter</span>
+    <span class="comment">% delays</span>
+    sd = s(rcvSigDelay+1:Nsamp:end);
+    xd = xUp(refSigDelay+1:Nsamp:end);
+    <span class="comment">% Reset EVM object</span>
+    reset(hEVM, <span class="string">'RMSEVM'</span>, <span class="string">'MaximumEVM'</span>)
+    <span class="comment">% Update the EVM object</span>
+    update(hEVM, sd(1:burstLen1), xd(1:burstLen1))
+    <span class="comment">% Update maximum RMS EVM</span>
+    maxRMSEVM = max([maxRMSEVM hEVM.RMSEVM]);
+    <span class="comment">% Update maximum EVM sum</span>
+    totalMaxEVM = totalMaxEVM + hEVM.MaximumEVM;
+<span class="keyword">end</span>
+
+<span class="comment">% Calculate peak EVM</span>
+peakEVM = totalMaxEVM / numBursts;
+
+<span class="comment">% Display results</span>
+fprintf(<span class="string">' Worst case RMS EVM (%%): %f\n'</span>, maxRMSEVM)
+fprintf(<span class="string">'           Peak EVM (%%): %f\n'</span>, peakEVM)
+fprintf(<span class="string">'95th percentile EVM (%%): %f\n'</span>, hEVM.PercentileEVM)
+</pre><pre class="codeoutput"> Worst case RMS EVM (%): 9.249154
+           Peak EVM (%): 17.743179
+95th percentile EVM (%): 13.865667
+</pre><h2>Selected Bibliography<a name="8"></a></h2><div><ol><li>3GPP TS 45.004, "Radio Access Network; Modulation," Release 7, v7.2.0, 2008-02</li><li>3GPP TS 45.005, "Radio Access Network; Radio transmission and reception," Release 8, v8.1.0, 2008-05</li><li>Laurent, Pierre, "Exact and Approximate Construction of Digital Phase Modulations by Superposition of Amplitude Modulated Pulses (AMP)," IEEE&reg; Trans. Comm., Vol. COM-34, No. 2, Feb. 1986, pp. 150-160.</li></ol></div><p class="footer">Copyright 2008-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% EVM Measurements for an EDGE System 
+% This demonstration shows how to use the <matlab:doc('COMMMEASURE.EVM') COMMMEASURE.EVM> object to measure
+% the error vector magnitude (EVM) of a simulated EDGE [ <#8 1> ]
+% transmitter. 
+
+% Copyright 2008-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.4 $ $Date: 2009/05/23 07:49:59 $
+
+%% Error Vector Magnitude (EVM)
+% The error vector magnitude (EVM) is a measure of the difference between a
+% reference waveform, which is the error-free modulated signal, and the
+% actual transmitted waveform.  EVM is used to quantify the modulation
+% accuracy of a transmitter.  [ <#8 2> ] requires that a mobile EDGE
+% transmitter shall not have an RMS EVM value worse than 10% for any burst.
+% It also specifies that the peak EVM, which is defined as the average of
+% burst maximum EVMs, shall be less than or equal to 30%, and that 
+% the 95th percentile value shall be less than or equal to 15%.  
+
+%% System Parameters
+% An EDGE system has the following system parameters.  
+
+Tnormal = 6/1625000;     % Normal symbol duration in seconds
+M = 8;                   % Modulation order (8-PSK)
+
+%%
+% [ <#8 2> ] specifies that the measurements are performed during the
+% useful part of the burst, excluding tail bits, over at least 200 bursts.
+% To account for filter delays, we include 9 more symbols in the simulation
+% of the transmitted symbol.  We chose to oversample the transmitted signal
+% by four.  We assume an SNR of 60 dB to account for transmitter and test
+% hardware imperfections.
+
+burstLen1 = 174+78+174;  % Number of symbols in the useful part of the burst
+burstLen2 = burstLen1+9; % Number of symbols in the burst
+numBursts = 200;         % Number of bursts
+Nsamp  = 4;              % Number of samples that represents a symbol
+Fs = Nsamp/Tnormal;      % Final sampling rate
+SNR = 60;                % Simulated signal-to-noise ratio in dB
+
+%% Initialization
+% Section 3.2 of [ <#8 1> ] defines the constellation for the 8-PSK
+% symbols. We use 'User-defined' symbol order for the MODEM.PSKMOD object
+% to create the required symbol mapping.  The 8-PSK symbols are continuously
+% rotated with $$3\pi/8$ radians per symbol before pulse shaping.
+%
+% Section 3.5 of [ <#8 1> ] defines the pulse shape as a linearized GMSK
+% pulse, i.e. the main component in a Laurent decomposition of the GMSK
+% modulation [ <#8 3> ].  We use a helper function to compute the filter
+% coefficients and use a direct-form FIR digital filter, DFILT.DFFIR, to
+% create the pulse shaping filter.  We normalize the filter to obtain
+% unity gain at the main tap.
+%
+% We use a local random number stream to produce reproducible results.
+
+% Create an 8-PSK modulator
+hMod = modem.pskmod('M', 8, 'SymbolOrder', 'User-define', ...
+    'SymbolMapping', [7 3 2 0 1 5 4 6]);
+
+% Calculate the phase rotation vector
+phaseRotation1 = exp(1i*(0:burstLen2-1)'*3*pi/8);
+phaseRotation2 = exp(1i*(0:burstLen1-1)'*3*pi/8);
+
+% Create a linearized GMSK pulse shaping filter
+c0 = commEDGE_getLinearizedGMSKPulse(Nsamp);
+hLinGMSK = dfilt.dffir(c0/max(c0));
+
+% Create a local random stream to be used by random number generators
+hStr = RandStream('mt19937ar', 'Seed', 55408);
+
+%% 
+% *Measurement filter*
+%
+% Section 4.6.2 of [ <#8 2> ] defines the measurement filter as a raised
+% cosine filter with a roll-off factor of 0.25.  We use the
+% FDESIGN.PULSESHAPING object to create this filter.  Since the window is
+% defined over 7.5 symbol durations, we design the filter to be eight
+% symbols long.  The measurement filter is windowed by multiplying its
+% impulse response by a raised cosine window.  We use a helper function to
+% create the window.
+
+% Design a raised cosine filter with roll off factor 0.25
+Nsym = 8;       % Filter order in symbols
+beta = 0.25;    % Roll-off factor
+measFiltDef = fdesign.pulseshaping(Nsamp, 'Raised Cosine', ...
+    'Nsym,Beta', Nsym, beta, Nsamp/Tnormal);
+hMeasFilt = design(measFiltDef);
+
+% Apply the window and normalize the filter gain
+w = commEDGE_getRaisedCosineWindow(Nsamp);
+hMeasFilt.Numerator = hMeasFilt.Numerator.*w;
+
+
+%% 
+% *EVM Measurements Object*
+%
+% The Communications Toolbox(TM) provides COMMMEASURE.EVM object to
+% calculate RMS EVM, Maximum EVM, and Xth percentile EVM values.  By
+% default, the object calculates the 95th percentile EVM value.  
+
+hEVM = commmeasure.EVM
+
+%% Simulation
+% We first generate random symbols, modulate these symbols, and apply
+% symbol rotation.  We then pulse shape the rotated symbols and add white
+% Gaussian noise. Before EVM measurements, we pass these signals through
+% the measurement filter.  The EVM object assumes that received symbols,
+% sd, and reference symbols, xd, are synchronized, and sampled at the same
+% rate.  Also, the measurements should be performed on the useful part of
+% the burst.  For our simulation, the useful part starts after the filter
+% delay and extends burstLen1 symbols.  We downsample the received signal,
+% s, and transmitted signal, xUp, and synchronize them given the filter
+% delays.  
+%
+% [ <#8 2> ] requires the RMS EVM and the peak EVM measurements to be
+% performed over a burst.  Since, the EVM object calculates the RMS EVM and
+% Maximum EVM continuously, we need to reset the RMS EVM and Maximum EVM
+% measurement after processing each burst.  We calculate the worst case RMS
+% EVM and average maximum EVM outside the EVM object.  
+%
+% We ran the simulation for 200 bursts.  We see that the simulated
+% transmitter meets the criteria mentioned in <#1 Error Vector Magnitude>
+% section above.
+
+% Calculate delays
+refSigDelay = (length(hLinGMSK.Numerator) - 1) / 2;
+delayXUptoS = (length(hMeasFilt.Numerator) - 1)/2;
+rcvSigDelay = refSigDelay + delayXUptoS;
+
+% Initialize total peak EVM
+totalMaxEVM = 0;
+maxRMSEVM = 0;
+
+% Loop over bursts
+for p=1:numBursts
+    % Generate random data
+    d = randi(hStr, [0 hMod.M-1], burstLen2, 1);
+    % Modulate
+    x = modulate(hMod, d);
+    % Rotate phase
+    x = x .* phaseRotation1;
+    % Pulse shape
+    xUp = filter(hLinGMSK, upsample(x, Nsamp));
+    % Add noise
+    r = awgn(xUp, SNR, 'measured', hStr);
+    % Pass through the measurement filter
+    s = filter(hMeasFilt, r);
+    % Downsample both received and reference signals.  Account for the filter
+    % delays
+    sd = s(rcvSigDelay+1:Nsamp:end);
+    xd = xUp(refSigDelay+1:Nsamp:end);
+    % Reset EVM object
+    reset(hEVM, 'RMSEVM', 'MaximumEVM')
+    % Update the EVM object
+    update(hEVM, sd(1:burstLen1), xd(1:burstLen1))
+    % Update maximum RMS EVM
+    maxRMSEVM = max([maxRMSEVM hEVM.RMSEVM]);
+    % Update maximum EVM sum
+    totalMaxEVM = totalMaxEVM + hEVM.MaximumEVM;
+end
+
+% Calculate peak EVM
+peakEVM = totalMaxEVM / numBursts;
+
+% Display results
+fprintf(' Worst case RMS EVM (%%): %f\n', maxRMSEVM)
+fprintf('           Peak EVM (%%): %f\n', peakEVM)
+fprintf('95th percentile EVM (%%): %f\n', hEVM.PercentileEVM)
+
+%% Selected Bibliography
+% # 3GPP TS 45.004, "Radio Access Network; Modulation," Release 7,
+% v7.2.0, 2008-02
+% # 3GPP TS 45.005, "Radio Access Network; Radio transmission and
+% reception," Release 8, v8.1.0, 2008-05
+% # Laurent, Pierre, "Exact and Approximate Construction of Digital Phase
+% Modulations by Superposition of Amplitude Modulated Pulses (AMP),"
+% IEEE(R) Trans. Comm., Vol. COM-34, No. 2, Feb. 1986, pp. 150-160. 
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

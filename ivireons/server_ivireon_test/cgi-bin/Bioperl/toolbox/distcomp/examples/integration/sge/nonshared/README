@@ -1,0 +1,188 @@
+Copyright 2010 The MathWorks, Inc.
+$Revision: 1.1.6.3 $  $Date: 2010/05/10 17:13:08 $
+
+This folder contains a number of files to allow Parallel Computing Toolbox
+to be used with SGE via the generic scheduler interface.
+
+The files in this folder assume that the client and cluster do not share a file system 
+and that the client is not able to submit directly to the cluster using the
+qsub command.
+
+Note that all the files in this directory will work only for clusters that are 
+running on UNIX.
+
+Instructions for Use
+=====================
+Running Parallel Jobs
+---------------------
+For running parallel jobs, an SGE parallel environment is required. The "matlab"
+parallel environment is based on the "MPI" example shipped with SGE. To use this
+parallel environment, the "matlabpe.template" must be used.  This template must
+be customised to match the number of slots available, and to match where the
+"startmatlabpe.sh" and "stopmatlabpe.sh" scripts are installed on your cluster.
+
+The following stages are needed to create the parallel environment, and then
+make the parallel environment runnable on a particular queue.  You should perform 
+these steps on the headnode of your cluster.
+
+1. Modify the contents of matlabpe.template to use your desired number of slots and
+the correct location of the startmatlabpe.sh and stopmatlabpe.sh files.  You can also
+change other values or add additional values to matlabpe.template to suit your cluster.  
+For more information, refer to the sge_pe documentation provided with your scheduler.
+
+2. Add the "matlab" parallel environment, using a shell command like:
+       
+       $ qconf -Ap matlabpe.template
+
+3. Make the "matlab" PE runnable on all queues:
+
+       $ qconf -mq all.q
+
+This will bring up a text editor for you to make changes: search for the line
+"pe_list", and add "matlab"
+
+4. Ensure you can submit a trivial job to the PE:
+
+       $ echo "hostname" | qsub -pe matlab 1
+
+Check that the job runs correctly using "qstat", and check that the output file 
+contains the name of the host that ran the job.  The default filename for the 
+output file is "~/STDIN.o###", where "###" is the SGE job number.
+   
+On the Client Host
+------------------
+1. The files in
+$MATLABROOT/toolbox/distcomp/examples/integration/sge/nonshared
+must be present on the MATLAB path. Copy them to $MATLABROOT/toolbox/local or modify
+the MATLAB path from within MATLAB.
+
+
+2. Read the documentation for using the generic scheduler interface with
+the Parallel Computing Toolbox and familiarize yourself with the different 
+properties that can be set for a generic scheduler.
+
+In the MATLAB Client
+--------------------
+1. Create a generic scheduler object for your cluster.  For distributed jobs, 
+you must use distributedSubmitFcn as your submit function.  For parallel jobs, you must 
+use parallelSubmitFcn as your submit function.  
+Both of these functions require two additional string value inputs:
+    a. clusterHost - The name of the cluster host that will call the qsub command.
+    b. remoteDataLocation - The directory used to store job information on the cluster.
+                            This directory must be accessible by all the worker hosts.
+
+Example:
+sched = findResource('scheduler', 'type', 'generic');
+set(sched, 'ClusterMatlabRoot', '/apps/matlab');
+set(sched, 'ClusterOsType', 'unix');
+% Use a local folder as the DataLocation
+set(sched, 'DataLocation', '/tmp/DATA_LOCATION');
+set(sched, 'HasSharedFilesystem', false);
+% Define the additional inputs to the submit functions
+clusterHost = 'myHost1';
+remoteDataLocation = '/share/DATA_LOCATION';
+% The SubmitFcn must be a MATLAB cell array that includes the two additional inputs
+set(sched, 'SubmitFcn', {@distributedSubmitFcn, clusterHost, remoteDataLocation});
+% If you want to run parallel jobs (including matlabpool), you must specify a ParallelSubmitFcn
+set(sched, 'ParallelSubmitFcn', {@parallelSubmitFcn, clusterHost, remoteDataLocation});
+set(sched, 'GetJobStateFcn', @getJobStateFcn);
+set(sched, 'DestroyJobFcn', @destroyJobFcn);
+
+
+2. Create a job and some tasks, submit the job, and wait for it to finish before
+getting the results. Do the same for parallel jobs if so desired.  
+
+Note that the first time you submit a job to the scheduler from any client MATLAB session 
+you will be prompted to provide your username and other credential information for the 
+cluster host that will submit the job.  If you choose to use an identity file, this must 
+be an ssh identity file.
+
+If you need to change your credentials, you can reset them using the following command 
+in the MATLAB command window:
+    sched.UserData.RemoteConnection.disconnect
+
+You will be prompted to provide your credentials again when you next submit a job.
+
+As an alternative to these steps, create a parallel configuration that defines the 
+appropriate properties and run configuration validation to verify that the configuration
+works correctly.
+
+
+Description of Files
+====================
+For more detail about these files, please refer to the help and comments contained in the 
+files themselves.
+
+MATLAB Functions Required for genericscheduler 
+----------------------------------------------
+distributedSubmitFcn.m
+    Submit function for distributed jobs.  Use this as the SubmitFcn for your genericscheduler object.
+parallelSubmitFcn.m
+    Submit function for parallel jobs.  Use this as the ParallelSubmitFcn for your genericscheduler object.
+destroyJobFcn.m 
+    Destroy a job on the scheduler.  Use this as the DestroyJobFcn for your genericscheduler object.
+getJobStateFcn.m
+    Get the job state from the scheduler.  Use this as the GetJobStateFcn for your genericscheduler object.
+
+Other MATLAB Functions
+-----------------------
+extractJobId.m
+    Get the scheduler's job ID from the submission output.
+getSubmitString.m
+    Get the submission string for the scheduler.
+createSubmitScript.m
+    Create a script that is executed on the cluster host to perform job submission.
+getRemoteConnection.m
+    Get or create a parallel.cluster.RemoteClusterAccess connection.  If a new connection
+    is created, this function prompts for user credentials either through standard 
+    MATLAB dialogs or the command line and stores the connection in the UserData property of
+    the scheduler object.  If you provide the incorrect credentials, you can reset the 
+    credentials using the following code:
+        >> sched.UserData.RemoteConnection.disconnect();
+    
+    Refer to the MATLAB help for parallel.cluster.RemoteClusterAccess for more information.  
+
+Executable Scripts
+-------------------
+distributedJobWrapper.sh
+    Script used by the scheduler to launch the MATLAB worker processes for distributed jobs.
+parallelJobWrapper.sh
+    Script used by the scheduler to launch the MATLAB worker processes for parallel jobs.
+
+
+Optional Customizations
+========================
+The code customizations listed in this section are clearly marked in the relevant files.
+
+distributedSubmitFcn.m
+----------------------
+distributedSubmitFcn provides the ability to supply additional submit arguments to the 
+qsub command.  You may wish to modify the additionalSubmitArgs variable to include additional
+submit arguments that are appropriate to your cluster.  For more information, refer to the 
+qsub documentation provided with your scheduler.
+ 
+parallelSubmitFcn.m
+--------------------
+parallelSubmitFcn calculates the number of nodes to request from the scheduler from the 
+MaximumNumberOfWorkers property of the parallel job.  You may wish to customize the number of
+nodes requested to suit your cluster's requirements.
+
+parallelSubmitFcn provides the ability to supply additional submit arguments to the 
+qsub command.  You may wish to modify the additionalSubmitArgs variable to include additional
+submit arguments that are appropriate to your cluster.  For more information, refer to the 
+qsub documentation provided with your scheduler.
+
+parallelJobWrapper.sh
+---------------------
+parallelJobWrapper.sh uses the StrictHostKeyChecking=no and UserKnownHostsFile=/dev/null options
+for ssh.  You may wish to customize the ssh options to suit your cluster's requirements.  For 
+more information, refer to your operating system the ssh documentation.
+
+getRemoteConnection.m
+---------------------
+getRemoteConnection.m uses either standard MATLAB dialogs or command line input to request 
+credentials from users.  You may wish to provide default credentials or modify the manner 
+in which the credential information is requested.
+
+
+

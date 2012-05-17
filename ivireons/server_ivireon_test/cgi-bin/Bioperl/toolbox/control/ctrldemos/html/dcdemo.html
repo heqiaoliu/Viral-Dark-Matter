@@ -1,0 +1,266 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>DC Motor Control</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="dcdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit dcdemo">Open dcdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo dcdemo">Run in the Command Window</a></div></div><div class="content"><h1>DC Motor Control</h1><!--introduction--><p>This demo compares three techniques for tracking setpoint commands and reducing sensitivity to load disturbances:</p><div><ul><li>feedforward command</li><li>integral feedback control</li><li>LQR regulation</li></ul></div><p>See "Getting Started:Building Models" for more details about the DC motor model.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Problem Statement</a></li><li><a href="#6">Feedforward Control Design</a></li><li><a href="#9">Feedback Control Design</a></li><li><a href="#12">LQR Control Design</a></li><li><a href="#17">Comparison of Designs</a></li></ul></div><h2>Problem Statement<a name="1"></a></h2><p>In armature-controlled DC motors, the applied voltage Va controls the angular velocity w of the shaft.</p><p><img vspace="5" hspace="5" src="../Figures/dcdemofigures_01.png" alt=""> </p><p>This demo shows two techniques for reducing the sensitivity of w to load variations (changes in the torque opposed by the motor load).</p><p><img vspace="5" hspace="5" src="../Figures/dcdemofigures_02.png" alt=""> </p><p>A simplified model of the DC motor is shown above. The torque Td models load disturbances. You must minimize the speed variations induced by such disturbances.</p><p>For this example, the physical constants are:</p><pre class="codeinput">R = 2.0;                <span class="comment">% Ohms</span>
+L = 0.5;                <span class="comment">% Henrys</span>
+Km = 0.1; Kb = 0.1;     <span class="comment">% torque and back emf constants</span>
+Kf = 0.2;               <span class="comment">% Nms</span>
+J = 0.02;               <span class="comment">% kg.m^2/s^2</span>
+</pre><p>First construct a state-space model of the DC motor with two inputs (Va,Td) and one output (w):</p><pre class="codeinput">h1 = tf(Km,[L R]);            <span class="comment">% armature</span>
+h2 = tf(1,[J Kf]);            <span class="comment">% eqn of motion</span>
+
+dcm = ss(h2) * [h1 , 1];      <span class="comment">% w = h2 * (h1*Va + Td)</span>
+dcm = feedback(dcm,Kb,1,1);   <span class="comment">% close back emf loop</span>
+</pre><p>Note: Compute with the state-space form to minimize the model order.</p><p>Now plot the angular velocity response to a step change in voltage Va:</p><pre class="codeinput">stepplot(dcm(1));
+</pre><img vspace="5" hspace="5" src="dcdemo_01.png" alt=""> <p>Right-click on the plot and select "Characteristics:Settling Time" to display the settling time.</p><h2>Feedforward Control Design<a name="6"></a></h2><p>You can use this simple feedforward control structure to command the angular velocity w to a given value w_ref.</p><p><img vspace="5" hspace="5" src="../Figures/dcdemofigures_03.png" alt=""> </p><p>The feedforward gain Kff should be set to the reciprocal of the DC gain from Va to w.</p><pre class="codeinput">Kff = 1/dcgain(dcm(1))
+</pre><pre class="codeoutput">
+Kff =
+
+    4.1000
+
+</pre><p>To evaluate the feedforward design in the face of load disturbances, simulate the response to a step command w_ref=1 with a disturbance Td = -0.1Nm  between t=5 and t=10 seconds:</p><pre class="codeinput">t = 0:0.1:15;
+Td = -0.1 * (t&gt;5 &amp; t&lt;10);       <span class="comment">% load disturbance</span>
+u = [ones(size(t)) ; Td];       <span class="comment">% w_ref=1 and Td</span>
+
+cl_ff = dcm * diag([Kff,1]);    <span class="comment">% add feedforward gain</span>
+set(cl_ff,<span class="string">'InputName'</span>,{<span class="string">'w_ref'</span>,<span class="string">'Td'</span>},<span class="string">'OutputName'</span>,<span class="string">'w'</span>);
+
+h = lsimplot(cl_ff,u,t);
+title(<span class="string">'Setpoint tracking and disturbance rejection'</span>)
+legend(<span class="string">'cl\_ff'</span>)
+
+<span class="comment">% Annotate plot</span>
+line([5,5],[.2,.3]); line([10,10],[.2,.3]);
+text(7.5,.25,{<span class="string">'disturbance'</span>,<span class="string">'T_d = -0.1Nm'</span>},<span class="keyword">...</span>
+            <span class="string">'vertic'</span>,<span class="string">'middle'</span>,<span class="string">'horiz'</span>,<span class="string">'center'</span>,<span class="string">'color'</span>,<span class="string">'r'</span>);
+</pre><img vspace="5" hspace="5" src="dcdemo_02.png" alt=""> <p>Clearly feedforward control handles load disturbances poorly.</p><h2>Feedback Control Design<a name="9"></a></h2><p>Next try the feedback control structure shown below.</p><p><img vspace="5" hspace="5" src="../Figures/dcdemofigures_04.png" alt=""> </p><p>To enforce zero steady-state error, use integral control of the form</p><pre>     C(s) = K/s</pre><pre>     where K is to be determined.</pre><p>To determine the gain K, you can use the root locus technique applied to the open-loop 1/s * transfer(Va-&gt;w):</p><pre class="codeinput">h = rlocusplot(tf(1,[1 0]) * dcm(1));
+setoptions(h,<span class="string">'FreqUnits'</span>,<span class="string">'rad/sec'</span>);
+set(gca,<span class="string">'Xlim'</span>,[-15 5],<span class="string">'Ylim'</span>,[-15 15]);
+</pre><img vspace="5" hspace="5" src="dcdemo_03.png" alt=""> <p>Click on the curves to read the gain values and related info. A reasonable choice here is K = 5.  Note that the SISO Design Tool offers an integrated GUI to perform such designs (help sisotool for details).</p><p>Compare this new design with the initial feedforward design on the same test case:</p><pre class="codeinput">K = 5;
+C = tf(K,[1 0]);            <span class="comment">% compensator K/s</span>
+
+cl_rloc = feedback(dcm * append(C,1),1,1,1);
+h = lsimplot(cl_ff,cl_rloc,u,t);
+set(cl_rloc,<span class="string">'InputName'</span>,{<span class="string">'w_ref'</span>,<span class="string">'Td'</span>},<span class="string">'OutputName'</span>,<span class="string">'w'</span>);
+title(<span class="string">'Setpoint tracking and disturbance rejection'</span>)
+legend(<span class="string">'feedforward'</span>,<span class="string">'feedback w/ rlocus'</span>,<span class="string">'Location'</span>,<span class="string">'NorthWest'</span>)
+</pre><img vspace="5" hspace="5" src="dcdemo_04.png" alt=""> <p>The root locus design is better at rejecting load disturbances.</p><h2>LQR Control Design<a name="12"></a></h2><p>To further improve performance, try designing a linear quadratic regulator (LQR) for the feedback structure shown below.</p><p><img vspace="5" hspace="5" src="../Figures/dcdemofigures_05.png" alt=""> </p><p>In addition to the integral of error, the LQR scheme also uses the state vector x=(i,w) to synthesize the driving voltage Va.  The resulting voltage is of the form</p><pre>     Va = K1 * w + K2 * w/s + K3 * i</pre><pre>     where i is the armature current.</pre><p>For better disturbance rejection, use a cost function that penalizes large integral error, e.g., the cost function</p><p><img src="dcdemo_eq22438.png" alt="$$ C = \int^\infty_0 (20q(t)^2+\omega(t)^2+0.01V_a(t)^2) dt $$"></p><p>where</p><p><img src="dcdemo_eq81526.png" alt="$$ q(s) = \omega(s)/s. $$"></p><p>The optimal LQR gain for this cost function is computed as follows:</p><pre class="codeinput">dc_aug = [1 ; tf(1,[1 0])] * dcm(1); <span class="comment">% add output w/s to DC motor model</span>
+
+K_lqr = lqry(dc_aug,[1 0;0 20],0.01);
+</pre><p>Next derive the closed-loop model for simulation purposes:</p><pre class="codeinput">P = augstate(dcm);                     <span class="comment">% inputs:Va,Td  outputs:w,x</span>
+C = K_lqr * append(tf(1,[1 0]),1,1);   <span class="comment">% compensator including 1/s</span>
+OL = P * append(C,1);                  <span class="comment">% open loop</span>
+
+CL = feedback(OL,eye(3),1:3,1:3);      <span class="comment">% close feedback loops</span>
+cl_lqr = CL(1,[1 4]);                  <span class="comment">% extract transfer (w_ref,Td)-&gt;w</span>
+</pre><p>This plot compares the closed-loop Bode diagrams for the three designs</p><pre class="codeinput">bodeplot(cl_ff,cl_rloc,cl_lqr);
+</pre><img vspace="5" hspace="5" src="dcdemo_05.png" alt=""> <p>Click on the curves to identify the systems or inspect the data.</p><h2>Comparison of Designs<a name="17"></a></h2><p>Finally we compare the three designs on our simulation test case:</p><pre class="codeinput">h = lsimplot(cl_ff,cl_rloc,cl_lqr,u,t);
+title(<span class="string">'Setpoint tracking and disturbance rejection'</span>)
+legend(<span class="string">'feedforward'</span>,<span class="string">'feedback (rlocus)'</span>,<span class="string">'feedback (LQR)'</span>,<span class="string">'Location'</span>,<span class="string">'NorthWest'</span>)
+</pre><img vspace="5" hspace="5" src="dcdemo_06.png" alt=""> <p>Thanks to its additional degrees of freedom, the LQR compensator performs best at rejecting load disturbances (among the three designs discussed here).</p><p class="footer">Copyright 1986-2006 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% DC Motor Control
+% This demo compares three techniques for tracking setpoint commands and
+% reducing sensitivity to load disturbances:
+%
+% * feedforward command
+% * integral feedback control
+% * LQR regulation
+%
+% See "Getting Started:Building Models" for more details about the DC
+% motor model.
+
+%   Copyright 1986-2006 The MathWorks, Inc.
+%   $Revision: 1.12.4.4 $  $Date: 2006/09/30 00:16:51 $
+
+%% Problem Statement
+% In armature-controlled DC motors, the applied voltage Va controls the
+% angular velocity w of the shaft.
+%
+% <<../Figures/dcdemofigures_01.png>>
+%
+% This demo shows two techniques for reducing the sensitivity of w to load
+% variations (changes in the torque opposed by the motor load).
+%
+% <<../Figures/dcdemofigures_02.png>>
+%
+% A simplified model of the DC motor is shown above. The torque Td
+% models load disturbances. You must minimize the speed variations
+% induced by such disturbances.
+% 
+% For this example, the physical constants are:
+
+R = 2.0;                % Ohms
+L = 0.5;                % Henrys
+Km = 0.1; Kb = 0.1;     % torque and back emf constants
+Kf = 0.2;               % Nms
+J = 0.02;               % kg.m^2/s^2
+
+%%
+% First construct a state-space model of the DC motor with two inputs
+% (Va,Td) and one output (w):
+
+h1 = tf(Km,[L R]);            % armature
+h2 = tf(1,[J Kf]);            % eqn of motion
+
+dcm = ss(h2) * [h1 , 1];      % w = h2 * (h1*Va + Td)
+dcm = feedback(dcm,Kb,1,1);   % close back emf loop
+
+%%
+% Note: Compute with the state-space form to minimize the model order.
+
+%%
+% Now plot the angular velocity response to a step change in voltage Va:
+%
+stepplot(dcm(1));
+
+%%
+% Right-click on the plot and select "Characteristics:Settling Time" to
+% display the settling time.
+%
+
+%% Feedforward Control Design
+% You can use this simple feedforward control structure to command 
+% the angular velocity w to a given value w_ref. 
+%
+% <<../Figures/dcdemofigures_03.png>>
+%
+% The feedforward gain Kff should be set to the reciprocal of the DC gain
+% from Va to w.
+%
+Kff = 1/dcgain(dcm(1))
+
+%%
+% To evaluate the feedforward design in the face of load disturbances,
+% simulate the response to a step command w_ref=1 with a disturbance Td =
+% -0.1Nm  between t=5 and t=10 seconds:
+%
+t = 0:0.1:15;
+Td = -0.1 * (t>5 & t<10);       % load disturbance
+u = [ones(size(t)) ; Td];       % w_ref=1 and Td
+
+cl_ff = dcm * diag([Kff,1]);    % add feedforward gain
+set(cl_ff,'InputName',{'w_ref','Td'},'OutputName','w');
+
+h = lsimplot(cl_ff,u,t);
+title('Setpoint tracking and disturbance rejection')
+legend('cl\_ff')
+
+% Annotate plot
+line([5,5],[.2,.3]); line([10,10],[.2,.3]);
+text(7.5,.25,{'disturbance','T_d = -0.1Nm'},...
+            'vertic','middle','horiz','center','color','r');
+    
+%%
+% Clearly feedforward control handles load disturbances poorly.  
+
+%% Feedback Control Design
+% Next try the feedback control structure shown below. 
+%
+% <<../Figures/dcdemofigures_04.png>>
+%
+% To enforce zero steady-state error, use integral control of the form
+%
+%       C(s) = K/s
+%
+%       where K is to be determined.
+%
+% To determine the gain K, you can use the root locus technique applied to
+% the open-loop 1/s * transfer(Va->w): 
+
+h = rlocusplot(tf(1,[1 0]) * dcm(1));
+setoptions(h,'FreqUnits','rad/sec');
+set(gca,'Xlim',[-15 5],'Ylim',[-15 15]);
+
+%%
+% Click on the curves to read the gain values and related info. A
+% reasonable choice here is K = 5.  Note that the SISO Design Tool offers
+% an integrated GUI to perform such designs (help sisotool for details).
+%
+% Compare this new design with the initial feedforward design on the same
+% test case:
+
+K = 5;
+C = tf(K,[1 0]);            % compensator K/s
+
+cl_rloc = feedback(dcm * append(C,1),1,1,1);
+h = lsimplot(cl_ff,cl_rloc,u,t);
+set(cl_rloc,'InputName',{'w_ref','Td'},'OutputName','w');
+title('Setpoint tracking and disturbance rejection')
+legend('feedforward','feedback w/ rlocus','Location','NorthWest')
+
+%%
+% The root locus design is better at rejecting load disturbances.
+%
+
+%% LQR Control Design
+% To further improve performance, try designing a linear quadratic
+% regulator (LQR) for the feedback structure shown below.  
+%
+% <<../Figures/dcdemofigures_05.png>>
+%
+% In addition to the integral of error, the LQR scheme also uses the
+% state vector x=(i,w) to synthesize the driving voltage Va.  The
+% resulting voltage is of the form
+%
+%       Va = K1 * w + K2 * w/s + K3 * i
+%
+%       where i is the armature current.
+
+    
+%%
+% For better disturbance rejection, use a cost function that penalizes
+% large integral error, e.g., the cost function 
+%
+% $$ C = \int^\infty_0 (20q(t)^2+\omega(t)^2+0.01V_a(t)^2) dt $$
+%
+% where
+%
+% $$ q(s) = \omega(s)/s. $$
+%
+% The optimal LQR gain for this cost function is computed as follows:
+
+dc_aug = [1 ; tf(1,[1 0])] * dcm(1); % add output w/s to DC motor model
+ 
+K_lqr = lqry(dc_aug,[1 0;0 20],0.01);
+ 
+%%   
+% Next derive the closed-loop model for simulation purposes: 
+
+P = augstate(dcm);                     % inputs:Va,Td  outputs:w,x
+C = K_lqr * append(tf(1,[1 0]),1,1);   % compensator including 1/s
+OL = P * append(C,1);                  % open loop
+
+CL = feedback(OL,eye(3),1:3,1:3);      % close feedback loops
+cl_lqr = CL(1,[1 4]);                  % extract transfer (w_ref,Td)->w
+
+%%
+% This plot compares the closed-loop Bode diagrams for the three designs
+
+bodeplot(cl_ff,cl_rloc,cl_lqr);
+
+%%
+% Click on the curves to identify the systems or inspect the data.
+
+%% Comparison of Designs
+% Finally we compare the three designs on our simulation test case:
+
+h = lsimplot(cl_ff,cl_rloc,cl_lqr,u,t);
+title('Setpoint tracking and disturbance rejection')
+legend('feedforward','feedback (rlocus)','feedback (LQR)','Location','NorthWest')
+
+%%
+% Thanks to its additional degrees of freedom, the LQR compensator performs
+% best at rejecting load disturbances (among the three designs discussed
+% here).
+  
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

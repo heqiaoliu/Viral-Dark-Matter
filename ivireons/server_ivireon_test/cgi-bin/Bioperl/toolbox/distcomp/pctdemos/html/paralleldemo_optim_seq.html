@@ -1,0 +1,102 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Sequential Portfolio Optimization</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-09"><meta name="m-file" content="paralleldemo_optim_seq"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_optim_seq">Open paralleldemo_optim_seq.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_optim_seq">Run in the Command Window</a></div></div><div class="content"><h1>Sequential Portfolio Optimization</h1><!--introduction--><p>This demo performs a mean-variance portfolio optimization of a stock portfolio, and generates an efficient frontier.  The portfolios on the frontier are optimal in the sense that they offer the minimal risk for some given level of expected return.</p><p>We are given the daily returns of a group of stocks over a fixed time period, and try to choose a portfolio such that it achieves some given return mu, and has minimal risk in the mean-variance sense. This leads us to solve a quadratic minimization problem with equality constraints.  Solving this minimization problem for a range of values of mu gives us the efficient frontier.</p><p>For details about the computations, <a href="matlab:edit('pctdemo_setup_optim.m')">view the code for pctdemo_setup_optim</a>.</p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox&#8482;</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_optim_dist.html">Distributed Portfolio Optimization</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Load the Demo Settings and the Data</a></li><li><a href="#3">Run the Optimization</a></li><li><a href="#4">Measure the Elapsed Time</a></li><li><a href="#5">Plot the Results</a></li></ul></div><h2>Load the Demo Settings and the Data<a name="1"></a></h2><p>We start by getting the demo difficulty level.  If you want to use a different demo difficulty level, use <tt>paralleldemoconfig</tt> and then run this demo again. See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for full details.</p><pre class="codeinput">difficulty = pctdemo_helper_getDefaults();
+</pre><p>The function <tt>pctdemo_setup_optim</tt> uses historical data about the stock returns to provide us with the mean and the covariance matrix of the stock returns.  It also gives us the desired returns, <tt>muVec</tt>, for which we should find the minimal risk. The demo difficulty level controls the length of the vector <tt>muVec</tt>.  Additionally, the function <tt>pctdemo_setup_optim</tt> displays for reference a graph of the daily returns of a few of the stocks in the portfolio. You can <a href="matlab:edit('pctdemo_setup_optim.m')">view the code for pctdemo_setup_optim</a> for full details.</p><pre class="codeinput">[fig, muVec, covMat, expRet] = pctdemo_setup_optim(difficulty);
+</pre><img vspace="5" hspace="5" src="paralleldemo_optim_seq_01.png" alt=""> <h2>Run the Optimization<a name="3"></a></h2><p>We use <tt>pctdemo_task_optim</tt> to solve one optimization problem for each level of the desired returns.  The function returns to us the minimal risk and the expected returns. You can <a href="matlab:edit('pctdemo_task_optim.m')">view the code for pctdemo_task_optim</a> for full details.</p><pre class="codeinput">startTime = clock;
+[risk, ret] =  pctdemo_task_optim(covMat, expRet, muVec);
+</pre><h2>Measure the Elapsed Time<a name="4"></a></h2><p>The time used for the sequential computations should be compared against the time it takes to perform the same set of calculations using the Parallel Computing Toolbox in the <a href="paralleldemo_optim_dist.html">Distributed Portfolio Optimization</a> demo. The elapsed time varies with the underlying hardware.</p><pre class="codeinput">elapsedTime = etime(clock, startTime);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 101.1 seconds
+</pre><h2>Plot the Results<a name="5"></a></h2><p>We use the  <tt>pctdemo_plot_optim</tt> function to display a graph of the efficient frontier. You can <a href="matlab:edit('pctdemo_plot_optim.m')">view the code for pctdemo_plot_optim</a> for full details.</p><pre class="codeinput">pctdemo_plot_optim(fig, risk, ret);
+</pre><img vspace="5" hspace="5" src="paralleldemo_optim_seq_02.png" alt=""> <p class="footer">Copyright 2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Sequential Portfolio Optimization
+% This demo performs a mean-variance portfolio optimization of a
+% stock portfolio, and generates an efficient frontier.  The portfolios on the
+% frontier are optimal in the sense that they offer the minimal risk for 
+% some given level of expected return.
+%
+% We are given the daily returns of a group of stocks over a fixed 
+% time period, and try to choose a portfolio such that it achieves some given
+% return mu, and has minimal risk in the mean-variance sense.
+% This leads us to solve a quadratic minimization problem with equality
+% constraints.  Solving this minimization problem for a range of values of 
+% mu gives us the efficient frontier.
+%
+% For details about the computations, 
+% <matlab:edit('pctdemo_setup_optim.m')
+% view the code for pctdemo_setup_optim>.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox(TM)> 
+%
+% Related demos:
+%
+% * <paralleldemo_optim_dist.html Distributed Portfolio Optimization>
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.3 $  $Date: 2009/11/07 20:53:21 $
+
+
+%% Load the Demo Settings and the Data
+% We start by getting the demo difficulty level.  If you want to use a different
+% demo difficulty level, use |paralleldemoconfig| and then run this demo again.
+% See <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% for full details.
+difficulty = pctdemo_helper_getDefaults();
+%%
+% The function |pctdemo_setup_optim| uses historical data about the stock
+% returns to provide us with the mean and the covariance matrix of the stock
+% returns.  It also gives us the desired returns, |muVec|, for which we should
+% find the minimal risk. The demo difficulty level controls the length of the
+% vector |muVec|.  Additionally, the function |pctdemo_setup_optim| displays
+% for reference a graph of the daily returns of a few of the stocks in the
+% portfolio.
+% You can 
+% <matlab:edit('pctdemo_setup_optim.m') view the code for pctdemo_setup_optim> 
+% for full details.
+[fig, muVec, covMat, expRet] = pctdemo_setup_optim(difficulty);
+
+
+%% Run the Optimization
+% We use |pctdemo_task_optim| to solve one optimization problem for each level
+% of the desired returns.  The function returns to us the minimal risk and the
+% expected returns.
+% You can 
+% <matlab:edit('pctdemo_task_optim.m') view the code for pctdemo_task_optim> 
+% for full details.
+startTime = clock;
+[risk, ret] =  pctdemo_task_optim(covMat, expRet, muVec);
+
+%% Measure the Elapsed Time
+% The time used for the sequential computations should be compared
+% against the time it takes to perform the same set of calculations
+% using the Parallel Computing Toolbox in
+% the <paralleldemo_optim_dist.html Distributed Portfolio Optimization> demo.
+% The elapsed time varies with the underlying hardware.
+elapsedTime = etime(clock, startTime);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+%% Plot the Results
+% We use the  |pctdemo_plot_optim| function to display a graph of the efficient
+% frontier. 
+% You can 
+% <matlab:edit('pctdemo_plot_optim.m') view the code for pctdemo_plot_optim> 
+% for full details.
+pctdemo_plot_optim(fig, risk, ret);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

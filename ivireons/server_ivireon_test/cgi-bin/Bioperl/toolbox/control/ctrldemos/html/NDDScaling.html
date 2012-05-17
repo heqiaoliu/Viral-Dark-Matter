@@ -1,0 +1,294 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Scaling Models to Maximize Accuracy</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="NDDScaling.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit NDDScaling">Open NDDScaling.m in the Editor</a></div><div class="right"><a href="matlab:echodemo NDDScaling">Run in the Command Window</a></div></div><div class="content"><h1>Scaling Models to Maximize Accuracy</h1><!--introduction--><p>This demo shows that proper scaling of state-space models can be critical for accuracy and provides an overview of automatic and manual rescaling tools.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Why Scaling Matters</a></li><li><a href="#9">Sensitivity-Minimizing Scaling</a></li><li><a href="#12">Automatic Scaling</a></li><li><a href="#14">Manual Scaling</a></li><li><a href="#19">The Scaled Property of State-Space Models</a></li><li><a href="#22">Conclusion</a></li></ul></div><h2>Why Scaling Matters<a name="1"></a></h2><p>A state-space model is well scaled when the entries of the A,B,C matrices are homogenous in magnitude and the model characteristics are insensitive to small perturbations of A,B,C (in comparison to their norms). By contrast, a model is poorly scaled when A,B,C have both small and large entries and the model characteristics are sensitive to the small entries.</p><p>Mixing disparate time scales or unit scales can give rise to badly scaled models. Working with such models can lead to severe loss of accuracy and puzzling results. To prevent these problems, it is often necessary to rescale the state vector, that is, multiply each state by some scaling factor to reduce the numerical range and sensitivity of the model.</p><p>To gain more insight into scaling issues, load the first example of poorly-scaled model:</p><pre class="codeinput">load <span class="string">numdemo</span> <span class="string">poorbal</span>          <span class="comment">% load POORBAL model</span>
+format <span class="string">short</span> <span class="string">e</span>
+[a,b,c,d] = ssdata(poorbal)
+</pre><pre class="codeoutput">
+a =
+
+ -4.2754e+003 -3.7741e-003  1.7311e-002 -6.6733e-002
+ -2.6809e+009 -2.9000e+003 -1.4966e+004 -1.7386e+006
+ -5.8087e+008  7.0698e+002 -1.0015e+006  3.8709e+006
+  1.4051e+008  5.1532e+003  2.4289e+005 -9.3906e+005
+
+
+b =
+
+ -1.0307e+015
+  1.7073e+021
+ -1.7231e+021
+  4.1797e+020
+
+
+c =
+
+ -1.3095e-008  3.0534e-014  6.5238e-013 -2.5219e-012
+
+
+d =
+
+  1.1229e+003
+
+</pre><p>In this model, the entries of A range from 1e-3 to 1e9 in magnitude. This model is stable with poles at:  -1.9e6, -2.6e3+7.0e4i, -2.6e3-7.0e4i, -4.3e3.</p><p>Next, discretize this model at 1 MHz (Ts = 1e-6) using the matrix-based version of <tt>c2d</tt> (this version does not perform any scaling) and plot the step response of the discretized model:</p><pre class="codeinput">[ad,bd] = c2d(a,b,1e-6);
+step(ss(ad,bd,c,d,1e-6),1e-3);
+title(<span class="string">'Step Response of Discretized POORBAL'</span>)
+</pre><img vspace="5" hspace="5" src="NDDScaling_01.png" alt=""> <p>The response diverges even though the continuous-time model is stable, a consequence of the poor scaling of the A matrix.</p><p>Poor scaling also impacts the accuracy of frequency-domain computations. State-of-the-art algorithms heavily rely on orthogonal state coordinate transformations, and such transformations introduce errors of order <tt>eps</tt> (the machine precision) times the norms of A,B,C. While such errors are usually negligible, they can become dominant when A,B,C are poorly scaled. To see this phenomenon, load the next example:</p><pre class="codeinput">load <span class="string">numdemo</span> <span class="string">anil</span>
+</pre><p>The <tt>anil</tt> model is a state-space realization of a 20-th order transfer function with most of its dynamics between 1e3 and 1e5 rad/s. The coefficients of the A matrix range between 1 and 1e80 in magnitude. To simulate the effect of orthogonal transformations applied to this model, generate a random orthogonal matrix <tt>U</tt> and use <tt>ss2ss</tt> to perform the corresponding change of state coordinates:</p><pre class="codeinput">[U,junk] = qr(randn(20));
+anil2 = ss2ss(anil,U);   <span class="comment">% perform state coordinate transformation U</span>
+</pre><p>Mathematically, <tt>anil</tt> and <tt>anil2</tt> have the same frequency response. Numerically, however, the Bode responses of <tt>anil</tt> and <tt>anil2</tt> are very different:</p><pre class="codeinput">bode(anil,<span class="string">'b'</span>,anil2,<span class="string">'r--'</span>)
+legend(<span class="string">'Original'</span>,<span class="string">'After Orthogonal Transformation'</span>,<span class="string">'Location'</span>,<span class="string">'northeast'</span>)
+</pre><pre class="codeoutput">Warning: The frequency response has poor relative accuracy. This may be
+because the response is nearly zero or infinite at all frequencies, or
+because the state-space realization is ill conditioned. Use the "prescale"
+command to investigate further. 
+</pre><img vspace="5" hspace="5" src="NDDScaling_02.png" alt=""> <p>This example shows that for poorly scaled models, even orthogonal transformations can be unsafe and destroy accuracy.</p><h2>Sensitivity-Minimizing Scaling<a name="9"></a></h2><p>For simple models derived from physics, you can avoid scaling issues by carefully selecting units to reduce the spread between small and large coefficients. For more complex models, however, finding a proper scaling is a challenge. Ad hoc schemes such as balancing of the A matrix (see <tt>balance</tt>) are often useful but sometimes harmful.</p><p>The Control System Toolbox&#8482; software provides advanced scaling algorithms that minimize the model sensitivity to small perturbations of A,B,C proportional to their norms. This helps maximize accuracy of the computed frequency response, ZPK representation, etc. The <tt>prescale</tt> command is the gateway to these scaling algorithms. For example, you can use <tt>prescale</tt> to scale the <tt>anil</tt> model used above:</p><pre class="codeinput">Scaled_anil = prescale(anil);
+</pre><p>The coefficients of the A matrix now range from 1e3 to 3e7 instead of 1 to 1e80. Apply the orthogonal transformation <tt>U</tt> to the scaled model and compare the Bode responses:</p><pre class="codeinput">Scaled_anil2 = ss2ss(Scaled_anil,U);
+bode(Scaled_anil,<span class="string">'b'</span>,Scaled_anil2,<span class="string">'r--'</span>)
+legend(<span class="string">'Scaled Model'</span>,<span class="string">'After Orthogonal Transformation'</span>,<span class="string">'Location'</span>,<span class="string">'southwest'</span>)
+</pre><img vspace="5" hspace="5" src="NDDScaling_03.png" alt=""> <p>The Bode responses match closely now. Scaling has made orthogonal transformations safe again and you can expect good accuracy from computations involving this scaled model.</p><h2>Automatic Scaling<a name="12"></a></h2><p>Most algorithms in the Control System Toolbox software automatically rescale state-space models to prevent catastrophic loss of accuracy. As a result, you are mostly insulated from scaling issues. For example, the <tt>bode</tt> command automatically scales incoming models so that it can safely perform orthogonal transformations to speed up the frequency response computation. Therefore, there is no need to use <tt>prescale</tt> before <tt>bode</tt> unless you want detailed information about the relative accuracy of the computed Bode response.</p><p>Similarly, you need not scale your model prior to using the <tt>c2d</tt> command. If you discretize the <tt>poorbal</tt> model directly with <tt>c2d</tt>, scaling issues are taken care of automatically and the step response of the discretized model converges as expected:</p><pre class="codeinput">poorbal_d = c2d(poorbal,1e-6);
+step(poorbal_d,1e-3)
+title(<span class="string">'Step Response of C2D(POORBAL,1e-6)'</span>);
+</pre><img vspace="5" hspace="5" src="NDDScaling_04.png" alt=""> <h2>Manual Scaling<a name="14"></a></h2><p>While the Control System Toolbox scaling algorithm handles most models without user intervention, there are rare cases where good accuracy can't be achieved over the entire frequency range and the algorithm must trade accuracy in one band for accuracy in another. In such case, a warning is issued to alert you of potential inaccuracies. To illustrate this behavior, load the next example and plot its Bode response:</p><pre class="codeinput">load <span class="string">numdemo</span> <span class="string">warnsys</span>
+bode(warnsys,{1e-3,1e6}), grid <span class="string">on</span>
+</pre><pre class="codeoutput">Warning: The frequency response may be inaccurate in parts of the frequency
+range.
+Specify a frequency interval {FMIN,FMAX} or use the "prescale" command to
+improve accuracy. 
+</pre><img vspace="5" hspace="5" src="NDDScaling_05.png" alt=""> <p>Note the warning issued by the <tt>bode</tt> command. This 17-th order model has dynamics near 0.01 rad/s and between 1e3 and 1e6 rad/s, separated by a 300dB gain drop. You can eliminate the warning by narrowing down the frequency range of interest, for example, to [10,1e6] rad/s:</p><pre class="codeinput">bode(warnsys,{10,1e6}), grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="NDDScaling_06.png" alt=""> <p>This instructs the algorithm to maximizes accuracy in the interval [10,1e6]. You can also investigate the underlying accuracy tradeoff by typing:</p><p><tt>&gt;&gt; prescale(warnsys)</tt></p><p>This command opens the interactive Scaling Tool shown below. Set the frequency axis limits to 1e-2 to 1e6. The top plot shows the frequency response magnitude, and the bottom plot shows:</p><div><ul><li>The relative accuracy of the computed response without scaling (red)</li><li>The relative accuracy of the computed response with scaling (blue)</li><li>The best achievable accuracy when using independent scaling at each frequency (brown)</li></ul></div><p>Any relative accuracy value greater than one signals poor accuracy.</p><p><img vspace="5" hspace="5" src="../html/prescale1.png" alt=""> </p><p>In this example, the Relative Accuracy plot shows that the scaling algorithm achieved good accuracy in the [1e3,1e6] frequency band at the expense of accuracy at low frequencies. If you only care about the frequency band [1e-3,1], you can override this default range selection and manually specify the frequency band where you want maximum accuracy. For example, enter [1e-3,1] in the edit boxes next to <b>Maximize accuracy in the frequency band</b>:</p><p><img vspace="5" hspace="5" src="../html/prescale2.png" alt=""> </p><p>This action updates the bottom plot and the relative accuracy of the scaled model (blue curve) is now best near 1e-2 rad/s, but is significantly worse in the [1e3,1e6] band.</p><h2>The Scaled Property of State-Space Models<a name="19"></a></h2><p>The State-Space (@ss) object has a <tt>Scaled</tt> property to indicate when a model is already scaled. Its default value is <tt>false</tt>. The <tt>prescale</tt> command sets this property to <tt>true</tt>:</p><pre class="codeinput">sys = prescale(anil);
+sys.Scaled
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><p>Because the scaling algorithm skips models with <tt>Scaled=true</tt>, you can manually set the <tt>Scaled</tt> property to <tt>true</tt> when your model is well scaled and you want to eliminate the small overhead associated with scaling. If you want more control over where accuracy is maximized, you can also explicitly scale your model before using it:</p><pre class="codeinput">sys = prescale(warnsys,{10,1e6});
+bode(sys)
+</pre><img vspace="5" hspace="5" src="NDDScaling_07.png" alt=""> <p>Here <tt>warnsys</tt> is scaled with emphasis on the frequency range [10,1e6] and <tt>bode</tt> does not attempt to rescale the resulting model <tt>sys</tt> (no more warning).</p><h2>Conclusion<a name="22"></a></h2><p>Proper scaling of state-space models is important to achieve accurate results. Most Control System Toolbox commands take care of scaling automatically. You are alerted when accuracy may be compromised and you can easily correct the problem by specifying the frequency band of interest.</p><p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Scaling Models to Maximize Accuracy
+% This demo shows that proper scaling of state-space models
+% can be critical for accuracy and provides an overview
+% of automatic and manual rescaling tools.
+
+%   Copyright 1986-2009 The MathWorks, Inc.
+%   $Revision: 1.1.8.3 $  $Date: 2009/11/09 16:22:09 $
+
+%% Why Scaling Matters
+% A state-space model is well scaled when the
+% entries of the A,B,C matrices are homogenous in magnitude and
+% the model characteristics are insensitive to small perturbations
+% of A,B,C (in comparison to their norms). By contrast, a model is 
+% poorly scaled when A,B,C have both small and large entries and
+% the model characteristics are sensitive to the small entries. 
+%
+% Mixing disparate time scales or unit scales can give rise to badly
+% scaled models. Working with such models can lead to severe loss of 
+% accuracy and puzzling results. To prevent these problems, it is often 
+% necessary to rescale the state vector, that is, multiply each state
+% by some scaling factor to reduce the numerical range and sensitivity
+% of the model.
+%
+% To gain more insight into scaling issues, load the first example of 
+% poorly-scaled model:
+
+load numdemo poorbal          % load POORBAL model
+format short e
+[a,b,c,d] = ssdata(poorbal)
+
+%%
+% In this model, the entries of A range from 1e-3 to 1e9 in magnitude. This 
+% model is stable with poles at:  -1.9e6, -2.6e3+7.0e4i, -2.6e3-7.0e4i, 
+% -4.3e3. 
+
+%%
+% Next, discretize this model at 1 MHz (Ts = 1e-6) using the matrix-based 
+% version of |c2d| (this version does not perform any scaling)
+% and plot the step response of the discretized model:
+
+[ad,bd] = c2d(a,b,1e-6);
+step(ss(ad,bd,c,d,1e-6),1e-3);
+title('Step Response of Discretized POORBAL')
+
+%%
+% The response diverges even though the continuous-time model is stable,
+% a consequence of the poor scaling of the A matrix.
+
+%% 
+% Poor scaling also impacts the accuracy of frequency-domain computations.
+% State-of-the-art algorithms heavily rely on orthogonal state coordinate 
+% transformations, and such transformations introduce errors of 
+% order |eps| (the machine precision) times the norms of A,B,C. While such 
+% errors are usually negligible, they can become dominant when A,B,C are  
+% poorly scaled. To see this phenomenon, load the next example:
+
+load numdemo anil
+
+%%
+% The |anil| model is a state-space realization of a 20-th order 
+% transfer function with most of its dynamics between 1e3 and 1e5 rad/s. 
+% The coefficients of the A matrix range between 1 and 1e80 in magnitude. 
+% To simulate the effect of orthogonal transformations applied to this
+% model, generate a random orthogonal matrix |U| and use |ss2ss| to 
+% perform the corresponding change of state coordinates:
+
+[U,junk] = qr(randn(20));  
+anil2 = ss2ss(anil,U);   % perform state coordinate transformation U
+
+%%
+% Mathematically, |anil| and |anil2| have the same frequency response.
+% Numerically, however, the Bode responses of |anil| and |anil2| are very
+% different:
+
+bode(anil,'b',anil2,'rREPLACE_WITH_DASH_DASH')
+legend('Original','After Orthogonal Transformation','Location','northeast')
+
+%%
+% This example shows that for poorly scaled models, even orthogonal 
+% transformations can be unsafe and destroy accuracy.
+ 
+%% Sensitivity-Minimizing Scaling
+% For simple models derived from physics, you can avoid scaling issues by 
+% carefully selecting units to reduce the spread between small and large 
+% coefficients. For more complex models, however, finding a proper scaling 
+% is a challenge. Ad hoc schemes such as balancing of the A matrix
+% (see |balance|) are often useful but sometimes harmful. 
+%
+% The Control System Toolbox(TM) software provides advanced scaling algorithms
+% that minimize the model sensitivity to small perturbations of A,B,C proportional
+% to their norms. This helps maximize accuracy of the computed frequency  
+% response, ZPK representation, etc. The |prescale| command is the gateway
+% to these scaling algorithms. For example, you can use |prescale| to scale 
+% the |anil| model used above:
+
+Scaled_anil = prescale(anil);
+
+%% 
+% The coefficients of the A matrix now range from 1e3 to 3e7 instead of 1 
+% to 1e80. Apply the orthogonal transformation |U| to the scaled model and 
+% compare the Bode responses:
+
+Scaled_anil2 = ss2ss(Scaled_anil,U);
+bode(Scaled_anil,'b',Scaled_anil2,'rREPLACE_WITH_DASH_DASH')
+legend('Scaled Model','After Orthogonal Transformation','Location','southwest')
+
+%% 
+% The Bode responses match closely now. 
+% Scaling has made orthogonal transformations safe again and you can expect 
+% good accuracy from computations involving this scaled model.
+
+
+%% Automatic Scaling
+% Most algorithms in the Control System Toolbox software automatically rescale 
+% state-space models to prevent catastrophic loss of accuracy. As a result, 
+% you are mostly insulated from scaling issues. For example, the |bode|
+% command automatically scales incoming models so that it can safely perform 
+% orthogonal transformations to speed up the frequency response computation.
+% Therefore, there is no need to use |prescale| before |bode| unless 
+% you want detailed information about the relative accuracy
+% of the computed Bode response.
+
+%%
+% Similarly, you need not scale your model prior to using the |c2d|
+% command. If you discretize the |poorbal| model directly with |c2d|, scaling 
+% issues are taken care of automatically and the step response of the 
+% discretized model converges as expected:
+
+poorbal_d = c2d(poorbal,1e-6);
+step(poorbal_d,1e-3)
+title('Step Response of C2D(POORBAL,1e-6)'); 
+
+%% Manual Scaling
+% While the Control System Toolbox scaling algorithm handles most models
+% without user intervention, there are rare cases where good accuracy can't 
+% be achieved over the entire frequency range and the algorithm must trade
+% accuracy in one band for accuracy in another. In such case,
+% a warning is issued to alert you of potential inaccuracies. To illustrate 
+% this behavior, load the next example and plot its Bode response:
+
+load numdemo warnsys
+bode(warnsys,{1e-3,1e6}), grid on
+
+%%
+% Note the warning issued by the |bode| command.
+% This 17-th order model has dynamics near 0.01 rad/s and between 1e3 and 1e6
+% rad/s, separated by a 300dB gain drop. You can eliminate the
+% warning by narrowing down the frequency range of interest, for example, 
+% to [10,1e6] rad/s:
+
+bode(warnsys,{10,1e6}), grid on
+
+%%
+% This instructs the algorithm to maximizes accuracy in the interval [10,1e6].
+% You can also investigate the underlying accuracy tradeoff by typing:
+%
+% |>> prescale(warnsys)|
+%
+% This command opens the interactive Scaling Tool shown below. Set the frequency 
+% axis limits to 1e-2 to 1e6. The top plot shows the frequency response 
+% magnitude, and the bottom plot shows:
+%
+% * The relative accuracy of the computed response without scaling (red)
+% * The relative accuracy of the computed response with scaling (blue)
+% * The best achievable accuracy when using independent scaling at each frequency (brown)
+% 
+% Any relative accuracy value greater than one signals poor accuracy.
+%
+% <<../html/prescale1.png>>
+
+%%
+% In this example, the Relative Accuracy plot shows that the scaling algorithm
+% achieved good accuracy in the 
+% [1e3,1e6] frequency band at the expense of accuracy at low frequencies. 
+% If you only care about the frequency band [1e-3,1], you can override 
+% this default range selection and manually specify the 
+% frequency band where you want maximum accuracy. For example, enter 
+% [1e-3,1] in the edit boxes next to *Maximize accuracy in the frequency band*:
+%
+% <<../html/prescale2.png>>
+
+%%
+% This action updates the bottom plot and the relative accuracy of the scaled
+% model (blue curve) is now best
+% near 1e-2 rad/s, but is significantly worse in the [1e3,1e6] band. 
+
+%% The Scaled Property of State-Space Models
+% The State-Space (@ss) object has a |Scaled| property to indicate when a 
+% model is already scaled. Its default value is |false|. The |prescale| 
+% command sets this property to |true|:
+
+sys = prescale(anil);
+sys.Scaled
+
+%%
+% Because the scaling algorithm skips models with |Scaled=true|, you can manually 
+% set the |Scaled| property to |true| when your model is well scaled and
+% you want to eliminate the small overhead associated with scaling.
+% If you want more control over where accuracy is maximized, you can also 
+% explicitly scale your model before using it:
+
+sys = prescale(warnsys,{10,1e6});
+bode(sys)
+
+%%
+% Here |warnsys| is scaled with emphasis on the frequency range [10,1e6]
+% and |bode| does not attempt to rescale the resulting model |sys| (no
+% more warning).
+
+%% Conclusion
+% Proper scaling of state-space models is important to achieve accurate results.
+% Most Control System Toolbox commands take care of scaling automatically.
+% You are alerted when accuracy may be compromised and you can easily correct
+% the problem by specifying the frequency band of interest.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,464 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Raised Cosine Filtering</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="rcosdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rcosdemo">Open rcosdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rcosdemo">Run in the Command Window</a></div></div><div class="content"><h1>Raised Cosine Filtering</h1><!--introduction--><p>This demonstration uses pulse shaping filter designer (FDESIGN.PULSESHAPING), interpolation filter designer (FDESIGN.INTERPOLATOR), and decimation filter designer (FDESIGN.DECIMATOR) to demonstrate the intersymbol interference (ISI) rejection capability of the raised cosine filter, and how to split the raised cosine filtering between transmitter and receiver.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Raised Cosine Filter Design</a></li><li><a href="#4">Pulse Shaping with Raised Cosine Filters</a></li><li><a href="#7">Roll-off Factor</a></li><li><a href="#8">Square-Root Raised Cosine Filters</a></li><li><a href="#11">Multirate Filters for Pulse Shaping</a></li></ul></div><h2>Raised Cosine Filter Design<a name="1"></a></h2><p>The main parameter of a raised cosine filter is its roll-off factor, beta, which indirectly specifies the bandwidth of the filter. Ideal raised cosine filters have an infinite number of taps. Therefore, practical raised cosine filters are windowed. The window length can be controlled in three ways: filter order, filter order in symbol durations, and minimum order to achieve a given stopband attenuation. In this demo, we specify the filter order as six symbol durations, i.e., the filter spans six symbol durations. Such a filter also has a group delay of three symbol durations. Raised cosine filters are used for pulse shaping, where the signal is upsampled. Therefore, we also need to specify the upsampling factor. The following is a list of parameters used to design the raised cosine filter for this demo.</p><pre class="codeinput">Nsym = 6;           <span class="comment">% Filter order in symbol durations</span>
+beta = 0.5;         <span class="comment">% Roll-off factor</span>
+sampsPerSym = 8;    <span class="comment">% Upsampling factor</span>
+</pre><p>We use FDESIGN.PULSESHAPING to store the specifications of the raised cosine filter.</p><pre class="codeinput"><span class="comment">% Shape of the pulse shaping filter</span>
+shape = <span class="string">'Raised Cosine'</span>;
+<span class="comment">% Specifications of the raised cosine filter with given order in symbols</span>
+rcosSpec = fdesign.pulseshaping(sampsPerSym, shape, <span class="string">'Nsym,beta'</span>, Nsym, beta)
+</pre><pre class="codeoutput"> 
+rcosSpec =
+ 
+               Response: 'Pulse Shaping'                             
+             PulseShape: 'Raised Cosine'                             
+       SamplesPerSymbol: 8                                           
+          Specification: 'Nsym,Beta'                                 
+            Description: {'Filter Order in Symbols';'Rolloff Factor'}
+    NormalizedFrequency: true                                        
+        NumberOfSymbols: 6                                           
+          RolloffFactor: 0.5                                         
+                                                                     
+</pre><p>We design a direct-form FIR filter based on these specifications. The filter has an order of Nsym*sampsPerSym, or Nsym*sampsPerSym+1 taps. We normalize filter the filter coefficients so that the filtered and unfiltered data matches when overlayed.</p><pre class="codeinput">rcosFlt = design(rcosSpec);
+rcosFlt.Numerator = rcosFlt.Numerator / max(rcosFlt.Numerator);
+disp(rcosFlt)
+</pre><pre class="codeoutput">     FilterStructure: 'Direct-Form FIR'
+          Arithmetic: 'double'         
+           Numerator: [1x49 double]    
+    PersistentMemory: false            
+                                       
+</pre><h2>Pulse Shaping with Raised Cosine Filters<a name="4"></a></h2><p>We generate a digital sequence that is upsampled by zero-padding before filtering. We use the raised cosine filter to shape the waveform without introducing ISI.</p><pre class="codeinput"><span class="comment">% Parameters.</span>
+DataL = 20;             <span class="comment">% Data length in symbols</span>
+R = 1000;               <span class="comment">% Data rate</span>
+Fs = R * sampsPerSym;   <span class="comment">% Sampling frequency</span>
+
+<span class="comment">% Create a local random stream to be used by random number generators for</span>
+<span class="comment">% repeatability.</span>
+hStr = RandStream(<span class="string">'mt19937ar'</span>, <span class="string">'Seed'</span>, 0);
+
+<span class="comment">% Generate random data.</span>
+x = 2*randi(hStr, [0 1], DataL, 1)-1;
+<span class="comment">% Time vector sampled at symbol rate in milliseconds</span>
+tx = 1000 * (0: DataL - 1) / R;
+</pre><p>The plot compares the digital data and the upsampled, filtered signal. It is difficult to compare the two signals because the peak response of the filter is delayed by the group delay of the filter (Nsym/(2*R)). Note that, we append Nsym/2 zeros at the end of X to flush all the useful samples out of the filter.</p><pre class="codeinput"><span class="comment">% Upsample and filter.</span>
+yo = filter(rcosFlt, upsample([x; zeros(Nsym/2,1)], sampsPerSym));
+<span class="comment">% Time vector sampled at sampling frequency in milliseconds</span>
+to = 1000 * (0: (DataL+Nsym/2)*sampsPerSym - 1) / Fs;
+<span class="comment">% Plot data.</span>
+fig1 = figure;
+stem(tx, x, <span class="string">'kx'</span>); hold <span class="string">on</span>;
+<span class="comment">% Plot filtered data.</span>
+plot(to, yo, <span class="string">'b-'</span>); hold <span class="string">off</span>;
+<span class="comment">% Set axes and labels.</span>
+axis([0 30 -1.7 1.7]);  xlabel(<span class="string">'Time (ms)'</span>); ylabel(<span class="string">'Amplitude'</span>);
+legend(<span class="string">'Transmitted Data'</span>, <span class="string">'Upsampled Data'</span>, <span class="string">'Location'</span>, <span class="string">'southeast'</span>)
+</pre><img vspace="5" hspace="5" src="rcosdemo_01.png" alt=""> <p>This step compensates for the raised cosine filter group delay by delaying the input signal. Now it is easy to see how the raised cosine filter upsamples and filters the signal. The filtered signal is identical to the delayed input signal at the input sample times. This demonstrates the raised cosine filter capability to band-limit the signal while avoiding ISI.</p><pre class="codeinput"><span class="comment">% Filter group delay, since raised cosine filter is linear phase and</span>
+<span class="comment">% symmetric.</span>
+fltDelay = Nsym / (2*R);
+<span class="comment">% Correct for propagation delay by removing filter transients</span>
+yo = yo(fltDelay*Fs+1:end);
+to = 1000 * (0: DataL*sampsPerSym - 1) / Fs;
+<span class="comment">% Plot data.</span>
+stem(tx, x, <span class="string">'kx'</span>); hold <span class="string">on</span>;
+<span class="comment">% Plot filtered data.</span>
+plot(to, yo, <span class="string">'b-'</span>); hold <span class="string">off</span>;
+<span class="comment">% Set axes and labels.</span>
+axis([0 25 -1.7 1.7]);  xlabel(<span class="string">'Time (ms)'</span>); ylabel(<span class="string">'Amplitude'</span>);
+legend(<span class="string">'Transmitted Data'</span>, <span class="string">'Upsampled Data'</span>, <span class="string">'Location'</span>, <span class="string">'southeast'</span>)
+</pre><img vspace="5" hspace="5" src="rcosdemo_02.png" alt=""> <h2>Roll-off Factor<a name="7"></a></h2><p>This step demonstrates the effect that changing the roll-off factor from .5 (blue curve) to .2 (red curve) has on the resulting filtered output. The lower value for roll-off causes the filter to have a narrower transition band causing the filtered signal overshoot to be greater for the red curve than for the blue curve.</p><pre class="codeinput"><span class="comment">% Set roll-off factor to 0.2</span>
+rcosSpec.RolloffFactor = 0.2;
+<span class="comment">% Design and normalize filter.</span>
+rcosFlt2 = design(rcosSpec);
+rcosFlt2.Numerator = rcosFlt2.Numerator / max(rcosFlt2.Numerator);
+<span class="comment">% Upsample and filter.</span>
+yo1 = filter(rcosFlt2, upsample([x; zeros(Nsym/2,1)], sampsPerSym));
+<span class="comment">% Correct for propagation delay by removing filter transients</span>
+yo1 = yo1(fltDelay*Fs+1:end);
+<span class="comment">% Plot data.</span>
+stem(tx, x, <span class="string">'kx'</span>); hold <span class="string">on</span>;
+<span class="comment">% Plot filtered data.</span>
+plot(to, yo, <span class="string">'b-'</span>,to, yo1, <span class="string">'r-'</span>); hold <span class="string">off</span>;
+<span class="comment">% Set axes and labels.</span>
+axis([0 25 -1.7 1.7]);  xlabel(<span class="string">'Time (ms)'</span>); ylabel(<span class="string">'Amplitude'</span>);
+legend(<span class="string">'Transmitted Data'</span>, <span class="string">'beta = 0.5'</span>, <span class="string">'beta = 0.2'</span>, <span class="string">'Location'</span>, <span class="string">'southeast'</span>)
+</pre><img vspace="5" hspace="5" src="rcosdemo_03.png" alt=""> <h2>Square-Root Raised Cosine Filters<a name="8"></a></h2><p>A typical use of raised cosine filtering is to split the filtering between transmitter and receiver. Both transmitter and receiver employ square-root raised cosine filters. The combination of transmitter and receiver filters is a raised cosine filter, which results in minimum ISI. We specify a square-root raised cosine filter by setting the shape as 'Square Root Raised Cosine'.</p><pre class="codeinput"><span class="comment">% Shape of the pulse shaping filter</span>
+shape = <span class="string">'Square Root Raised Cosine'</span>;
+<span class="comment">% Design raised cosine filter with given order in symbols</span>
+sqrtRcosSpec = fdesign.pulseshaping(sampsPerSym, shape, <span class="string">'Nsym,beta'</span>, Nsym, beta)
+</pre><pre class="codeoutput"> 
+sqrtRcosSpec =
+ 
+               Response: 'Pulse Shaping'                             
+             PulseShape: 'Square Root Raised Cosine'                 
+       SamplesPerSymbol: 8                                           
+          Specification: 'Nsym,Beta'                                 
+            Description: {'Filter Order in Symbols';'Rolloff Factor'}
+    NormalizedFrequency: true                                        
+        NumberOfSymbols: 6                                           
+          RolloffFactor: 0.5                                         
+                                                                     
+</pre><p>We design the filter using the specification, sqrtRcosSpec. The data stream is upsampled and filtered at the transmitter using the designed filter. This plot shows the transmitted signal when filtered using the square-root raised cosine filter.</p><pre class="codeinput"><span class="comment">% Design and normalize filter.</span>
+sqrtRcosFlt = design(sqrtRcosSpec);
+normFact = max(sqrtRcosFlt.Numerator);
+sqrtRcosFlt.Numerator = sqrtRcosFlt.Numerator / normFact;
+
+<span class="comment">% Upsample and filter.</span>
+yc = filter(sqrtRcosFlt, upsample([x; zeros(Nsym/2,1)], sampsPerSym));
+<span class="comment">% Correct for propagation delay by removing filter transients</span>
+yc = yc(fltDelay*Fs+1:end);
+<span class="comment">% Plot data.</span>
+stem(tx, x, <span class="string">'kx'</span>); hold <span class="string">on</span>;
+<span class="comment">% Plot filtered data.</span>
+plot(to, yc, <span class="string">'m-'</span>); hold <span class="string">off</span>;
+<span class="comment">% Set axes and labels.</span>
+axis([0 25 -1.7 1.7]);  xlabel(<span class="string">'Time (ms)'</span>); ylabel(<span class="string">'Amplitude'</span>);
+legend(<span class="string">'Transmitted Data'</span>, <span class="string">'Sqrt. Raised Cosine'</span>, <span class="string">'Location'</span>, <span class="string">'southeast'</span>)
+</pre><img vspace="5" hspace="5" src="rcosdemo_04.png" alt=""> <p>The transmitted signal (magenta curve) is then filtered at the receiver. We did not decimate the filter output to show the full waveform. Normalization ensures that the gain of the combination of the transmit and receive filters is the same as the gain of a normalized raised cosine filter. The filtered received signal, which is virtually identical to the signal filtered using a single raised cosine filter, is depicted by the blue curve at the receiver.</p><pre class="codeinput"><span class="comment">% Design and normalize filter.</span>
+sqrtRcosFltRcv = design(sqrtRcosSpec);
+sqrtRcosFltRcv.Numerator = sqrtRcosFltRcv.Numerator * (normFact*sampsPerSym);
+<span class="comment">% Filter at the receiver.</span>
+yr = filter(sqrtRcosFltRcv, [yc; zeros(Nsym*sampsPerSym/2, 1)]);
+<span class="comment">% Correct for propagation delay by removing filter transients</span>
+yr = yr(fltDelay*Fs+1:end);
+<span class="comment">% Plot data.</span>
+stem(tx, x, <span class="string">'kx'</span>); hold <span class="string">on</span>;
+<span class="comment">% Plot filtered data.</span>
+plot(to, yr, <span class="string">'b-'</span>,to, yo, <span class="string">'m:'</span>); hold <span class="string">off</span>;
+<span class="comment">% Set axes and labels.</span>
+axis([0 25 -1.7 1.7]);  xlabel(<span class="string">'Time (ms)'</span>); ylabel(<span class="string">'Amplitude'</span>);
+legend(<span class="string">'Transmitted Data'</span>, <span class="string">'Rcv Filter Output'</span>, <span class="string">'Raised Cosine Filter Output'</span>, <span class="string">'Location'</span>, <span class="string">'southeast'</span>)
+</pre><img vspace="5" hspace="5" src="rcosdemo_05.png" alt=""> <h2>Multirate Filters for Pulse Shaping<a name="11"></a></h2><p>Pulse shaping filtering can be performed in a more efficient manner with multirate filters. Filter Design Toolbox&#8482; provides FDESIGN.INTERPOLATOR and FDESIGN.DECIMATOR to store the specifications of multirate filters. We design a direct-form FIR polyphase interpolation filter using these specifications.</p><pre class="codeinput"><span class="comment">% Design polyphase interpolation filters</span>
+rcosInterpSpec = fdesign.interpolator(sampsPerSym, <span class="string">'Square Root Raised Cosine'</span>, <span class="keyword">...</span>
+    sampsPerSym, <span class="string">'Nsym,Beta'</span>, Nsym, beta);
+rcosInterp = design(rcosInterpSpec)
+</pre><pre class="codeoutput"> 
+rcosInterp =
+ 
+        FilterStructure: 'Direct-Form FIR Polyphase Interpolator'
+             Arithmetic: 'double'                                
+              Numerator: [1x49 double]                           
+    InterpolationFactor: 8                                       
+       PersistentMemory: false                                   
+                                                                 
+</pre><p>Design polyphase decimation filters</p><pre class="codeinput">rcosDecimSpec = fdesign.decimator(sampsPerSym, <span class="string">'Square Root Raised Cosine'</span>, <span class="keyword">...</span>
+    sampsPerSym, <span class="string">'Nsym,Beta'</span>, Nsym, beta);
+rcosDecim = design(rcosDecimSpec)
+</pre><pre class="codeoutput"> 
+rcosDecim =
+ 
+     FilterStructure: 'Direct-Form FIR Polyphase Decimator'
+          Arithmetic: 'double'                             
+           Numerator: [1x49 double]                        
+    DecimationFactor: 8                                    
+    PersistentMemory: false                                
+                                                           
+</pre><p>We filter and interpolate the data using the rcosInterp filter.  Then, we filter and decimate at the receiver using rcosDecim filter. The filtering results are exactly the same as the conventional FIR filter.</p><pre class="codeinput"><span class="comment">% Filter and interpolate at the transmitter.</span>
+yo2 = filter(rcosInterp, [x; zeros(Nsym/2,1)]);
+<span class="comment">% Filter and decimate at the receiver.</span>
+yr2 = filter(rcosDecim, [yo2; zeros(Nsym*sampsPerSym/2, 1)]);
+<span class="comment">% Correct for propagation delay by removing filter transients</span>
+yr2 = yr2(2*fltDelay*R+1:end);
+<span class="comment">% Plot data.</span>
+stem(tx, x, <span class="string">'kx'</span>); hold <span class="string">on</span>;
+<span class="comment">% Plot filtered data.</span>
+plot(to, yo2(fltDelay*Fs+1:end), <span class="string">'b-'</span>); hold <span class="string">off</span>;
+title(<span class="string">'Transmitted Signal'</span>)
+<span class="comment">% Set axes and labels.</span>
+axis([0 25 -1.7 1.7]);  xlabel(<span class="string">'Time (ms)'</span>); ylabel(<span class="string">'Amplitude'</span>);
+legend(<span class="string">'Transmitted Data'</span>,<span class="string">'Upsampled Signal'</span>, <span class="string">'Location'</span>, <span class="string">'southeast'</span>)
+
+fig2 = figure;
+<span class="comment">% Plot data.</span>
+stem(tx, x, <span class="string">'kx'</span>); hold <span class="string">on</span>;
+title(<span class="string">'Received Data'</span>)
+<span class="comment">% Plot filtered data.</span>
+stem(tx, yr2, <span class="string">'bo'</span>); hold <span class="string">off</span>;
+<span class="comment">% Set axes and labels.</span>
+axis([0 25 -1.7 1.7]);  xlabel(<span class="string">'Time (ms)'</span>); ylabel(<span class="string">'Amplitude'</span>);
+legend(<span class="string">'Transmitted Data'</span>,<span class="string">'Received Data'</span>, <span class="string">'Location'</span>, <span class="string">'southeast'</span>)
+</pre><img vspace="5" hspace="5" src="rcosdemo_06.png" alt=""> <img vspace="5" hspace="5" src="rcosdemo_07.png" alt=""> <p>Even though the filtering results are exactly the same, the computational cost of a polyphase filter is less. In the following table, we compare the computational cost of a conventional FIR filter, which can be used both at the receiver and the transmitter, polyphase FIR interpolation filter, and polyphase FIR decimation filter.</p><pre class="codeinput">C1 = cost(sqrtRcosFlt);
+C2 = cost(rcosInterp);
+C3 = cost(rcosDecim);
+</pre><pre>------------------------------------------------------------------------
+                    Implementation Cost Comparison
+------------------------------------------------------------------------
+                        Multipliers  Adders  Mult/Symbol  Add/Symbol
+Conventional FIR            48         48         384        384
+Multirate Interpolator      49         41          49         41
+Multirate Decimator         49         48           6.125      6</pre><p>For more information on pulse shaping filter design, including alternatives to raised cosine and square root raised cosine filters, see the <a href="../../../filterdesign/filtdesdemos/html/pulseshapingfilterdemo.html">Pulse Shaping Filter Design demo</a> in Filter Design Toolbox.</p><p class="footer">Copyright 1996-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Raised Cosine Filtering
+% This demonstration uses pulse shaping filter designer
+% (FDESIGN.PULSESHAPING), interpolation filter designer
+% (FDESIGN.INTERPOLATOR), and decimation filter designer
+% (FDESIGN.DECIMATOR) to demonstrate the intersymbol interference (ISI)
+% rejection capability of the raised cosine filter, and how to split the
+% raised cosine filtering between transmitter and receiver.
+
+% Copyright 1996-2009 The MathWorks, Inc.
+% $Revision: 1.19.2.8 $ $Date: 2010/01/25 21:28:30 $
+
+%% Raised Cosine Filter Design
+% The main parameter of a raised cosine filter is its roll-off factor,
+% beta, which indirectly specifies the bandwidth of the filter. Ideal
+% raised cosine filters have an infinite number of taps. Therefore,
+% practical raised cosine filters are windowed. The window length can be
+% controlled in three ways: filter order, filter order in symbol durations,
+% and minimum order to achieve a given stopband attenuation. In this demo,
+% we specify the filter order as six symbol durations, i.e., the filter
+% spans six symbol durations. Such a filter also has a group delay of
+% three symbol durations. Raised cosine filters are used for pulse
+% shaping, where the signal is upsampled. Therefore, we also need to
+% specify the upsampling factor. The following is a list of parameters
+% used to design the raised cosine filter for this demo.
+
+Nsym = 6;           % Filter order in symbol durations
+beta = 0.5;         % Roll-off factor
+sampsPerSym = 8;    % Upsampling factor
+
+%% 
+% We use FDESIGN.PULSESHAPING to store the specifications of the raised
+% cosine filter. 
+
+% Shape of the pulse shaping filter
+shape = 'Raised Cosine';
+% Specifications of the raised cosine filter with given order in symbols
+rcosSpec = fdesign.pulseshaping(sampsPerSym, shape, 'Nsym,beta', Nsym, beta)
+%%
+% We design a direct-form FIR filter based on these specifications. The
+% filter has an order of Nsym*sampsPerSym, or Nsym*sampsPerSym+1 taps. We
+% normalize filter the filter coefficients so that the filtered and
+% unfiltered data matches when overlayed.
+
+rcosFlt = design(rcosSpec); 
+rcosFlt.Numerator = rcosFlt.Numerator / max(rcosFlt.Numerator);
+disp(rcosFlt)
+
+%% Pulse Shaping with Raised Cosine Filters
+% We generate a digital sequence that is upsampled by zero-padding before
+% filtering. We use the raised cosine filter to shape the waveform without
+% introducing ISI.
+
+% Parameters.
+DataL = 20;             % Data length in symbols
+R = 1000;               % Data rate
+Fs = R * sampsPerSym;   % Sampling frequency
+
+% Create a local random stream to be used by random number generators for
+% repeatability.
+hStr = RandStream('mt19937ar', 'Seed', 0);
+
+% Generate random data.
+x = 2*randi(hStr, [0 1], DataL, 1)-1;
+% Time vector sampled at symbol rate in milliseconds
+tx = 1000 * (0: DataL - 1) / R;
+
+%%
+% The plot compares the digital data and the upsampled, filtered signal.
+% It is difficult to compare the two signals because the peak response of
+% the filter is delayed by the group delay of the filter (Nsym/(2*R)).
+% Note that, we append Nsym/2 zeros at the end of X to flush all the useful
+% samples out of the filter.
+
+% Upsample and filter.
+yo = filter(rcosFlt, upsample([x; zeros(Nsym/2,1)], sampsPerSym));
+% Time vector sampled at sampling frequency in milliseconds
+to = 1000 * (0: (DataL+Nsym/2)*sampsPerSym - 1) / Fs;
+% Plot data.
+fig1 = figure;
+stem(tx, x, 'kx'); hold on;
+% Plot filtered data.
+plot(to, yo, 'b-'); hold off;
+% Set axes and labels.
+axis([0 30 -1.7 1.7]);  xlabel('Time (ms)'); ylabel('Amplitude'); 
+legend('Transmitted Data', 'Upsampled Data', 'Location', 'southeast')
+
+%%
+% This step compensates for the raised cosine filter group delay by
+% delaying the input signal. Now it is easy to see how the raised cosine
+% filter upsamples and filters the signal. The filtered signal is
+% identical to the delayed input signal at the input sample times. This
+% demonstrates the raised cosine filter capability to band-limit the signal
+% while avoiding ISI.
+
+% Filter group delay, since raised cosine filter is linear phase and
+% symmetric.
+fltDelay = Nsym / (2*R);
+% Correct for propagation delay by removing filter transients
+yo = yo(fltDelay*Fs+1:end);
+to = 1000 * (0: DataL*sampsPerSym - 1) / Fs;
+% Plot data.
+stem(tx, x, 'kx'); hold on;
+% Plot filtered data.
+plot(to, yo, 'b-'); hold off;
+% Set axes and labels.
+axis([0 25 -1.7 1.7]);  xlabel('Time (ms)'); ylabel('Amplitude');
+legend('Transmitted Data', 'Upsampled Data', 'Location', 'southeast')
+
+%% Roll-off Factor
+% This step demonstrates the effect that changing the roll-off factor from
+% .5 (blue curve) to .2 (red curve) has on the resulting filtered output.
+% The lower value for roll-off causes the filter to have a narrower
+% transition band causing the filtered signal overshoot to be greater for
+% the red curve than for the blue curve.
+ 
+% Set roll-off factor to 0.2
+rcosSpec.RolloffFactor = 0.2;
+% Design and normalize filter.
+rcosFlt2 = design(rcosSpec); 
+rcosFlt2.Numerator = rcosFlt2.Numerator / max(rcosFlt2.Numerator);
+% Upsample and filter.
+yo1 = filter(rcosFlt2, upsample([x; zeros(Nsym/2,1)], sampsPerSym));
+% Correct for propagation delay by removing filter transients
+yo1 = yo1(fltDelay*Fs+1:end);
+% Plot data.
+stem(tx, x, 'kx'); hold on;
+% Plot filtered data.
+plot(to, yo, 'b-',to, yo1, 'r-'); hold off;
+% Set axes and labels.
+axis([0 25 -1.7 1.7]);  xlabel('Time (ms)'); ylabel('Amplitude');
+legend('Transmitted Data', 'beta = 0.5', 'beta = 0.2', 'Location', 'southeast')
+
+%% Square-Root Raised Cosine Filters
+% A typical use of raised cosine filtering is to split the filtering
+% between transmitter and receiver. Both transmitter and receiver employ
+% square-root raised cosine filters. The combination of transmitter and
+% receiver filters is a raised cosine filter, which results in minimum ISI.
+% We specify a square-root raised cosine filter by setting the shape as
+% 'Square Root Raised Cosine'. 
+
+% Shape of the pulse shaping filter
+shape = 'Square Root Raised Cosine';
+% Design raised cosine filter with given order in symbols
+sqrtRcosSpec = fdesign.pulseshaping(sampsPerSym, shape, 'Nsym,beta', Nsym, beta)
+%%
+% We design the filter using the specification, sqrtRcosSpec. The data
+% stream is upsampled and filtered at the transmitter using the designed
+% filter. This plot shows the transmitted signal when filtered using the
+% square-root raised cosine filter. 
+
+% Design and normalize filter.
+sqrtRcosFlt = design(sqrtRcosSpec); 
+normFact = max(sqrtRcosFlt.Numerator);
+sqrtRcosFlt.Numerator = sqrtRcosFlt.Numerator / normFact;
+
+% Upsample and filter. 
+yc = filter(sqrtRcosFlt, upsample([x; zeros(Nsym/2,1)], sampsPerSym));
+% Correct for propagation delay by removing filter transients
+yc = yc(fltDelay*Fs+1:end);
+% Plot data.
+stem(tx, x, 'kx'); hold on;
+% Plot filtered data.
+plot(to, yc, 'm-'); hold off;
+% Set axes and labels.
+axis([0 25 -1.7 1.7]);  xlabel('Time (ms)'); ylabel('Amplitude');
+legend('Transmitted Data', 'Sqrt. Raised Cosine', 'Location', 'southeast')
+
+%%
+% The transmitted signal (magenta curve) is then filtered at the receiver.
+% We did not decimate the filter output to show the full waveform.
+% Normalization ensures that the gain of the combination of the transmit
+% and receive filters is the same as the gain of a normalized raised cosine
+% filter. The filtered received signal, which is virtually identical to the
+% signal filtered using a single raised cosine filter, is depicted by the
+% blue curve at the receiver. 
+
+% Design and normalize filter. 
+sqrtRcosFltRcv = design(sqrtRcosSpec); 
+sqrtRcosFltRcv.Numerator = sqrtRcosFltRcv.Numerator * (normFact*sampsPerSym);
+% Filter at the receiver.
+yr = filter(sqrtRcosFltRcv, [yc; zeros(Nsym*sampsPerSym/2, 1)]);
+% Correct for propagation delay by removing filter transients
+yr = yr(fltDelay*Fs+1:end);
+% Plot data.
+stem(tx, x, 'kx'); hold on;
+% Plot filtered data.
+plot(to, yr, 'b-',to, yo, 'm:'); hold off;
+% Set axes and labels.
+axis([0 25 -1.7 1.7]);  xlabel('Time (ms)'); ylabel('Amplitude');
+legend('Transmitted Data', 'Rcv Filter Output', 'Raised Cosine Filter Output', 'Location', 'southeast')
+
+%% Multirate Filters for Pulse Shaping
+% Pulse shaping filtering can be performed in a more efficient manner with
+% multirate filters. Filter Design Toolbox(TM) provides
+% FDESIGN.INTERPOLATOR and FDESIGN.DECIMATOR to store the specifications of
+% multirate filters. We design a direct-form FIR polyphase interpolation
+% filter using these specifications. 
+
+% Design polyphase interpolation filters
+rcosInterpSpec = fdesign.interpolator(sampsPerSym, 'Square Root Raised Cosine', ...
+    sampsPerSym, 'Nsym,Beta', Nsym, beta);
+rcosInterp = design(rcosInterpSpec)
+
+%%
+% Design polyphase decimation filters
+rcosDecimSpec = fdesign.decimator(sampsPerSym, 'Square Root Raised Cosine', ...
+    sampsPerSym, 'Nsym,Beta', Nsym, beta);
+rcosDecim = design(rcosDecimSpec)
+
+%%
+% We filter and interpolate the data using the rcosInterp filter.  Then, we
+% filter and decimate at the receiver using rcosDecim filter. The filtering
+% results are exactly the same as the conventional FIR filter. 
+
+% Filter and interpolate at the transmitter.
+yo2 = filter(rcosInterp, [x; zeros(Nsym/2,1)]);
+% Filter and decimate at the receiver.
+yr2 = filter(rcosDecim, [yo2; zeros(Nsym*sampsPerSym/2, 1)]);
+% Correct for propagation delay by removing filter transients
+yr2 = yr2(2*fltDelay*R+1:end);
+% Plot data.
+stem(tx, x, 'kx'); hold on;
+% Plot filtered data.
+plot(to, yo2(fltDelay*Fs+1:end), 'b-'); hold off;
+title('Transmitted Signal')
+% Set axes and labels.
+axis([0 25 -1.7 1.7]);  xlabel('Time (ms)'); ylabel('Amplitude');
+legend('Transmitted Data','Upsampled Signal', 'Location', 'southeast')
+
+fig2 = figure;
+% Plot data.
+stem(tx, x, 'kx'); hold on;
+title('Received Data')
+% Plot filtered data.
+stem(tx, yr2, 'bo'); hold off;
+% Set axes and labels.
+axis([0 25 -1.7 1.7]);  xlabel('Time (ms)'); ylabel('Amplitude');
+legend('Transmitted Data','Received Data', 'Location', 'southeast')
+
+
+%%
+% Even though the filtering results are exactly the same, the computational
+% cost of a polyphase filter is less. In the following table, we compare
+% the computational cost of a conventional FIR filter, which can be used
+% both at the receiver and the transmitter, polyphase FIR interpolation
+% filter, and polyphase FIR decimation filter.
+
+C1 = cost(sqrtRcosFlt);
+C2 = cost(rcosInterp);
+C3 = cost(rcosDecim);
+
+%%
+%  REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH
+%                      Implementation Cost Comparison                     
+%  REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH
+%                          Multipliers  Adders  Mult/Symbol  Add/Symbol  
+%  Conventional FIR            48         48         384        384
+%  Multirate Interpolator      49         41          49         41
+%  Multirate Decimator         49         48           6.125      6
+%
+% For more information on pulse shaping filter design, including
+% alternatives to raised cosine and square root raised cosine filters, see
+% the <../../../filterdesign/filtdesdemos/html/pulseshapingfilterdemo.html Pulse Shaping Filter Design demo> in
+% Filter Design Toolbox.
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,39 @@
+%% File : sfun_varsize_concat1D.tlc
+%% Abstract:
+%% A sample inlined TLC file for S-function, sfun_varsize_concat1D.c
+%% Copyright 2009 The MathWorks, Inc.
+
+%implements "sfun_varsize_concat1D" "C"
+%% Function: Outputs ===========================================================
+%% Abstract:
+%%   Concatenate 1D inputs to form the output
+%%   y = [ u1 u2];
+%%
+%function Outputs(block, system) Output
+/* %<Type> Block: %<Name> */
+%assign input_value1 = LibBlockInputSignal(0, "", "", 0)
+%assign input_value2 = LibBlockInputSignal(1, "", "", 0)
+%assign outSig       = LibBlockOutputSignal(0, "", "", 0)
+
+{
+  int i;
+  for (i=0; i<%<SLibGetCurrentInputPortDimensions(0, 0)>; i++) {
+    (&%<outSig>)[i] = (&%<input_value1>)[i];
+  }
+  for (i=0; i<%<SLibGetCurrentInputPortDimensions(0, 0)>; i++) {
+    (&%<outSig>)[i+%<SLibGetCurrentInputPortDimensions(0, 0)>] = (&%<input_value2>)[i];
+  }
+}
+
+%endfunction %% Outputs
+
+
+%% Function: SetDims ===========================================================
+%% Abstract:
+%%   Set the current (run-time) output dimensions as the sum of the input dimensions
+%%
+%function SetDims(block, system, oIdx, rIdx) Output
+/* %<Type> Block: %<Name> */
+%<SLibGetCurrentOutputPortDimensions(0, 0)> = %<SLibGetCurrentInputPortDimensions(0, 0)> + %<SLibGetCurrentInputPortDimensions(1, 0)>;
+
+%endfunction %% SetDims

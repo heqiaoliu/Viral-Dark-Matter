@@ -1,0 +1,347 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Exploring the Solver Jacobian Structure of a Model</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_metro.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_metro.mdl</div><div class="right"><a href="matlab:sldemo_metro">Open this model</a></div></div><div class="content"><h1>Exploring the Solver Jacobian Structure of a Model</h1><!--introduction--><p>The purpose of this demo is to show how to use Simulink&reg; to explore the solver Jacobian sparsity pattern, and the connection between the solver Jacobian sparsity pattern and the dependency between components of a physical system. A Simulink model that models the synchronization of three metronomes placed on a free moving base are used.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">The Solver Jacobian Pattern</a></li><li><a href="#2">The Pattern and Dependency: Synchronization of Metronomes</a></li><li><a href="#3">Modeling the System</a></li><li><a href="#6">Steps to Get the Solver Jacobian Pattern</a></li><li><a href="#8">Properties of the Solver Jacobian Pattern Object</a></li><li><a href="#9">Study of the Solver Jacobian Pattern</a></li><li><a href="#10">Conclusion</a></li><li><a href="#11">References</a></li></ul></div><h2>The Solver Jacobian Pattern<a name="1"></a></h2><p>In general, the continuous part of a Simulink model can be written as:</p><p><img src="sldemo_metro_eq78602.png" alt="$$&#xA;\left\{ {\begin{array}{*{20}c}&#xA;   {\dot x = f(x,u)}  \\&#xA;   {y = g(x,u)}  \\&#xA;\end{array}} \right.&#xA;$$"></p><p>, where <img src="sldemo_metro_eq04575.png" alt="$$ x $$"> are the continuous states and <img src="sldemo_metro_eq39262.png" alt="$$ u $$"> are the inputs. <img src="sldemo_metro_eq09886.png" alt="$$ y $$"> are the outputs.</p><p>The matrix:</p><p><img src="sldemo_metro_eq41488.png" alt="$$ J_x  = \frac{{\partial f}}{{\partial x}} $$"></p><p>is called the system solver Jacobian matrix. When an implicit ODE solver is used to solve the system equations, <img src="sldemo_metro_eq96476.png" alt="$$ J_x $$"> needs to be computed when needed. For example, the Jacobian matrix of a set of first order ODEs</p><p><img src="sldemo_metro_eq20491.png" alt="$$&#xA;\left\{ {\begin{array}{*{20}c}&#xA;   {\dot x_1  = x_1 x_2 }  \\&#xA;   {\dot x_2  = x_2 }  \\&#xA;\end{array}} \right.&#xA;$$"></p><p>is</p><p><img src="sldemo_metro_eq73719.png" alt="$$&#xA;J_x  = \left[ {\begin{array}{*{20}c}&#xA;   {\frac{{\partial f_1 }}{{\partial x_1 }}} &amp; {\frac{{\partial f_1 }}{{\partial x_2 }}}  \\&#xA;   {\frac{{\partial f_2 }}{{\partial x_1 }}} &amp; {\frac{{\partial f_2 }}{{\partial x_2 }}}  \\&#xA;\end{array}} \right] = \left[ {\begin{array}{*{20}c}&#xA;   {x_2 } &amp; {x_1 }  \\&#xA;   0 &amp; 1  \\&#xA;\end{array}} \right]&#xA;$$"></p><p>You can convert the solver Jacobian matrix to a Boolean sparse matrix by representing each non-zero element as 1, and each element that is always zero (hard zero) as 0. For example, the Boolean matrix corresponding to above Jacobian <img src="sldemo_metro_eq96476.png" alt="$$ J_x $$"> is:</p><p><img src="sldemo_metro_eq91828.png" alt="$$&#xA;J_{xp}  = \left[ {\begin{array}{*{20}c}&#xA;   1 &amp; 1  \\&#xA;   0 &amp; 1  \\&#xA;\end{array}} \right],&#xA;$$"></p><p>where <img src="sldemo_metro_eq44778.png" alt="$$ J_{xp} $$"> is called the solver Jacobian pattern matrix.</p><p>The solver Jacobian pattern matrix can be generated directly from the original system equations by using the following rule:</p><p><img src="sldemo_metro_eq91198.png" alt="$$&#xA;J_{xp} (i,j) = \left\{ {\begin{array}{*{20}c}&#xA;   {1~{\rm   }if~{\rm  }x_j~{\rm  }is~{\rm  }explicitly~{\rm  }used~{\rm  }to~{\rm  }compute~{\rm  }\dot x_i }  \\&#xA;   {0~{\rm                }otherwise}  \\&#xA;\end{array}} \right.&#xA;$$"></p><p>As you can see, the solver Jacobian pattern matrix actually represents the dependency between the state variables and their derivatives. If computing of <img src="sldemo_metro_eq50413.png" alt="$$ \dot x_i $$"> needs the value of <img src="sldemo_metro_eq54088.png" alt="$$ x_j $$">, then there exists a dependency  <img src="sldemo_metro_eq12891.png" alt="$$ \dot x_i  \leftarrow x_j $$"> and <img src="sldemo_metro_eq46832.png" alt="$$ J_{xp} (i,j) = 1 $$">. These dependencies are determined by the physical nature of the system, and thus by studying the solver Jacobian matrix, you can explore the physical structure of the physical system represented by the model. Simulink provides APIs for the user to get the solver Jacobian pattern matrix. The following shows how to access the solver Jacobian pattern and to use it to the study the model.</p><h2>The Pattern and Dependency: Synchronization of Metronomes<a name="2"></a></h2><p>Synchronization is defined as an adjustment of rhythms of oscillating objects due to their weak interaction [1]. One of the first scientifically documented observations of synchronization was reported by the Dutch scientist Christiaan Huygens, the inventor of pendulum clock [2]. Huygens discovered that two pendulums attached to the same beam supported by chairs would swing in exact opposite direction after some time.  A similar set up used in this demo is shown in Figure 1.</p><p><img vspace="5" hspace="5" src="sldemo_metro_three_pend_and_base.png" alt=""> </p><p><b>Figure 1:</b> Set up used in this demo: three metronomes on a moving base</p><h2>Modeling the System<a name="3"></a></h2><p>The model of this physical system can be divided into two parts:</p><div><ul><li>The metronomes mechanism</li><li>The moving base</li></ul></div><p><b>The metronomes mechanism</b></p><p>Referring to Figure 1, the dynamic equations of a single metronome on a moving base can be derived as[3]:</p><p><img src="sldemo_metro_eq67727.png" alt="$$&#xA;\underbrace {\ddot \theta }_{Angular~acceleration} +&#xA;\underbrace {\frac{{mrg}}{J}\sin \theta }_{Gravitational~term} +&#xA;\underbrace {\frac{b}{J}\left[ {\left( {\frac{\theta }{{\theta _r }}} \right)^2  - 1}&#xA;\right]\dot \theta }_{Escapement~and~damping~term} + \underbrace&#xA;{\left( {\frac{{rm\cos \theta }}{J}} \right)\ddot&#xA;x}_{Coupled~inertial~force~term} = 0~~~~~~~~~~(eq.1)&#xA;$$"></p><p>The first two terms describe a simple pendulum without friction. The third term is used to approximate the escapement* and any damping of the metronome. This term increases the angular velocity for <img src="sldemo_metro_eq55135.png" alt="$$ ~\theta  < \theta_{0} $$"> and decreases it for <img src="sldemo_metro_eq59318.png" alt="$$ \theta  &gt; \theta _{0} $$"> [3]. The last term is the coupled effect from the moving base, in terms of an inertial force.</p><p><b>The moving base</b></p><p>Assuming the motion of the base is frictionless, then the center of mass of the system will not change and you can be derive the following:</p><p><img src="sldemo_metro_eq56303.png" alt="$$&#xA;x =  - \frac{m}{{M + 3m}}r(\sin \theta _1  + \sin \theta _2  + \sin&#xA;\theta _3 ),&#xA;$$"></p><p>where <img src="sldemo_metro_eq73743.png" alt="$$ M $$"> is the mass of the base and <img src="sldemo_metro_eq57983.png" alt="$$ m $$"> is the mass of the pendulum.</p><p>Then eq.1 can be changed to:</p><p><img src="sldemo_metro_eq77682.png" alt="$$&#xA;\ddot x =  - \frac{m}{{M + 3m}}r\left[ {\ddot \theta _1 \cos \theta _1  -&#xA;\sin \theta _1 (\dot \theta _1 )^2  + \ddot \theta _2 \cos \theta _2  -&#xA;\sin \theta _2 (\dot \theta _2 )^2  + \ddot \theta _3 \cos \theta _3  -&#xA;\sin \theta _3 (\dot \theta _3 )^2 } \right]~~~~~~~~~~(eq.2)&#xA;$$"></p><p>The following shows the above system implemented using Simulink. The model contains three metronome subsystems and the moving base.</p><img vspace="5" hspace="5" src="sldemo_metro_01.png" alt=""> <p><b>Figure 2:</b> The Simulink model of the metronomes system</p><p>Simulation of this system shows an interesting phenomenon: Synchronization. It demonstrates that all three metronomes with different initial phase angle eventually become synchronized with each other. Figure 3 shows the simulation results. The main cause for synchronization is the moving base that links all these metronomes together. This physical connection can be observed from the dynamic equation of each metronome.</p><p>Also, this physical connection can also be observed from the solver Jacobian pattern of this model. The following MATLAB&reg; code shows how to get the solver Jacobian pattern.</p><img vspace="5" hspace="5" src="sldemo_metro_02.png" alt=""> <img vspace="5" hspace="5" src="sldemo_metro_03.png" alt=""> <p><b>Figure 3:</b> The synchronized metronomes</p><h2>Steps to Get the Solver Jacobian Pattern<a name="6"></a></h2><pre> % 1. Set the solver to be any implicit solver</pre><pre>   set_param(mdl, 'Solver', 'ode15s');</pre><pre> % 2. Set the solver Jacobian method to be Sparse perturbation *</pre><pre>   set_param(mdl, 'SolverJacobianMethodControl', 'SparsePerturbation');</pre><pre> % 3. Get the solver Jacobian MCOS object.</pre><pre>   J = Simulink.Solver.getSlvrJacobianPattern(mdl);
+   disp('J = ');
+   disp(J);</pre><pre> % 4. Show the pattern in a figure. use the method J.show</pre><pre>   J.show;</pre><pre> % 5. Explore the pattern with the given state name and other information</pre><pre>   stateNames = J.stateNames;
+   disp('stateNames = ');
+   disp(stateNames);</pre><p>The results you will see are:</p><pre class="codeoutput">J = 
+  Simulink.Solver.SlvrJacobianPattern
+  Package: Simulink.Solver
+
+  Properties:
+        Jpattern: [8x8 double]
+     numColGroup: 6
+        colGroup: [8x1 double]
+      stateNames: {8x1 cell}
+    blockHandles: [8x1 double]
+
+
+stateNames = 
+    'Baseposition'
+    'Theta1'
+    'Theta2'
+    'Theta3'
+    'Thetadot3'
+    'Thetadot2'
+    'Thetadot1'
+    'Basespeed'
+
+</pre><img vspace="5" hspace="5" src="sldemo_metro_04.png" alt=""> <p><b>Figure 4:</b> The solver Jacobian pattern</p><h2>Properties of the Solver Jacobian Pattern Object<a name="8"></a></h2><p>The solver Jacobian pattern J is a MCOS object. It contains the following properties:</p><pre>     Jpattern: A sparse mxArray which is the Jacobian pattern.</pre><pre>  numColGroup: Number of column groups.</pre><pre>     colgroup: A column partition of the sparse pattern matrix.</pre><pre>   stateNames: A cell array containing the state name of each state.</pre><pre> blockHandles: Block handles of the owner of each state.</pre><h2>Study of the Solver Jacobian Pattern<a name="9"></a></h2><p>Referring to Figure 4. First, the solver Jacobian of this model is sparse and the number of non-zero element is 28. Secondly, the number of column groups is 6; is less than the number of states 8.</p><p>The row 1-4 indicates the following dependencies:</p><p><img src="sldemo_metro_eq72790.png" alt="$$&#xA; \begin{array}{l}&#xA; \dot x_1  \leftarrow x_8 (\dot {baseposition} \leftarrow {basepseed}) \\&#xA; \dot x_2  \leftarrow x_7 (\dot {Theta1}  \leftarrow {Thetadot1} ) \\&#xA; \dot x_3  \leftarrow x_6 (\dot {Theta2}  \leftarrow {Thetadot2} ) \\&#xA; \dot x_4  \leftarrow x_5 (\dot {Theta3}  \leftarrow {Thetadot3}) \\&#xA; \end{array}&#xA;$$"></p><p>These relations are clear since speed is the derivative of position. Row 5-8 shows the following relations:</p><p><img src="sldemo_metro_eq91391.png" alt="$$&#xA; \begin{array}{l}&#xA; \dot x_5  \leftarrow x_{2 - 7}  \\&#xA; \dot x_6  \leftarrow x_{2 - 7}  \\&#xA; \dot x_7  \leftarrow x_{2 - 7}  \\&#xA; \dot x_8  \leftarrow x_{2 - 7}  \\&#xA; \end{array}&#xA;$$"></p><p>These relations show that to compute the angular acceleration of the metronomes or acceleration of the moving base, the angular position and angular speed of the metronomes are needed, but not the position and speed of the base. These relations can be found by studying eq.(1) and eq.(2) directly.</p><h2>Conclusion<a name="10"></a></h2><p>The Solver Jacobian pattern is a tool to study the data dependency relations between the derivatives of the state variables and the state variables. These relations usually reflect certain physical couplings in the physical system. By using the tools provided, you can discover these relations associated with a Simulink model, even without the original dynamic equations of the physical model.</p><h2>References<a name="11"></a></h2><p>[1] Arkady Pikosvky, Michael Rosenblum, and Jurgen Kurths. Synchronization. Cambridge University Press, 2001.</p><p>[2] Ward T. Oud, Design and experimental results of synchronizing metronomes, inspired by Christiaan Huygens, Master Thesis, Eindhoven University of Technology, 2006.</p><p>[3] Pantaleone, James, American Journal of Physics, Volume 70, Issue 10, pp. 992-1000, 2002.</p><div><ul><li>Escapement is a set of mechanism that drives the metronome. See [2] for for more details.</li></ul></div><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Exploring the Solver Jacobian Structure of a Model
+% 
+% The purpose of this demo is to show how to use Simulink(R) to explore
+% the solver Jacobian sparsity pattern, and the connection between the
+% solver Jacobian sparsity pattern and the dependency between
+% components of a physical system. A Simulink model that models the 
+% synchronization of three metronomes placed on a free moving base are used. 
+% 
+
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.6.1 $  $Date: 2010/05/20 03:17:23 $
+
+%% The Solver Jacobian Pattern
+%
+% In general, the continuous part of a Simulink model can be written as:
+%
+% $$
+% \left\{ {\begin{array}{*{20}c}
+%    {\dot x = f(x,u)}  \\
+%    {y = g(x,u)}  \\
+% \end{array}} \right.
+% $$
+%
+% , where $$ x $$ are the continuous states and $$ u $$ are the inputs. $$ y $$
+% are the outputs. 
+%
+% The matrix:
+%
+% $$ J_x  = \frac{{\partial f}}{{\partial x}} $$ 
+%
+% is called the system solver Jacobian matrix. When an implicit ODE solver 
+% is used to solve the system equations, $$ J_x $$ needs to be computed  
+% when needed. For example, the Jacobian matrix of a set of first order ODEs 
+%
+% $$ 
+% \left\{ {\begin{array}{*{20}c}
+%    {\dot x_1  = x_1 x_2 }  \\
+%    {\dot x_2  = x_2 }  \\
+% \end{array}} \right.
+% $$
+%
+% is 
+%
+% $$ 
+% J_x  = \left[ {\begin{array}{*{20}c}
+%    {\frac{{\partial f_1 }}{{\partial x_1 }}} & {\frac{{\partial f_1 }}{{\partial x_2 }}}  \\
+%    {\frac{{\partial f_2 }}{{\partial x_1 }}} & {\frac{{\partial f_2 }}{{\partial x_2 }}}  \\
+% \end{array}} \right] = \left[ {\begin{array}{*{20}c}
+%    {x_2 } & {x_1 }  \\
+%    0 & 1  \\
+% \end{array}} \right]
+% $$ 
+%
+% You can convert the solver Jacobian matrix to a Boolean sparse matrix by 
+% representing each non-zero element as 1, and each element that is always 
+% zero (hard zero) as 0. For example, the Boolean matrix corresponding to 
+% above Jacobian $$ J_x $$ is:
+%
+% $$
+% J_{xp}  = \left[ {\begin{array}{*{20}c}
+%    1 & 1  \\
+%    0 & 1  \\
+% \end{array}} \right], 
+% $$
+%
+% where $$ J_{xp} $$ is called the solver Jacobian pattern matrix. 
+%
+% The solver Jacobian pattern matrix can be generated directly from the 
+% original system equations by using the following rule:
+%
+% $$
+% J_{xp} (i,j) = \left\{ {\begin{array}{*{20}c}
+%    {1~{\rm   }if~{\rm  }x_j~{\rm  }is~{\rm  }explicitly~{\rm  }used~{\rm  }to~{\rm  }compute~{\rm  }\dot x_i }  \\
+%    {0~{\rm                }otherwise}  \\
+% \end{array}} \right. 
+% $$
+%
+% As you can see, the solver Jacobian pattern matrix actually represents the
+% dependency between the state variables and their derivatives. If
+% computing of $$ \dot x_i $$ needs the value of $$ x_j $$, then there
+% exists a dependency  $$ \dot x_i  \leftarrow x_j $$ and $$ J_{xp} (i,j) =
+% 1 $$. These dependencies are determined by the physical nature of the system, 
+% and thus by studying the solver Jacobian matrix, you can explore the physical 
+% structure of the physical system represented by the model. Simulink 
+% provides APIs for the user to get the solver Jacobian pattern matrix. The 
+% following shows how to access the solver Jacobian pattern and to use it to 
+% the study the model. 
+% 
+%% The Pattern and Dependency: Synchronization of Metronomes
+%
+% Synchronization is defined as an adjustment of rhythms of oscillating 
+% objects due to their weak interaction [1]. One of the first scientifically 
+% documented observations of synchronization was reported by the Dutch scientist 
+% Christiaan Huygens, the inventor of pendulum clock [2]. Huygens discovered 
+% that two pendulums attached to the same beam supported by chairs would swing 
+% in exact opposite direction after some time.  A similar set up used in this 
+% demo is shown in Figure 1. 
+%  
+% <<sldemo_metro_three_pend_and_base.png>>
+%
+% *Figure 1:* Set up used in this demo: three metronomes on a moving base
+%
+%% Modeling the System
+%
+% The model of this physical system can be divided into two parts:
+%
+% * The metronomes mechanism
+% * The moving base
+%
+% *The metronomes mechanism*
+% 
+% Referring to Figure 1, the dynamic equations of a single metronome on a 
+% moving base can be derived as[3]:
+%
+% $$
+% \underbrace {\ddot \theta }_{Angular~acceleration} + 
+% \underbrace {\frac{{mrg}}{J}\sin \theta }_{Gravitational~term} + 
+% \underbrace {\frac{b}{J}\left[ {\left( {\frac{\theta }{{\theta _r }}} \right)^2  - 1} 
+% \right]\dot \theta }_{Escapement~and~damping~term} + \underbrace 
+% {\left( {\frac{{rm\cos \theta }}{J}} \right)\ddot
+% x}_{Coupled~inertial~force~term} = 0~~~~~~~~~~(eq.1)
+% $$ 
+%
+% The first two terms describe a simple pendulum without friction. The
+% third term is used to approximate the escapement* and any damping of the
+% metronome. This term increases the angular velocity for  
+% $$ ~\theta  < \theta_{0} $$ and decreases it for $$ \theta  > \theta _{0} $$ [3]. 
+% The last term is the coupled effect from the moving base, in terms of 
+% an inertial force.  
+%
+% *The moving base*
+%   
+% Assuming the motion of the base is frictionless, then the center of mass of
+% the system will not change and you can be derive the following:
+%
+% $$ 
+% x =  - \frac{m}{{M + 3m}}r(\sin \theta _1  + \sin \theta _2  + \sin
+% \theta _3 ), 
+% $$
+%
+% where $$ M $$ is the mass of the base and $$ m $$ is the mass of the pendulum.
+%
+% Then eq.1 can be changed to:
+%
+% $$ 
+% \ddot x =  - \frac{m}{{M + 3m}}r\left[ {\ddot \theta _1 \cos \theta _1  -
+% \sin \theta _1 (\dot \theta _1 )^2  + \ddot \theta _2 \cos \theta _2  -
+% \sin \theta _2 (\dot \theta _2 )^2  + \ddot \theta _3 \cos \theta _3  -
+% \sin \theta _3 (\dot \theta _3 )^2 } \right]~~~~~~~~~~(eq.2)
+% $$
+%
+% The following shows the above system implemented using Simulink. The 
+% model contains three metronome subsystems and the moving base. 
+%
+mdl = 'sldemo_metro';
+open_system(mdl); 
+%%
+% *Figure 2:* The Simulink model of the metronomes system 
+%
+% Simulation of this system shows an interesting phenomenon: Synchronization. 
+% It demonstrates that all three metronomes with different initial phase angle
+% eventually become synchronized with each other. Figure 3 shows the simulation 
+% results. The main cause for synchronization is the moving base that links 
+% all these metronomes together. This physical connection can be observed from 
+% the dynamic equation of each metronome. 
+% 
+% Also, this physical connection can also be observed from the solver
+% Jacobian pattern of this model. The following MATLAB(R) code shows how to
+% get the solver Jacobian pattern. 
+sim(mdl);
+open_system([mdl,'/Scope']); 
+%
+%%
+% *Figure 3:* The synchronized metronomes 
+
+%% Steps to Get the Solver Jacobian Pattern
+%
+%
+%   % 1. Set the solver to be any implicit solver 
+%
+%     set_param(mdl, 'Solver', 'ode15s');
+%
+%   % 2. Set the solver Jacobian method to be Sparse perturbation *
+%
+%     set_param(mdl, 'SolverJacobianMethodControl', 'SparsePerturbation');
+%
+%   % 3. Get the solver Jacobian MCOS object. 
+%
+%     J = Simulink.Solver.getSlvrJacobianPattern(mdl);
+%     disp('J = '); 
+%     disp(J);
+%
+%   % 4. Show the pattern in a figure. use the method J.show
+%
+%     J.show;
+%
+%   % 5. Explore the pattern with the given state name and other information
+%
+%     stateNames = J.stateNames;
+%     disp('stateNames = ');
+%     disp(stateNames);
+%
+% The results you will see are:
+
+
+% 1)  Set the solver to be any implicit solver
+set_param(mdl, 'Solver', 'ode15s');
+% 2)  Set the solver Jacobian method to be Sparse perturbation
+set_param(mdl, 'SolverJacobianMethodControl', 'SparsePerturbation');
+close_system([mdl,'/Scope']);
+% 3) Get the solver Jacobian MCOS object. 
+J = Simulink.Solver.getSlvrJacobianPattern(mdl);
+disp('J = '); 
+disp(J);
+close all;  % close the animation figure, for this demo only
+% 4) Show the pattern in a figure. J.show
+J.show;
+% 5) Explore the pattern with the given state name and other information
+stateNames = J.stateNames;
+disp('stateNames = ');
+disp(stateNames);
+%
+%%
+% *Figure 4:* The solver Jacobian pattern 
+close_system('sldemo_metro',0);
+%% Properties of the Solver Jacobian Pattern Object
+% The solver Jacobian pattern J is a MCOS object. It contains the following
+% properties:
+%
+%       Jpattern: A sparse mxArray which is the Jacobian pattern.
+%
+%    numColGroup: Number of column groups.
+%
+%       colgroup: A column partition of the sparse pattern matrix.
+%
+%     stateNames: A cell array containing the state name of each state.
+%
+%   blockHandles: Block handles of the owner of each state.  
+%
+%% Study of the Solver Jacobian Pattern
+% 
+% Referring to Figure 4. First, the solver Jacobian of this model is
+% sparse and the number of non-zero element is 28. Secondly, the number of 
+% column groups is 6; is less than the number of states 8. 
+%
+% 
+% The row 1-4 indicates the following dependencies:
+%
+% $$ 
+%  \begin{array}{l}
+%  \dot x_1  \leftarrow x_8 (\dot {baseposition} \leftarrow {basepseed}) \\ 
+%  \dot x_2  \leftarrow x_7 (\dot {Theta1}  \leftarrow {Thetadot1} ) \\ 
+%  \dot x_3  \leftarrow x_6 (\dot {Theta2}  \leftarrow {Thetadot2} ) \\ 
+%  \dot x_4  \leftarrow x_5 (\dot {Theta3}  \leftarrow {Thetadot3}) \\ 
+%  \end{array}
+% $$
+%
+% These relations are clear since speed is the derivative of position. Row 5-8
+% shows the following relations: 
+%
+% $$ 
+%  \begin{array}{l}
+%  \dot x_5  \leftarrow x_{2 - 7}  \\ 
+%  \dot x_6  \leftarrow x_{2 - 7}  \\ 
+%  \dot x_7  \leftarrow x_{2 - 7}  \\ 
+%  \dot x_8  \leftarrow x_{2 - 7}  \\ 
+%  \end{array}
+% $$
+%
+% These relations show that to compute the angular acceleration of the
+% metronomes or acceleration of the moving base, the angular position and 
+% angular speed of the metronomes are needed, but not the position and 
+% speed of the base. These relations can be found by studying eq.(1) and
+% eq.(2) directly. 
+close all;
+%% Conclusion
+% The Solver Jacobian pattern is a tool to study the data dependency relations 
+% between the derivatives of the state variables and the state variables. 
+% These relations usually reflect certain physical couplings in the
+% physical system. By using the tools provided, you can discover these 
+% relations associated with a Simulink model, even without the original dynamic
+% equations of the physical model. 
+%
+%% References
+% [1] Arkady Pikosvky, Michael Rosenblum, and Jurgen Kurths. Synchronization. 
+% Cambridge University Press, 2001.
+%
+% [2] Ward T. Oud, Design and experimental results of synchronizing metronomes,
+% inspired by Christiaan Huygens, Master Thesis, Eindhoven University of
+% Technology, 2006.
+%
+% [3] Pantaleone, James, American Journal of Physics, Volume 70, Issue 10, 
+% pp. 992-1000, 2002.
+%
+% * Escapement is a set of mechanism that drives the metronome. See [2] for
+% for more details.
+
+displayEndOfDemoMessage(mfilename)
+
+
+
+
+
+
+
+
+
+
+##### SOURCE END #####
+--></body></html>

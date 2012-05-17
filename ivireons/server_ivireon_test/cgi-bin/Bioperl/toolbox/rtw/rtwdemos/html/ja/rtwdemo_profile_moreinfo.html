@@ -1,0 +1,41 @@
+<!-- $Revision $ -->
+<html><head>
+<!-- Inserted by TRADOS: --><META HTTP-EQUIV="content-type" CONTENT="text/html; charset=Shift_JIS">
+<title>RTW システム プロファイリング デモ</title>
+<link rel=stylesheet href="../docstyle1.css" type="text/css">
+</head>
+<body bgcolor=#ffffff>
+
+<!-- H1 --><a name="7373"></a><h3><font color="#990000">生成コードのプロファイリング フック</font></h3>
+<p><a name="9484"></a><font size=+1><b>このデモを実行するには</b></font><br><br> このデモを実行する手順は、次のとおりです(PC および Linux プラットフォームでのみ、デモがビルドおよび実行されることに注意してください)。
+<ul> 
+<li> 作業ディレクトリを、書き込み許可があるディレクトリに変更します。
+<li> &quot;Generate Code&quot; ブロックの 1 つをダブルクリックします。選択した RTW ターゲット オプションがプロファイリング フックで設定され、Real-Time Workshop を使用してモデルがビルドされます。ビルド プロセスが完了すると、ウィンドウがポップアップ表示され、このウィンドウで生成コードをブラウズできるようになります。コードをブラウズし、プロファイル固有の C コードが生成されたことを確認します。
+<li> MATLAB プロンプトに !rtwdemo_profile を入力し、生成された実行可能ファイルを実行します。デモ モデルの各システムで作成される呼び出しの数、および各システムで消費される CPU サイクルの数値に関する、テキスト レポートを確認します。
+</ul>
+</p>
+
+<p><a name="9484"></a><font size=+1><b>デモの動作</b></font><br><br> このデモは、Real-Time Workshop により提供される固有のフックを使用し、プロファイリング コード部分をモデルの生成コードに追加します。特に、これらのフックにより、モデルのノンバーチャル (Atomic) システム内にこれらの部分が追加されます。適切なコード部分を使用すると、モデルの Atomic システムのプロファイリングを実行できます。
+
+Real-Time Workshop により提供されるフックを使用して特定のターゲットにプロファイラーを実装するには、次の手順に従います。
+<ul> 
+<li> 最初に、事前定義関数のセットを含む TLC ファイルを記述します。各関数およびその内容は、次の表のとおりです。
+ <table border="1">
+<tr><th>関数<th>InputArgs<th>OutputType</th> </tr> 
+<tr ALIGN="center"><td>ProfilerHeaders</td><td>void</td><td>生成されるコードに含めるヘッダー ファイル名の配列を返します。</td> </tr> 
+<tr ALIGN="center"><td>ProfilerTypedefs</td><td>void</td><td>プロファイラー固有の typedef のコード ステートメントを生成します。</td> </tr>
+<tr ALIGN="center"><td>ProfilerGlobalData</td><td>system</td><td>グローバル データを宣言するコード ステートメントを生成します。</td> </tr>     
+<tr ALIGN="center"><td>ProfilerExternDataDecls</td><td>system</td><td>グローバル extern 宣言を作成するコード ステートメントを生成します。</td> </tr>     
+<tr ALIGN="center"><td>ProfilerSysDecl</td><td>system, functionType</td><td>Atomic システムの Output、Update、OutputUpdate、または Derivatives の各関数のスコープ内に必要とされる、変数の宣言のためのコードを生成します。 </td> </tr>
+<tr ALIGN="center"><td>ProfilerSysStart</td><td>system, functionType</td><td>Atomic システムの Output、Update、OutputUpdate、または Derivatives の各関数のスコープ内のプロファイラーを開始するためのコードを生成します。 </td> </tr>
+<tr ALIGN="center"><td>ProfilerSysEnd</td><td>system, functionType</td><td>Atomic システムの Output、Update、OutputUpdate、または Derivatives の各関数のスコープ内のプロファイラーを停止するためのコードを生成します。 </td>
+    </tr>
+<tr ALIGN="center"><td>ProfilerSysTerminate</td><td>system</td><td>Atomic システムのプロファイリングを終了する (および可能であれば結果を表示する) コードを生成します。</td> </tr>
+</table> <br> このデモについては、上記のプロファイリング関数をファイル <a href="matlab:edit rtwdemo_profile_hook.tlc">rtwdemo_profile_hook.tlc</a> で提供しています。このファイルを確認すると、各プロファイリング関数の詳細情報を入手できます。<br><br>
+
+<li> 次に、'ProfilerTLC' という名前のグローバル変数を target.tlc ファイルに作成する必要があります。この変数には、前の手順で作成された TLC ファイルの名前を割り当てる必要があります。ターゲット TLC ファイルのプロファイリングのオン/オフを切り替えるには、'ProfileGenCode' という名前の別のグローバル変数を使用します。この変数では、プロファイリングをオンにするように、 'TLC_TRUE' の値を設定します。
+</ul>
+これら 2 つの手順が完了すると、ターゲットにモデルをビルドし、プロファイラー固有のコードを生成コードに組み込むことができます。
+
+
+

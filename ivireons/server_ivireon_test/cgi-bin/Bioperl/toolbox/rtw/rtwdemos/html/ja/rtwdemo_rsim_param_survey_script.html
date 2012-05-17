@@ -1,0 +1,135 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>パラメーター調査のための RSim ターゲットの利用</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="rtwdemo_rsim_param_survey_script.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_rsim_param_survey_script">エディターで rtwdemo_rsim_param_survey_script.m を開く</a></div><div class="right"><a href="matlab:echodemo rtwdemo_rsim_param_survey_script">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>パラメーター調査のための RSim ターゲットの利用</h1><!--introduction--><p>このデモでは、パラメーター値の範囲でシミュレーションの実行を必要とするアプリケーションで RSim ターゲットを使用する方法を説明します。ファン・デル・ポール振動子を例として使用し、初期状態値の範囲にわたってパラメーター スィープを実行して非線形システムの位相図を取得します。</p><p>このデモの作成に使用された MATLAB スクリプトを変更すれば、非常に簡単にこのデモを自分のアプリケーション用にカスタマイズすることができます。MATLAB スクリプトを編集するには、このページの左上隅のリンクをクリックしてください。MATLAB&reg; からこのデモを実行するには、右上隅のリンクをクリックしてください。このデモを実行する場合、現在のディレクトリが書き込み可能なディレクトリであることを確認してください。このデモでは、後で調査するファイルを作成します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">手順 1.  準備</a></li><li><a href="#5">手順 2.  モデルのビルド</a></li><li><a href="#6">手順 3.  モデルの既定のパラメーター セットの取得</a></li><li><a href="#7">手順 4.  パラメーター セットの作成</a></li><li><a href="#11">手順 5.  バッチ ファイルの作成</a></li><li><a href="#13">手順 6.  シミュレーション実行のためのバッチ ファイルの実行</a></li><li><a href="#15">手順 7.  出力 MAT ファイルのロード、および結果の照合</a></li><li><a href="#17">手順 8.  シミュレーション結果の分析</a></li></ul></div><h2>手順 1.  準備<a name="1"></a></h2><p>このデモではファイルを作成するため、現在のディレクトリ内が書き込み可能であることを確認します。</p><pre class="codeinput">[stat, fa] = fileattrib(pwd);
+<span class="keyword">if</span> ~fa.UserWrite
+    disp(<span class="string">'This script must be run in a writable directory'</span>);
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+</pre><p>モデルを開き、RSim ターゲットを使用するように設定します。操作のグラフィカルな説明および他の RSim ターゲット関連オプションの詳細は、<a href="matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'config_target')">こちらを参照</a>してください。</p><pre class="codeinput">mdlName = <span class="string">'rtwdemo_rsim_vdp'</span>;
+open_system(mdlName);
+cs = getActiveConfigSet(mdlName);
+cs.switchTarget(<span class="string">'rsim.tlc'</span>,[]);
+</pre><img vspace="5" hspace="5" src="../rtwdemo_rsim_param_survey_script_01.png" alt=""> <p>Inline パラメーター オプションを設定します。変数 INIT_X1 (状態 x1 の初期条件)、INIT_X2 (状態 x2 の初期条件)、および MU (ゲイン値) を Tunable として指定します。このデモでは、モデルの状態 x1 および状態 x2 の異なる初期値から状態軌跡が展開される方法を調べます。調整可能パラメーターの選択およびそのプロパティの設定方法をグラフィカルに確認するには、<a href="matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'model_param_config_dialog')">こちらを参照</a>してください。</p><pre class="codeinput">set_param(mdlName,<span class="string">'RTWInlineParameters'</span>,<span class="string">'on'</span>);
+set_param(mdlName,<span class="string">'TunableVars'</span>,<span class="string">'INIT_X1,INIT_X2,MU'</span>);
+set_param(mdlName,<span class="string">'TunableVarsStorageClass'</span>,<span class="string">'Auto,Auto,Auto'</span>);
+set_param(mdlName,<span class="string">'TunableVarsTypeQualifier'</span>,<span class="string">',,'</span>);
+</pre><p>このデモで作成されるファイルの名前を定義します。</p><pre class="codeinput">prmFileName = [mdlName, <span class="string">'_prm_sets.mat'</span>];
+logFileName = [mdlName, <span class="string">'_run_scr.log'</span>];
+batFileName = [mdlName, <span class="string">'_run_scr'</span>];
+exeFileName = mdlName;
+<span class="keyword">if</span> ispc
+    exeFileName = [exeFileName, <span class="string">'.exe'</span>];
+    batFileName = [batFileName, <span class="string">'.bat'</span>];
+<span class="keyword">end</span>
+aggDataFile = [mdlName, <span class="string">'_results'</span>];
+startTime = cputime;
+</pre><h2>手順 2.  モデルのビルド<a name="5"></a></h2><p>モデルの RSim 実行可能ファイルをビルドします。ビルド プロセスの間、モデルについて構造的なチェックサムが計算され、生成された実行可能ファイルに組み込まれます。このチェックサムは、実行可能ファイルに渡されたパラメーター セットが互換性があることを確認するために使用されます。</p><pre class="codeinput">rtwbuild(mdlName);
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model:rtwdemo_rsim_vdp
+### Successful completion of Real-Time Workshop build procedure for model:rtwdemo_rsim_vdp
+</pre><h2>手順 3.  モデルの既定のパラメーター セットの取得<a name="6"></a></h2><p>モデルの既定の rtP 構造体 (パラメーター セット) を取得します。rtP 構造体の modelChecksum フィールドは、モデルの構造的なチェックサムです。これは、RSim 実行可能ファイル (上記の手順 2 で作成) に組み込まれるチェックサムと一致している必要があります。2 つのチェックサムが一致しない場合は、実行可能ファイルによりエラーが生成されます。rsimgetrtp についてオプション 'AddTunableParamInfo' = 'on' を指定すると、モデル内の指定された調整可能な変数 INIT_X1、INIT_X2、および MU のエントリを持つ rtP 構造体が生成されます。</p><pre class="codeinput">rtp = rsimgetrtp(mdlName,<span class="string">'AddTunableParamInfo'</span>,<span class="string">'on'</span>)
+</pre><pre class="codeoutput">
+rtp = 
+
+    modelChecksum: [2.3649e+009 2.1579e+009 963878524 1.2702e+009]
+       parameters: [1x1 struct]
+
+</pre><h2>手順 4.  パラメーター セットの作成<a name="7"></a></h2><p>手順 4 の rtp 構造体を使用して、モデル内の調整可能な変数に異なる値を使用した構造体配列を作成します。前述のように、このデモでは、モデルの状態 x1 および状態 x2 の異なる初期値から状態軌跡が展開される方法を調べます。そのため、INIT_X1 と INIT_X2 の値を変えて異なるパラメーター セットを生成し、調整可能な変数 MU は既定値のままにしておきます。</p><pre class="codeinput">INIT_X1_vals = -5:1:5;
+INIT_X2_vals = -5:1:5;
+MU_vals = 1;
+nPrmSets = length(INIT_X1_vals)*length(INIT_X2_vals)*length(MU_vals)
+</pre><pre class="codeoutput">
+nPrmSets =
+
+   121
+
+</pre><p>このデモでは nPrmSets パラメーター セットを使用します。すなわち、多くのシミュレーションを実行する必要があります。  パラメーター セットおよび対応する結果の保持に使用する構造体配列である aggData を初期化します。</p><pre class="codeinput">aggData = struct(<span class="string">'tout'</span>, [], <span class="string">'yout'</span>, [], <span class="keyword">...</span>
+                <span class="string">'prms'</span>, struct(<span class="string">'INIT_X1'</span>,[],<span class="string">'INIT_X2'</span>,[], <span class="string">'MU'</span>, []))
+aggData = repmat(aggData, nPrmSets, 1);
+</pre><pre class="codeoutput">
+aggData = 
+
+    tout: []
+    yout: []
+    prms: [1x1 struct]
+
+</pre><p>ユーティリティ関数 rsimsetrtpparam は、異なるパラメーター値のパラメーター セットを同時に追加することによって rtP 構造体を作成するのに便利な手段です。</p><pre class="codeinput">idx = 1;
+<span class="keyword">for</span> iX1 = INIT_X1_vals
+    <span class="keyword">for</span> iX2 = INIT_X2_vals
+        <span class="keyword">for</span> iMU = MU_vals
+            rtp = rsimsetrtpparam(rtp,idx,<span class="string">'INIT_X1'</span>,iX1,<span class="string">'INIT_X2'</span>,iX2,<span class="string">'MU'</span>,iMU);
+            aggData(idx).prms.INIT_X1 = iX1;
+            aggData(idx).prms.INIT_X2 = iX2;
+            aggData(idx).prms.MU      = iMU;
+            idx = idx + 1;
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><p>すべてのパラメーター セットを持つ rtP 構造体配列を MAT ファイルに保存します。</p><pre class="codeinput">save(prmFileName,<span class="string">'rtp'</span>);
+</pre><h2>手順 5.  バッチ ファイルの作成<a name="11"></a></h2><p>パラメーター セットに対して RSim 実行可能ファイルを実行するために、バッチ/スクリプト ファイルを作成します。各実行はパラメーター MAT ファイルから指定されたパラメーター セットを読み込み、指定された出力 MAT ファイルに結果を書き込みます。タイムアウト オプションを使用することに注意してください。このため、(特定のパラメーター セットに対してモデル内に特異性がある場合など) 特定の実行がハングアップした場合、指定された時間制限を超えた後に実行を中止し、次の実行に進みます。</p><p>たとえば、次のコマンド (Windows&reg; の場合) を考えます。</p><pre>  model.exe -p prm.mat@3 -o run3.mat -L 3600 2&gt;&amp;1&gt;&gt; run.log</pre><p>このコマンドは、prm.mat の rtP 構造体の 3 番目のパラメーター セットを使用し、結果を run3.mat に書き込み、実行が 3600 秒 (CPU 時間) を超えた場合に実行を中止することを指定しています。また、実行中の model.exe のすべてのメッセージは run.log に記録されます。問題が発生した場合には、デバッグのために run.log を確認できます。</p><pre class="codeinput">fid = fopen(batFileName, <span class="string">'w'</span>);
+idx = 1;
+<span class="keyword">for</span> iX1 = INIT_X1_vals
+    <span class="keyword">for</span> iX2 = INIT_X2_vals
+        <span class="keyword">for</span> iMU = MU_vals
+            outMatFile = [mdlName, <span class="string">'_run'</span>,num2str(idx),<span class="string">'.mat'</span>];
+            cmd = [exeFileName, <span class="keyword">...</span>
+                   <span class="string">' -p '</span>, prmFileName, <span class="string">'@'</span>, int2str(idx), <span class="keyword">...</span>
+                   <span class="string">' -o '</span>, outMatFile, <span class="keyword">...</span>
+                   <span class="string">' -L 3600'</span>];
+            <span class="keyword">if</span> ispc
+                cmd  = [cmd, <span class="string">' 2&gt;&amp;1&gt;&gt; '</span>, logFileName];
+            <span class="keyword">else</span> <span class="comment">% (unix)</span>
+                cmd  = [<span class="string">'.'</span> filesep cmd, <span class="string">' 1&gt; '</span>, logFileName, <span class="string">' 2&gt;&amp;1'</span>];
+            <span class="keyword">end</span>
+            fprintf(fid, [<span class="string">'echo &quot;'</span>, cmd, <span class="string">'&quot;\n'</span>]);
+            fprintf(fid, [cmd, <span class="string">'\n'</span>]);
+            idx = idx + 1;
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+<span class="keyword">if</span> isunix,
+    system([<span class="string">'touch '</span>, logFileName]);
+    system([<span class="string">'chmod +x '</span>, batFileName]);
+<span class="keyword">end</span>
+fclose(fid);
+</pre><p>シミュレーション実行のためのバッチ ファイルを作成すると、すべてのシミュレーション実行に対する (さらに MATLAB 外部のバッチ スクリプトの実行に対しても) システム コマンドを一度に呼び出すことができます。シミュレーションごとにループのシステム コマンドを呼び出す必要はありません。これにより、システム コマンドが重大なオーバーヘッドを持つため、パフォーマンスは大幅に向上します。</p><h2>手順 6.  シミュレーション実行のためのバッチ ファイルの実行<a name="13"></a></h2><p>各パラメーター セットに対して一度に RSim 実行可能ファイルを実行し、そのたびに異なる MAT ファイルに結果を保存する、バッチ/スクリプト ファイルを実行します。このバッチ ファイルは MATLAB 外部から実行できることに注意してください。</p><pre class="codeinput">[stat, res] = system([<span class="string">'.'</span> filesep batFileName]);
+<span class="keyword">if</span> stat ~= 0
+    error([<span class="string">'Error running batch file '''</span>, batFileName, <span class="string">''' :'</span>, res]);
+<span class="keyword">end</span>
+</pre><p>このデモでは、すべてのシミュレーションを 1 つのバッチ ファイルにまとめ、'n' のパラメーター セットに対して 'n' のシミュレーションを順に実行するように、バッチ ファイルを実行しました。使用しているアプリケーションに合わせて、複数のバッチ ファイルを生成するようにこのスクリプトを変更することもできます。この場合、複数のコンピューターに対して分散させることにより、それらのバッチ ファイルは並列に実行されます。また、このバッチ ファイルは MATLAB を起動しなくても実行できます。</p><h2>手順 7.  出力 MAT ファイルのロード、および結果の照合<a name="15"></a></h2><p>ここでは、シミュレーション結果をすべての出力 MAT ファイルから収集し、 aggData 構造体にまとめます。特定の実行に対応する出力 MAT ファイルが見つからない場合、その分の結果は (数値ではなく) NaN に設定されます。特定のパラメーター セットによるシミュレーションの実行についてモデル内に特異性がある場合、このような状態が発生することがあります。</p><pre class="codeinput">idx = 1;
+<span class="keyword">for</span> iX1 = INIT_X1_vals
+    <span class="keyword">for</span> iX2 = INIT_X2_vals
+        <span class="keyword">for</span> iMU = MU_vals
+            outMatFile = [mdlName, <span class="string">'_run'</span>,num2str(idx),<span class="string">'.mat'</span>];
+            <span class="keyword">if</span> exist(outMatFile,<span class="string">'file'</span>)
+                load(outMatFile);
+                aggData(idx).tout = rt_tout;
+                aggData(idx).yout = rt_yout;
+            <span class="keyword">else</span>
+                aggData(idx).tout = nan;
+                aggData(idx).yout = nan;
+            <span class="keyword">end</span>
+            idx = idx + 1;
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><p>aggData 構造体を結果の MAT ファイルに保存します。aggData データ構造体には、すべての入力データ (パラメーター セット) および出力データ (シミュレーション結果) が含まれるため、この時点で、他のすべての MAT ファイルは削除されます。</p><pre class="codeinput">save(aggDataFile,<span class="string">'aggData'</span>);
+disp([<span class="string">'Took '</span>, num2str(cputime-startTime), <span class="keyword">...</span>
+      <span class="string">' seconds to generate results from '</span>, <span class="keyword">...</span>
+      num2str(nPrmSets), <span class="string">' simulation runs (Steps 2 to 7).'</span>]);
+</pre><pre class="codeoutput">Took 9.2344 seconds to generate results from 121 simulation runs (Steps 2 to 7).
+</pre><h2>手順 8.  シミュレーション結果の分析<a name="17"></a></h2><p>ここでは、x1 および x2 の異なる初期値を使用し、すべてのデータを位相図 (X2 対 X1) にプロットします。この図は、初期条件に関係なく、ファン・デル・ポール振動子が自然な振動子モードに収束することを示します。</p><pre class="codeinput">colors = {<span class="string">'b'</span>,<span class="string">'g'</span>,<span class="string">'r'</span>,<span class="string">'c'</span>,<span class="string">'m'</span>,<span class="string">'y'</span>,<span class="string">'k'</span>}; nColors = length(colors);
+<span class="keyword">for</span> idx = 1:nPrmSets
+    col = colors{idx - nColors*floor(idx/nColors) + 1};
+    plot(aggData(idx).prms.INIT_X1, aggData(idx).prms.INIT_X2, [col,<span class="string">'x'</span>], <span class="keyword">...</span>
+         aggData(idx).yout(:,1), aggData(idx).yout(:,2),col);
+    hold <span class="string">on</span>
+<span class="keyword">end</span>
+grid <span class="string">on</span>
+xlabel(<span class="string">'X1'</span>);
+ylabel(<span class="string">'X2'</span>);
+axis(<span class="string">'square'</span>);
+title(<span class="string">'Phase diagram for Van der Pol equation'</span>);
+</pre><img vspace="5" hspace="5" src="../rtwdemo_rsim_param_survey_script_02.png" alt=""> <p class="footer">Copyright 2005-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Using RSim Target for Parameter Survey % In this demo we illustrate how the RSim target can be used in applications % that require running simulations over a range of parameter values. We use the % Van der Pol oscillator as an example and perform a parameter sweep over a range % of initial state values to obtain the phase diagram of a nonlinear system. % % It is very easy to customize this demo for your own application by modifying % the MATLAB script used to build this demo. Click the link in the top left % corner of this page to edit the MATLAB script. Click the link in the top  % right corner to run this demo from MATLAB(R). When running this demo, make sure  % you are in a writable directory.  The demo creates files that you may want to  % investigate later.  % Copyright 2005-2010 The MathWorks, Inc.   %% Step 1.  Preparation % Make sure the current directory is writable because this demo will be % creating files.  [stat, fa] = fileattrib(pwd); if ~fa.UserWrite     disp('This script must be run in a writable directory');     return end  %% % Open the model and configure it to use the RSim target. For more % information on doing this graphically and setting up other RSim target % related options, % <matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'config_target') look here>.  mdlName = 'rtwdemo_rsim_vdp'; open_system(mdlName); cs = getActiveConfigSet(mdlName); cs.switchTarget('rsim.tlc',[]);  %% % Set the Inline parameters option.  Specify as Tunable the variables INIT_X1  % (the initial condition for state x1), INIT_X2 (the initial condition for  % state x2), and MU (the gain value). In this demo we will be investigating  % how the state trajectories evolve from different initial values for the  % states x1 and x2 in the model.  To see how to select tunable parameters and  % set their properties graphically, % <matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'model_param_config_dialog') look here>.  set_param(mdlName,'RTWInlineParameters','on'); set_param(mdlName,'TunableVars','INIT_X1,INIT_X2,MU'); set_param(mdlName,'TunableVarsStorageClass','Auto,Auto,Auto'); set_param(mdlName,'TunableVarsTypeQualifier',',,');  %% % Define the names of files that will be created during this demo.  prmFileName = [mdlName, '_prm_sets.mat']; logFileName = [mdlName, '_run_scr.log']; batFileName = [mdlName, '_run_scr']; exeFileName = mdlName; if ispc     exeFileName = [exeFileName, '.exe'];     batFileName = [batFileName, '.bat']; end aggDataFile = [mdlName, '_results']; startTime = cputime;   %% Step 2.  Build the Model % Build the RSim executable for the model. During the build process, a % structural checksum is calculated for the model and embedded into the % generated executable. This checksum is used to check that any parameter set % passed to the executable is compatible with it.   rtwbuild(mdlName);   %% Step 3.  Get the Default Parameter Set for the Model % Get the default rtP structure (parameter set) for the model. The modelChecksum % field in the rtP structure is the structural checksum of the model. This must % match the checksum embedded in the RSim executable (generated in step 2 % above).  If the two checksums do not match, the executable will generate an % error. The option 'AddTunableParamInfo' = 'on' specified to rsimgetrtp will % generate an rtP structure with entries for the named tunable variables % INIT_X1, INIT_X2 and MU in the model.  rtp = rsimgetrtp(mdlName,'AddTunableParamInfo','on')   %% Step 4.  Create Parameter Sets % Using the rtp structure from step 4, we build a structure array with different % values for the tunable variables in the model. As mentioned earlier, in this % demo we want to see how the state trajectories evolve for different initial  % values for the states x1 and x2 in the model. Hence we generate different  % parameter sets with different values for INIT_X1 and INIT_X2 and leave the  % tunable variable MU at the default value.  INIT_X1_vals = -5:1:5; INIT_X2_vals = -5:1:5; MU_vals = 1; nPrmSets = length(INIT_X1_vals)*length(INIT_X2_vals)*length(MU_vals)  %% % Note that in this demo we have nPrmSets parameter sets, i.e., we need to run % that many simulations.  Initialize aggData, which is a structure array used to % hold the parameter set and the corresponding results.  aggData = struct('tout', [], 'yout', [], ...                 'prms', struct('INIT_X1',[],'INIT_X2',[], 'MU', [])) aggData = repmat(aggData, nPrmSets, 1);  %% % The utility function rsimsetrtpparam is a convenient way to build the rtP % structure by adding parameter sets one at a time with different parameters % values.  idx = 1; for iX1 = INIT_X1_vals     for iX2 = INIT_X2_vals         for iMU = MU_vals             rtp = rsimsetrtpparam(rtp,idx,'INIT_X1',iX1,'INIT_X2',iX2,'MU',iMU);             aggData(idx).prms.INIT_X1 = iX1;             aggData(idx).prms.INIT_X2 = iX2;             aggData(idx).prms.MU      = iMU;             idx = idx + 1;         end     end end  %% % Save the rtP structure array with all the parameter sets to a MAT-file.  save(prmFileName,'rtp');   %% Step 5. Create a Batch File % We create a batch/script file to run the RSim executable over the parameter % sets. Each run reads the specified parameter set from the parameter MAT-file % and writes the results to the specified output MAT-file.  Note that we use the % time out option so that if a particular run were to hang (because the model % may have a singularity for that particular parameter set), we abort the run % after the specified time limit is exceeded and proceed to the next run. %  % For example, the command (on Windows(R)) % %    model.exe -p prm.mat@3 -o run3.mat -L 3600 2>&1>> run.log % % specifies using the third parameter set from the rtP structure in prm.mat, % writing the results to run3.mat, and aborting execution if a run takes longer  % than 3600 seconds of CPU time. In addition, all messages from model.exe while  % it is running are piped to run.log. In case of any problems, we can look at  % run.log to help debug.  fid = fopen(batFileName, 'w'); idx = 1; for iX1 = INIT_X1_vals     for iX2 = INIT_X2_vals         for iMU = MU_vals             outMatFile = [mdlName, '_run',num2str(idx),'.mat'];             cmd = [exeFileName, ...                    ' -p ', prmFileName, '@', int2str(idx), ...                    ' -o ', outMatFile, ...                    ' -L 3600'];             if ispc                 cmd  = [cmd, ' 2>&1>> ', logFileName];             else % (unix)                 cmd  = ['.' filesep cmd, ' 1> ', logFileName, ' 2>&1'];             end             fprintf(fid, ['echo "', cmd, '"\n']);             fprintf(fid, [cmd, '\n']);             idx = idx + 1;         end     end end if isunix,     system(['touch ', logFileName]);     system(['chmod +x ', batFileName]); end fclose(fid);  %% % Creating a batch file to run the simulations enables us to call the system % command once to run all the simulations (or even run the batch script outside % MATLAB) instead of calling the system command in a loop for each % simulation. This results in a significant performance improvement because the % system command has significant overhead.   %% Step 6. Execute Batch File to Run Simulations % Run the batch/script file, which runs the RSim executable once for each % parameter set and saves the results to a different MAT-file each time. % Note that this batch file can be run from outside MATLAB.  [stat, res] = system(['.' filesep batFileName]); if stat ~= 0     error(['Error running batch file ''', batFileName, ''' :', res]); end  %% % In this demo we put all the simulation runs into one batch file, ran the batch % file to sequentially run 'n' simulations over 'n' parameter sets. For your % application this script can be modified to generate multiple batch files, and % these batch files are run in parallel by distributing them across multiple % computers. Also the batch files can be run without launching MATLAB.   %% Step 7. Load Output MAT-files and Collate the Results % Here we collect the simulation results from all the output MAT-files into the % aggData structure. If the output MAT-file corresponding to a particular run is % not found, we set the results corresponding to that run to be NaN (not a % number). This situation can occur if a simulation run with a particular set % of parameters encounters singularities in the model.  idx = 1; for iX1 = INIT_X1_vals     for iX2 = INIT_X2_vals         for iMU = MU_vals             outMatFile = [mdlName, '_run',num2str(idx),'.mat'];             if exist(outMatFile,'file')                 load(outMatFile);                 aggData(idx).tout = rt_tout;                 aggData(idx).yout = rt_yout;             else                 aggData(idx).tout = nan;                 aggData(idx).yout = nan;             end             idx = idx + 1;         end     end end  %% % Save the aggData structure to the results MAT-file. At this point all the other % MAT-files can be deleted as the aggData data structure contains the aggregation % of all input (parameters sets) and output data (simulation results).  save(aggDataFile,'aggData'); disp(['Took ', num2str(cputime-startTime), ...       ' seconds to generate results from ', ...       num2str(nPrmSets), ' simulation runs (Steps 2 to 7).']);     %% Step 8. Analyze Simulation Results % We now have all the data to plot the phase diagram (X2 versus X1) with % different initial values for x1 and x2. The diagram shows that, irrespective % of the initial condition, the Van der Pol oscillator converges to its natural % oscillator mode.  colors = {'b','g','r','c','m','y','k'}; nColors = length(colors); for idx = 1:nPrmSets     col = colors{idx - nColors*floor(idx/nColors) + 1};     plot(aggData(idx).prms.INIT_X1, aggData(idx).prms.INIT_X2, [col,'x'], ...          aggData(idx).yout(:,1), aggData(idx).yout(:,2),col);     hold on end grid on xlabel('X1');  ylabel('X2');  axis('square'); title('Phase diagram for Van der Pol equation');   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,30 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>シミュレーション スナップショットで空気圧システムの線形化</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="scdpneumaticpad.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdpneumaticpad">エディターで scdpneumaticpad.m を開く</a></div><div class="right"><a href="matlab:echodemo scdpneumaticpad">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>シミュレーション スナップショットで空気圧システムの線形化</h1><!--introduction--><!--/introduction--><h2>目次</h2><div><ul><li><a href="#2">空気圧システムのデモ</a></li><li><a href="#3">初期のシミュレーションの取得</a></li><li><a href="#4">シミュレーション結果のプロット</a></li><li><a href="#5">シミュレーション スナップショットの収集</a></li></ul></div><p>このデモでは、Simulink&reg; Control Design™ の時間ベースの操作点スナップショット機能の使用法を説明します。このデモでは、シリンダーに圧縮空気を充填するダイナミクスのモデルを使用します。</p><h2>空気圧システムのデモ<a name="2"></a></h2><pre class="codeinput">scdpneumaticlin
+</pre><img vspace="5" hspace="5" src="../scdpneumaticpad_01.png" alt=""> <h2>初期のシミュレーションの取得<a name="3"></a></h2><pre class="codeinput">[t,x,y] = sim(<span class="string">'scdpneumaticlin'</span>);
+</pre><h2>シミュレーション結果のプロット<a name="4"></a></h2><p>この例では、供給圧は閉じられており、システムの初期圧力は 0.2 MPa です。供給圧は 0.7 MPa で、シミュレーションでは、サーボ弁は 0.5e-4 m に開かれています。シミュレーション中、圧力は 0.2 MPa の初期圧力から上昇し、最終的に供給圧で整定します。</p><pre class="codeinput">plot(t,y);
+</pre><img vspace="5" hspace="5" src="../scdpneumaticpad_02.png" alt=""> <h2>シミュレーション スナップショットの収集<a name="5"></a></h2><p>シミュレーションの異なる瞬間に操作点のスナップショットを取得するには、以下を使用します。</p><pre class="codeinput">op = findop(<span class="string">'scdpneumaticlin'</span>,[0 10 20 30 40 50 60]);
+</pre><p>操作点はベクトルで、以下を使用してアクセスできます。</p><pre class="codeinput">op(2)
+</pre><pre class="codeoutput">
+ Operating Point for the Model scdpneumaticlin.
+ (Time-Varying Components Evaluated at time t=10.5603)
+
+States: 
+----------
+(1.) scdpneumaticlin/Cylinder Pressure Model/dPc//dt
+      x: 3.1e+005     
+(2.) scdpneumaticlin/Pipe Model/dPp//dt
+      x: 3.11e+005    
+
+Inputs: None 
+----------
+</pre><p>操作点は、線形化を行う準備ができました。最初に、次のコマンドを使用して、入力点と出力点を指定します。</p><pre class="codeinput">io(1) = linio(<span class="string">'scdpneumaticlin/x'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'scdpneumaticlin/Cylinder Pressure Model'</span>,1,<span class="string">'out'</span>);
+</pre><p>条件ごとにモデルを線形化して、ボード線図をプロットし、線形化の変動を確認します。</p><pre class="codeinput">sys = linearize(<span class="string">'scdpneumaticlin'</span>,op,io);
+bode(sys)
+
+bdclose(<span class="string">'scdpneumaticlin'</span>)
+</pre><img vspace="5" hspace="5" src="../scdpneumaticpad_03.png" alt=""> <p class="footer">Copyright 2005-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Linearization of Pneumatic System at Simulation Snapshots % Copyright 2005-2007 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $ $Date: 2010/07/29 21:29:23 $  %% % This is a demonstration of the use of the time based operating point % snapshot feature in Simulink(R) Control Design(TM). This demo uses a model of % the dynamics of filling a cylinder with compressed air.   %% Pneumatic System Demo  scdpneumaticlin  %% Get the Initial Simulation [t,x,y] = sim('scdpneumaticlin');  %% Plot the Simulation Results % In this example, the supply pressure is closed and the system has an % initial pressure of 0.2 MPa. The supply pressure is at 0.7 MPa and in the % simulation the servo valve is opened to 0.5e-4 m. During the simulation, % the pressure increases from the initial pressure of 0.2 MPa and % eventually settles at the supply pressure.  plot(t,y);  %% Gathering Simulation Snapshots % To get operating point snapshots at various instants of the simulation use op = findop('scdpneumaticlin',[0 10 20 30 40 50 60]);  %% % The operating points are a vector that can be accessed using op(2)  %%  % The operating point is now ready for linearization. First specify the % input and output points using the commands:  io(1) = linio('scdpneumaticlin/x',1,'in'); io(2) = linio('scdpneumaticlin/Cylinder Pressure Model',1,'out');  %% % Linearize the model and plot the Bode plot for each condition to see the % variablity in the linearizations.  sys = linearize('scdpneumaticlin',op,io); bode(sys)  bdclose('scdpneumaticlin') displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

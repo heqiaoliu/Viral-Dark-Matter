@@ -1,0 +1,65 @@
+%% File : msfcn_varsize_holdStatesUntilReset.tlc
+%% Copyright 2009 The MathWorks, Inc.
+
+%implements "msfcn_varsize_holdStatesUntilReset" "C"
+
+%% Function: InitializeConditions =============================================
+%% Abstract: Set the values of the DWork vectors to 0 upon re-enabling
+%function InitializeConditions(block, system) Output
+  /* %<Type> Block: %<Name> */
+  %assign DWorkWidth = LibBlockDWorkWidth(DWork[0])
+  {
+    int i;
+    for (i = 0; i < %<DWorkWidth>; i++)
+    {
+      %<LibBlockDWork(DWork[0], "i", "", 0)> = 0.0;
+    }
+  }  
+%endfunction %% InitializeConditions
+  
+
+%% Function: Outputs ===========================================================
+%% Abstract:
+%% y = DWorks
+%%
+%function Outputs(block, system) Output
+  /* %<Type> Block: %<Name> */ 
+  %assign outSig = LibBlockOutputSignal(0, "", "", 0)
+  %% Copy the DWork values to the output buffer
+  {
+    int i;
+    for (i = 0; i < (%<SLibGetCurrentInputPortDimensions(0, 0)>*%<SLibGetCurrentInputPortDimensions(0, 1)>); i++) 
+    {
+      (&%<outSig>)[i] = %<LibBlockDWork(DWork[0], "i", "", 0)>;
+    }
+  }
+
+%endfunction %% Outputs
+
+%% Function: Update
+%% Abstract:
+%%   X[i] = U[i]
+%%
+%function Update(block, system) Output
+  /* %<Type> Block: %<Name> */
+   %assign input = LibBlockInputSignal(0, "", "", 0)
+  %% Copy the input values to the Dworks vector
+  {
+    int i;
+    for (i = 0; i < (%<SLibGetCurrentInputPortDimensions(0, 0)>*%<SLibGetCurrentInputPortDimensions(0, 1)>); i++) 
+    {
+      %<LibBlockDWork(DWork[0], "i", "", 0)> = (&%<input>)[i];
+    }
+  }
+%endfunction %% Update
+    
+%% Function: SetDims ===========================================================
+%% Abstract:
+%%   Update the current (run-time) output port dimensions with the input dimensions.
+%%
+%function SetDims(block, system, oIdx, rIdx) Output
+/* %<Type> Block: %<Name> */
+%<SLibGetCurrentOutputPortDimensions(0, 0)> = %<SLibGetCurrentInputPortDimensions(0, 0)>; 
+%<SLibGetCurrentOutputPortDimensions(0, 1)> = %<SLibGetCurrentInputPortDimensions(0, 1)>;
+
+%endfunction %% SetDims

@@ -1,0 +1,103 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>バッチ シミュレーションに対する RSim ターゲットの使用</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="rtwdemo_rsim_batch_script.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_rsim_batch_script">エディターで rtwdemo_rsim_batch_script.m を開く</a></div><div class="right"><a href="matlab:echodemo rtwdemo_rsim_batch_script">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>バッチ シミュレーションに対する RSim ターゲットの使用</h1><!--introduction--><p>このデモでは、生成コードを再コンパイルしないで、複数のバッチ シミュレーションの実行を必要とするアプリケーションで RSim ターゲットを使用する方法を説明します。このデモでは、MAT ファイルのデータを読み込むことによって、入力信号データとモデル パラメーターを変更します。前半の部分 (手順 1 ～ 5) では、伝達関数の減衰比を変更することにより、10 個のパラメーター セットが Simulink&reg; モデルから作成されます。10 個のパラメーター セットは MAT ファイルに保存され、RSim の実行ファイルはこのファイルから指定されたパラメーター セットを読み込みます。このデモの後半の部分 (手順 6 ～ 7) では、5 個の信号データ チャープ セットが次第に高くなる周波数と共に作成されます。どちらの部分でも、RSim の実行ファイルはシミュレーションのセットを実行し、固有のシミュレーション結果を含む出力 MAT ファイルを作成します。最後に、すべての実行の複合が MATLAB&reg; の図に表示されます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">手順 1.  準備</a></li><li><a href="#4">手順 2.  モデルのビルド</a></li><li><a href="#5">手順 3.  既定のパラメーター セットの取得および 10 個のパラメーター セットの作成</a></li><li><a href="#6">手順 4.  新しい パラメーター セットを使用した 10 個の RSim シミュレーションの実行、および結果のプロット</a></li><li><a href="#8">手順 5.  時間ベクトルおよび初期周波数ベクトルの設定</a></li><li><a href="#9">手順 6.  MAT ファイルの 5 個の信号データのセットの作成</a></li><li><a href="#10">手順 7.  新しい信号データを使用した RSim コンパイル済みシミュレーションの実行</a></li></ul></div><h2>手順 1.  準備<a name="1"></a></h2><p>このデモではファイルを作成するため、現在のディレクトリ内が書き込み可能であることを確認します。</p><pre class="codeinput">[stat, fa] = fileattrib(pwd);
+<span class="keyword">if</span> ~fa.UserWrite
+    disp(<span class="string">'This script must be run in a writable directory'</span>);
+    <span class="keyword">return</span>;
+<span class="keyword">end</span>
+</pre><p>モデルを開き、RSim ターゲットを使用するように設定します。操作のグラフィカルな説明および他の RSim ターゲット関連オプションの詳細は、<a href="matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'config_target')">こちらを参照</a>してください。</p><pre class="codeinput">mdlName = <span class="string">'rtwdemo_rsimtf'</span>;
+open_system(mdlName);
+cs = getActiveConfigSet(mdlName);
+cs.switchTarget(<span class="string">'rsim.tlc'</span>,[]);
+</pre><img vspace="5" hspace="5" src="../rtwdemo_rsim_batch_script_01.png" alt=""> <p>MAT ファイル rsim_tfdata.mat はローカル ディレクトリにあることが必要です。</p><pre class="codeinput"><span class="keyword">if</span> ~isempty(dir(<span class="string">'rsim_tfdata.mat'</span>)),
+    delete(<span class="string">'rsim_tfdata.mat'</span>);
+<span class="keyword">end</span>
+str1 = fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>,<span class="string">'rtwdemos'</span>,<span class="string">'rsimdemos'</span>,<span class="string">'rsim_tfdata.mat'</span>);
+str2 = [<span class="string">'copyfile('''</span>, str1, <span class="string">''',''rsim_tfdata.mat'',''writable'')'</span>];
+eval(str2);
+</pre><h2>手順 2.  モデルのビルド<a name="4"></a></h2><p>モデルの RSim 実行可能ファイルをビルドします。ビルド プロセスの間、モデルについて構造的なチェックサムが計算され、生成された実行可能ファイルに組み込まれます。このチェックサムは、実行可能ファイルに渡されたパラメーター セットが互換性があることを確認するために使用されます。</p><pre class="codeinput">evalin(<span class="string">'base'</span>,<span class="string">'w = 70;'</span>)
+evalin(<span class="string">'base'</span>,<span class="string">'theta = 1.0;'</span>)
+disp(<span class="string">'Building compiled RSim simulation.'</span>)
+rtwbuild(mdlName);
+</pre><pre class="codeoutput">Building compiled RSim simulation.
+### Starting Real-Time Workshop build procedure for model:rtwdemo_rsimtf
+### Successful completion of Real-Time Workshop build procedure for model:rtwdemo_rsimtf
+</pre><h2>手順 3.  既定のパラメーター セットの取得および 10 個のパラメーター セットの作成<a name="5"></a></h2><pre class="codeinput">disp(<span class="string">'Creating rtP data files'</span>)
+<span class="keyword">for</span> i=1:10
+  <span class="comment">% Extract current rtP structure using new damping factor.</span>
+  [rtpstruct]=evalin(<span class="string">'base'</span>,<span class="string">'rsimgetrtp(''rtwdemo_rsimtf'');'</span>);
+  savestr = strcat(<span class="string">'save params'</span>,num2str(i),<span class="string">'.mat rtpstruct'</span>);
+  eval(savestr);
+  evalin(<span class="string">'base'</span>,<span class="string">'theta = theta - .1;'</span>);
+<span class="keyword">end</span>
+<span class="string">'Finished creating parameter data files.'</span>)
+</pre><pre class="codeoutput">Creating rtP data files
+Finished creating parameter data files.
+</pre><h2>手順 4.  新しい パラメーター セットを使用した 10 個の RSim シミュレーションの実行、および結果のプロット<a name="6"></a></h2><pre class="codeinput">figure
+<span class="keyword">for</span> i=1:10
+  <span class="comment">% Bang out and run a simulation using new parameter data</span>
+  runstr = [<span class="string">'.'</span>, filesep, <span class="string">'rtwdemo_rsimtf -p params'</span>,num2str(i),<span class="string">'.mat'</span>, <span class="string">' -v'</span>];
+  [status, result] = system(runstr);
+  <span class="keyword">if</span> status ~= 0, error(result); <span class="keyword">end</span>
+  <span class="comment">% Load simulation data into MATLAB for plotting.</span>
+  load <span class="string">rtwdemo_rsimtf.mat</span>;
+  axis([0 1 0 2]);
+  plot(rt_tout, rt_yout)
+  hold <span class="string">on</span>
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="../rtwdemo_rsim_batch_script_02.png" alt=""> <p>このプロットは、それぞれが別々の減衰比を使用する 10 個のシミュレーションを示します。</p><h2>手順 5.  時間ベクトルおよび初期周波数ベクトルの設定<a name="8"></a></h2><p>シミュレーション結果のウィンドウ化およびスペクトル解析を実行する場合、時間ベクトルには 4096 個のポイントがあります。</p><pre class="codeinput">dt = .001;
+nn = [0:1:4095];
+t = dt*nn; [m,n] = size(t);
+wlo = 1; whi = 4;
+omega = [wlo:((whi-wlo)/n):whi - (whi-wlo)/n];
+</pre><h2>手順 6.  MAT ファイルの 5 個の信号データのセットの作成<a name="9"></a></h2><pre>チャープ データで .mat ファイルを作成します。</pre><pre class="codeinput">disp(<span class="string">'This part of the demo illustrates a sequence of 5 plots.Each'</span>)
+disp(<span class="string">'plot shows an input chirp signal of certain frequency range.'</span>)
+<span class="keyword">for</span> i = 1:5
+  wlo = whi; whi = 3*whi; <span class="comment">% keep increasing frequencies</span>
+  omega = [wlo:((whi-wlo)/n):whi - (whi-wlo)/n];
+  <span class="comment">% In a real application we recommend shaping the chirp using</span>
+  <span class="comment">% a windowing function (hamming or hanning window, etc.)</span>
+  <span class="comment">% This example does not use a windowing function.</span>
+  u      = sin(omega.*t);
+  tudata = [t;u];
+  <span class="comment">% At each pass, save one more set of tudata to the next</span>
+  <span class="comment">% .mat file.</span>
+  savestr = strcat(<span class="string">'save sweep'</span>,num2str(i),<span class="string">'.mat tudata'</span>);
+  eval(savestr);
+  <span class="comment">% Display each chirp. Note that this is only input data.</span>
+  <span class="comment">% Simulations have not been run yet.</span>
+  plotstr = strcat(<span class="string">'subplot(5,1,'</span>,num2str(i),<span class="string">');'</span>);
+  eval(plotstr);
+  plot(t,u)
+  pause(0.3)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">This part of the demo illustrates a sequence of 5 plots.Each
+plot shows an input chirp signal of certain frequency range.
+</pre><img vspace="5" hspace="5" src="../rtwdemo_rsim_batch_script_03.png" alt=""> <h2>手順 7.  新しい信号データを使用した RSim コンパイル済みシミュレーションの実行<a name="10"></a></h2><p>元の信号データ (rsim_tfdata.mat) を、sweep1.mat、sweep2.mat などのファイルで置き換えます。</p><pre class="codeinput">disp(<span class="string">'Starting batch simulations.'</span>)
+<span class="keyword">for</span> i = 1:5
+  <span class="comment">% Bang out and run the next set of data with RSim</span>
+  runstr = [<span class="string">'.'</span>, filesep, <span class="string">'rtwdemo_rsimtf -f rsim_tfdata.mat=sweep'</span>, <span class="keyword">...</span>
+            num2str(i),<span class="string">'.mat -v -tf 4.096'</span>];
+  [status, result] = system(runstr);
+  <span class="keyword">if</span> status ~= 0, error(result); <span class="keyword">end</span>
+  <span class="comment">% Load the data to MATLAB and plot the results.</span>
+  load <span class="string">rtwdemo_rsimtf.mat</span>
+  plotstr = strcat(<span class="string">'subplot(5,1,'</span>,num2str(i),<span class="string">');'</span>);
+  eval(plotstr);
+  plot(rt_tout, rt_yout); axis([0 4.1 -3 3]);
+<span class="keyword">end</span>
+zoom <span class="string">on</span>
+<span class="comment">% cleanup</span>
+evalin(<span class="string">'base'</span>,<span class="string">'clear w theta'</span>)
+disp(<span class="string">'This part of the demo illustrates a sequence of 5 plots.Each plot'</span>)
+disp(<span class="string">'shows the simulation results for the next frequency range.Using the'</span>)
+disp(<span class="string">'mouse, zoom in on each signal to observe signal amplitudes.'</span>)
+close_system(mdlName, 0);
+</pre><pre class="codeoutput">Starting batch simulations.
+This part of the demo illustrates a sequence of 5 plots.Each plot
+shows the simulation results for the next frequency range.Using the
+mouse, zoom in on each signal to observe signal amplitudes.
+</pre><img vspace="5" hspace="5" src="../rtwdemo_rsim_batch_script_04.png" alt=""> <p class="footer">Copyright 2005-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Using RSim Target for Batch Simulations % % In this demo we illustrate how the RSim target can be used in applications % that require running multiple batch simulations without recompiling the  % generated code.  The demo modifies input signal data and model parameters  % by reading data from a MAT-file. In the first part (steps 1-5), ten parameter  % sets are created from the Simulink(R) model by changing the transfer function  % damping factor. The ten parameter sets are saved to a MAT-file, and the RSim  % executable reads the specified parameter set from the file. In the second  % part (step 6-7) of this demo, five sets of signal data chirps are created  % with increasingly high frequencies. In both parts, the RSim executable runs  % the set of simulations and creates output MAT-files containing the specific  % simulation result. Finally, a composite of all runs appears in a MATLAB(R) % figure.  % Copyright 2005-2007 The MathWorks, Inc.  %% Step 1.  Preparation % Make sure the current directory is writable because this demo will be % creating files. % [stat, fa] = fileattrib(pwd); if ~fa.UserWrite     disp('This script must be run in a writable directory');     return; end %% % Open the model and configure it to use the RSim target. For more % information on doing this graphically and setting up other RSim target % related options, % <matlab:helpview(fullfile(docroot,'toolbox','rtw','helptargets.map'),'config_target') look here>. % mdlName = 'rtwdemo_rsimtf'; open_system(mdlName); cs = getActiveConfigSet(mdlName); cs.switchTarget('rsim.tlc',[]); %% % The MAT-file rsim_tfdata.mat is required in the local directory. % if ~isempty(dir('rsim_tfdata.mat')),     delete('rsim_tfdata.mat'); end str1 = fullfile(matlabroot,'toolbox','rtw','rtwdemos','rsimdemos','rsim_tfdata.mat'); str2 = ['copyfile(''', str1, ''',''rsim_tfdata.mat'',''writable'')']; eval(str2);  %% Step 2.  Build the Model % Build the RSim executable for the model. During the build process, a % structural checksum is calculated for the model and embedded into the % generated executable. This checksum is used to check that any parameter  % set passed to the executable is compatible with it. % evalin('base','w = 70;') evalin('base','theta = 1.0;') disp('Building compiled RSim simulation.') rtwbuild(mdlName);  %% Step 3.  Get the Default Parameter Set and Create 10 Parameters Sets % disp('Creating rtP data files') for i=1:10   % Extract current rtP structure using new damping factor.   [rtpstruct]=evalin('base','rsimgetrtp(''rtwdemo_rsimtf'');');   savestr = strcat('save params',num2str(i),'.mat rtpstruct');   eval(savestr);   evalin('base','theta = theta - .1;'); end disp('Finished creating parameter data files.')  %% Step 4. Run 10 RSim Simulations Using New Parameter Sets and Plot the Results % figure for i=1:10   % Bang out and run a simulation using new parameter data   runstr = ['.', filesep, 'rtwdemo_rsimtf -p params',num2str(i),'.mat', ' -v'];   [status, result] = system(runstr);   if status ~= 0, error(result); end   % Load simulation data into MATLAB for plotting.   load rtwdemo_rsimtf.mat;   axis([0 1 0 2]);   plot(rt_tout, rt_yout)   hold on end %% % The plot shows 10 simulations, each using a different damping factor.  %% Step 5. Set Up a Time Vector and an Initial Frequency Vector % The time vector has 4096 points in the event we want to do windowing and % spectral analysis on simulation results. % dt = .001; nn = [0:1:4095]; t = dt*nn; [m,n] = size(t); wlo = 1; whi = 4; omega = [wlo:((whi-wlo)/n):whi - (whi-wlo)/n];  %% Step 6. Create 5 Sets of Signal Data in MAT Files %  Creating .mat files with chirp data. disp('This part of the demo illustrates a sequence of 5 plots. Each') disp('plot shows an input chirp signal of certain frequency range.') for i = 1:5   wlo = whi; whi = 3*whi; % keep increasing frequencies   omega = [wlo:((whi-wlo)/n):whi - (whi-wlo)/n];   % In a real application we recommend shaping the chirp using   % a windowing function (hamming or hanning window, etc.)   % This example does not use a windowing function.   u      = sin(omega.*t);   tudata = [t;u];   % At each pass, save one more set of tudata to the next   % .mat file.   savestr = strcat('save sweep',num2str(i),'.mat tudata');   eval(savestr);   % Display each chirp. Note that this is only input data.   % Simulations have not been run yet.   plotstr = strcat('subplot(5,1,',num2str(i),');');   eval(plotstr);   plot(t,u)   pause(0.3) end  %% Step 7. Run the RSim Compiled Simulation Using New Signal Data % Replace the original signal data (rsim_tfdata.mat) with % the files sweep1.mat, sweep2.mat, and so on. disp('Starting batch simulations.') for i = 1:5   % Bang out and run the next set of data with RSim   runstr = ['.', filesep, 'rtwdemo_rsimtf -f rsim_tfdata.mat=sweep', ...             num2str(i),'.mat -v -tf 4.096'];   [status, result] = system(runstr);   if status ~= 0, error(result); end   % Load the data to MATLAB and plot the results.   load rtwdemo_rsimtf.mat   plotstr = strcat('subplot(5,1,',num2str(i),');');   eval(plotstr);   plot(rt_tout, rt_yout); axis([0 4.1 -3 3]); end zoom on % cleanup evalin('base','clear w theta') disp('This part of the demo illustrates a sequence of 5 plots. Each plot') disp('shows the simulation results for the next frequency range. Using the') disp('mouse, zoom in on each signal to observe signal amplitudes.') close_system(mdlName, 0);  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

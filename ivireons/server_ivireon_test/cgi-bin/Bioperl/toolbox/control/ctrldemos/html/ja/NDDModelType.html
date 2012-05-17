@@ -1,0 +1,55 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>正しいモデル表現の使用</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="NDDModelType.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit NDDModelType">エディターで NDDModelType.m を開く</a></div><div class="right"><a href="matlab:echodemo NDDModelType">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>正しいモデル表現の使用</h1><!--introduction--><p>このデモでは、LTI モデルで作業する場合のベスト プラクティスについて説明します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">どの表現が計算に最も適しているか</a></li><li><a href="#2">高次の伝達関数に伴う落とし穴</a></li><li><a href="#7">表現間の変換および復元に伴う落とし穴</a></li></ul></div><h2>どの表現が計算に最も適しているか<a name="1"></a></h2><p>Control System Toolbox™ ソフトウェアを使用すると、LTI システムを次の 4 通りの方法で表現できます。</p><div><ul><li>伝達関数 (TF)</li><li>零点-極-ゲイン (ZPK)</li><li>状態空間 (SS)</li><li>周波数応答データ (FRD)</li></ul></div><p>TF 表現と ZPK 表現はコンパクトで表示するのに便利ですが、以下の理由のためにシステムの操作や解析には適していません。</p><div><ul><li>TF モデルや ZPK モデルを使用すると、評価の不正確性を伴う高次の多項式が生成されることが多い。</li><li>TF 表現と ZPK 表現は、MIMO システムの操作には非効率であり、モデルの次数を引き上げる傾向がある。</li></ul></div><p>これらの制約については以下で説明します。これらの制約のため、LTI モデルに関連した計算には、ほとんどの場合 SS 表現または FRD 表現を使用する必要があります。</p><h2>高次の伝達関数に伴う落とし穴<a name="2"></a></h2><p>高次の伝達関数を伴う計算では、正確性が著しく損なわれるだけでなく、オーバーフローが発生する場合もあります。2 つの伝達関数の単純な積を計算しただけでも、以下に示すような予期しない結果が得られることがあります。</p><p>次数がそれぞれ 9 と 2 である、離散時間モデルに基づく 2 つの伝達関数 <tt>Pd</tt> と <tt>Cd</tt> を読み込み、プロットします。</p><pre class="codeinput"><span class="comment">% Load Pd,Cd models</span>
+load <span class="string">numdemo</span> <span class="string">Pd</span> <span class="string">Cd</span>
+
+<span class="comment">% Plot their frequency response</span>
+bode(Pd,<span class="string">'b'</span>,Cd,<span class="string">'r'</span>), grid
+legend(<span class="string">'Pd'</span>,<span class="string">'Cd'</span>)
+</pre><img vspace="5" hspace="5" src="../NDDModelType_01.png" alt=""> <p>次に、TF、ZPK、SS、および FRD の各表現を使用して、開ループ伝達関数 L = Pd*Cd を計算します。</p><pre class="codeinput">Ltf = Pd * Cd;                    <span class="comment">% TF</span>
+Lzp = zpk(Pd) * Cd;               <span class="comment">% ZPK</span>
+Lss = ss(Pd) * Cd;                <span class="comment">% SS</span>
+w = logspace(-1,3,100);
+Lfrd = frd(Pd,w) * Cd;            <span class="comment">% FRD</span>
+</pre><p>最後に、結果として生成される 4 つのモデルの周波数応答の振幅を計算します。</p><pre class="codeinput">sigma(Ltf,<span class="string">'b--'</span>,Lzp,<span class="string">'g'</span>,Lss,<span class="string">'r:'</span>,Lfrd,<span class="string">'m--'</span>,{1e-1,1e3});
+legend(<span class="string">'TF'</span>,<span class="string">'ZPK'</span>,<span class="string">'SS'</span>,<span class="string">'FRD'</span>)
+</pre><img vspace="5" hspace="5" src="../NDDModelType_02.png" alt=""> <p>ZPK、SS、および FRD の各表現からの応答は厳密に一致しますが、TF 表現からの応答は 100 rad/sec より下において不規則的かつ不均一になります。この伝達関数における精度の低下について理解するには、z=1 における Pd および Cd の極/零点マップを比較します。</p><pre class="codeinput">pzplot(Pd,<span class="string">'b'</span>,Cd,<span class="string">'r'</span>);
+title(<span class="string">'Pole/zero maps of Pd (blue) and Cd (red)'</span>);
+axis([0.4 1.05 -1 1])
+</pre><img vspace="5" hspace="5" src="../NDDModelType_03.png" alt=""> <p>z=1 近傍には重根があります。多項式の値の相対的な精度は根の近くで低下するため、z=1 近傍における伝達関数値の相対誤差は 100% を上回ります。100 rad/s より下の周波数は <tt>|z-1</tt>|&lt;1e-3 にマップされるため、100 rad/s より下では一貫性のない結果が返されます。</p><h2>表現間の変換および復元に伴う落とし穴<a name="7"></a></h2><p><tt>tf</tt>、<tt>zpk</tt>、および <tt>ss</tt> の各コマンドを使用すると、任意の LTI モデルをそれぞれ伝達関数、零点-極-ゲイン、または状態空間の各形式に容易に変換できます。たとえば、次のように入力して、2 つの入力と 2 つの出力を持つランダム状態空間モデルを作成したとします。</p><pre class="codeinput">HSS1 = rss(3,2,2);
+</pre><p>次のように入力すると、このモデルの伝達関数を取得できます。</p><pre class="codeinput">HTF = tf(HSS1);
+</pre><p>また、次のように入力すると、伝達関数を状態空間モデルに戻すことができます。</p><pre class="codeinput">HSS2 = ss(HTF);
+</pre><p>ただし、このような表現間の変換/復元は、計算コストのかかる操作であり、結果の精度を下げるだけでなく、MIMO システムのモデルの次数を人為的に引き上げる可能性もあります。たとえば、次数 3 の分母を持つ 2x2 伝達行列の一般次数は 6 であるため、<tt>HSS2</tt> の次数は <tt>HSS1</tt> の次数の 2 倍になります。</p><pre class="codeinput">order(HSS1)
+</pre><pre class="codeoutput">
+ans =
+
+     3
+
+</pre><pre class="codeinput">order(HSS2)
+</pre><pre class="codeoutput">
+ans =
+
+     6
+
+</pre><p>モデルの次数の違いを理解するには、2 つのモデルの極/零点マップを比較します。</p><pre class="codeinput">subplot(211)
+pzmap(HSS1,<span class="string">'b'</span>)
+title(<span class="string">'Poles and zeros of HSS1'</span>);
+subplot(212)
+pzmap(HSS2,<span class="string">'r'</span>)
+title(<span class="string">'Poles and zeros of HSS2'</span>);
+</pre><img vspace="5" hspace="5" src="../NDDModelType_04.png" alt=""> <p>この極/零点マップでは、HSS2 の極/零ペアの相殺が o の内側の x によって表されています。コマンド <tt>minreal</tt> を使用すると、極/零ペアの相殺を除去して、3 次の最小状態空間モデルを HSS2 から復元できます。</p><pre class="codeinput">HSS2_min = minreal(HSS2);
+order(HSS2_min)
+</pre><pre class="codeoutput">3 states removed.
+
+ans =
+
+     3
+
+</pre><p>これらの 2 つのモデル間の相対ギャップをプロットすることにより、<tt>HSS1</tt> と <tt>HSS2_min</tt> が一致しているかどうかをチェックします。</p><pre class="codeinput">clf
+Gap = HSS1-HSS2_min;
+sigma(HSS1,Gap), grid
+legend(<span class="string">'HSS1'</span>,<span class="string">'Gap HSS1 vs. minimal HSS2'</span>,<span class="string">'Location'</span>,<span class="string">'Best'</span>)
+</pre><img vspace="5" hspace="5" src="../NDDModelType_05.png" alt=""> <p>どの周波数でもギャップ (緑色の曲線) は非常に小さくなります。<tt>Gap</tt> プロットに「ノイズ」が多いという警告が <tt>sigma</tt> によって示されます。これは、差異が小さすぎて、基本的に丸め誤差でプロットが構成されているためです。</p><p>最小実現を抽出することは数値的に複雑なため、非最小モデルの作成は避けるべきです。「<a href="NDDModelInterconnections.html">システムの相互接続における状態の重複を防ぐ</a>」の関連情報も参照してください。</p><p class="footer">Copyright 1986-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Using the Right Model Representation % This demo covers some best practices for working with LTI models.  %   Copyright 1986-2008 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $  %% Which Representation is Best Suited for Computations? % Using the Control System Toolbox(TM) software, you can represent LTI % systems in four different ways: %  % * Transfer function (TF) % * Zero-pole-gain (ZPK) % * State space (SS) % * Frequency response data (FRD) % % While the TF and ZPK representations are compact and convenient % for display purposes, they are not ideal for system manipulation and % analysis for several reasons: % % * Working with TF and ZPK models often results in high-order % polynomials whose evaluation can be plagued by inaccuracies. % * The TF and ZPK representations are inefficient for manipulating % MIMO systems and tend to inflate the model order. % % Some of these limitations are illustrated below. Because of these % limitations, you should use the SS or FRD representations for % most computations involving LTI models.  %% Pitfalls of High-Order Transfer Functions % Computations involving high-order transfer functions can suffer from % severe loss of accuracy and even overflow.  Even a simple % product of two transfer functions can give surprising results, as shown % below. % % Load and plot two discrete-time transfer functions |Pd| and |Cd| of order 9 and % 2, respectively:  % Load Pd,Cd models load numdemo Pd Cd   % Plot their frequency response bode(Pd,'b',Cd,'r'), grid legend('Pd','Cd')  %% % Next, compute the open-loop transfer function L = Pd*Cd using % the TF, ZPK, SS, and FRD representations: Ltf = Pd * Cd;                    % TF Lzp = zpk(Pd) * Cd;               % ZPK Lss = ss(Pd) * Cd;                % SS w = logspace(-1,3,100); Lfrd = frd(Pd,w) * Cd;            % FRD  %% % Finally, compare the frequency response magnitude for the resulting four models: sigma(Ltf,'bREPLACE_WITH_DASH_DASH',Lzp,'g',Lss,'r:',Lfrd,'mREPLACE_WITH_DASH_DASH',{1e-1,1e3}); legend('TF','ZPK','SS','FRD')  %%  % The responses from the ZPK, SS, and FRD representations closely match, but % the response from the TF representation is choppy and erratic % below 100 rad/sec. To understand the loss of accuracy with the transfer function form, % compare the pole/zero maps of Pd and Cd near z=1: pzplot(Pd,'b',Cd,'r'); title('Pole/zero maps of Pd (blue) and Cd (red)'); axis([0.4 1.05 -1 1])   %% % Note that there are multiple roots near z=1.  Because the relative accuracy of % polynomial values drops near roots, the relative error on the transfer % function value near z=1 exceeds 100%.  The frequencies below 100 rad/s map  % to ||z-1||<1e-3, which explains the erratic results below 100 rad/s.  %% Pitfalls of Back-and-Forth Conversions Between Representations % You can easily convert any LTI model to transfer function, zero-pole-gain, or % state-space form using the commands |tf|, |zpk|, and |ss|, respectively. % For example, given a two-input, two-output random state-space model HSS1 % created using HSS1 = rss(3,2,2);  %% % you can obtain its transfer function using HTF = tf(HSS1);  %% % and convert it back to state-space using HSS2 = ss(HTF);  %%  % However, beware that such back-and-forth conversions are expensive, can  % incur some loss of accuracy, and artificially inflate the model order for  % MIMO systems. For example, the order of |HSS2| is double that of |HSS1| % because 6 is the generic order of a 2x2 transfer matrix with denominators  % of degree 3: order(HSS1)  %% order(HSS2)  %% % To understand the difference in model order, compare the pole/zero maps of the two models: subplot(211) pzmap(HSS1,'b') title('Poles and zeros of HSS1'); subplot(212) pzmap(HSS2,'r') title('Poles and zeros of HSS2');  %% % Notice the cancelling pole/zero pairs in HSS2 depicted by x's inside o's in the pole/zero % map. You can use the command |minreal| to eliminate cancelling pole/zero pairs % and recover a 3rd-order, minimal state-space model from HSS2: HSS2_min = minreal(HSS2); order(HSS2_min)  %% % Check that |HSS1| and |HSS2_min| coincide by plotting the relative gap % between these two models: clf Gap = HSS1-HSS2_min; sigma(HSS1,Gap), grid legend('HSS1','Gap HSS1 vs. minimal HSS2','Location','Best')  %% % The gap (green curve) is very small at all frequencies. Note that |sigma|  % warns that the |Gap| plot is "noisy" because the difference is so small % that it essentially consists of rounding errors.  %% % Because extracting minimal realizations is numerically tricky, you should % avoid creating nonminimal models. % See also <NDDModelInterconnections.html Preventing State Duplication in System Interconnections> for % related insights.   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

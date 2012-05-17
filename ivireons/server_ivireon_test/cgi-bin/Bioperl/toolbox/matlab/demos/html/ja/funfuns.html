@@ -1,0 +1,49 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>関数を引数とする関数</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="funfuns.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit funfuns">エディターで funfuns.m を開く</a></div><div class="right"><a href="matlab:echodemo funfuns">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>関数を引数とする関数</h1><!--introduction--><p>MATLAB&reg; において、ある関数はパラメーターとして別の関数を取得します。この機能は、さまざまな目的に役立ちます。ここでは、零点の検出と、最適化、積分に対する使用について説明します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">関数 HUMPS</a></li><li><a href="#2">HUMPS のプロット</a></li><li><a href="#3">HUMPS の零点</a></li><li><a href="#4">HUMPS の最小値</a></li><li><a href="#5">HUMPS の積分</a></li></ul></div><h2>関数 HUMPS<a name="1"></a></h2><p>MATLAB 関数は、キーワード関数から始まるファイルです。関数 HUMPS もこのような形になっています。</p><pre class="codeinput">type <span class="string">humps</span>
+</pre><pre class="codeoutput">
+function [out1,out2] = humps(x)
+%HUMPS  A function used by QUADDEMO, ZERODEMO and FPLOTDEMO.
+%   Y = HUMPS(X) is a function with strong maxima near x = .3 
+%   and x = .9.  
+%
+%   [X,Y] = HUMPS(X) also returns X.  With no input arguments,
+%   HUMPS uses X = 0:.05:1.
+%
+%   Example:
+%      plot(humps)
+%
+%   See QUADDEMO, ZERODEMO and FPLOTDEMO.
+
+%   Copyright 1984-2002 The MathWorks, Inc. 
+%   $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:28:52 $
+
+if nargin==0, x = 0:.05:1; end
+
+y = 1 ./ ((x-.3).^2 + .01) + 1 ./ ((x-.9).^2 + .04) - 6;
+
+if nargout==2, 
+  out1 = x; out2 = y; 
+else 
+  out1 = y;
+end
+
+
+</pre><h2>HUMPS のプロット<a name="2"></a></h2><p>次の図は、FPLOT を使った [0,2] の領域の HUMPS のプロットを示します。</p><pre class="codeinput">fplot(@humps,[0,2]);
+</pre><img vspace="5" hspace="5" src="../funfuns_01.png" alt=""> <h2>HUMPS の零点<a name="3"></a></h2><p>関数 FZERO は、初期推定に近い関数の零点を求めます。推定は、ここでは HUMPS に対して 1 です。</p><pre class="codeinput">z = fzero(@humps,1,optimset(<span class="string">'Display'</span>,<span class="string">'off'</span>));
+fplot(@humps,[0,2]);
+hold <span class="string">on</span>;
+plot(z,0,<span class="string">'r*'</span>);
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="../funfuns_02.png" alt=""> <h2>HUMPS の最小値<a name="4"></a></h2><p>FMINBND は、与えられた領域内で関数の最小値を求めます。ここでは、領域 (0.25,1) 内で HUMPS に対する最小値を探索します。</p><pre class="codeinput">m = fminbnd(@humps,0.25,1,optimset(<span class="string">'Display'</span>,<span class="string">'off'</span>));
+fplot(@humps,[0 2]);
+hold <span class="string">on</span>;
+plot(m,humps(m),<span class="string">'r*'</span>);
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="../funfuns_03.png" alt=""> <h2>HUMPS の積分<a name="5"></a></h2><p>QUAD は、与えられた領域内で HUMPS の定積分を求めます。ここでは、領域 [0.5, 1] 内のエリアで計算されます。</p><pre class="codeinput">q = quad(@humps,0.5,1);
+fplot(@humps,[0,2]);
+title([<span class="string">'Area = '</span>,num2str(q)]);
+</pre><img vspace="5" hspace="5" src="../funfuns_04.png" alt=""> <p class="footer">Copyright 1984-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Function Functions % In MATLAB(R), one function take another as a parameter.  This feature serves a % wide variety of purposes.  Here we illustrate its use for finding zeros, % optimization, and integration. % % Copyright 1984-2010 The MathWorks, Inc.  % $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:28:52 $  %% The HUMPS Function % A MATLAB function is a file that starts with the keyword function.  This is % what the function HUMPS looks like:  type humps  %% Plot of HUMPS % This figure shows a plot of HUMPS in the domain [0,2] using FPLOT.  fplot(@humps,[0,2]);  %% Zero of HUMPS % The FZERO function finds a zeros of a function near an initial estimate. Our % guess here for HUMPS is 1.  z = fzero(@humps,1,optimset('Display','off')); fplot(@humps,[0,2]);                           hold on; plot(z,0,'r*'); hold off   %% Minimum of HUMPS % FMINBND finds the minimum of a function in a given domain.  Here, we search % for a minimum for HUMPS in the domain (0.25,1).    m = fminbnd(@humps,0.25,1,optimset('Display','off'));      fplot(@humps,[0 2]);                                       hold on;  plot(m,humps(m),'r*'); hold off   %% Integral of HUMPS % QUAD finds the definite integral of HUMPS in a given domain.  Here it computes % the area in the domain [0.5, 1].   q = quad(@humps,0.5,1);                 fplot(@humps,[0,2]);                    title(['Area = ',num2str(q)]);   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

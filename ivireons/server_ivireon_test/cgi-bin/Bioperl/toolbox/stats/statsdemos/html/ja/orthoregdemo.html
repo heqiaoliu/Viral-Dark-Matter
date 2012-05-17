@@ -1,0 +1,96 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>主成分分析を使用した直交回帰の近似</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="orthoregdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit orthoregdemo">エディターで orthoregdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo orthoregdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>主成分分析を使用した直交回帰の近似</h1><!--introduction--><p>主成分分析 (PCA) を使用すると、データから近似モデルまでの垂直距離を最小化する線形回帰を近似できます。この分析は、直交回帰または全最小二乗と呼ばれるものの線形バージョンであり、応答変数と予測変数の間に自然な区分がない場合、またはすべての変数が誤差ありで測定される場合に適しています。これは、予測変数が正確に測定され、応答変数のみが誤差成分を持つ、通常の回帰仮定とは対照的なものです。</p><p>たとえば、2 つのデータ ベクトル x と y がある場合は、各ポイント (x(i), y(i)) から直線までの垂直距離を最小化する直線を近似できます。さらに一般的な例としては、p 観測変数を使用して、p 次元空間で r 次元超平面を近似できます (r &lt; p)。r の選択は、PCA で保持するための成分の数を選択することに相当します。つまり、予測誤差に基づく選択の場合もあれば、管理しやすい次元数までデータを縮小するという実際的な選択の場合もあります。</p><p>この例では、観測される 3 つの変数に関するデータを使用して、平面と直線を近似します。これと同じことは、任意の数の変数、および任意の次元のモデルに対して容易に実行できます。ただし、高次元で近似を可視化することは、明らかに単純ではありません。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">3 次元データへの平面の近似</a></li><li><a href="#10">3 次元データへの直線の近似</a></li></ul></div><h2>3 次元データへの平面の近似<a name="1"></a></h2><p>まず、3 変量法線データを例として生成します。変数のうちの 2 つは非常に緊密に相関されています。</p><pre class="codeinput">randn(<span class="string">'state'</span>,0);
+X = mvnrnd([0 0 0], [1 .2 .7; .2 1 0; .7 0 1],50);
+plot3(X(:,1),X(:,2),X(:,3),<span class="string">'bo'</span>);
+grid <span class="string">on</span>;
+maxlim = max(abs(X(:)))*1.1;
+axis([-maxlim maxlim -maxlim maxlim -maxlim maxlim]);
+axis <span class="string">square</span>
+view(-23.50.5);
+</pre><img vspace="5" hspace="5" src="../orthoregdemo_01.png" alt=""> <p>次に、PCA を使用して平面をデータに近似します。最初の 2 つの主成分の係数によって、平面の基底を形成するベクトルが定義されます。3 番目の PC は最初の 2 つの PC と直交しており、その係数によって平面の法線ベクトルが定義されます。</p><pre class="codeinput">[coeff,score,roots] = princomp(X);
+basis = coeff(:,1:2)
+</pre><pre class="codeoutput">
+basis =
+
+    0.7139    0.1302
+    0.0008    0.9824
+    0.7003   -0.1338
+
+</pre><pre class="codeinput">normal = coeff(:,3)
+</pre><pre class="codeoutput">
+normal =
+
+   -0.6880
+    0.1867
+    0.7012
+
+</pre><p>近似の説明はこれですべてです。それでは、結果を詳しく考察して、データと共に近似をプロットしてみましょう。</p><p>最初の 2 つの成分は 2 次元で可能な限り多くの分散について説明しているので、平面はデータに対する最良の 2 次元線形近似になっています。同様に、3 番目の成分はデータ内の最小量の分散について説明しており、回帰における誤差項になっています。PCA からの特性根 (固有値) は、各成分の説明分散の量を定義します。</p><pre class="codeinput">pctExplained = roots' ./ sum(roots)
+</pre><pre class="codeoutput">
+pctExplained =
+
+    0.6825    0.2235    0.0940
+
+</pre><p>主成分スコアの最初の 2 つの座標は、平面に対する各ポイントの投影を、平面の座標系で表しています。オリジナル座標系における近似ポイントの座標を取得するには、各 PC 係数ベクトルをそれに対応するスコアで乗算して、データの平均値を加算します。残差は、オリジナル データから近似ポイントを差し引いたものになります。</p><pre class="codeinput">[n,p] = size(X);
+meanX = mean(X,1);
+Xfit = repmat(meanX,n,1) + score(:,1:2)*coeff(:,1:2)';
+residuals = X - Xfit;
+</pre><p><tt>Xfit</tt> の各近似ポイントによって満たされる近似された平面の方程式は、<tt>([x1 x2 x3] - meanX)*normal = 0</tt> です。平面はポイント <tt>meanX</tt> を通過し、原点までの垂直距離は <tt>meanX*normal</tt> になります。<tt>X</tt> の各ポイントから平面までの垂直距離、つまり残差のノルムは、各中心点と平面に対する法線との内積です。近似された平面は、二乗誤差の合計を最小化します。</p><pre class="codeinput">error = abs((X - repmat(meanX,n,1))*normal);
+sse = sum(error.^2)
+</pre><pre class="codeoutput">
+sse =
+
+   11.0788
+
+</pre><p>近似を可視化するには、平面、オリジナル データ、および平面に対するオリジナル データの投影をプロットします。</p><pre class="codeinput">[xgrid,ygrid] = meshgrid(linspace(min(X(:,1)),max(X(:,1)),5), <span class="keyword">...</span>
+                         linspace(min(X(:,2)),max(X(:,2)),5));
+zgrid = (1/normal(3)) .* (meanX*normal - (xgrid.*normal(1) + ygrid.*normal(2)));
+h = mesh(xgrid,ygrid,zgrid,<span class="string">'EdgeColor'</span>,[0 0 0],<span class="string">'FaceAlpha'</span>,0);
+
+hold <span class="string">on</span>
+above = (X-repmat(meanX,n,1))*normal &gt; 0;
+below = ~above;
+nabove = sum(above);
+X1 = [X(above,1) Xfit(above,1) nan*ones(nabove,1)];
+X2 = [X(above,2) Xfit(above,2) nan*ones(nabove,1)];
+X3 = [X(above,3) Xfit(above,3) nan*ones(nabove,1)];
+plot3(X1',X2',X3',<span class="string">'-'</span>, X(above,1),X(above,2),X(above,3),<span class="string">'o'</span>, <span class="string">'Color'</span>,[0 .7 0]);
+nbelow = sum(below);
+X1 = [X(below,1) Xfit(below,1) nan*ones(nbelow,1)];
+X2 = [X(below,2) Xfit(below,2) nan*ones(nbelow,1)];
+X3 = [X(below,3) Xfit(below,3) nan*ones(nbelow,1)];
+plot3(X1',X2',X3',<span class="string">'-'</span>, X(below,1),X(below,2),X(below,3),<span class="string">'o'</span>, <span class="string">'Color'</span>,[1 0 0]);
+
+hold <span class="string">off</span>
+maxlim = max(abs(X(:)))*1.1;
+axis([-maxlim maxlim -maxlim maxlim -maxlim maxlim]);
+axis <span class="string">square</span>
+view(-23.50.5);
+</pre><img vspace="5" hspace="5" src="../orthoregdemo_02.png" alt=""> <p>緑のポイントは平面の上、赤いポイントは平面の下になります。</p><h2>3 次元データへの直線の近似<a name="10"></a></h2><p>これよりさらに簡単なのがデータへの直線の近似です。また、PCA には入れ子特性があるため、すでに計算された成分を使用できます。直線を定義する方向ベクトルは、最初の主成分の係数によって指定されます。2 番目と 3 番目の PC は最初の PC と直交し、これらの PC の係数によって、直線に対する垂直方向が定義されます。直線を描くための最も簡単な方程式は <tt>meanX + t*dirVect</tt> です。ここで、<tt>t</tt> は直線に沿った位置をパラメーター化します。</p><pre class="codeinput">dirVect = coeff(:,1)
+</pre><pre class="codeoutput">
+dirVect =
+
+    0.7139
+    0.0008
+    0.7003
+
+</pre><p>主成分スコアの最初の座標は、直線に対する各ポイントの投影を表します。2 次元近似の場合と同様に、スコアで乗算される PC 係数ベクトルは、オリジナル座標系における近似ポイントを指定します。</p><pre class="codeinput">Xfit1 = repmat(meanX,n,1) + score(:,1)*coeff(:,1)';
+</pre><p>直線、オリジナル データ、および直線に対するオリジナル データの投影をプロットします。</p><pre class="codeinput">t = [min(score(:,1))-.2, max(score(:,1))+.2];
+endpts = [meanX + t(1)*dirVect'; meanX + t(2)*dirVect'];
+plot3(endpts(:,1),endpts(:,2),endpts(:,3),<span class="string">'k-'</span>);
+
+X1 = [X(:,1) Xfit1(:,1) nan*ones(n,1)];
+X2 = [X(:,2) Xfit1(:,2) nan*ones(n,1)];
+X3 = [X(:,3) Xfit1(:,3) nan*ones(n,1)];
+hold <span class="string">on</span>
+plot3(X1',X2',X3',<span class="string">'b-'</span>, X(:,1),X(:,2),X(:,3),<span class="string">'bo'</span>);
+hold <span class="string">off</span>
+maxlim = max(abs(X(:)))*1.1;
+axis([-maxlim maxlim -maxlim maxlim -maxlim maxlim]);
+axis <span class="string">square</span>
+view(-23.50.5);
+grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../orthoregdemo_03.png" alt=""> <p>このプロット内の一部の投影は直線に対して垂直になっていないように見えますが、これは 3 次元データを 2 次元でプロットしようとしているためです。実稼動時の <tt>MATLAB(R)</tt> の Figure ウィンドウでは、プロットをさまざまな視点に対話形式で回転することで、投影が実際に垂直であることを確認したり、直線とデータの近似の度合いを把握したりすることができます。</p><p class="footer">Copyright 2005-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Fitting an Orthogonal Regression Using Principal Components Analysis % Principal Components Analysis can be used to fit a linear regression that % minimizes the perpendicular distances from the data to the fitted model. % This is the linear case of what is known as Orthogonal Regression or Total % Least Squares, and is appropriate when there is no natural distinction % between predictor and response variables, or when all variables are measured % with error.  This is in contrast to the usual regression assumption that % predictor variables are measured exactly, and only the response variable has % an error component. % % For example, given two data vectors x and y, you can fit a line that % minimizes the perpendicular distances from each of the points (x(i), y(i)) % to the line.  More generally, with p observed variables, you can fit an % r-dimensional hyperplane in p-dimensional space (r < p).  The choice of r is % equivalent to choosing the number of components to retain in PCA. It may be % based on prediction error, or it may simply be a pragmatic choice to reduce % data to a manageable number of dimensions. % % In this example, we fit a plane and a line through some data on three % observed variables.  It's easy to do the same thing for any number of % variables, and for any dimension of model, although visualizing a fit % in higher dimensions would obviously not be straightforward.  %   Copyright 2005-2010 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:29:29 $   %% Fitting a Plane to 3-D Data % First, we generate some trivariate normal data for the example.  Two of % the variables are fairly strongly correlated. randn('state',0); X = mvnrnd([0 0 0], [1 .2 .7; .2 1 0; .7 0 1],50); plot3(X(:,1),X(:,2),X(:,3),'bo'); grid on; maxlim = max(abs(X(:)))*1.1; axis([-maxlim maxlim -maxlim maxlim -maxlim maxlim]); axis square view(-23.5,5);  %% % Next, we fit a plane to the data using PCA.  The coefficients for the first % two principal components define vectors that form a basis for the plane. % The third PC is orthogonal to the first two, and its coefficients define the % normal vector of the plane. [coeff,score,roots] = princomp(X); basis = coeff(:,1:2) %% normal = coeff(:,3) %% % That's all there is to the fit.  But let's look closer at the results, and % plot the fit along with the data.  %% % Because the first two components explain as much of the variance in the data % as is possible with two dimensions, the plane is the best 2-D linear % approximation to the data.  Equivalently, the third component explains the % least amount of variation in the data, and it is the error term in the % regression.  The latent roots (or eigenvalues) from the PCA define the % amount of explained variance for each component. pctExplained = roots' ./ sum(roots)  %% % The first two coordinates of the principal component scores give the % projection of each point onto the plane, in the coordinate system of the % plane.  To get the coordinates of the fitted points in terms of the original % coordinate system, we multiply each PC coefficient vector by the % corresponding score, and add back in the mean of the data.  The residuals % are simply the original data minus the fitted points. [n,p] = size(X); meanX = mean(X,1); Xfit = repmat(meanX,n,1) + score(:,1:2)*coeff(:,1:2)'; residuals = X - Xfit;  %% % The equation of the fitted plane, satisfied by each of the fitted points in % |Xfit|, is |([x1 x2 x3] - meanX)*normal = 0|.  The plane passes through the % point |meanX|, and its perpendicular distance to the origin is % |meanX*normal|. The perpendicular distance from each point in |X| to the % plane, i.e., the norm of the residuals, is the dot product of each centered % point with the normal to the plane.  The fitted plane minimizes the sum of % the squared errors. error = abs((X - repmat(meanX,n,1))*normal); sse = sum(error.^2)  %% % To visualize the fit, we can plot the plane, the original data, and their % projection to the plane. [xgrid,ygrid] = meshgrid(linspace(min(X(:,1)),max(X(:,1)),5), ...                          linspace(min(X(:,2)),max(X(:,2)),5)); zgrid = (1/normal(3)) .* (meanX*normal - (xgrid.*normal(1) + ygrid.*normal(2))); h = mesh(xgrid,ygrid,zgrid,'EdgeColor',[0 0 0],'FaceAlpha',0);  hold on above = (X-repmat(meanX,n,1))*normal > 0; below = ~above; nabove = sum(above); X1 = [X(above,1) Xfit(above,1) nan*ones(nabove,1)]; X2 = [X(above,2) Xfit(above,2) nan*ones(nabove,1)]; X3 = [X(above,3) Xfit(above,3) nan*ones(nabove,1)]; plot3(X1',X2',X3','-', X(above,1),X(above,2),X(above,3),'o', 'Color',[0 .7 0]); nbelow = sum(below); X1 = [X(below,1) Xfit(below,1) nan*ones(nbelow,1)]; X2 = [X(below,2) Xfit(below,2) nan*ones(nbelow,1)]; X3 = [X(below,3) Xfit(below,3) nan*ones(nbelow,1)]; plot3(X1',X2',X3','-', X(below,1),X(below,2),X(below,3),'o', 'Color',[1 0 0]);  hold off maxlim = max(abs(X(:)))*1.1; axis([-maxlim maxlim -maxlim maxlim -maxlim maxlim]); axis square view(-23.5,5); %% % Green points are above the plane, red points are below.   %% Fitting a Line to 3-D Data % Fitting a straight line to the data is even simpler, and because of the % nesting property of PCA, we can use the components that have already been % computed.  The direction vector that defines the line is given by the % coefficients for the first principal component.  The second and third PCs % are orthogonal to the first, and their coefficients define directions % that are perpendicular to the line.  The simplest equation to describe the % line is |meanX + t*dirVect|, where |t| parameterizes the position along the % line. dirVect = coeff(:,1)  %% % The first coordinate of the principal component scores gives the % projection of each point onto the line.  As with the 2-D fit, the PC % coefficient vectors multiplied by the scores the gives the fitted points % in the original coordinate system. Xfit1 = repmat(meanX,n,1) + score(:,1)*coeff(:,1)';  %% % Plot the line, the original data, and their projection to the line. t = [min(score(:,1))-.2, max(score(:,1))+.2]; endpts = [meanX + t(1)*dirVect'; meanX + t(2)*dirVect']; plot3(endpts(:,1),endpts(:,2),endpts(:,3),'k-');  X1 = [X(:,1) Xfit1(:,1) nan*ones(n,1)]; X2 = [X(:,2) Xfit1(:,2) nan*ones(n,1)]; X3 = [X(:,3) Xfit1(:,3) nan*ones(n,1)]; hold on plot3(X1',X2',X3','b-', X(:,1),X(:,2),X(:,3),'bo'); hold off maxlim = max(abs(X(:)))*1.1; axis([-maxlim maxlim -maxlim maxlim -maxlim maxlim]); axis square view(-23.5,5); grid on  %% % While it appears that some of the projections in this plot are not % perpendicular to the line, that's just because we're plotting 3-D data % in two dimensions.  In a live |MATLAB(R)| figure window, you could % interactively rotate the plot to different perspectives to verify that % the projections are indeed perpendicular, and to get a better feel for % how the line fits the data.   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

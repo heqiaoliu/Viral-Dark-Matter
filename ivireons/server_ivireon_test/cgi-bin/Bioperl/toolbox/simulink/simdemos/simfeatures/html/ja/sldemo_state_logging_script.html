@@ -1,0 +1,58 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>構造体形式での状態のログ</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="sldemo_state_logging_script.m"><link rel="stylesheet" type="text/css" href="../../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sldemo_state_logging_script">エディターで sldemo_state_logging_script.m を開く</a></div><div class="right"><a href="matlab:echodemo sldemo_state_logging_script">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>構造体形式での状態のログ</h1><!--introduction--><p>このデモでは、状態をN  (状態の数) 列の行列として配列形式でログを作成するという従来の方法に比べ、Simulink&reg; モデルの状態軌跡を構造体形式でログを作成する利点を示します。ログが作成される行列の列に沿った状態の順序は、コンパイル時に Simulink エンジンによって決められるブロックのソート順序に左右されます。さまざまな要因がブロックのソート順序に影響し、このソート順序によって状態の順序が変わります。</p><p>このデモで示す、構造体形式で状態をログを作成する方法では、ブロック名を状態軌跡と一緒に保存することで、状態の順序問題を回避することができます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">配列形式でのログの問題点</a></li><li><a href="#4">構造体形式でのログの使用</a></li><li><a href="#7">状態順序が固定された状態行列の取得</a></li></ul></div><h2>配列形式でのログの問題点<a name="1"></a></h2><p>既定の設定では、Simulink は状態軌跡を配列形式でログを作成します。理由は、この形式のデータが M 行 N 列の行列として、MATLAB&reg; で操作しやすいからです。ログが作成される行列の列に沿った状態変数の順序は、ブロックのソート順序に左右されます。行列の列と状態の間のマッピングが固定されていると想定する MATLAB コードは、モデルの変化が原因でブロックのソート順序が変わると中断されることがあります。</p><p>たとえば、以下の 2 つのブロック線図を考えてみます。</p><pre class="codeinput">mdl1 = <span class="string">'sldemo_state_logging1'</span>;
+mdl2 = <span class="string">'sldemo_state_logging2'</span>;
+open_system(mdl1);
+open_system(mdl2);
+</pre><img vspace="5" hspace="5" src="../sldemo_state_logging_script_01.png" alt=""> <img vspace="5" hspace="5" src="../sldemo_state_logging_script_02.png" alt=""> <p>2 つのブロック線図のブロックは同じで、唯一の違いは出力端子の順序です。モデルのシミュレーションを実行し、状態を配列形式でログを作成します。</p><pre class="codeinput">opts1 = simset(simget(mdl1),<span class="string">'SaveFormat'</span>,<span class="string">'Array'</span>);
+[t1,x1] = sim(mdl1, [], opts1);
+
+opts2 = simset(simget(mdl2),<span class="string">'SaveFormat'</span>,<span class="string">'Array'</span>);
+[t2,x2] = sim(mdl2, [], opts2);
+</pre><p>Integrator ブロックの相対的順序が 2 つのブロック線図で異なっていることに注意してください。これにより、ログが作成される状態 <tt>x1</tt> と <tt>x2</tt> が異なることになります。列と状態の間のマッピングが異なるからです。</p><pre class="codeinput">isequal(x1, x2)
+</pre><pre class="codeoutput">
+ans =
+
+     0
+
+</pre><h2>構造体形式でのログの使用<a name="4"></a></h2><p>再びモデルのシミュレーションを実行しますが、今回は、状態を構造体形式でログを作成します。</p><pre class="codeinput">opts1 = simset(simget(mdl1),<span class="string">'SaveFormat'</span>,<span class="string">'Structure'</span>);
+[t1,x1s]=sim(mdl1,[],opts1); x1s
+
+opts2 = simset(simget(mdl2),<span class="string">'SaveFormat'</span>,<span class="string">'Structure'</span>);
+[t2,x2s]=sim(mdl2,[],opts2); x2s
+</pre><pre class="codeoutput">
+x1s = 
+
+time: []
+signals:[1x2 struct]
+
+
+x2s = 
+
+time: []
+signals:[1x2 struct]
+
+</pre><p>状態軌跡が、これらの状態に対応するブロックの名前 <tt>xs.signals(k).blockName</tt> と共に、<tt>xs.signals(k).values</tt> にログが作成されます。以下のように、状態を行列に抽出できます (配列形式の場合と同様)。</p><pre class="codeinput">x1a = [x1s.signals.values];
+x2a = [x2s.signals.values];
+</pre><p>しかし、状態の順序問題 (<tt>x1a</tt> および <tt>x2a</tt> が、配列形式の場合に得られる <tt>x1</tt> および <tt>x2</tt> と同じであるという問題) はまだ未解決です。</p><pre class="codeinput">isequal(x1a, x2a)
+</pre><pre class="codeoutput">
+ans =
+
+     0
+
+</pre><h2>状態順序が固定された状態行列の取得<a name="7"></a></h2><p>状態の順序の問題を解決するために、値と共に保存されたブロック名を使用して、状態を固定順序 (ブロック名のアルファベット順) にマッピングします。</p><pre class="codeinput">[unused, idx1] = sort({x1s.signals.blockName});
+x1 = [x1s.signals(idx1).values];
+
+[unused, idx2] = sort({x2s.signals.blockName});
+x2 = [x2s.signals(idx2).values];
+
+isequal(x1, x2)
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><p><tt>x1</tt> と <tt>x2</tt> の信号配列をブロック名のアルファベット順に並べ替え、その順序で値フィールドを行列 <tt>x1</tt> と <tt>x2</tt> に抽出することで、ログが作成される行列の列と状態の間のマッピングを固定して、状態を行列にログを作成する方法が得られます。</p><p class="footer">Copyright 1990-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Logging States in Structure Format % This demo illustrates the advantages of logging state trajectories of a Simulink(R) % model in structure format over the traditional method of logging the states in % array format, as a matrix with N columns, where N is the number of states. % The ordering of the states along the columns in the logged matrix depends on % the block sorted order, which is determined by Simulink Engine during % compilation. Various factors may affect the sorted order of the blocks, which % in turns alters the ordering of the states. % % This demo illustrates how logging the states in Structure format, which stores % the block names together with the state trajectories, can help avoid the state % ordering problem.    %   Copyright 1990-2008 The MathWorks, Inc. %   $Revision: 1.1.4.9.2.1 $  $Date: 2010/07/29 21:29:18 $  %% Problem with Logging in Array Format  % By default Simulink logs the state trajectories in array format, as the data % in this form as an M-by-N matrix is easy to manipulate in MATLAB(R). The ordering of % the state variables along the columns of the logged matrix depend on the block % sorted order. MATLAB code that expects a fixed mapping between the columns of % the matrix and the states, can break when the block sorted order changes due % to changes in the model. %  % Consider for example, the following two block diagrams:  mdl1 = 'sldemo_state_logging1'; mdl2 = 'sldemo_state_logging2'; open_system(mdl1); open_system(mdl2);  %% % The two diagrams have the same blocks, the only difference is the ordering of % output ports. Simulate the models and log the states in array format:   opts1 = simset(simget(mdl1),'SaveFormat','Array'); [t1,x1] = sim(mdl1, [], opts1);  opts2 = simset(simget(mdl2),'SaveFormat','Array'); [t2,x2] = sim(mdl2, [], opts2);  %% % Note that the relative ordering of the integrator blocks is different % in the two block diagrams. This causes the logged states |x1| and |x2| to % differ, because the mapping between the columns and the states is % different!  isequal(x1, x2)  %% Using Structure Format Logging % Let us now simulate the models again, but this time log the states in % structure format:  opts1 = simset(simget(mdl1),'SaveFormat','Structure'); [t1,x1s]=sim(mdl1,[],opts1); x1s  opts2 = simset(simget(mdl2),'SaveFormat','Structure'); [t2,x2s]=sim(mdl2,[],opts2); x2s  %% % The state trajectories are logged into |xs.signals(k).values| along with the % name of the block |xs.signals(k).blockName| corresponding to these states. We % can extract the states into a matrix (like in array format) like this:  x1a = [x1s.signals.values]; x2a = [x2s.signals.values];  %% % However we still have not address the state ordering problem (|x1a| and |x2a| % are the same as |x1| and |x2| obtained via array format):  isequal(x1a, x2a)  %% Obtaining States Matrix with Fixed State Order % To fix the state ordering problem, we use the block names stored along with % the values to map the states to a fixed order such as alphabetical order of % the block names:   [unused, idx1] = sort({x1s.signals.blockName}); x1 = [x1s.signals(idx1).values];  [unused, idx2] = sort({x2s.signals.blockName}); x2 = [x2s.signals(idx2).values];  isequal(x1, x2)  %% % By re-ordering the signals arrays in |x1| and |x2| to be in alphabetical order % of the block names, and extracting the values fields, in that order, into the % matrices |x1| and |x2|, we have a mechanism for logging the states into a % matrix with a fixed mapping of the states to columns of the logged matrix.   displayEndOfDemoMessage(mfilename)   ##### SOURCE END ##### --></body></html>

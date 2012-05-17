@@ -1,0 +1,141 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Klein Bottle</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="xpklein.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit xpklein">Open xpklein.m in the Editor</a></div><div class="right"><a href="matlab:echodemo xpklein">Run in the Command Window</a></div></div><div class="content"><h1>Klein Bottle</h1><!--introduction--><p>A Klein bottle is a nonorientable surface in four-dimensional space. It is formed by attaching two Mobius strips along their common boundary.</p><p>Klein bottles cannot be constructed without intersection in three-space. The figure shown is an example of such a self-intersecting Klein bottle.</p><p>Thanks to Davide Cervone, University of Minnesota.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Generate The Klein Bottle</a></li><li><a href="#2">Half of The Bottle</a></li><li><a href="#3">Transparent Bottle</a></li></ul></div><h2>Generate The Klein Bottle<a name="1"></a></h2><p>Define Klein bottle parameters</p><pre class="codeinput">n = 12;
+a = .2;                         <span class="comment">% the diameter of the small tube</span>
+c = .6;                         <span class="comment">% the diameter of the bulb</span>
+t1 = pi/4 : pi/n : 5*pi/4;      <span class="comment">% parameter along the tube</span>
+t2 = 5*pi/4 : pi/n : 9*pi/4;    <span class="comment">% angle around the tube</span>
+u  = pi/2 : pi/n : 5*pi/2;
+[X,Z1] = meshgrid(t1,u);
+[Y,Z2] = meshgrid(t2,u);
+
+<span class="comment">% The handle</span>
+len = sqrt(sin(X).^2 + cos(2*X).^2);
+x1 = c*ones(size(X)).*(cos(X).*sin(X) <span class="keyword">...</span>
+    - 0.5*ones(size(X))+a*sin(Z1).*sin(X)./len);
+y1 = a*c*cos(Z1).*ones(size(X));
+z1 = ones(size(X)).*cos(X) + a*c*sin(Z1).*cos(2*X)./len;
+handleHndl=surf(x1,y1,z1,X);
+set(handleHndl,<span class="string">'EdgeColor'</span>,[.5 .5 .5]);
+hold <span class="string">on</span>;
+
+<span class="comment">% The bulb</span>
+r = sin(Y) .* cos(Y) - (a + 1/2) * ones(size(Y));
+x2 = c * sin(Z2) .* r;
+y2 = - c * cos(Z2) .* r;
+z2 = ones(size(Y)) .* cos(Y);
+bulbHndl=surf(x2,y2,z2,Y);
+set(bulbHndl,<span class="string">'EdgeColor'</span>,[.5 .5 .5])
+
+colormap(hsv);
+axis <span class="string">vis3d</span>
+view(-37,30);
+axis <span class="string">off</span>
+light(<span class="string">'Position'</span>,[2 -4 5])
+light
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="xpklein_01.png" alt=""> <h2>Half of The Bottle<a name="2"></a></h2><pre class="codeinput">shading <span class="string">interp</span>
+c = X;
+[row col] = size(c);
+c(1:floor(row/2),:) = NaN*ones(floor(row/2),col);
+set(handleHndl,<span class="string">'CData'</span>,c);
+
+c = Y;
+[row col] = size(c);
+c(1:floor(row/2),:) = NaN*ones(floor(row/2),col);
+set(bulbHndl,<span class="string">'CData'</span>,c);
+set([handleHndl bulbHndl],<span class="string">'FaceAlpha'</span>,1);
+</pre><img vspace="5" hspace="5" src="xpklein_02.png" alt=""> <h2>Transparent Bottle<a name="3"></a></h2><pre class="codeinput">shading <span class="string">faceted</span>;
+set(handleHndl,<span class="string">'CData'</span>,X);
+set(bulbHndl,<span class="string">'CData'</span>,Y);
+set([handleHndl bulbHndl], <span class="keyword">...</span>
+    <span class="string">'EdgeColor'</span>,[.5 .5 .5], <span class="keyword">...</span>
+    <span class="string">'FaceAlpha'</span>,.5);
+</pre><img vspace="5" hspace="5" src="xpklein_03.png" alt=""> <p class="footer">Copyright 1984-2006 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Klein Bottle
+% A Klein bottle is a nonorientable surface in four-dimensional space. It
+% is formed by attaching two Mobius strips along their common boundary.
+%
+% Klein bottles cannot be constructed without intersection in three-space.
+% The figure shown is an example of such a self-intersecting Klein bottle.
+%
+% Thanks to Davide Cervone, University of Minnesota.
+
+%   Copyright 1984-2006 The MathWorks, Inc.
+%   $Revision: 1.27.4.6 $  $Date: 2006/12/20 07:15:42 $
+
+
+%% Generate The Klein Bottle
+% Define Klein bottle parameters
+
+n = 12;
+a = .2;                         % the diameter of the small tube
+c = .6;                         % the diameter of the bulb
+t1 = pi/4 : pi/n : 5*pi/4;      % parameter along the tube
+t2 = 5*pi/4 : pi/n : 9*pi/4;    % angle around the tube
+u  = pi/2 : pi/n : 5*pi/2;
+[X,Z1] = meshgrid(t1,u);
+[Y,Z2] = meshgrid(t2,u);
+
+% The handle
+len = sqrt(sin(X).^2 + cos(2*X).^2);
+x1 = c*ones(size(X)).*(cos(X).*sin(X) ...
+    - 0.5*ones(size(X))+a*sin(Z1).*sin(X)./len);
+y1 = a*c*cos(Z1).*ones(size(X));
+z1 = ones(size(X)).*cos(X) + a*c*sin(Z1).*cos(2*X)./len;
+handleHndl=surf(x1,y1,z1,X);
+set(handleHndl,'EdgeColor',[.5 .5 .5]);
+hold on;
+
+% The bulb
+r = sin(Y) .* cos(Y) - (a + 1/2) * ones(size(Y));
+x2 = c * sin(Z2) .* r;
+y2 = - c * cos(Z2) .* r;
+z2 = ones(size(Y)) .* cos(Y);
+bulbHndl=surf(x2,y2,z2,Y);
+set(bulbHndl,'EdgeColor',[.5 .5 .5])
+
+colormap(hsv);
+axis vis3d
+view(-37,30);
+axis off
+light('Position',[2 -4 5])
+light
+hold off
+
+%% Half of The Bottle
+
+shading interp
+c = X;
+[row col] = size(c);
+c(1:floor(row/2),:) = NaN*ones(floor(row/2),col);
+set(handleHndl,'CData',c);
+
+c = Y;
+[row col] = size(c);
+c(1:floor(row/2),:) = NaN*ones(floor(row/2),col);
+set(bulbHndl,'CData',c);
+set([handleHndl bulbHndl],'FaceAlpha',1);
+
+
+%% Transparent Bottle
+
+shading faceted;
+set(handleHndl,'CData',X);
+set(bulbHndl,'CData',Y);
+set([handleHndl bulbHndl], ... 
+    'EdgeColor',[.5 .5 .5], ...
+    'FaceAlpha',.5);
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

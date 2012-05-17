@@ -1,0 +1,190 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Distributed Radar Tracking Simulation</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-09"><meta name="m-file" content="paralleldemo_radar_dist"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_radar_dist">Open paralleldemo_radar_dist.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_radar_dist">Run in the Command Window</a></div></div><div class="content"><h1>Distributed Radar Tracking Simulation</h1><!--introduction--><p>This demo uses the Parallel Computing Toolbox&#8482; to perform a Monte Carlo simulation of a radar station that tracks the path of an aircraft. The radar station uses the radar equation to estimate the aircraft position. We introduce measurement errors as a random variable, and the radar station performs Kalman filtering to try to correct for them. To estimate the effectiveness of the Kalman filter, we perform repeated simulations, each time having the aircraft travel along a randomly chosen path.</p><p>For details about the computations, <a href="matlab:open('pctdemo_model_radar')">open the pctdemo_model_radar model</a>.</p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a></li><li><a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB&reg; Computations into Tasks</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_radar_seq.html">Sequential Radar Tracking Simulation</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analyze the Sequential Problem</a></li><li><a href="#2">Load the Demo Settings and the Data</a></li><li><a href="#4">Divide the Work into Smaller Tasks</a></li><li><a href="#5">Create and Submit the Job</a></li><li><a href="#7">Retrieve the Results</a></li><li><a href="#10">Measure the Elapsed Time</a></li><li><a href="#11">Plot the Results</a></li></ul></div><h2>Analyze the Sequential Problem<a name="1"></a></h2><p>First, we look at how the computations in the sequential demo fit into the model introduced in the <a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB Computations into Tasks</a> demo.  The main computations consist of a large number of simulations, and each simulation takes only a fraction of a second. We therefore have each task perform many simulations.  Because the function <tt>pctdemo_task_radar</tt> can already perform many simulations in a single function call, we can use it directly as our task function.</p><h2>Load the Demo Settings and the Data<a name="2"></a></h2><p>The demo uses the default configuration when identifying the scheduler to use. The <a href="matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')">configurations documentation</a> explains how to create new configurations and how to change the default configuration.  See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for instructions on how to change the demo difficulty level or the number of tasks created.</p><pre class="codeinput">[difficulty, sched, numTasks] = pctdemo_helper_getDefaults();
+</pre><p>We define the number of simulations and the length of each simulation in <tt>pctdemo_setup_radar</tt>.  The demo difficulty level controls the number of simulations we perform.  The function <tt>pctdemo_setup_radar</tt> also shows examples of the different paths that the aircraft can take, as well as the error in the estimated aircraft location. You can <a href="matlab:edit('pctdemo_setup_radar.m')">view the code for pctdemo_setup_radar</a> for full details.</p><pre class="codeinput">[fig, numSims, finishTime] = pctdemo_setup_radar(difficulty);
+startClock = clock;
+</pre><img vspace="5" hspace="5" src="paralleldemo_radar_dist_01.png" alt=""> <h2>Divide the Work into Smaller Tasks<a name="4"></a></h2><p>The computationally intensive part of this demo consists of a Monte Carlo simulation and we use the function <tt>pctdemo_helper_split_scalar</tt> to divide the <tt>numSims</tt> simulations among the <tt>numTasks</tt> tasks.</p><pre class="codeinput">[taskSims, numTasks] = pctdemo_helper_split_scalar(numSims, numTasks);
+fprintf([<span class="string">'This demo will submit a job with %d task(s) '</span> <span class="keyword">...</span>
+         <span class="string">'to the scheduler.\n'</span>], numTasks);
+</pre><pre class="codeoutput">This demo will submit a job with 4 task(s) to the scheduler.
+</pre><h2>Create and Submit the Job<a name="5"></a></h2><p>Let us create the simulation job and the tasks in the job.  We let task <tt>i</tt> perform <tt>taskSims(i)</tt> simulations. Notice that the task function is the same function that you used in the sequential demo. You can <a href="matlab:edit('pctdemo_task_radar.m')">view the code for pctdemo_task_radar</a> for full details.</p><pre class="codeinput">job = createJob(sched);
+<span class="keyword">for</span> i = 1:numTasks
+    createTask(job, @pctdemo_task_radar, 1, {taskSims(i), finishTime});
+<span class="keyword">end</span>
+</pre><p>We can now submit the job and wait for it to finish.</p><pre class="codeinput">submit(job);
+waitForState(job, <span class="string">'finished'</span>);
+</pre><h2>Retrieve the Results<a name="7"></a></h2><p>Let us obtain the job results, verify that all the tasks finished successfully, and then destroy the job.  We throw an error if we could not obtain any results, but display a warning if we got only some of the results.</p><pre class="codeinput">jobResults = getAllOutputArguments(job);
+<span class="keyword">if</span> isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job);
+    error(<span class="string">'distcomp:demo:EmptyJobOutput'</span>,  <span class="keyword">...</span>
+          [<span class="string">'Could not obtain any job results.  The following error(s) '</span> <span class="keyword">...</span>
+           <span class="string">'occurred \nduring task execution:\n\n%s'</span>], <span class="keyword">...</span>
+          taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>Let us format the results and verify that all the tasks finished successfully.  Notice how we concatenate all the arrays in <tt>jobResults</tt> along the columns, thus obtaining a matrix of the size (finishTime + 1)-by-numSims.</p><pre class="codeinput">residual = cat(2, jobResults{:});
+numOk = size(residual, 2); <span class="comment">% The number of simulation results we obtained.</span>
+<span class="keyword">if</span> ~(numOk == numSims)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning(<span class="string">'distcomp:demo:IncompleteJobResults'</span>, <span class="keyword">...</span>
+            [<span class="string">'Some tasks did not complete. Only obtained results for'</span> <span class="keyword">...</span>
+             <span class="string">' %d out of %d \nsimulations.  The following error(s) '</span> <span class="keyword">...</span>
+             <span class="string">'occurred during task execution:\n\n%s'</span>], <span class="keyword">...</span>
+            numOk, numSims, taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>We have now finished all the verifications, so we can destroy the job.</p><pre class="codeinput">destroy(job);
+</pre><h2>Measure the Elapsed Time<a name="10"></a></h2><p>The time used for the distributed computations should be compared against the time it takes to perform the same set of calculations in the <a href="paralleldemo_radar_seq.html">Sequential Radar Tracking Simulation</a> demo. The elapsed time varies with the underlying hardware and network infrastructure.</p><pre class="codeinput">elapsedTime = etime(clock, startClock);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 28.8 seconds
+</pre><h2>Plot the Results<a name="11"></a></h2><p>We use the simulation results to calculate the standard deviation of the range estimation error as a function of time.  You can <a href="matlab:edit('pctdemo_plot_radar.m')">view the code for pctdemo_plot_radar</a> for full details.</p><pre class="codeinput">pctdemo_plot_radar(fig, residual);
+</pre><img vspace="5" hspace="5" src="paralleldemo_radar_dist_02.png" alt=""> <p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Distributed Radar Tracking Simulation
+% This demo uses the Parallel Computing Toolbox(TM) to perform a Monte Carlo
+% simulation of a radar station that tracks the path of an aircraft.
+% The radar station uses the radar equation to estimate the aircraft position.
+% We introduce measurement errors as a random variable, and the radar station 
+% performs Kalman filtering to try to correct for them.
+% To estimate the effectiveness of the Kalman filter, we perform
+% repeated simulations, each time having the aircraft travel along a randomly
+% chosen path.
+%
+% For details about the computations, 
+% <matlab:open('pctdemo_model_radar') open the pctdemo_model_radar model>.
+% 
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% * <paralleltutorial_dividing_tasks.html
+% Dividing MATLAB(R) Computations into Tasks>
+%
+% Related demos:
+%
+% * <paralleldemo_radar_seq.html Sequential Radar Tracking Simulation>
+
+%   Copyright 2007-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.3 $  $Date: 2009/11/07 20:53:26 $
+
+%% Analyze the Sequential Problem
+% First, we look at how the computations in the sequential demo fit into the
+% model introduced in the <paralleltutorial_dividing_tasks.html Dividing MATLAB
+% Computations into Tasks> demo.  The main computations consist of a large
+% number of simulations, and each simulation takes only a fraction of a second.
+% We therefore have each task perform many simulations.  Because the function
+% |pctdemo_task_radar| can already perform many simulations in a single 
+% function call, we can use it directly as our task function.
+
+%% Load the Demo Settings and the Data
+% The demo uses the default configuration when identifying the scheduler to use.
+% The
+% <matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')
+% configurations documentation> 
+% explains how to create new configurations and how to change the default 
+% configuration.  See 
+% <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% for instructions on how to change the demo difficulty level or the number of
+% tasks created.
+[difficulty, sched, numTasks] = pctdemo_helper_getDefaults();
+
+%%
+% We define the number of simulations and the length of each simulation in
+% |pctdemo_setup_radar|.  The demo difficulty level controls the number of
+% simulations we perform.  The function |pctdemo_setup_radar| also shows
+% examples of the different paths that the aircraft can take, as well as the
+% error in the estimated aircraft location.
+% You can 
+% <matlab:edit('pctdemo_setup_radar.m') view the code for pctdemo_setup_radar> 
+% for full details.
+[fig, numSims, finishTime] = pctdemo_setup_radar(difficulty);
+startClock = clock;
+
+
+%% Divide the Work into Smaller Tasks
+% The computationally intensive part of this demo consists of a
+% Monte Carlo simulation and we use the function |pctdemo_helper_split_scalar| 
+% to divide the |numSims| simulations among the |numTasks| tasks. 
+[taskSims, numTasks] = pctdemo_helper_split_scalar(numSims, numTasks);
+fprintf(['This demo will submit a job with %d task(s) ' ...
+         'to the scheduler.\n'], numTasks);
+
+%% Create and Submit the Job
+% Let us create the simulation job and the tasks in the job.  We
+% let task |i| perform |taskSims(i)| simulations. Notice that the task function 
+% is the same function that you used in the sequential demo.
+% You can 
+% <matlab:edit('pctdemo_task_radar.m') view the code for pctdemo_task_radar> 
+% for full details.
+job = createJob(sched);
+for i = 1:numTasks
+    createTask(job, @pctdemo_task_radar, 1, {taskSims(i), finishTime});
+end
+
+%%
+% We can now submit the job and wait for it to finish.
+submit(job);
+waitForState(job, 'finished');
+
+%% Retrieve the Results
+% Let us obtain the job results, verify that all the tasks finished
+% successfully, and then destroy the job.  We throw an error if we could not
+% obtain any results, but display a warning if we got only some of the results.
+jobResults = getAllOutputArguments(job);  
+if isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job); 
+    error('distcomp:demo:EmptyJobOutput',  ...
+          ['Could not obtain any job results.  The following error(s) ' ...
+           'occurred \nduring task execution:\n\n%s'], ...
+          taskErrorMsgs);
+end
+
+%%
+% Let us format the results and verify that all the tasks finished
+% successfully.  Notice how we concatenate all the arrays in |jobResults| along
+% the columns, thus obtaining a matrix of the size
+% (finishTime + 1)-by-numSims.
+residual = cat(2, jobResults{:}); 
+numOk = size(residual, 2); % The number of simulation results we obtained.
+if ~(numOk == numSims)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning('distcomp:demo:IncompleteJobResults', ...
+            ['Some tasks did not complete. Only obtained results for' ...
+             ' %d out of %d \nsimulations.  The following error(s) ' ...
+             'occurred during task execution:\n\n%s'], ...
+            numOk, numSims, taskErrorMsgs);
+end
+
+%%
+% We have now finished all the verifications, so we can destroy the job.
+destroy(job); 
+
+%% Measure the Elapsed Time
+% The time used for the distributed computations should be compared
+% against the time it takes to perform the same set of calculations
+% in the <paralleldemo_radar_seq.html
+% Sequential Radar Tracking Simulation> demo.
+% The elapsed time varies with the underlying hardware and network infrastructure.
+elapsedTime = etime(clock, startClock);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+%% Plot the Results
+% We use the simulation results to calculate the standard deviation of the
+% range estimation error as a function of time.  You can 
+% <matlab:edit('pctdemo_plot_radar.m') view the code for pctdemo_plot_radar> 
+% for full details.
+pctdemo_plot_radar(fig, residual);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,102 @@
+%% File: sbalgexp.tlc
+%% Abstract:
+%% This block defines a set of arithmetic expressions that are assigned to
+%% the output vector. The inputs to the set of equations are time, the
+%% input vector and an optional parameter vector.
+%%
+
+%%
+%% Initial coding by A S Bozin
+%% Copyright 1997-2010 The MathWorks, Inc.
+%% $Revision:  $ $Date:  $
+%%
+%implements sbalgexp "C"
+
+%% Function: BlockTypeSetup ===================================================
+%% Abstract:
+%%    Place include and function prototype in the model's header file
+%function BlockTypeSetup(block, system) void
+  %<LibAddToModelSources("sbpowdi")>
+  %assign externC = LibExternInFcnDecls()
+  %if ::GenCPP
+    %assign externC = "extern \"C\""
+  %endif
+  %openfile buffer
+  #ifndef POWDI_DEFINE
+  %<externC> real_T powdi(real_T x, int_T n);
+  #define POWDI_DEFINE
+  #endif
+  %closefile buffer
+  %<LibCacheFunctionPrototype(buffer)>
+%endfunction
+
+%% Function: Start ============================================================
+%% Abstract:
+%%    Initialize parameters
+%function Start(block, system) Output
+  %assign sfcnName = ParamSettings.FunctionName
+  /* Algebraic Expression Block */
+  /* %<Type> Block: (%<sfcnName>): %<LibParentMaskBlockName(block)> */
+  {
+    %assign info = SFcnParamSettings.algInfo
+    %assign numParams = info[2]
+    %assign iniParams = SFcnParamSettings.iniParams
+    /* Assign parameters */
+    %foreach idx = numParams
+       %<LibBlockDWork(algParams, "", "", idx)> = %<iniParams[idx]>;
+    %endforeach
+  }
+
+%endfunction
+
+%% Function: Outputs ==========================================================
+%% Abstract:
+%%
+%function Outputs(block, system) Output
+%<LibAddToCommonIncludes("<math.h>")>
+
+  %assign sfcnName = ParamSettings.FunctionName
+  /* Algebraic Expression Block */
+  /* %<Type> Block: (%<sfcnName>): %<LibParentMaskBlockName(block)> */
+  {
+    %assign info = SFcnParamSettings.algInfo
+    %assign ninputs = info[0]
+    %assign noutputs = info[1]
+    %assign nparams = info[2]
+    %assign cStatements = SFcnParamSettings.cStatements
+    %assign nstatements = SIZE(SFcnParamSettings.cStatements, 1)
+  
+    %foreach idx = %<nstatements>
+      %assign statement = "%<cStatements[idx]>"
+      %assign statement = FEVAL("strrep",statement,"^",",")
+      %foreach uidx = ninputs
+	%assign uiToken = "@u%<ninputs-uidx>"
+	%assign ui = LibBlockInputSignal(0,"","",ninputs-uidx-1)
+	%assign statement = FEVAL("strrep",statement,uiToken,ui)
+      %endforeach
+      %foreach yidx = noutputs
+	%assign yiToken = "@y%<noutputs-yidx>"
+	%assign yi = LibBlockOutputSignal(0,"","",noutputs-yidx-1)
+	%assign statement = FEVAL("strrep",statement,yiToken,yi)
+      %endforeach
+      %foreach pidx = nparams
+	%assign piToken = "@p%<nparams-pidx>"
+	%assign pi = LibBlockDWork(algParams, "", "", nparams-pidx-1)
+	%assign statement = FEVAL("strrep",statement,piToken,pi)
+      %endforeach
+      %assign tiToken = "@t"
+      %assign ti = LibGetT()
+      %assign statement = FEVAL("strrep",statement,tiToken,ti)
+      %<statement>
+    %endforeach
+  }
+%endfunction  %% Outputs
+
+%% Function: Terminate ========================================================
+%% Abstract:
+%%
+%function Terminate(block, system) Output
+
+%endfunction
+
+%% [EOF] sbalgexp.tlc

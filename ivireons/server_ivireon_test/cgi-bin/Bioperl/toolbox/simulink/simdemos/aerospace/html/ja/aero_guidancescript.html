@@ -1,0 +1,356 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Designing a Guidance System in MATLAB&reg; and Simulink&reg;</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-03"><meta name="m-file" content="aero_guidancescript"><link rel="stylesheet" type="text/css" href="../../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit aero_guidancescript">Open aero_guidancescript.m in the Editor</a></div><div class="right"><a href="matlab:echodemo aero_guidancescript">Run in the Command Window</a></div></div><div class="content"><h1>Designing a Guidance System in MATLAB&reg; and Simulink&reg;</h1><!--introduction--><p>The model of the missile airframe used in this demonstration has been presented in a number of published papers (References [1], [2] and [3]) on the use of advanced control methods applied to missile autopilot design. The model represents a tail controlled missile travelling between Mach 2 and Mach 4, at altitudes ranging between 10,000ft (3,050m) and 60,000ft (18,290m), and with typical angles of attack ranging between +/-20 degrees.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Model of the Airframe Dynamics</a></li><li><a href="#2">Representing the Airframe in Simulink</a></li><li><a href="#3">International Standard Atmosphere Model</a></li><li><a href="#4">Aerodynamic Coefficients for Constructing Forces and Moments</a></li><li><a href="#6">Classical Three Loop Autopilot Design</a></li><li><a href="#8">Airframe Frequency Response</a></li><li><a href="#10">Homing Guidance Loop</a></li><li><a href="#11">Guidance Subsystem</a></li><li><a href="#12">Proportional Navigation Guidance</a></li><li><a href="#14">Seeker/Tracker Subsystem</a></li><li><a href="#15">Radome Aberration</a></li><li><a href="#17">Running the Guidance Simulation</a></li><li><a href="#20">Cleanup</a></li><li><a href="#21">References</a></li></ul></div><h2>Model of the Airframe Dynamics<a name="1"></a></h2><p><img vspace="5" hspace="5" src="../../images/guidance_missile.gif" alt=""> </p><p>The core element of the model is a nonlinear representation of the rigid body dynamics of the airframe. The aerodynamic forces and moments acting on the missile body are generated from coefficients that are non-linear functions of both incidence and Mach number. The model can be created with Simulink&reg; and the Aerospace Blockset&#8482;. The aim of this blockset is to provide reference components, such as atmosphere models, which will be common to all models irrespective of the airframe configuration. Simplified versions of the components available in the Aerospace Blockset are included with these demonstrations to give you a sense of the potential for reuse available from standard block libraries.</p><pre class="codeinput">load_system(<span class="string">'aerospace'</span>)
+open_system(<span class="string">'aero_guidance'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_01.png" alt=""> <h2>Representing the Airframe in Simulink<a name="2"></a></h2><p>The airframe model consists of four principal subsystems, controlled through the acceleration-demand autopilot. The Atmosphere model calculates the change in atmospheric conditions with changing altitude, the Fin Actuator and Sensors models couple the autopilot to the airframe, and the Aerodynamics and Equations of Motion model calculates the magnitude of the forces and moments acting on the missile body, and integrates the equations of motion.</p><pre class="codeinput">prev = <span class="string">'aero_guidance'</span>;
+sys  = sprintf(<span class="string">'aero_guidance/Airframe\n&amp;\nAutopilot'</span>);
+open_system(sys,prev,<span class="string">'replace'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_02.png" alt=""> <h2>International Standard Atmosphere Model<a name="3"></a></h2><p><img vspace="5" hspace="5" src="../../images/guidance_airden.gif" alt=""> </p><p>The Atmosphere Subsystem that is used is an approximation to the International Standard Atmosphere, and is split into two separate regions. The troposphere region lies between sea level and 11Km, and in this region there is assumed to be a linear temperature drop with changing altitude. Above the troposphere lies the lower stratosphere region ranging between 11Km and 20Km. In this region the temperature is assumed to remain constant.</p><h2>Aerodynamic Coefficients for Constructing Forces and Moments<a name="4"></a></h2><p>The Aerodynamics &amp; Equations of Motion Subsystem generates the forces and moments applied to the missile in body axes, and integrates the equations of motion which define the linear and angular motion of the airframe.</p><pre class="codeinput">prev = sys;
+sys  = sprintf(<span class="string">'aero_guidance/Airframe\n&amp;\nAutopilot/Aerodynamics &amp;\nEquations of Motion'</span>);
+open_system(sys,prev,<span class="string">'replace'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_03.png" alt=""> <p>The aerodynamic coefficients are stored in datasets, and during the simulation the value at the current operating condition is determined by interpolation using 2-D lookup table blocks.</p><pre class="codeinput">prev = sys;
+sys  = sprintf(<span class="string">'aero_guidance/Airframe\n&amp;\nAutopilot/Aerodynamics &amp;\nEquations of Motion/Aerodynamics/Incidence'</span>);
+open_system(sys,prev,<span class="string">'replace'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_04.png" alt=""> <h2>Classical Three Loop Autopilot Design<a name="6"></a></h2><p>The aim of the missile autopilot is to control acceleration normal to the missile body. In this demonstration the autopilot structure is a three loop design using measurements from an accelerometer placed ahead of the center of gravity, and a rate gyro to provide additional damping. The controller gains are scheduled on incidence and Mach number, and are tuned for robust performance at an altitude of 10,000 ft.</p><p>To design the autopilot using classical design techniques requires that linear models of the airframe pitch dynamics be derived about a number of trimmed flight conditions. MATLAB&reg; can determine the trim conditions, and derive linear state space models directly from the non-linear Simulink model, saving both time, and aiding in the validation of the model that has been created. The functions provided by the MATLAB Control System Toolbox&#8482; and Simulink&reg; Control Design&#8482; allow the designer to visualize the behavior of the airframe open loop frequency (or time) responses. To see how to trim and linearize the airframe model you can run the companion demonstration, "Trim and Linearize a Missile Airframe".</p><p><img vspace="5" hspace="5" src="../../images/guidance_ltiviewe.gif" alt=""> </p><h2>Airframe Frequency Response<a name="8"></a></h2><p>Autopilot designs are carried out on a number of linear airframe models derived at varying flight conditions across the expected flight envelope. To implement the autopilot in the non-linear model involves storing the autopilot gains in 2 dimensional lookup tables, and incorporating an anti-windup gain to prevent integrator windup when the fin demands exceed the maximum limits. Testing the autopilot in the nonlinear Simulink model is then the best way to demonstrate satisfactory performance in the presence of non-linearities such as actuator fin and rate limits, and with the gains now dynamically varying with changing flight condition.</p><pre class="codeinput">prev = sys;
+sys  = sprintf(<span class="string">'aero_guidance/Airframe\n&amp;\nAutopilot/Autopilot'</span>);
+open_system(sys,prev,<span class="string">'replace'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_05.png" alt=""> <p><b>Figure</b>: Simulink implementation of gain scheduled autopilot</p><pre class="codeinput">sys  = <span class="string">'aero_guidance'</span>;
+bdclose(sys)
+</pre><h2>Homing Guidance Loop<a name="10"></a></h2><p>The complete Homing Guidance Loop consists of a Seeker/Tracker Subsystem which returns measurements of the relative motion between the missile and target, and the Guidance Subsystem which generates normal acceleration demands which are passed to the autopilot. The autopilot is now part of an inner loop within the overall homing guidance system. Reference [4] provides information on the differing forms of guidance that are currently in use, and provides background information on the analysis techniques that are used to quantify guidance loop performance.</p><pre class="codeinput">sys = <span class="string">'aero_guidance'</span>;
+open_system(sys)
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_06.png" alt=""> <h2>Guidance Subsystem<a name="11"></a></h2><p>The function of the Guidance subsystem is to not only generate demands during closed loop tracking, but also perform an initial search to locate the target position. A Stateflow&reg; model is used to control the transfer between these differing modes of operation. Switching between modes is triggered by events generated either in Simulink, or internal to the Stateflow model. Controlling the way the Simulink model then behaves is achieved by changing the value of the variable <b>Mode</b> that is passed out to Simulink. This variable is used to switch between the differing control demands that can be generated. During target search the Stateflow model controls the tracker directly by sending demands to the seeker gimbals (<b>Sigma</b>). Target acquisition is flagged by the tracker once the target lies within the beamwidth of the seeker (<b>Acquire</b>), and after a short delay closed loop guidance starts. Stateflow is an ideal tool for rapidly defining all the operational modes, whether they are for normal operation, or unusual situations. For example, the actions to be taken should there be loss of lock on the target, or should a target not be acquired during target search are catered for in this Stateflow diagram.</p><pre class="codeinput">prev = sys;
+sys  = sprintf(<span class="string">'aero_guidance/Guidance'</span>);
+open_system(sys,prev,<span class="string">'replace'</span>)
+
+rt = slroot;
+chart = rt.find(<span class="string">'-isa'</span>,<span class="string">'Stateflow.Chart'</span>,<span class="string">'path'</span>,<span class="keyword">...</span>
+                sprintf(<span class="string">'aero_guidance/Guidance/Guidance Processor\n(Updated @100Hz)'</span>));
+chart.Visible = 1;
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_07.png" alt=""> <img vspace="5" hspace="5" src="../aero_guidancescript_08.png" alt=""> <h2>Proportional Navigation Guidance<a name="12"></a></h2><p>Once the seeker has acquired the target a Proportional Navigation Guidance (PNG) law is used to guide the missile until impact. This form of guidance law has been used in guided missiles since the 1950s, and can be applied to radar, infrared or television guided missiles. The navigation law requires measurements of the closing velocity between the missile and target, which for a radar guided missile could be obtained using a Doppler tracking device, and an estimate for the rate of change of the inertial sightline angle.</p><p><img vspace="5" hspace="5" src="../../images/guidance_sight.gif" alt=""> </p><p><b>Figure</b>: Proportional Navigation Guidance Law</p><h2>Seeker/Tracker Subsystem<a name="14"></a></h2><p>The aim of the Seeker/Tracker Subsystem is both to drive the seeker gimbals to keep the seeker dish aligned with the target, and to provide the guidance law with an estimate of the sightline rate. The tracker loop time constant <b>tors</b> is set to 0.05 seconds, and is chosen as a compromise between maximizing speed of response, and keeping the noise transmission to within acceptable levels. The stabilization loop aims to compensate for body rotation rates, and the gain <b>Ks</b>, which is the loop cross-over frequency, is set as high as possible subject to the limitations of the bandwidth of the stabilizing rate gyro. The sightline rate estimate is a filtered value of the sum of the rate of change of the dish angle measured by the stabilizing rate gyro, and an estimated value for the rate of change of the angular tracking error (<b>e</b>) measured by the receiver. In this demonstration the bandwidth of the estimator filter is set to half that of the bandwidth of the autopilot.</p><pre class="codeinput">prev = sys;
+sys  = sprintf(<span class="string">'aero_guidance/Seeker//Tracker/Tracker and Sightline Rate\nEstimator'</span>);
+open_system(sys,prev,<span class="string">'replace'</span>)
+rt = slroot;
+chart = rt.find(<span class="string">'-isa'</span>,<span class="string">'Stateflow.Chart'</span>,<span class="string">'path'</span>,<span class="keyword">...</span>
+                sprintf(<span class="string">'aero_guidance/Guidance/Guidance Processor\n(Updated @100Hz)'</span>));
+chart.Visible = 0;
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_09.png" alt=""> <h2>Radome Aberration<a name="15"></a></h2><p>For radar guided missiles a parasitic feedback effect that is commonly modelled is that of radome aberration. It occurs because the shape of the protective covering over the seeker distorts the returning signal, and then gives a false reading of the look angle to the target. Generally the amount of distortion is a nonlinear function of the current gimbal angle, but a commonly used approximation is to assume a linear relationship between the gimbal angle and the magnitude of the distortion. In the above system, the radome aberration is accounted for in the gain block labelled "Radome Aberration". Other parasitic effects, such as sensitivity in the rate gyros to normal acceleration, are also often modelled to test the robustness of the target tracker and estimator filters.</p><p><img vspace="5" hspace="5" src="../../images/guidance_radome.gif" alt=""> </p><p><b>Figure</b>: Radome aberration geometry</p><h2>Running the Guidance Simulation<a name="17"></a></h2><p>Now to demonstrate the performance of the overall system. In this case the target is defined to be travelling at a constant speed of 328m/s, on a reciprocal course to the initial missile heading, and 500m above the initial missile position. From the simulation results it can be determined that acquisition occurred 0.69 seconds into the engagement, with closed loop guidance starting after 0.89 seconds. Impact with the target occurred at 3.46 seconds, and the range to go at the point of closest approach was calculated to be 0.265m.</p><p>The aero_guid_plot.m script creates a performance analysis</p><pre class="codeinput">prev = sys;
+sys  = <span class="string">'aero_guidance'</span>;
+open_system(sys,prev,<span class="string">'replace'</span>)
+
+set_param(<span class="string">'aero_guidance/3DoF Animation'</span>,<span class="string">'u8'</span>,<span class="string">'off'</span>)
+sim(sys)
+aero_guid_plot
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_10.png" alt=""> <img vspace="5" hspace="5" src="../aero_guidancescript_11.png" alt=""> <img vspace="5" hspace="5" src="../aero_guidancescript_12.png" alt=""> <img vspace="5" hspace="5" src="../aero_guidancescript_13.png" alt=""> <p>The animation block provides a visual reference for the simulation</p><pre class="codeinput">delete(findobj(0,<span class="string">'Tag'</span>,<span class="string">'F3'</span>));
+delete(findobj(0,<span class="string">'Tag'</span>,<span class="string">'F4'</span>));
+delete(findobj(0,<span class="string">'Tag'</span>,<span class="string">'F5'</span>));
+
+set_param(<span class="string">'aero_guidance/3DoF Animation'</span>,<span class="string">'u8'</span>,<span class="string">'on'</span>)
+set_param(sys,<span class="string">'StopFcn'</span>,<span class="string">''</span>)
+sim(sys)
+</pre><img vspace="5" hspace="5" src="../aero_guidancescript_14.png" alt=""> <h2>Cleanup<a name="20"></a></h2><pre class="codeinput">bdclose(<span class="string">'aero_guidance'</span>)
+close(findobj(<span class="string">'type'</span>,<span class="string">'figure'</span>,<span class="string">'Tag'</span>,<span class="string">'3DOF anim'</span>))
+</pre><h2>References<a name="21"></a></h2><p><b>1.</b> "Robust LPV control with bounded parameter rates", S.Bennani, D.M.C. Willemsen, C.W. Scherer, AIAA-97-3641, August 1997.</p><p><b>2.</b> "Full Envelope Missile Longitudinal Autopilot Design using the State-Dependent Riccati Equation Method", C.P.Mracek and J.R. Cloutier, AIAA-97-3767, August 1997.</p><p><b>3.</b> "Gain-Scheduled Missile Autopilot Design Using Linear Parameter Varying Transformations", J.S.Shamma, J.R. Cloutier, Journal of Guidance, Control and Dynamics, Vol. 16, No. 2, March-April 1993.</p><p><b>4.</b> "Modern Navigation, Guidance, and Control Processing Volume 2", Ching-Fang Lin, ISBN 0-13-596230-7, Prentice Hall, 1991.</p><p class="footer">Copyright 1990-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Designing a Guidance System in MATLAB(R) and Simulink(R)
+%
+% The model of the missile airframe used in this demonstration has been
+% presented in a number of published papers (References [1], [2] and [3])
+% on the use of advanced control methods applied to missile autopilot
+% design. The model represents a tail controlled missile travelling between
+% Mach 2 and Mach 4, at altitudes ranging between 10,000ft (3,050m) and
+% 60,000ft (18,290m), and with typical angles of attack ranging between 
+% +/-20 degrees.
+
+% Copyright 1990-2008 The MathWorks, Inc.
+% $Revision: 1.1.6.1.4.1 $  $Date: 2010/06/21 18:03:37 $
+
+%% Model of the Airframe Dynamics
+%
+% <<../images/guidance_missile.gif>>
+%
+% The core element of the model is a nonlinear representation of the rigid
+% body dynamics of the airframe. The aerodynamic forces and moments acting
+% on the missile body are generated from coefficients that are non-linear
+% functions of both incidence and Mach number. The model can be created
+% with Simulink(R) and the Aerospace Blockset(TM). The aim of this blockset is to
+% provide reference components, such as atmosphere models, which will be
+% common to all models irrespective of the airframe configuration.
+% Simplified versions of the components available in the Aerospace Blockset
+% are included with these demonstrations to give you a sense of the
+% potential for reuse available from standard block libraries.
+%
+
+load_system('aerospace')
+open_system('aero_guidance')
+
+%% Representing the Airframe in Simulink
+%
+% The airframe model consists of four principal subsystems, controlled
+% through the acceleration-demand autopilot. The Atmosphere model
+% calculates the change in atmospheric conditions with changing altitude,
+% the Fin Actuator and Sensors models couple the autopilot to the airframe,
+% and the Aerodynamics and Equations of Motion model calculates the
+% magnitude of the forces and moments acting on the missile body, and
+% integrates the equations of motion.
+% 
+
+prev = 'aero_guidance';
+sys  = sprintf('aero_guidance/Airframe\n&\nAutopilot');
+open_system(sys,prev,'replace')
+
+%% International Standard Atmosphere Model
+%
+% <<../images/guidance_airden.gif>>
+%
+% The Atmosphere Subsystem that is used is an approximation to the
+% International Standard Atmosphere, and is split into two separate
+% regions. The troposphere region lies between sea level and 11Km, and in
+% this region there is assumed to be a linear temperature drop with
+% changing altitude. Above the troposphere lies the lower stratosphere
+% region ranging between 11Km and 20Km. In this region the temperature is
+% assumed to remain constant.
+
+%% Aerodynamic Coefficients for Constructing Forces and Moments
+%
+% The Aerodynamics & Equations of Motion Subsystem generates the forces and
+% moments applied to the missile in body axes, and integrates the equations
+% of motion which define the linear and angular motion of the airframe. 
+
+prev = sys;
+sys  = sprintf('aero_guidance/Airframe\n&\nAutopilot/Aerodynamics &\nEquations of Motion');
+open_system(sys,prev,'replace')
+
+%%
+% The aerodynamic coefficients are stored in datasets, and during the
+% simulation the value at the current operating condition is determined by
+% interpolation using 2-D lookup table blocks.
+
+prev = sys;
+sys  = sprintf('aero_guidance/Airframe\n&\nAutopilot/Aerodynamics &\nEquations of Motion/Aerodynamics/Incidence');
+open_system(sys,prev,'replace')
+
+%% Classical Three Loop Autopilot Design
+% 
+% The aim of the missile autopilot is to control acceleration normal to the
+% missile body. In this demonstration the autopilot structure is a three
+% loop design using measurements from an accelerometer placed ahead of the
+% center of gravity, and a rate gyro to provide additional damping. The
+% controller gains are scheduled on incidence and Mach number, and are
+% tuned for robust performance at an altitude of 10,000 ft.
+% 
+% To design the autopilot using classical design techniques requires that
+% linear models of the airframe pitch dynamics be derived about a number of
+% trimmed flight conditions. MATLAB(R) can determine the trim conditions, and
+% derive linear state space models directly from the non-linear Simulink
+% model, saving both time, and aiding in the validation of the model that
+% has been created. The functions provided by the MATLAB Control System Toolbox(TM) 
+% and Simulink(R) Control Design(TM) allow the designer to visualize the 
+% behavior of the airframe open loop frequency (or time) responses. To see
+% how to trim and linearize the airframe model you can run the companion
+% demonstration, "Trim and Linearize a Missile Airframe".
+% 
+
+%%
+% <<../images/guidance_ltiviewe.gif>>
+% 
+
+%% Airframe Frequency Response
+% 
+% Autopilot designs are carried out on a number of linear airframe models
+% derived at varying flight conditions across the expected flight
+% envelope. To implement the autopilot in the non-linear model involves
+% storing the autopilot gains in 2 dimensional lookup tables, and
+% incorporating an anti-windup gain to prevent integrator windup when the
+% fin demands exceed the maximum limits. Testing the autopilot in the
+% nonlinear Simulink model is then the best way to demonstrate satisfactory
+% performance in the presence of non-linearities such as actuator fin and
+% rate limits, and with the gains now dynamically varying with changing
+% flight condition.
+% 
+
+prev = sys;
+sys  = sprintf('aero_guidance/Airframe\n&\nAutopilot/Autopilot');
+open_system(sys,prev,'replace')
+
+%% 
+% *Figure*: Simulink implementation of gain scheduled autopilot
+
+sys  = 'aero_guidance';
+bdclose(sys)
+
+%% Homing Guidance Loop
+% 
+% The complete Homing Guidance Loop
+% consists of a Seeker/Tracker Subsystem which returns measurements of the
+% relative motion between the missile and target, and the Guidance Subsystem
+% which generates normal acceleration demands which are passed to the autopilot.
+% The autopilot is now part of an inner loop within the overall homing guidance
+% system. Reference [4] provides information on the differing forms of guidance
+% that are currently in use, and provides background information on the analysis
+% techniques that are used to quantify guidance loop performance.
+% 
+
+sys = 'aero_guidance';
+open_system(sys)
+
+%% Guidance Subsystem
+% 
+% The function of the Guidance subsystem is to not only generate demands 
+% during closed loop tracking, but also perform an initial search to locate
+% the target position. A Stateflow(R) model is used to control the transfer
+% between these differing modes of operation. Switching between modes is
+% triggered by events generated either in Simulink, or internal to the
+% Stateflow model. Controlling the way the Simulink model then behaves is
+% achieved by changing the value of the variable *Mode* that is passed out
+% to Simulink. This variable is used to switch between the differing
+% control demands that can be generated. During target search the Stateflow
+% model controls the tracker directly by sending demands to the seeker
+% gimbals (*Sigma*). Target acquisition is flagged by the tracker once the
+% target lies within the beamwidth of the seeker (*Acquire*), and after a
+% short delay closed loop guidance starts. Stateflow is an ideal tool for
+% rapidly defining all the operational modes, whether they are for normal
+% operation, or unusual situations. For example, the actions to be taken
+% should there be loss of lock on the target, or should a target not be
+% acquired during target search are catered for in this Stateflow diagram.
+% 
+
+prev = sys;
+sys  = sprintf('aero_guidance/Guidance');
+open_system(sys,prev,'replace')
+
+rt = slroot; 
+chart = rt.find('-isa','Stateflow.Chart','path',...
+                sprintf('aero_guidance/Guidance/Guidance Processor\n(Updated @100Hz)'));
+chart.Visible = 1;
+
+%% Proportional Navigation Guidance
+%
+% Once the seeker has acquired the target a Proportional Navigation
+% Guidance (PNG) law is used to guide the missile until impact. This form
+% of guidance law has been used in guided missiles since the 1950s, and can
+% be applied to radar, infrared or television guided missiles. The
+% navigation law requires measurements of the closing velocity between the
+% missile and target, which for a radar guided missile could be obtained
+% using a Doppler tracking device, and an estimate for the rate of change
+% of the inertial sightline angle.
+% 
+% <<../images/guidance_sight.gif>>
+% 
+%%
+% *Figure*: Proportional Navigation Guidance Law
+
+%% Seeker/Tracker Subsystem
+%
+% The aim of the Seeker/Tracker Subsystem is both to drive the seeker
+% gimbals to keep the seeker dish aligned with the target, and to provide
+% the guidance law with an estimate of the sightline rate. The tracker loop
+% time constant *tors* is set to 0.05 seconds, and is chosen as a
+% compromise between maximizing speed of response, and keeping the noise
+% transmission to within acceptable levels. The stabilization loop aims to
+% compensate for body rotation rates, and the gain *Ks*, which is the loop
+% cross-over frequency, is set as high as possible subject to the
+% limitations of the bandwidth of the stabilizing rate gyro. The sightline
+% rate estimate is a filtered value of the sum of the rate of change of the
+% dish angle measured by the stabilizing rate gyro, and an estimated
+% value for the rate of change of the angular tracking error (*e*) measured
+% by the receiver. In this demonstration the bandwidth of the estimator
+% filter is set to half that of the bandwidth of the autopilot.
+% 
+
+prev = sys;
+sys  = sprintf('aero_guidance/Seeker//Tracker/Tracker and Sightline Rate\nEstimator');
+open_system(sys,prev,'replace')
+rt = slroot; 
+chart = rt.find('-isa','Stateflow.Chart','path',...
+                sprintf('aero_guidance/Guidance/Guidance Processor\n(Updated @100Hz)'));
+chart.Visible = 0;
+
+%% Radome Aberration
+%
+% For radar guided missiles a parasitic feedback effect that is commonly
+% modelled is that of radome aberration. It occurs because the shape of the
+% protective covering over the seeker distorts the returning signal, and
+% then gives a false reading of the look angle to the target. Generally the
+% amount of distortion is a nonlinear function of the current gimbal angle,
+% but a commonly used approximation is to assume a linear relationship
+% between the gimbal angle and the magnitude of the distortion. In the
+% above system, the radome aberration is accounted for in the gain block
+% labelled "Radome Aberration". Other parasitic effects, such as
+% sensitivity in the rate gyros to normal acceleration, are also often
+% modelled to test the robustness of the target tracker and estimator
+% filters.
+% 
+% <<../images/guidance_radome.gif>>
+% 
+%% 
+% *Figure*: Radome aberration geometry
+
+%% Running the Guidance Simulation
+%
+% Now to demonstrate the performance of the overall
+% system. In this case the target is defined to be travelling at a constant speed
+% of 328m/s, on a reciprocal course to the initial missile heading, and
+% 500m above the initial missile position. From the simulation results it can be
+% determined that acquisition occurred 0.69 seconds into the engagement, with
+% closed loop guidance starting after 0.89 seconds. Impact with the target
+% occurred at 3.46 seconds, and the range to go at the point of closest approach
+% was calculated to be 0.265m.
+% 
+
+
+%%
+% The aero_guid_plot.m script creates a performance analysis
+
+prev = sys;
+sys  = 'aero_guidance';
+open_system(sys,prev,'replace')
+
+set_param('aero_guidance/3DoF Animation','u8','off')
+sim(sys)
+aero_guid_plot
+
+%%
+% The animation block provides a visual reference for the simulation
+
+delete(findobj(0,'Tag','F3'));
+delete(findobj(0,'Tag','F4'));
+delete(findobj(0,'Tag','F5'));
+
+set_param('aero_guidance/3DoF Animation','u8','on')
+set_param(sys,'StopFcn','')
+sim(sys)
+
+%% Cleanup
+% 
+
+bdclose('aero_guidance')
+close(findobj('type','figure','Tag','3DOF anim'))
+
+%% References
+% 
+% *1.* "Robust LPV control with bounded parameter rates", S.Bennani, 
+% D.M.C. Willemsen, C.W. Scherer, AIAA-97-3641, August 1997.
+% 
+% *2.* "Full Envelope Missile Longitudinal Autopilot Design using the 
+% State-Dependent Riccati Equation Method", C.P.Mracek and J.R. Cloutier,
+% AIAA-97-3767, August 1997.
+%
+% *3.* "Gain-Scheduled Missile Autopilot Design Using Linear Parameter 
+% Varying Transformations", J.S.Shamma, J.R. Cloutier, Journal of 
+% Guidance, Control and Dynamics, Vol. 16, No. 2, March-April 1993.
+%
+% *4.* "Modern Navigation, Guidance, and Control Processing Volume 2", 
+% Ching-Fang Lin, ISBN 0-13-596230-7, Prentice Hall, 1991.
+%
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

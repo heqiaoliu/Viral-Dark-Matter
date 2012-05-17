@@ -1,0 +1,114 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Introduction</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_pcgd_intro.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_pcgd_intro">Open rtwdemo_pcgd_intro.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_pcgd_intro">Run in the Command Window</a></div></div><div class="content"><h1>Introduction</h1><!--introduction--><p>The process for designing and implementing a control algorithm varies from one organization to the next. However, some basic steps in the process are common. This demo provides an interactive experience of applying MathWorks products to those common basic steps. You work with a supplied Simulink&reg; model and using Real-Time Workshop&reg; Embedded Coder, generate code for the model, integrate the generated code with an existing system, and validate simulation and executable results.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Format</a></li><li><a href="#2">Prerequisite Knowledge</a></li><li><a href="#3">Using This Demo</a></li><li><a href="#4">Third-Party Software</a></li></ul></div><h2>Format<a name="1"></a></h2><p>This demo consists of  the following seven modules:</p><div><ul><li>Understanding the Model</li><li>Configuring the Data Interface</li><li>Function Partitioning within the Generated Code</li><li>Calling External C Code from the Simulink Model and Generated Code</li><li>Integrating the Generated Code into the External Environment</li><li>Testing the Generated Code</li><li>Evaluating the Generated Code</li></ul></div><p>Each module provides the following information and builds on what you learned and generated in previous modules:</p><div><ul><li>Estimated completion time</li><li>Goals</li><li>Background information, models, tasks, and task activation links that help you achieve the module goals</li><li>Links to the previous and next modules</li><li>Links to more information about module topics, including alternative methods for completing tasks</li></ul></div><p>This demo uses scripts that simplify use of the demo. Everything that is done by script can be done from the MATLAB&reg; prompt or from Simulink menus. You execute a script by clicking a Task link. For example, click the following link to execute a script that briefly displays the dialog box shown after the link:</p><p><a href="matlab:RTWDemos.pcgd_example_script"><b>Task:</b> Run a script to show a dialog box.</a></p><p><img vspace="5" hspace="5" src="exampleScript.jpg"></p><h2>Prerequisite Knowledge<a name="2"></a></h2><p>This demo assumes the following prerequisite knowledge:</p><p>MathWorks products</p><div><ul><li>How to read, write, and apply MATLAB scripts</li><li>How to create a basic Simulink and Stateflow model</li><li>How to run Simulink simulations and evaluate the results</li></ul></div><p>C programming</p><div><ul><li>C data types and storage classes</li><li>Function prototypes and methods of calling functions</li><li>How to compile a C function</li></ul></div><p>Metrics for evaluating embedded software</p><div><ul><li>Basic code readability issues</li><li>RAM/ROM usage</li></ul></div><h2>Using This Demo<a name="3"></a></h2><p>Each module focuses on a specific aspect of code generation or integration. You can complete the modules independently, during different sessions, or in a single session. The total estimated completion time is four hours.</p><p>
+<p>For most tasks, you have the option of completing the task on
+your own by following the instructions, or you can execute a script by
+clicking its <b><font color="blue">Task</font></b> link. Some scripts require
+time to run.  In such cases, a dialog box appears when the task is complete.
+If for any reason the link fails, error messages appear in the MATLAB
+Command Window.</p>
+</p><p>Each module has a unique model and data set. As a result, the modules are fully independent and can be run in any order.  When you transition between modules, the demo saves the current model locally, capturing your modifications to the model and model data.</p><p>To recover a model in its original state, delete the local copy of the model and model data.  The model data is saved as <tt>PCG_Demo_#_data.mat</tt>.</p><h2>Third-Party Software<a name="4"></a></h2><p>The modules <b>Integrating the Generated Code into the External Environment</b> and <b>Testing the Generated Code</b> use the Eclipse IDE and the Cygwin/gcc compiler. Instructions on how to install and use Eclipse and Cygwin/gcc appear at the end of the demo in <b>Installing and Using Cygwin and Eclipse</b>.</p><p class="footer">Copyright 2007-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Introduction
+% 
+% The process for designing and implementing a control algorithm 
+% varies from one organization to the next. However, some basic steps
+% in the process are common. This demo provides an interactive experience
+% of applying MathWorks products to those common basic steps. You work with
+% a supplied Simulink(R) model and using Real-Time Workshop(R) Embedded
+% Coder, generate code for the model, integrate the generated code
+% with an existing system, and validate simulation and executable results.
+% 
+%% Format
+% This demo consists of  the following seven modules:  
+%
+% * Understanding the Model
+% * Configuring the Data Interface
+% * Function Partitioning within the Generated Code
+% * Calling External C Code from the Simulink Model and Generated Code
+% * Integrating the Generated Code into the External Environment
+% * Testing the Generated Code
+% * Evaluating the Generated Code
+% 
+% Each module provides the following information and builds on what you learned 
+% and generated in previous modules:
+% 
+% * Estimated completion time
+% * Goals
+% * Background information, models, tasks, and task activation links that
+% help you achieve the module goals
+% * Links to the previous and next modules
+% * Links to more information about module topics, including alternative
+% methods for completing tasks 
+% 
+% This demo uses scripts that simplify use of the demo. Everything that is done
+% by script can be done from the MATLAB(R) prompt or from Simulink menus.
+% You execute a script by clicking a Task link. 
+% For example, click the following link to execute a script that briefly 
+% displays the dialog box shown after the link:
+%
+% <matlab:RTWDemos.pcgd_example_script *Task:* Run a script to show a dialog box.> 
+%
+% <html><img vspace="5" hspace="5" src="exampleScript.jpg"></html>
+% 
+%% Prerequisite Knowledge
+% This demo assumes the following prerequisite knowledge: 
+% 
+% MathWorks products
+%
+% * How to read, write, and apply MATLAB scripts
+% * How to create a basic Simulink and Stateflow model
+% * How to run Simulink simulations and evaluate the results
+% 
+% C programming
+%
+% * C data types and storage classes
+% * Function prototypes and methods of calling functions
+% * How to compile a C function 
+%
+% Metrics for evaluating embedded software
+%
+% * Basic code readability issues
+% * RAM/ROM usage
+% 
+%% Using This Demo  
+% Each module focuses on a specific aspect of code generation or integration.  
+% You can complete the modules independently, during different sessions, or
+% in a single session. The total estimated completion time is four hours.
+%
+% <html>
+% <p>For most tasks, you have the option of completing the task on
+% your own by following the instructions, or you can execute a script by
+% clicking its <b><font color="blue">Task</font></b> link. Some scripts require
+% time to run.  In such cases, a dialog box appears when the task is complete.
+% If for any reason the link fails, error messages appear in the MATLAB 
+% Command Window.</p>
+% </html>
+%
+% Each module has a unique model and data set. As a result, the modules are
+% fully independent and can be run in any order.  When you transition between 
+% modules, the demo saves the current model locally, capturing your
+% modifications to the model and model data.
+% 
+% To recover a model in its original state, delete the local copy of the
+% model and model data.  The model data is saved as |PCG_Demo_#_data.mat|.
+%
+%% Third-Party Software
+% The modules *Integrating the Generated Code into the External Environment*
+% and *Testing the Generated Code* use the Eclipse IDE and the Cygwin/gcc 
+% compiler. Instructions on how to install and use Eclipse and Cygwin/gcc 
+% appear at the end of the demo in *Installing and Using Cygwin and Eclipse*.
+
+%   Copyright 2007-2010 The MathWorks, Inc.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

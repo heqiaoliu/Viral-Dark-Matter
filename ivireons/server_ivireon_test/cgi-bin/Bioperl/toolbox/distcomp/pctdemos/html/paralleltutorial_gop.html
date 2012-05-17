@@ -1,0 +1,546 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      -->
+      <title>Using GOP to Achieve MPI_Allreduce Functionality</title>
+      <meta name="generator" content="MATLAB 7.7">
+      <meta name="date" content="2008-09-09">
+      <meta name="m-file" content="paralleltutorial_gop">
+      <link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css">
+   </head>
+   <body>
+      <div class="header">
+         <div class="left"><a href="matlab:edit paralleltutorial_gop">Open paralleltutorial_gop.m in the Editor</a></div>
+         <div class="right">&nbsp;</div>
+      </div>
+      <div class="content">
+         <h1>Using GOP to Achieve MPI_Allreduce Functionality</h1>
+         <!--introduction-->
+         <p>In this demo, we look at the <tt>gop</tt> function and the functions that build on it: <tt>gplus</tt> and <tt>gcat</tt>.  These seemingly simple functions turn out to be very powerful tools in parallel programming.
+         </p>
+         <p>The <tt>gop</tt> function allows us to perform any associative binary operation on a variable that is defined on all the labs.  This allows
+            us not only to sum a variable across all the labs, but also to find its minimum and maximum across the labs, concatenate them,
+            and perform many other useful operations.
+         </p>
+         <p>Related Documentation:</p>
+         <div>
+            <ul>
+               <li><a href="matlab:doc('spmd')">spmd reference page</a> in the Parallel Computing Toolbox&#8482; User's Guide
+               </li>
+            </ul>
+         </div>
+         <!--/introduction-->
+         <h2>Contents</h2>
+         <div>
+            <ul>
+               <li><a href="#3">Introduction</a></li>
+               <li><a href="#8">Create the Input Data for Our Examples</a></li>
+               <li><a href="#9">Using GPLUS and GCAT</a></li>
+               <li><a href="#14">Other Elementary Uses of GOP</a></li>
+               <li><a href="#16">Logical Operations</a></li>
+               <li><a href="#18">Bitwise Operations</a></li>
+               <li><a href="#19">Finding Locations of Min and Max</a></li>
+            </ul>
+         </div>
+         <p>The code shown in this demo can be found in this function:</p><pre class="codeinput"><span class="keyword">function</span> paralleltutorial_gop
+</pre><h2>Introduction<a name="3"></a></h2>
+         <p>When doing parallel programming, we often run into the situation of having a variable defined on all the labs, and we want
+            to perform an operation on the variable as it exists on all the labs.  For example, if we enter an spmd statement and define
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    x = labindex
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">  1 
+    x =
+    
+         1
+    
+  2 
+    x =
+    
+         2
+    
+  3 
+    x =
+    
+         3
+    
+  4 
+    x =
+    
+         4
+    
+</pre><p>on all the labs, we might want to calculate the sum of the values of <tt>x</tt> across the labs.  This is exactly what the <tt>gplus</tt> operation does, it sums the <tt>x</tt> across the labs and duplicates the result on all labs:
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    s = gplus(x);
+<span class="keyword">end</span>
+</pre><p>The variables assigned to inside an spmd statement are represented on the client as Composite.  We can bring the resulting
+            values from the labs to the client by indexing into the Composite much like that of cell arrays:
+         </p><pre class="codeinput">s{1} <span class="comment">% Display the value of s on lab 1.  All labs store the same value.</span>
+</pre><pre class="codeoutput">
+ans =
+
+    10
+
+</pre><p>Also, <tt>gop</tt>, <tt>gplus</tt>, and <tt>gcat</tt> allow us to specify a single lab to which the function output should be returned, and they return an empty vector on the
+            other labs.
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    s = gplus(x, 1);
+<span class="keyword">end</span>
+s{1}
+</pre><pre class="codeoutput">
+ans =
+
+    10
+
+</pre><p>This demo shows how to perform a host of operations similar to addition across all the labs.  In MPI, these are known as collective
+            operations, such as MPI_SUM, MPI_PROD, MPI_MIN, MPI_MAX, etc.
+         </p>
+         <h2>Create the Input Data for Our Examples<a name="8"></a></h2>
+         <p>The data we use for all our examples is very simple: a 1-by-2 variant array that is only slightly more complicated than the
+            <tt>x</tt> we defined in the beginning:
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    x = labindex + (1:2)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">  1 
+    x =
+    
+         2     3
+    
+  2 
+    x =
+    
+         3     4
+    
+  3 
+    x =
+    
+         4     5
+    
+  4 
+    x =
+    
+         5     6
+    
+</pre><h2>Using GPLUS and GCAT<a name="9"></a></h2>
+         <p>Now that we have initialized our vector <tt>x</tt> to different values on the labs, we can ask questions such as what is the element-by-element sum of the values of <tt>x</tt> across the labs? What about the product, the minimum, and the maximum?  As to be expected from our introduction,
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    s = gplus(x);
+<span class="keyword">end</span>
+s{1}
+</pre><pre class="codeoutput">
+ans =
+
+    14    18
+
+</pre><p>returns the element-by-element addition of the values of <tt>x</tt>.  However, <tt>gplus</tt> is only a special case of the <tt>gop</tt> operation, short for Global OPeration.  The <tt>gop</tt> function allows us to perform any associative operation across the labs on the elements of a variant array.  The most basic
+            example of an associative operation is addition; it is associative because addition is independent of the grouping which is
+            used:
+         </p><pre>(a + b) + c = a + (b + c)</pre><p>In MATLAB&reg;, addition can be denoted by the <tt>@plus</tt> function handle, so we can also write <tt>gplus(x)</tt> as
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    s = gop(@plus, x);
+<span class="keyword">end</span>
+s{1}
+</pre><pre class="codeoutput">
+ans =
+
+    14    18
+
+</pre><p>We can concatenate the vector <tt>x</tt> across the labs by using the <tt>gcat</tt> function, and we can choose the dimension to concatenate along.
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    y1 = gcat(x, 1); <span class="comment">% Concatenate along rows.</span>
+    y2 = gcat(x, 2); <span class="comment">% Concatenate along columns.</span>
+<span class="keyword">end</span>
+y1{1}
+y2{1}
+</pre><pre class="codeoutput">
+ans =
+
+     2     3
+     3     4
+     4     5
+     5     6
+
+
+ans =
+
+     2     3     3     4     4     5     5     6
+
+</pre><h2>Other Elementary Uses of GOP<a name="14"></a></h2>
+         <p>It is simple to calculate the element-by-element product of the values of <tt>x</tt> across the labs:
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    p = gop(@times, x);
+<span class="keyword">end</span>
+p{1}
+</pre><pre class="codeoutput">
+ans =
+
+   120   360
+
+</pre><p>We can also find the element-by-element maximum of <tt>x</tt> across the labs:
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    M = gop(@max, x);
+    m = gop(@min, x);
+<span class="keyword">end</span>
+M{1}
+m{1}
+</pre><pre class="codeoutput">
+ans =
+
+     5     6
+
+
+ans =
+
+     2     3
+
+</pre><h2>Logical Operations<a name="16"></a></h2>
+         <p>MATLAB has even more built-in associative operations.  The logical AND, OR, and XOR operations are represented by the <tt>@and</tt>, <tt>@or</tt>, and <tt>@xor</tt> function handles.  For example, look at the logical array
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    y = (x &gt; 4)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">  1 
+    y =
+    
+         0     0
+    
+  2 
+    y =
+    
+         0     0
+    
+  3 
+    y =
+    
+         0     1
+    
+  4 
+    y =
+    
+         1     1
+    
+</pre><p>We can then easily perform these logical operations on the elements of <tt>y</tt> across the labs:
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    yand = gop(@and, y);
+    yor = gop(@or, y);
+    yxor = gop(@xor, y);
+<span class="keyword">end</span>
+yand{1}
+yor{1}
+yxor{1}
+</pre><pre class="codeoutput">
+ans =
+
+     0     0
+
+
+ans =
+
+     1     1
+
+
+ans =
+
+     1     0
+
+</pre><h2>Bitwise Operations<a name="18"></a></h2>
+         <p>To conclude our tour of the associative operations that are built into MATLAB, we look at the bitwise AND, OR, and XOR operations.
+             These are represented by the <tt>@bitand</tt>, <tt>@bitor</tt>, and <tt>@bitxor</tt> function handles.
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    xbitand = gop(@bitand, x);
+    xbitor = gop(@bitor, x);
+    xbitxor = gop(@bitxor,  x);
+<span class="keyword">end</span>
+xbitand{1}
+xbitor{1}
+xbitxor{1}
+</pre><pre class="codeoutput">
+ans =
+
+     0     0
+
+
+ans =
+
+     7     7
+
+
+ans =
+
+     0     4
+
+</pre><h2>Finding Locations of Min and Max<a name="19"></a></h2>
+         <p>We need to do just a little bit of programming to find the labindex corresponding to where the element-by-element maximum
+            of <tt>x</tt> across the labs occurs.  We can do this in just a few lines of code:
+         </p><pre class="codeinput">type <span class="string">pctdemo_aux_gop_maxloc</span>
+</pre><pre class="codeoutput">
+function [val, loc] = pctdemo_aux_gop_maxloc(inval)
+%PCTDEMO_AUX_GOP_MAXLOC Find maximum value of a variant and its labindex.
+%   [val, loc] = pctdemo_aux_gop_maxloc(inval) returns to val the maximum value
+%   of inval across all the labs.  The labindex where this maximum value
+%   resides is returned to loc.
+
+%   Copyright 2007 The MathWorks, Inc.
+
+    out = gop(@iMaxLoc, {inval, labindex*ones(size(inval))});
+    val = out{1};
+    loc = out{2};
+end
+
+function out = iMaxLoc(in1, in2)
+% Calculate the max values and their locations.  Return them as a cell array.
+    in1Largest = (in1{1} &gt;= in2{1});
+    maxVal = in1{1};
+    maxVal(~in1Largest) = in2{1}(~in1Largest);
+    maxLoc = in1{2};
+    maxLoc(~in1Largest) = in2{2}(~in1Largest);
+    out = {maxVal, maxLoc};
+end
+
+</pre><p>and when the function has been implemented, it can be applied just as easily as any of the built-in operations:</p><pre class="codeinput"><span class="keyword">spmd</span>
+    [maxval, maxloc] = pctdemo_aux_gop_maxloc(x);
+<span class="keyword">end</span>
+[maxval{1}, maxloc{1}]
+</pre><pre class="codeoutput">
+ans =
+
+     5     6     4     4
+
+</pre><p>Similarly, we only need a few lines of code to find the labindex where the element-by-element minimum of <tt>x</tt> across the labs occurs:
+         </p><pre class="codeinput">type <span class="string">pctdemo_aux_gop_minloc</span>
+</pre><pre class="codeoutput">
+function [val, loc] = pctdemo_aux_gop_minloc(inval)
+%PCTDEMO_AUX_GOP_MINLOC Find minimum value of a variant and its labindex.
+%   [val, loc] = pctdemo_aux_gop_minloc(inval) returns to val the minimum value
+%   of inval across all the labs.  The labindex where this minimum value
+%   resides is returned to loc.
+
+%   Copyright 2007 The MathWorks, Inc.
+
+    out = gop(@iMinLoc, {inval, labindex*ones(size(inval))});
+    val = out{1};
+    loc = out{2};
+end
+
+function out = iMinLoc(in1, in2)
+% Calculate the min values and their locations.  Return them as a cell array.
+    in1Smallest = (in1{1} &lt; in2{1});
+    minVal = in1{1};
+    minVal(~in1Smallest) = in2{1}(~in1Smallest);
+    minLoc = in1{2};
+    minLoc(~in1Smallest) = in2{2}(~in1Smallest);
+    out = {minVal, minLoc};
+end
+
+</pre><p>We can then easily find the minimum with <tt>gop</tt>:
+         </p><pre class="codeinput"><span class="keyword">spmd</span>
+    [minval, minloc] = pctdemo_aux_gop_minloc(x);
+<span class="keyword">end</span>
+[minval{1}, minloc{1}]
+</pre><pre class="codeoutput">
+ans =
+
+     2     3     1     1
+
+</pre><p class="footer">Copyright 2007-2008 The MathWorks, Inc.<br>
+            Published with MATLAB&reg; 7.7
+         </p>
+         <p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks
+            of their respective owners.
+         </p>
+      </div>
+      <!--
+##### SOURCE BEGIN #####
+%% Using GOP to Achieve MPI_Allreduce Functionality
+% In this demo, we look at the |gop| function and the functions that build
+% on it: |gplus| and |gcat|.  These seemingly simple functions turn out to
+% be very powerful tools in parallel programming.
+%
+% The |gop| function allows us to perform any associative binary operation
+% on a variable that is defined on all the labs.  This allows us not only
+% to sum a variable across all the labs, but also to find its minimum and
+% maximum across the labs, concatenate them, and perform many other useful
+% operations.
+%
+% Related Documentation:
+% 
+% * <matlab:doc('spmd') spmd reference page> in the 
+% Parallel Computing Toolbox(TM) User's Guide
+
+%   Copyright 2007-2008 The MathWorks, Inc.
+
+%%
+% The code shown in this demo can be found in this function:
+function paralleltutorial_gop
+
+
+%% Introduction
+% When doing parallel programming, we often run into the situation of
+% having a variable defined on all the labs, and we want to perform an
+% operation on the variable as it exists on all the labs.  For example, if
+% we enter an spmd statement and define
+spmd
+    x = labindex
+end
+
+%%
+% on all the labs, we might want to calculate the sum of the values of |x|
+% across the labs.  This is exactly what the |gplus| operation does, it
+% sums the |x| across the labs and duplicates the result on all labs:
+spmd
+    s = gplus(x);
+end
+%%
+% The variables assigned to inside an spmd statement are represented on the
+% client as Composite.  We can bring the resulting values from the labs to
+% the client by indexing into the Composite much like that of cell arrays:
+s{1} % Display the value of s on lab 1.  All labs store the same value.
+
+%%
+% Also, |gop|, |gplus|, and |gcat| allow us to specify a single lab to
+% which the function output should be returned, and they return an empty
+% vector on the other labs.
+spmd
+    s = gplus(x, 1);
+end
+s{1}
+
+%%
+% This demo shows how to perform a host of operations similar to addition
+% across all the labs.  In MPI, these are known as collective operations,
+% such as MPI_SUM, MPI_PROD, MPI_MIN, MPI_MAX, etc.
+
+%% Create the Input Data for Our Examples
+% The data we use for all our examples is very simple: a 1-by-2 variant
+% array that is only slightly more complicated than the |x| we defined in
+% the beginning:
+spmd
+    x = labindex + (1:2)
+end
+
+%% Using GPLUS and GCAT
+% Now that we have initialized our vector |x| to different values on the
+% labs, we can ask questions such as what is the element-by-element sum of
+% the values of |x| across the labs? What about the product, the minimum,
+% and the maximum?  As to be expected from our introduction,
+spmd
+    s = gplus(x);
+end
+s{1}
+
+%%
+% returns the element-by-element addition of the values of |x|.  However,
+% |gplus| is only a special case of the |gop| operation, short for Global
+% OPeration.  The |gop| function allows us to perform any associative
+% operation across the labs on the elements of a variant array.  The most
+% basic example of an associative operation is addition; it is associative
+% because addition is independent of the grouping which is used:
+%%
+%  (a + b) + c = a + (b + c)
+%%
+% In MATLAB(R), addition can be denoted by the |@plus| function handle, so
+% we can also write |gplus(x)| as
+spmd
+    s = gop(@plus, x);
+end
+s{1}
+
+%%
+% We can concatenate the vector |x| across the labs by using the |gcat|
+% function, and we can choose the dimension to concatenate along.  
+spmd
+    y1 = gcat(x, 1); % Concatenate along rows.
+    y2 = gcat(x, 2); % Concatenate along columns.
+end
+y1{1} 
+y2{1}
+
+%% Other Elementary Uses of GOP
+% It is simple to calculate the element-by-element product of the values of
+% |x| across the labs:
+spmd
+    p = gop(@times, x);
+end
+p{1}
+
+
+%%
+% We can also find the element-by-element maximum of |x| across the labs:
+spmd
+    M = gop(@max, x);
+    m = gop(@min, x);
+end
+M{1}
+m{1}
+
+%% Logical Operations
+% MATLAB has even more built-in associative operations.  The logical AND,
+% OR, and XOR operations are represented by the |@and|, |@or|, and |@xor|
+% function handles.  For example, look at the logical array
+spmd
+    y = (x > 4)
+end    
+
+%%
+% We can then easily perform these logical operations on the elements of
+% |y| across the labs:
+spmd
+    yand = gop(@and, y);
+    yor = gop(@or, y);
+    yxor = gop(@xor, y);
+end    
+yand{1}
+yor{1}
+yxor{1}
+
+%% Bitwise Operations
+% To conclude our tour of the associative operations that are built into
+% MATLAB, we look at the bitwise AND, OR, and XOR operations.  These are
+% represented by the |@bitand|, |@bitor|, and |@bitxor| function handles.
+spmd
+    xbitand = gop(@bitand, x);
+    xbitor = gop(@bitor, x);
+    xbitxor = gop(@bitxor,  x);
+end    
+xbitand{1}
+xbitor{1}
+xbitxor{1}
+
+%% Finding Locations of Min and Max
+% We need to do just a little bit of programming to find the labindex
+% corresponding to where the element-by-element maximum of |x| across the
+% labs occurs.  We can do this in just a few lines of code:
+type pctdemo_aux_gop_maxloc
+
+%%
+% and when the function has been implemented, it can be applied just as
+% easily as any of the built-in operations:
+spmd
+    [maxval, maxloc] = pctdemo_aux_gop_maxloc(x);
+end
+[maxval{1}, maxloc{1}]
+
+%%
+% Similarly, we only need a few lines of code to find the labindex where
+% the element-by-element minimum of |x| across the labs occurs:
+type pctdemo_aux_gop_minloc
+
+%%
+% We can then easily find the minimum with |gop|:
+spmd
+    [minval, minloc] = pctdemo_aux_gop_minloc(x);
+end
+[minval{1}, minloc{1}]
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+-->
+   </body>
+</html>

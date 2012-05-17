@@ -1,0 +1,82 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Vehicle Electrical System</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_auto_carelec.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_auto_carelec.mdl</div><div class="right"><a href="matlab:sldemo_auto_carelec">Open this model</a></div></div><div class="content"><h1>Vehicle Electrical System</h1><!--introduction--><p>This model simulates the electrical system of a vehicle using Simulink&reg; and SimPowerSystems&#8482;.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#3">System Components</a></li><li><a href="#4">Operation of the System</a></li></ul></div><img vspace="5" hspace="5" src="sldemo_auto_carelec_01.png" alt=""> <p><b>Figure 1:</b> The vehicle electrical system.</p><h2>System Components<a name="3"></a></h2><p>The system simulated consists of the following component parts:</p><p>A separately excited DC motor with constant field excitation. The armature is supplied from a DC source voltage (battery nominal voltage 240V) and seeing that the field excitation, and hence current, is kept constant the motor speed is directly proportional to the applied armature voltage. This arrangement simulates the engine of the car, which drives the alternator (synchronous generator) via a belt and pulley mechanism. As the driver accelerates, the engine speed changes as does the speed of rotation of the alternator. Therefore to simulate a change in engine speed, the armature voltage of the DC motor is changed.</p><p>The DC motor output power (product of motor torque and angular speed, w) is fed into the synchronous machine block as an input.</p><p>The alternator is a 3 phase synchronous generator with its field current regulated to give control over the output voltage. This is simulated by using the Simplified Synchronous Machine model.</p><p>The 3 phase AC output of the alternator is fed into the 6 pulse rectifier to give the DC voltage required to charge the car battery and to supply the balance of the electrical system of the car.</p><h2>Operation of the System<a name="4"></a></h2><p>The DC voltage must be kept constant so that the lights do not dim when other loads are switched on, for example: the starter motor or windscreen wiper motor. Likewise, if the A/C fan motor is running and the lights are switched on the fan motor must not slow down.</p><p>To ensure the DC voltage remains constant, even when the engine speed changes or when additional electrical loads are switched on, it is necessary to feed back the DC bus voltage and regulate the alternator generated AC voltage accordingly. The following events will help illustrate this operation:</p><div><ul><li>Speed variation: While the simulation is running, reduce the input DC battery voltage from 240 to say 150 V. When the simulation is over, display the DC bus voltage and the speed w of the DC motor. It is seen that the speed changes, but there is no change in the DC bus voltage.</li></ul></div><div><ul><li>Load variation: While the simulation is running, change the value of the load resistor connected across the DC busbar. Display the DC bus voltage and current. The current changes with the load, but the voltage remains constant (as it should).</li></ul></div><div><ul><li>To illustrate that the voltage regulator on the alternator is operating, change the constant on the second summer (the one with the two +ve signs) while the simulation is running. Display the AC and DC voltages and they will show the changes.</li></ul></div><p class="footer">Copyright 1990-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Vehicle Electrical System
+% This model simulates the electrical system of a vehicle using Simulink(R)
+% and SimPowerSystems(TM).
+
+% Copyright 1990-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.4 $ $Date: 2007/12/10 22:40:42 $
+
+%% 
+%
+open_system('sldemo_auto_carelec.mdl')
+%%
+% *Figure 1:* The vehicle electrical system.
+
+%% System Components
+%
+% The system simulated consists of the following component parts: 
+%
+% A separately excited DC motor with constant field excitation. The 
+% armature is supplied from a DC source voltage (battery nominal voltage 
+% 240V) and seeing that the field excitation, and hence current, is kept 
+% constant the motor speed is directly proportional to the applied armature
+% voltage. This arrangement simulates the engine of the car, which drives 
+% the alternator (synchronous generator) via a belt and pulley mechanism. 
+% As the driver accelerates, the engine speed changes as does the speed of 
+% rotation of the alternator. Therefore to simulate a change in engine 
+% speed, the armature voltage of the DC motor is changed.         
+%
+% The DC motor output power (product of motor torque and angular speed, w) 
+% is fed into the synchronous machine block as an input.       
+%
+% The alternator is a 3 phase synchronous generator with its field current 
+% regulated to give control over the output voltage. This is simulated by 
+% using the Simplified Synchronous Machine model.      
+%
+% The 3 phase AC output of the alternator is fed into the 6 pulse rectifier
+% to give the DC voltage required to charge the car battery and to supply 
+% the balance of the electrical system of the car. 
+%
+
+%% Operation of the System
+%
+% The DC voltage must be kept constant so that the lights do not dim when 
+% other loads are switched on, for example: the starter motor or windscreen
+% wiper motor. Likewise, if the A/C fan motor is running and the lights are
+% switched on the fan motor must not slow down. 
+%
+% To ensure the DC voltage remains constant, even when the engine speed 
+% changes or when additional electrical loads are switched on, it is 
+% necessary to feed back the DC bus voltage and regulate the alternator 
+% generated AC voltage accordingly. The following events will help 
+% illustrate this operation: 
+%
+% * Speed variation: While the simulation is running, reduce the input DC
+% battery voltage from 240 to say 150 V. When the simulation is over, 
+% display the DC bus voltage and the speed w of the DC motor. It is seen 
+% that the speed changes, but there is no change in the DC bus voltage.
+%
+% * Load variation: While the simulation is running, change the value of
+% the load resistor connected across the DC busbar. Display the DC bus 
+% voltage and current. The current changes with the load, but the voltage 
+% remains constant (as it should).
+%
+% * To illustrate that the voltage regulator on the alternator is
+% operating, change the constant on the second summer (the one with the 
+% two +ve signs) while the simulation is running. Display the AC and DC 
+% voltages and they will show the changes.
+
+bdclose all
+
+##### SOURCE END #####
+--></body></html>

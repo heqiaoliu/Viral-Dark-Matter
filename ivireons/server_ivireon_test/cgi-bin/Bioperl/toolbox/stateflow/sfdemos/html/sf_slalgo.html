@@ -1,0 +1,98 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using Simulink&reg; Functions in Stateflow&reg;</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_slalgo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_slalgo.mdl</div><div class="right"><a href="matlab:sf_slalgo">Open this model</a></div></div><div class="content"><h1>Using Simulink&reg; Functions in Stateflow&reg;</h1><p>This model demonstrates a simple use of Simulink functions in Stateflow. Starting from R2008b, you can use Simulink function call subsystems in Stateflow just like other function objects such as Graphical functions, Embedded MATLAB&#8482; functions and Truth Table functions.</p><img vspace="5" hspace="5" src="sf_slalgo_01.png" alt=""> <p><b>With Simulink functions</b></p><p>The chart <tt>WithSimulinkFunctions</tt> demonstrates the use of Simulink functions algo1() and algo2() directly within Stateflow.</p><img vspace="5" hspace="5" src="sf_slalgo_02.png" alt=""> <p>Note the following:</p><div><ol><li>We can use multiple outputs syntax to communicate multiple outputs/inputs to the Simulink subsystem.</li><li>We can use the standard Stateflow action language syntax to use a Simulink function directly within a larger Stateflow expression.</li></ol></div><p><b>Without Simulink functions</b></p><p>The chart <tt>WithoutSimulinkFunctions</tt> shows how a similar functionality would have been achieved without the use of Simulink functions in previous releases.</p><img vspace="5" hspace="5" src="sf_slalgo_03.png" alt=""> <img vspace="5" hspace="5" src="sf_slalgo_04.png" alt=""> <p>Note the following:</p><div><ol><li>You need to create multiple function call output events in order to communicate with the Simulink subsystems.</li><li>You have to manually connect up the inputs/outputs from the Simulink subsystems to the Stateflow chart.</li><li>You cannot use the output from a Simulink subsystem directly in an expression. You have to first write to the corresponding outputs, <tt>send()</tt> the output event, and then read back from the corresponding inputs.</li></ol></div><p><b>Advantages of using Simulink functions</b></p><p>Directly using Simulink functions in Stateflow rather than using function call output events has several advantages:</p><div><ol><li>It is less error-prone since there is much less wiring.</li><li>You can use Simulink functions directly in expressions using standard Stateflow action language syntax.</li><li>The design hierarchy is much more evident when the Stateflow chart contains the Simulink subsystems which it uses.</li></ol></div><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using Simulink(R) Functions in Stateflow(R)
+% 
+% This model demonstrates a simple use of Simulink functions in Stateflow.
+% Starting from R2008b, you can use Simulink function call subsystems in
+% Stateflow just like other function objects such as Graphical functions,
+% Embedded MATLAB(TM) functions and Truth Table functions.
+% 
+
+%   Copyright 2009 The MathWorks, Inc.
+
+clear all
+close all
+bdclose all
+
+open_system('sf_slalgo');
+r = sfroot;
+m = r.find('-isa', 'Stateflow.Machine', 'Name', 'sf_slalgo');
+
+c_with = m.find('-isa', 'Stateflow.Chart', 'Name', 'WithSLFunctions');
+c_without = m.find('-isa', 'Stateflow.Chart', 'Name', 'WithoutSLFunctions');
+
+% first close all charts.
+c_with.Visible = 0;
+c_without.Visible = 0;
+close_system('sf_slalgo/WithoutSLFunctions');
+
+%% 
+% *With Simulink functions*
+% 
+% The chart |WithSimulinkFunctions| demonstrates the use of Simulink
+% functions algo1() and algo2() directly within Stateflow.
+% 
+c_with.Visible = 1;
+
+%%
+% 
+% Note the following:
+% 
+% # We can use multiple outputs syntax to communicate multiple
+% outputs/inputs to the Simulink subsystem.
+% # We can use the standard Stateflow action language syntax to use a
+% Simulink function directly within a larger Stateflow expression.
+
+%% 
+% *Without Simulink functions*
+% 
+% The chart |WithoutSimulinkFunctions| shows how a similar functionality
+% would have been achieved without the use of Simulink functions in
+% previous releases.
+
+open_system('sf_slalgo/WithoutSLFunctions');
+
+%% 
+% 
+c_without.Visible = 1;
+
+%%
+% Note the following:
+% 
+% # You need to create multiple function call output events in order to
+% communicate with the Simulink subsystems.
+% # You have to manually connect up the inputs/outputs from the Simulink
+% subsystems to the Stateflow chart.
+% # You cannot use the output from a Simulink subsystem directly in an
+% expression. You have to first write to the corresponding outputs,
+% |send()| the output event, and then read back from the corresponding
+% inputs.
+% 
+% *Advantages of using Simulink functions*
+% 
+% Directly using Simulink functions in Stateflow rather than using function
+% call output events has several advantages:
+% 
+% # It is less error-prone since there is much less wiring.
+% # You can use Simulink functions directly in expressions using standard
+% Stateflow action language syntax.
+% # The design hierarchy is much more evident when the Stateflow chart
+% contains the Simulink subsystems which it uses.
+
+%% 
+
+bdclose all;
+clear all;
+close all;
+
+##### SOURCE END #####
+--></body></html>

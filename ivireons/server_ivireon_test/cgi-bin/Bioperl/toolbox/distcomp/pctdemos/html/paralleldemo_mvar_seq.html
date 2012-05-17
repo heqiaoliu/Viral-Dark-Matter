@@ -1,0 +1,103 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Sequential Marginal Value-at-Risk Simulation</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-09"><meta name="m-file" content="paralleldemo_mvar_seq"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_mvar_seq">Open paralleldemo_mvar_seq.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_mvar_seq">Run in the Command Window</a></div></div><div class="content"><h1>Sequential Marginal Value-at-Risk Simulation</h1><!--introduction--><p>This demo performs a Monte Carlo simulation of a number of stocks in a portfolio. At a given confidence level, we predict the value at risk (VaR) of the portfolio as well as the marginal value at risk (mVaR) of each of the stocks in the portfolio.  We also provide confidence intervals for our estimates.</p><p>For details about the computations, <a href="matlab:edit('pctdemo_setup_mvar.m')">view the code for pctdemo_setup_mvar</a>.</p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox&#8482;</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_mvar_dist.html">Distributed Marginal Value-at-Risk Simulation</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Load the Demo Settings and the Data</a></li><li><a href="#4">Run the Simulation</a></li><li><a href="#5">Measure the Elapsed Time</a></li><li><a href="#6">Plot the Results</a></li></ul></div><h2>Load the Demo Settings and the Data<a name="1"></a></h2><p>We start by getting the demo difficulty level.  If you want to use a different demo difficulty level, use <tt>paralleldemoconfig</tt> and then run this demo again. See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for full details.</p><pre class="codeinput">difficulty = pctdemo_helper_getDefaults();
+</pre><p>We obtain the performance of the stocks, their weights in our portfolio, and other input data from <tt>pctdemo_setup_mvar</tt>. The number of repetitions, <tt>numTimes</tt>, is determined by the <tt>difficulty</tt> parameter. You can <a href="matlab:edit('pctdemo_setup_mvar.m')">view the code for pctdemo_setup_mvar</a> for full details.</p><pre class="codeinput">[fig, numSims, numTimes, stock, names, weights, time, confLevel] = <span class="keyword">...</span>
+    pctdemo_setup_mvar(difficulty);
+</pre><p>Let's look at the confidence level at which we are calculating the VaR and mVaR.</p><pre class="codeinput">fprintf(<span class="string">'Calculating VaR and mVaR at the %3.1f%% confidence level.\n'</span>, <span class="keyword">...</span>
+        confLevel);
+startTime = clock;
+</pre><pre class="codeoutput">Calculating VaR and mVaR at the 95.0% confidence level.
+</pre><h2>Run the Simulation<a name="4"></a></h2><p>We perform <tt>numSims</tt> simulations <tt>numTimes</tt> times.  This allows us to make predictions on the VaR and mVaR, as well as to compute the confidence intervals. You can <a href="matlab:edit('pctdemo_task_mvar.m')">view the code for pctdemo_task_mvar</a> for full details.</p><pre class="codeinput">[VaR, mVaR] = pctdemo_task_mvar(numTimes, stock, weights, time, <span class="keyword">...</span>
+                                 numSims, confLevel);
+</pre><h2>Measure the Elapsed Time<a name="5"></a></h2><p>The time used for the sequential computations should be compared against the time it takes to perform the same set of calculations using the Parallel Computing Toolbox in the <a href="paralleldemo_mvar_dist.html">Distributed Marginal Value-at-Risk Simulation</a> demo. The elapsed time varies with the underlying hardware.</p><pre class="codeinput">elapsedTime = etime(clock, startTime);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 41.0 seconds
+</pre><h2>Plot the Results<a name="6"></a></h2><p>We use <tt>pctdemo_plot_mvar</tt> to create a graph of the value at risk of our portfolio at the given confidence level.  The graph also shows the marginal value at risk of the individual stocks in our portfolio at that same confidence level. You can <a href="matlab:edit('pctdemo_plot_mvar.m')">view the code for pctdemo_plot_mvar</a> for full details.</p><pre class="codeinput">pctdemo_plot_mvar(fig, VaR, mVaR, time, names);
+</pre><img vspace="5" hspace="5" src="paralleldemo_mvar_seq_01.png" alt=""> <p class="footer">Copyright 2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Sequential Marginal Value-at-Risk Simulation
+% This demo performs a Monte Carlo simulation of a number of stocks in a
+% portfolio. At a given confidence level, we predict the value at risk (VaR) 
+% of the portfolio as well as the marginal value at risk (mVaR) of each of
+% the stocks in the portfolio.  We also provide confidence intervals for our 
+% estimates.
+%
+% For details about the computations, 
+% <matlab:edit('pctdemo_setup_mvar.m') view the code for pctdemo_setup_mvar>.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox(TM)> 
+%
+% Related demos:
+%
+% * <paralleldemo_mvar_dist.html Distributed Marginal Value-at-Risk Simulation>
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.3 $  $Date: 2009/11/07 20:53:14 $
+
+%% Load the Demo Settings and the Data
+% We start by getting the demo difficulty level.  If you want to use a different
+% demo difficulty level, use |paralleldemoconfig| and then run this demo again.
+% See <paralleltutorial_defaults.html 
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% for full details.
+difficulty = pctdemo_helper_getDefaults();
+%%
+% We obtain the performance of the stocks, their weights in our portfolio, and
+% other input data from |pctdemo_setup_mvar|. 
+% The number of repetitions, |numTimes|, is determined by the |difficulty|
+% parameter.  
+% You can 
+% <matlab:edit('pctdemo_setup_mvar.m') view the code for pctdemo_setup_mvar> 
+% for full details.
+[fig, numSims, numTimes, stock, names, weights, time, confLevel] = ...
+    pctdemo_setup_mvar(difficulty); 
+%%
+% Let's look at the confidence level at which we are calculating the VaR and
+% mVaR.
+fprintf('Calculating VaR and mVaR at the %3.1f%% confidence level.\n', ...
+        confLevel);
+startTime = clock;
+
+%% Run the Simulation
+% We perform |numSims| simulations |numTimes| times.  This allows us to make
+% predictions on the VaR and mVaR, as well as to compute the confidence 
+% intervals.
+% You can 
+% <matlab:edit('pctdemo_task_mvar.m') view the code for pctdemo_task_mvar> 
+% for full details.
+[VaR, mVaR] = pctdemo_task_mvar(numTimes, stock, weights, time, ...
+                                 numSims, confLevel);
+
+%% Measure the Elapsed Time
+% The time used for the sequential computations should be compared
+% against the time it takes to perform the same set of calculations
+% using the Parallel Computing Toolbox in the <paralleldemo_mvar_dist.html
+% Distributed Marginal Value-at-Risk Simulation> demo.
+% The elapsed time varies with the underlying hardware.
+elapsedTime = etime(clock, startTime);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+%% Plot the Results
+% We use |pctdemo_plot_mvar| to create a graph of the value at risk of our
+% portfolio at the given confidence level.  The graph also shows the marginal
+% value at risk of the individual stocks in our portfolio at that same
+% confidence level. You can 
+% <matlab:edit('pctdemo_plot_mvar.m') view the code for pctdemo_plot_mvar> for
+% full details.
+pctdemo_plot_mvar(fig, VaR, mVaR, time, names);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

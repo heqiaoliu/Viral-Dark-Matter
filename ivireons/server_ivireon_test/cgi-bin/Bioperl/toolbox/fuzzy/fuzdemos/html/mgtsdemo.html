@@ -1,0 +1,226 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Chaotic Time-Series Prediction</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="mgtsdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit mgtsdemo">Open mgtsdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo mgtsdemo">Run in the Command Window</a></div></div><div class="content"><h1>Chaotic Time-Series Prediction</h1><!--introduction--><p>Chaotic time series prediction using ANFIS.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Time Series Data</a></li><li><a href="#2">Preprocessing the Data</a></li><li><a href="#3">Building the ANFIS Model</a></li><li><a href="#5">Error Curves</a></li><li><a href="#6">Comparisons</a></li><li><a href="#7">Prediction Errors of ANFIS</a></li></ul></div><h2>Time Series Data<a name="1"></a></h2><p>The data is generated from the Mackey-Glass time-delay differential equation which is defined by</p><pre>dx(t)/dt = 0.2x(t-tau)/(1+x(t-tau)^10) - 0.1x(t)</pre><p>When x(0) = 1.2 and tau = 17, we have a non-periodic and non-convergent time series that is very sensitive to initial conditions. (We assume x(t) = 0 when t &lt; 0.)</p><pre class="codeinput">load <span class="string">mgdata.dat</span>
+a = mgdata;
+time = a(:, 1);
+x_t = a(:, 2);
+plot(time, x_t);
+xlabel(<span class="string">'Time (sec)'</span>); ylabel(<span class="string">'x(t)'</span>);
+title(<span class="string">'Mackey-Glass Chaotic Time Series'</span>);
+</pre><img vspace="5" hspace="5" src="mgtsdemo_01.png" alt=""> <h2>Preprocessing the Data<a name="2"></a></h2><p>Now we want to build an ANFIS that can predict x(t+6) from the past values of this time series, that is, x(t-18), x(t-12), x(t-6), and x(t). Therefore the training data format is</p><pre>[x(t-18), x(t-12), x(t-6), x(t); x(t+6]</pre><p>From t = 118 to 1117, we collect 1000 data pairs of the above format. The first 500 are used for training while the others are used for checking. The plot shows the segment of the time series where data pairs were extracted from. The first 100 data points are ignored to avoid the transient portion of the data.</p><pre class="codeinput">trn_data = zeros(500, 5);
+chk_data = zeros(500, 5);
+
+<span class="comment">% prepare training data</span>
+trn_data(:, 1) = x_t(101:600);
+trn_data(:, 2) = x_t(107:606);
+trn_data(:, 3) = x_t(113:612);
+trn_data(:, 4) = x_t(119:618);
+trn_data(:, 5) = x_t(125:624);
+
+<span class="comment">% prepare checking data</span>
+chk_data(:, 1) = x_t(601:1100);
+chk_data(:, 2) = x_t(607:1106);
+chk_data(:, 3) = x_t(613:1112);
+chk_data(:, 4) = x_t(619:1118);
+chk_data(:, 5) = x_t(625:1124);
+
+index = 119:1118; <span class="comment">% ts starts with t = 0</span>
+plot(time(index), x_t(index));
+xlabel(<span class="string">'Time (sec)'</span>); ylabel(<span class="string">'x(t)'</span>);
+title(<span class="string">'Mackey-Glass Chaotic Time Series'</span>);
+</pre><img vspace="5" hspace="5" src="mgtsdemo_02.png" alt=""> <h2>Building the ANFIS Model<a name="3"></a></h2><p>We use GENFIS1 to generate an initial FIS matrix from training data. The command is quite simple since default values for MF number (2) and MF type ('gbellmf') are used:</p><pre class="codeinput">fismat = genfis1(trn_data);
+
+<span class="comment">% The initial MFs for training are shown in the plots.</span>
+<span class="keyword">for</span> input_index=1:4,
+    subplot(2,2,input_index)
+    [x,y]=plotmf(fismat,<span class="string">'input'</span>,input_index);
+    plot(x,y)
+    axis([-inf inf 0 1.2]);
+    xlabel([<span class="string">'Input '</span> int2str(input_index)]);
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="mgtsdemo_03.png" alt=""> <p>There are 2^4 = 16 rules in the generated FIS matrix and the number of fitting parameters is 108, including 24 nonlinear parameters and 80 linear parameters. This is a proper balance between number of fitting parameters and number of training data (500). The ANFIS command looks like this:</p><pre>[trn_fismat,trn_error] = anfis(trn_data, fismat,[],[],chk_data)</pre><p>To save time, we will load the training results directly.</p><p>After ten epochs of training, the final MFs are shown in the plots. Note that these MFs after training do not change drastically. Obviously most of the fitting is done by the linear parameters while the nonlinear parameters are mostly for fine- tuning for further improvement.</p><pre class="codeinput"><span class="comment">% load training results</span>
+load <span class="string">mganfis</span>
+
+<span class="comment">% plot final MF's on x, y, z, u</span>
+<span class="keyword">for</span> input_index=1:4,
+    subplot(2,2,input_index)
+    [x,y]=plotmf(trn_fismat,<span class="string">'input'</span>,input_index);
+    plot(x,y)
+    axis([-inf inf 0 1.2]);
+    xlabel([<span class="string">'Input '</span> int2str(input_index)]);
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="mgtsdemo_04.png" alt=""> <h2>Error Curves<a name="5"></a></h2><p>This plot displays error curves for both training and checking data. Note that the training error is higher than the checking error. This phenomenon is not uncommon in ANFIS learning or nonlinear regression in general; it could indicate that the training process is not close to finished yet.</p><pre class="codeinput"><span class="comment">% error curves plot</span>
+close <span class="string">all</span>;
+epoch_n = 10;
+plot([trn_error chk_error]);
+hold <span class="string">on</span>; plot([trn_error chk_error], <span class="string">'o'</span>); hold <span class="string">off</span>;
+xlabel(<span class="string">'Epochs'</span>);
+ylabel(<span class="string">'RMSE (Root Mean Squared Error)'</span>);
+title(<span class="string">'Error Curves'</span>);
+</pre><img vspace="5" hspace="5" src="mgtsdemo_05.png" alt=""> <h2>Comparisons<a name="6"></a></h2><p>This plot shows the original time series and the one predicted by ANFIS. The difference is so tiny that it is impossible to tell one from another by eye inspection. That is why you probably see only the ANFIS prediction curve. The prediction errors must be viewed on another scale.</p><pre class="codeinput">input = [trn_data(:, 1:4); chk_data(:, 1:4)];
+anfis_output = evalfis(input, trn_fismat);
+index = 125:1124;
+plot(time(index), [x_t(index) anfis_output]);
+xlabel(<span class="string">'Time (sec)'</span>);
+</pre><img vspace="5" hspace="5" src="mgtsdemo_06.png" alt=""> <h2>Prediction Errors of ANFIS<a name="7"></a></h2><p>Prediction error of ANFIS is shown here. Note that the scale is about a hundredth of the scale of the previous plot. Remember that we have only 10 epochs of training in this case; better performance is expected if we have extensive training.</p><pre class="codeinput">diff = x_t(index)-anfis_output;
+plot(time(index), diff);
+xlabel(<span class="string">'Time (sec)'</span>);
+title(<span class="string">'ANFIS Prediction Errors'</span>);
+</pre><img vspace="5" hspace="5" src="mgtsdemo_07.png" alt=""> <p class="footer">Copyright 1994-2006 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Chaotic Time-Series Prediction
+% Chaotic time series prediction using ANFIS.
+%
+%   Copyright 1994-2006 The MathWorks, Inc.
+%   $Revision: 1.15.2.5 $ $Date: 2006/12/27 20:49:37 $
+
+%% Time Series Data
+% The data is generated from the Mackey-Glass time-delay differential
+% equation which is defined by
+% 
+%  dx(t)/dt = 0.2x(t-tau)/(1+x(t-tau)^10) - 0.1x(t)
+% 
+% When x(0) = 1.2 and tau = 17, we have a non-periodic and
+% non-convergent time series that is very sensitive to
+% initial conditions. (We assume x(t) = 0 when t < 0.)
+
+load mgdata.dat
+a = mgdata;
+time = a(:, 1);
+x_t = a(:, 2);
+plot(time, x_t);
+xlabel('Time (sec)'); ylabel('x(t)');
+title('Mackey-Glass Chaotic Time Series');
+
+%% Preprocessing the Data
+% Now we want to build an ANFIS that can predict x(t+6) from
+% the past values of this time series, that is, x(t-18), x(t-12),
+% x(t-6), and x(t). Therefore the training data format is
+%
+%  [x(t-18), x(t-12), x(t-6), x(t); x(t+6]
+%
+% From t = 118 to 1117, we collect 1000 data pairs of the above
+% format. The first 500 are used for training while the others
+% are used for checking. The plot shows the segment of the time
+% series where data pairs were extracted from. The first 100 data points
+% are ignored to avoid the transient portion of the data.
+
+trn_data = zeros(500, 5);
+chk_data = zeros(500, 5);
+
+% prepare training data
+trn_data(:, 1) = x_t(101:600);
+trn_data(:, 2) = x_t(107:606);
+trn_data(:, 3) = x_t(113:612);
+trn_data(:, 4) = x_t(119:618);
+trn_data(:, 5) = x_t(125:624);
+
+% prepare checking data
+chk_data(:, 1) = x_t(601:1100);
+chk_data(:, 2) = x_t(607:1106);
+chk_data(:, 3) = x_t(613:1112);
+chk_data(:, 4) = x_t(619:1118);
+chk_data(:, 5) = x_t(625:1124);
+
+index = 119:1118; % ts starts with t = 0
+plot(time(index), x_t(index));
+xlabel('Time (sec)'); ylabel('x(t)');
+title('Mackey-Glass Chaotic Time Series');
+
+%% Building the ANFIS Model
+% We use GENFIS1 to generate an initial FIS matrix from training
+% data. The command is quite simple since default values for
+% MF number (2) and MF type ('gbellmf') are used:
+ 
+fismat = genfis1(trn_data);
+
+% The initial MFs for training are shown in the plots.
+for input_index=1:4,
+    subplot(2,2,input_index)
+    [x,y]=plotmf(fismat,'input',input_index);
+    plot(x,y)
+    axis([-inf inf 0 1.2]);
+    xlabel(['Input ' int2str(input_index)]);
+end
+
+%%
+% There are 2^4 = 16 rules in the generated FIS matrix and the
+% number of fitting parameters is 108, including 24 nonlinear
+% parameters and 80 linear parameters. This is a proper balance
+% between number of fitting parameters and number of training
+% data (500). The ANFIS command looks like this:
+% 
+%  [trn_fismat,trn_error] = anfis(trn_data, fismat,[],[],chk_data)
+% 
+% To save time, we will load the training results directly.
+%
+% After ten epochs of training, the final MFs are shown in the
+% plots. Note that these MFs after training do not change
+% drastically. Obviously most of the fitting is done by the linear
+% parameters while the nonlinear parameters are mostly for fine-
+% tuning for further improvement.
+
+% load training results
+load mganfis
+
+% plot final MF's on x, y, z, u
+for input_index=1:4,
+    subplot(2,2,input_index)
+    [x,y]=plotmf(trn_fismat,'input',input_index);
+    plot(x,y)
+    axis([-inf inf 0 1.2]);
+    xlabel(['Input ' int2str(input_index)]);
+end
+
+%% Error Curves 
+% This plot displays error curves for both training and
+% checking data. Note that the training error is higher than the
+% checking error. This phenomenon is not uncommon in ANFIS
+% learning or nonlinear regression in general; it could indicate
+% that the training process is not close to finished yet.
+
+% error curves plot
+close all;
+epoch_n = 10;
+plot([trn_error chk_error]);
+hold on; plot([trn_error chk_error], 'o'); hold off;
+xlabel('Epochs');
+ylabel('RMSE (Root Mean Squared Error)');
+title('Error Curves');
+
+%% Comparisons
+% This plot shows the original time series and the one predicted
+% by ANFIS. The difference is so tiny that it is impossible to tell
+% one from another by eye inspection. That is why you probably
+% see only the ANFIS prediction curve. The prediction errors
+% must be viewed on another scale.
+
+input = [trn_data(:, 1:4); chk_data(:, 1:4)];
+anfis_output = evalfis(input, trn_fismat);
+index = 125:1124;
+plot(time(index), [x_t(index) anfis_output]);
+xlabel('Time (sec)');
+
+%% Prediction Errors of ANFIS
+% Prediction error of ANFIS is shown here. Note that the scale
+% is about a hundredth of the scale of the previous plot.
+% Remember that we have only 10 epochs of training in this case;
+% better performance is expected if we have extensive training.
+
+diff = x_t(index)-anfis_output;
+plot(time(index), diff);
+xlabel('Time (sec)');
+title('ANFIS Prediction Errors');
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

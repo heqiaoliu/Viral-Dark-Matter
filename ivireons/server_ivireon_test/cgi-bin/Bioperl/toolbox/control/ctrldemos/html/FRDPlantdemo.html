@@ -1,0 +1,169 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Compensator Design for Systems Represented by Frequency Response Data</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="FRDPlantdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit FRDPlantdemo">Open FRDPlantdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo FRDPlantdemo">Run in the Command Window</a></div></div><div class="content"><h1>Compensator Design for Systems Represented by Frequency Response Data</h1><!--introduction--><p>This demo shows the design of a compensator for a plant model defined by frequency response data (FRD) using the interactive tools available in the SISO Design Tool.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Acquiring a Frequency Response Data (FRD) Plant Model</a></li><li><a href="#2">Problem Statement</a></li><li><a href="#7">Designing the Compensator</a></li><li><a href="#10">Validating the Design</a></li></ul></div><h2>Acquiring a Frequency Response Data (FRD) Plant Model<a name="1"></a></h2><p>Non-parametric representations of plant models, such as frequency response data, are often used for analysis and control design. These FRD models are typically obtained from:</p><p>1) Signal analyzer hardware that perform frequency domain measurements on systems.</p><p>2) Non-parametric estimation techniques using the systems time response data. You can use the following products to estimate FRD models:</p><p>Simulink&reg; Control Design&#8482;</p><div><ul><li>Function: <a href="matlab:doc('frestimate')">frestimate</a></li><li>Demo: <a href="../../../slcontrol/slctrldemos/html/scdenginepad.html">"Frequency Response Estimation Using Simulation-Based Techniques"</a>.</li></ul></div><p>Signal Processing Toolbox&#8482;</p><div><ul><li>Function: <a href="matlab:doc('tfestimate')">tfestimate</a>.</li></ul></div><p>System Identification Toolbox&#8482;</p><div><ul><li>Functions: <a href="matlab:doc('etfe')">etfe</a>, <a href="matlab:doc('spa')">spa</a>, <a href="matlab:doc('spafdr')">spafdr</a></li></ul></div><p>This example demonstrates the design of a compensator for a plant described by frequency response data.</p><h2>Problem Statement<a name="2"></a></h2><p>In this example, you control engine speed by actuating the engine throttle angle in the following model.</p><p><img vspace="5" hspace="5" src="../Figures/FRDPlantDemo_Fig01.png" alt=""> </p><p>The design requirements are:</p><div><ul><li>zero steady-state error step reference speed changes</li><li>phase margin &gt; 60 degrees</li><li>gain margin &gt; 20 dB.</li></ul></div><p>The frequency response of the engine is already estimated and stored in the AnalyzerData variable in the file FRDPlantDemo.mat. First, load the data:</p><pre class="codeinput">load <span class="string">FRDPlantDemoData.mat</span>
+</pre><p>The variable AnalyzerData contains the frequency response information of the engine.</p><pre class="codeinput">AnalyzerData
+</pre><pre class="codeoutput">
+AnalyzerData = 
+
+          Response: [594x1 double]
+         Frequency: [594x1 double]
+    FrequencyUnits: 'rad/s'
+
+</pre><p>To use this data in the Control System Toolbox&#8482;, create an FRD model object:</p><pre class="codeinput">FRDPlant = frd(AnalyzerData.Response,AnalyzerData.Frequency,<span class="string">'Unit'</span>,AnalyzerData.FrequencyUnits);
+</pre><h2>Designing the Compensator<a name="7"></a></h2><p>Next, start the SISO Design Tool.</p><p><tt>&gt;&gt; sisotool({'bode','nichols'},FRDPlant)</tt></p><p>The SISO Design Tool opens with both a Bode and Nichols open-loop editors.</p><p><img vspace="5" hspace="5" src="../Figures/FRDPlantDemo_Fig02.png" alt=""> </p><p>You can design the compensator by shaping the open-loop frequency response in either the Bode or Nichols editor. In these editors, you can interactively tune of the gain, poles and zeros of the compensator.</p><p>To satisfy the tracking requirement of zero steady-state error, add an integrator to the compensator using the bode editor's right-click "Add Pole/Zero" menu of the Bode editor. To meet the gain and phase margin requirements, add a zero. Modify the location of the zero and the gain of the compensator until you satisfy the margin requirements.</p><p>The following figure shows a possible compensator design that meets all of the requirements.</p><p><img vspace="5" hspace="5" src="../Figures/FRDPlantDemo_Fig03.png" alt=""> </p><p>This compensator design, which is a PI controller, achieves a 20.7 dB gain margin and a 70.8 deg phase margin.</p><p><img src="FRDPlantdemo_eq76845.png" alt="$$ C(s) = \frac{0.001(s+4)}{s}. $$"></p><p>You can export the designed compensator to the workspace using the "File-&gt;Export..." menu item.</p><h2>Validating the Design<a name="10"></a></h2><p>For the final step in the design process, validate the performance by implementing the design on the engine. In this example, a nonlinear representation of the engine in Simulink&reg; is used to simulate the response.</p><p>Plot the response of the engine speed to a reference speed command change from 2000 to 2500 RPM:</p><pre class="codeinput">plot(EngineStepResponse.Time,EngineStepResponse.Speed)
+title(<span class="string">'Engine Step Response'</span>)
+xlabel(<span class="string">'Time (s)'</span>)
+ylabel(<span class="string">'Engine Speed (RPM)'</span>)
+</pre><img vspace="5" hspace="5" src="FRDPlantdemo_01.png" alt=""> <p>The response shows zero steady-state error and well behaved transients with the following metrics.</p><pre class="codeinput">stepinfo(EngineStepResponse.Speed,EngineStepResponse.Time)
+</pre><pre class="codeoutput">
+ans = 
+
+        RiseTime: 1.1048
+    SettlingTime: 1.7194
+     SettlingMin: 2.4501e+003
+     SettlingMax: 2.5078e+003
+       Overshoot: 0.3127
+      Undershoot: 0
+            Peak: 2.5078e+003
+        PeakTime: 2.3853
+
+</pre><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Compensator Design for Systems Represented by Frequency Response Data 
+% This demo shows the design of a compensator for a plant model defined by
+% frequency response data (FRD) using the interactive tools available in
+% the SISO Design Tool.
+%
+
+% Copyright 2009 The MathWorks, Inc.
+% $Revision: 1.1.8.3 $  $Date: 2010/02/08 22:29:43 $
+
+%% Acquiring a Frequency Response Data (FRD) Plant Model
+% Non-parametric representations of plant models, such as frequency response
+% data, are often used for analysis and control design. These
+% FRD models are typically obtained from:
+%
+% 1) Signal analyzer hardware that perform frequency domain measurements on
+% systems.
+%
+% 2) Non-parametric estimation techniques using the systems time response
+% data. You can use the following products to estimate FRD models:
+%
+%
+% Simulink(R) Control Design(TM)
+%
+% * Function: <matlab:doc('frestimate') frestimate>
+% * Demo: <../../../slcontrol/slctrldemos/html/scdenginepad.html "Frequency Response Estimation Using Simulation-Based Techniques">.
+%
+% Signal Processing Toolbox(TM)
+%
+% * Function: <matlab:doc('tfestimate') tfestimate>.
+%
+% System Identification Toolbox(TM)
+%
+% * Functions: <matlab:doc('etfe') etfe>, <matlab:doc('spa') spa>,
+% <matlab:doc('spafdr') spafdr>
+%
+% This example demonstrates the design of a compensator for a plant
+% described by frequency response data.
+
+%% Problem Statement
+% In this example, you control engine speed by actuating the engine
+% throttle angle in the following model.
+%
+% <<../Figures/FRDPlantDemo_Fig01.png>>
+
+
+%%
+% The design requirements are:
+%
+% * zero steady-state error step reference speed changes
+% * phase margin > 60 degrees
+% * gain margin > 20 dB.
+
+%%
+% The frequency response of the engine is already estimated and stored in
+% the AnalyzerData variable in the file FRDPlantDemo.mat. First, load the
+% data:
+load FRDPlantDemoData.mat
+
+%%
+% The variable AnalyzerData contains the frequency response information of
+% the engine.
+AnalyzerData
+
+%%
+% To use this data in the Control System Toolbox(TM), create an FRD model
+% object: 
+
+FRDPlant = frd(AnalyzerData.Response,AnalyzerData.Frequency,'Unit',AnalyzerData.FrequencyUnits);
+
+
+%% Designing the Compensator
+% Next, start the SISO Design Tool.
+%
+% |>> sisotool({'bode','nichols'},FRDPlant)|
+%
+% The SISO Design Tool opens with both a Bode and Nichols open-loop
+% editors.
+%
+% <<../Figures/FRDPlantDemo_Fig02.png>>
+
+%%
+% You can design the compensator by shaping the open-loop frequency
+% response in either the Bode or Nichols editor. In these editors, you can
+% interactively tune of the gain, poles and zeros of the compensator. 
+%
+% To satisfy the tracking requirement of zero steady-state error, add an
+% integrator to the compensator using the bode editor's
+% right-click "Add Pole/Zero" menu of the Bode editor. To meet the gain and
+% phase margin requirements, add a zero. Modify the location of the
+% zero and the gain of the compensator until you satisfy the margin
+% requirements.
+%
+% The following figure shows a possible compensator design that meets all
+% of the requirements.
+%
+% <<../Figures/FRDPlantDemo_Fig03.png>>
+
+%%
+% This compensator design, which is a PI controller, achieves a 20.7 dB gain margin and a
+% 70.8 deg phase margin. 
+%
+% $$ C(s) = \frac{0.001(s+4)}{s}. $$
+%
+% You can export the designed compensator to the workspace using the
+% "File->Export..." menu item.
+
+
+
+%% Validating the Design
+% For the final step in the design process, validate the performance by
+% implementing the design on the engine. In this example, a nonlinear
+% representation of the engine in Simulink(R) is used to simulate the
+% response.
+%
+% Plot the response of the engine speed to a reference speed
+% command change from 2000 to 2500 RPM:
+
+plot(EngineStepResponse.Time,EngineStepResponse.Speed)
+title('Engine Step Response')
+xlabel('Time (s)')
+ylabel('Engine Speed (RPM)')
+
+%%
+% The response shows zero steady-state error and well behaved transients
+% with the following metrics.
+
+stepinfo(EngineStepResponse.Speed,EngineStepResponse.Time)
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

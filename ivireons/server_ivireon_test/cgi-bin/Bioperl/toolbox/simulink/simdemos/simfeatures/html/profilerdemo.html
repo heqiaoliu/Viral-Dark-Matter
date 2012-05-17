@@ -1,0 +1,80 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Introduction to Profiling Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="profilerdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit profilerdemo">Open profilerdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo profilerdemo">Run in the Command Window</a></div></div><div class="content"><h1>Introduction to Profiling Models</h1><!--introduction--><p>The following example, with the slAccelDemoF14 model, illustrates the the use of Simulink&reg; Accelerator&#8482; profiler feature.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Activating the Profiler</a></li><li><a href="#2">Creating a Temporary Working Directory</a></li><li><a href="#3">Running the Simulation</a></li><li><a href="#4">Viewing the Report</a></li><li><a href="#5">Cleaning Up</a></li></ul></div><h2>Activating the Profiler<a name="1"></a></h2><p>Simulink&reg; Profiler can be activated by selecting Profiler from the Simulink Tools menu or by issuing a set_param command at the MATLAB&reg; command prompt.</p><pre class="codeinput">modelName = <span class="string">'slAccelDemoF14'</span>;
+load_system(modelName)
+set_param(modelName,<span class="string">'Profile'</span>,<span class="string">'on'</span>)
+</pre><h2>Creating a Temporary Working Directory<a name="2"></a></h2><p>The profiler writes HTML-files out to the current directory, so first change to a temporary directory.</p><pre class="codeinput">temp = tempname;
+mkdir(temp)
+originalDir = pwd;
+cd(temp)
+</pre><h2>Running the Simulation<a name="3"></a></h2><p>While the simulation runs, the profiler is collecting data for the report. Once the simulation is complete it creates an HTML report.</p><pre class="codeinput">open_system(modelName)
+sim(modelName)
+</pre><img vspace="5" hspace="5" src="profilerdemo_01.png" alt=""> <img vspace="5" hspace="5" src="profilerdemo_02.png" alt=""> <h2>Viewing the Report<a name="4"></a></h2><p>The generated report consists of two HTML-files: a detail file and a summary file. Simulink stores the summary and detail files in MATLAB's working directory and displays the summary file in the MATLAB help viewer when the simulation ends.  Hyperlinks in the summary enable you to review the detailed timing information for each function.</p><p><img vspace="5" hspace="5" src="report.png" alt=""> </p><h2>Cleaning Up<a name="5"></a></h2><p>Close the model and remove the generated files.</p><pre class="codeinput">bdclose(modelName)
+cd(originalDir)
+rmdir(temp,<span class="string">'s'</span>)
+</pre><p class="footer">Copyright 1990-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Introduction to Profiling Models
+% The following example, with the slAccelDemoF14 model, illustrates the 
+% the use of Simulink(R) Accelerator(TM) profiler feature.
+
+% Copyright 1990-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.2 $ $Date: 2007/12/10 22:41:32 $
+
+
+%% Activating the Profiler
+% Simulink(R) Profiler can be activated by selecting Profiler from the 
+% Simulink Tools menu or by issuing a set_param command at the 
+% MATLAB(R) command prompt.
+
+modelName = 'slAccelDemoF14';
+load_system(modelName)
+set_param(modelName,'Profile','on')
+
+%% Creating a Temporary Working Directory
+% The profiler writes HTML-files out to the current directory, so first
+% change to a temporary directory.
+
+temp = tempname;
+mkdir(temp)
+originalDir = pwd;
+cd(temp)
+
+
+%% Running the Simulation
+% While the simulation runs, the profiler is collecting data for the report.
+% Once the simulation is complete it creates an HTML report.
+
+open_system(modelName)
+sim(modelName)
+
+
+%% Viewing the Report
+% The generated report consists of two HTML-files: a detail file and a summary
+% file. Simulink stores the summary and detail files in MATLAB's working
+% directory and displays the summary file in the MATLAB help viewer when the
+% simulation ends.  Hyperlinks in the summary enable you to review the detailed
+% timing information for each function. 
+%
+% <<report.png>>
+
+
+%% Cleaning Up
+% Close the model and remove the generated files.
+
+bdclose(modelName)
+cd(originalDir)
+rmdir(temp,'s')
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

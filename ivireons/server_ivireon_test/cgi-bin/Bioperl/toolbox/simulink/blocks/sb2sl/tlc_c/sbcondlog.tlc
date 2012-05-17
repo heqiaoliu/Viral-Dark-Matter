@@ -1,0 +1,86 @@
+%% File: sbcondlog.tlc
+%% Abstract:
+%% This block defines a condition block selection logic.
+%% o If the MODE is NO DEFAULT, the first procedure SB with a corresponding
+%%   true conditional signal is executed. If no conditional signals are true,
+%%   then no procedure is executed.
+%% o If the MODE is WITH DEFAULT, the first procedure SB with a corresponding
+%%   true conditional signal is executed. If no conditional signal is true,
+%%   then the default (last) procedure is executed.
+%% o If the MODE is SEQUENTIAL, every procedure SB whose conditional signal is
+%%   true will be executed.
+%%
+
+%%
+%% Initial coding by A S Bozin
+%% Copyright 1997-2010 The MathWorks, Inc.
+%% $Revision: 1.1.6.1 $ $Date: 2010/02/08 22:56:23 $
+%%
+%implements sbcondlog "C"
+
+%% Function: Outputs ==========================================================
+%% Abstract:
+%%
+%function Outputs(block, system) Output
+  %assign sfcnName = ParamSettings.FunctionName
+  /* Condition block selection logic */
+  /* %<Type> Block: (%<sfcnName>): %<LibParentMaskBlockName(block)> */
+  {
+    %assign mode = SFcnParamSettings.pMode
+    %assign numOutputs = LibBlockOutputSignalDimensions(0)
+    %assign threshold = 1
+    real_T    *y = %<LibBlockOutputSignalAddr(0, "", "", 0)>;
+    int_T      i;
+    %switch(mode)
+      %case 1
+      %case 2
+	int_T     selected = 0;
+	%break
+      %default
+    %endswitch
+
+    for(i = 0; i < %<numOutputs>; ++i) {
+      y[i] = 0.0;
+    }
+    %switch(mode)
+      %case 1
+	/* No default mode */
+	%assign rollVars = ["U"]
+	%roll idx = RollRegions, lcv = threshold, block, "Roller", rollVars
+	  %assign ui = LibBlockInputSignal(0, "", lcv, "%<tRealPart>%<idx>")
+	  if (!selected && (%<ui> > 0.0)) {
+	    y[%<idx>] = 1.0;
+	    selected = 1;
+	  }
+	%endroll
+	%break
+      %case 2
+	/* With default mode */
+	%assign rollVars = ["U"]
+	%roll idx = RollRegions, lcv = threshold, block, "Roller", rollVars
+	  %assign ui = LibBlockInputSignal(0, "", lcv, "%<tRealPart>%<idx>")
+	  if (!selected && (%<ui> > 0.0)) {
+	    y[%<idx>] = 1.0;
+	    selected = 1;
+	  }
+	%endroll
+	if (!selected) {
+	  y[%<numOutputs-1>] = 1.0;
+	}
+	%break
+      %case 3
+	/* Sequential mode */
+	%assign rollVars = ["U"]
+	%roll idx = RollRegions, lcv = threshold, block, "Roller", rollVars
+	  %assign ui = LibBlockInputSignal(0, "", lcv, "%<tRealPart>%<idx>")
+	  if (%<ui> > 0.0) {
+	    y[%<idx>] = 1.0;
+	  }
+	%endroll
+	%break
+      %default
+    %endswitch
+  }
+%endfunction  %% Outputs
+
+%% [EOF] sbcondlog.tlc

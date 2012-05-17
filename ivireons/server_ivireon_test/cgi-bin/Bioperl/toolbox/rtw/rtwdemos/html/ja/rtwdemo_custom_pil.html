@@ -1,0 +1,409 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>カスタム プロセッサーインザループ (PIL) 設定の作成</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="rtwdemo_custom_pil.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_custom_pil">エディターで rtwdemo_custom_pil.m を開く</a></div><div class="right"><a href="matlab:echodemo rtwdemo_custom_pil">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>カスタム プロセッサーインザループ (PIL) 設定の作成</h1><!--introduction--><p>このデモでは、ターゲットの接続性 API を使用してターゲットの接続性設定を作成します。ターゲットの接続性設定によって、カスタムの組み込みハードウェアに対して PIL シミュレーションを実行できます。</p><p>次の方法を習得します。</p><pre>  * PIL をサポートするようにビルド プロセスを適応させる
+* PIL 実行可能ファイルをダウンロードし、ターゲット ハードウェアに対して実行を開始するために
+使用するツールを設定する
+* ターゲット プロセッサに対する PIL シミュレーションをサポートするために使用されるホストとターゲット間の通信チャンネル
+を設定する</pre><p>まず、SIL シミュレーションについて設定されているモデルから始めます。このデモでは、このモデルを PIL モードでシミュレートするためのターゲットの接続性設定を順を追って作成します。最初に、使用するとエラーが発生する不完全な PIL の接続性設定から始めましょう。これらのエラーを修正し、正常に機能する PIL 設定を作成する方法について学習します。エラーを修正するには、次の方法があります。</p><pre>  * MATLAB プログラムを編集してエラーをユーザー自身が修正する
+* デモで自動的に修正を行う</pre><p>このデモでは、Real-Time Workshop Embedded Coder 製品が必要です。</p><p><a href="matlab:showdemo('rtwdemo_sil_pil_script')">rtwdemo_sil_pil_script</a>、<a href="matlab:showdemo('rtwdemo_rtiostream')">rtwdemo_rtiostream</a> も参照してください。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">準備のために</a></li><li><a href="#2">ソフトウェアインザループ (SIL) シミュレーションを使用した生成されたコードの検証</a></li><li><a href="#3">ターゲットの接続性設定を使用した作業の開始</a></li><li><a href="#4">スケルトン クラスの表示</a></li><li><a href="#5">sl_customization を使用したターゲットの接続性設定の登録</a></li><li><a href="#6">スケルトン設定クラスを使用したシミュレーションの実行</a></li><li><a href="#7">ターゲット側通信ドライバーの確認</a></li><li><a href="#8">接続性設定へのターゲット側通信ドライバーの追加</a></li><li><a href="#9">ターゲット側通信ドライバーの使用</a></li><li><a href="#10">PIL 実行可能ファイルを起動するコードの実装</a></li><li><a href="#11">ランチャーを使用した PIL 実行可能ファイルの起動</a></li><li><a href="#12">通信チャンネルの設定</a></li><li><a href="#13">新しく設定されたホスト-ターゲット間通信の使用</a></li><li><a href="#14">クリーン アップ</a></li></ul></div><h2>準備のために<a name="1"></a></h2><pre class="codeinput"><span class="comment">% Later in this exercise you will add a directory to the path</span>
+sl_customization_path = fullfile(matlabroot,<span class="keyword">...</span>
+    <span class="string">'toolbox'</span>,<span class="keyword">...</span>
+    <span class="string">'rtw'</span>,<span class="keyword">...</span>
+    <span class="string">'rtwdemos'</span>,<span class="keyword">...</span>
+    <span class="string">'pil_demo'</span>);
+<span class="comment">% If this directory is already on the path, remove it</span>
+<span class="keyword">if</span> strfind(path,sl_customization_path)
+    rmpath(sl_customization_path)
+<span class="keyword">end</span>
+<span class="comment">% Reset any customizations</span>
+sl_refresh_customizations
+</pre><h2>ソフトウェアインザループ (SIL) シミュレーションを使用した生成されたコードの検証<a name="2"></a></h2><p>SIL のモデル設定をシミュレートします。ここでは、SIL を使用して、シミュレーション動作とこれに対応する生成されたコードの動作を比較することによって、ホスト プラットフォームについてコンパイルされた生成コードを検証します。</p><pre class="codeinput"><span class="comment">% Familiarization with Model block SIL; make sure the demo model is freshly</span>
+<span class="comment">% opened</span>
+close_system(<span class="string">'rtwdemo_sil_modelblock'</span>,0);
+close_system(<span class="string">'rtwdemo_sil_counter'</span>,0)
+open_system(<span class="string">'rtwdemo_sil_modelblock'</span>)
+
+<span class="comment">% Note that the Model block CounterA has the text (SIL) displayed on it.This</span>
+<span class="comment">% shows that the model referenced by this Model block is configured for SIL</span>
+<span class="comment">% simulation.</span>
+
+<span class="comment">% Run a simulation of this system</span>
+set_param(<span class="string">'rtwdemo_sil_modelblock'</span>,<span class="string">'StopTime'</span>,<span class="string">'10'</span>);
+sim(<span class="string">'rtwdemo_sil_modelblock'</span>);
+
+disp(<span class="string">' '</span>)
+disp(<span class="string">'Review the output displayed above.In particular, note that a new'</span>)
+disp(<span class="string">'process was launched at the start of the simulation and killed at'</span>)
+disp(<span class="string">'the end of the simulation.'</span>)
+disp(<span class="string">' '</span>)
+</pre><pre class="codeoutput">### Model reference SIM target (rtwdemo_sil_counter_msf.mexw32) for model rtwdemo_sil_counter is out of date because the binary information cache does not contain necessary information.This may indicate the slprj directory has been removed or a previous build of this model was not successful
+### Updating model reference SIM target for model:rtwdemo_sil_counter
+### Successfully updated the model reference SIM target for model:rtwdemo_sil_counter
+### Model reference RTW target (rtwdemo_sil_counter.c) for model rtwdemo_sil_counter is out of date because rtwdemo_sil_counter.c does not exist
+### Starting Real-Time Workshop build procedure for model:rtwdemo_sil_counter
+### Successful completion of Real-Time Workshop build procedure for model:rtwdemo_sil_counter
+### Preparing to start SIL simulation ...
+### Starting SIL simulation for component:rtwdemo_sil_counter
+### Stopping SIL simulation for component:rtwdemo_sil_counter
+ 
+Review the output displayed above.In particular, note that a new
+process was launched at the start of the simulation and killed at
+the end of the simulation.
+ 
+</pre><img vspace="5" hspace="5" src="../rtwdemo_custom_pil_01.png" alt=""> <h2>ターゲットの接続性設定を使用した作業の開始<a name="3"></a></h2><p>前の手順では SIL モードでシミュレーションを実行しました。次は、PIL のターゲットの接続性設定を使用した作業を開始する準備を行います。準備を行うには、変更対象となるスケルトン クラスのセットを使用して PIL のターゲットの接続性設定を作成します。</p><pre class="codeinput"><span class="comment">% Make a local copy of the skeleton classes with new package directory name</span>
+src_dir = <span class="keyword">...</span>
+    fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>,<span class="string">'rtw'</span>,<span class="string">'+rtw'</span>,<span class="string">'+mypil'</span>);
+<span class="keyword">if</span> exist(fullfile(<span class="string">'.'</span>,<span class="string">'+mypil'</span>),<span class="string">'dir'</span>)
+    rmdir(<span class="string">'+mypil'</span>,<span class="string">'s'</span>)
+<span class="keyword">end</span>
+mkdir <span class="string">+mypil</span>
+copyfile(fullfile(src_dir,<span class="string">'Launcher.m'</span>), <span class="string">'+mypil'</span>);
+copyfile(fullfile(src_dir,<span class="string">'TargetApplicationFramework.m'</span>), <span class="string">'+mypil'</span>);
+copyfile(fullfile(src_dir,<span class="string">'ConnectivityConfig.m'</span>), <span class="string">'+mypil'</span>);
+
+<span class="comment">% Ensure the copied files are writable</span>
+fileattrib(<span class="string">'+mypil\*'</span>,<span class="string">'+w'</span>);
+
+<span class="comment">% It is necessary to update one of the class files to reflect the change of</span>
+<span class="comment">% package name from rtw.mypil to mypil</span>
+rtw.mypil.Utils.UpdateClassName(<span class="keyword">...</span>
+    <span class="string">'./+mypil/ConnectivityConfig.m'</span>,<span class="keyword">...</span>
+    <span class="string">'rtw.mypil'</span>,<span class="keyword">...</span>
+    <span class="string">'mypil'</span>);
+
+<span class="comment">% Check that you now have a folder +mypil in the current directory including</span>
+<span class="comment">% three files Launcher.m, TargetApplicationFramework.m and ConnectivityConfig.m</span>
+dir <span class="string">'./+mypil'</span>
+</pre><pre class="codeoutput">
+.                             Launcher.m                    
+..                            TargetApplicationFramework.m  
+ConnectivityConfig.m          
+
+</pre><h2>スケルトン クラスの表示<a name="4"></a></h2><p>作成したディレクトリ内のスケルトン クラスは、ターゲットの接続性設定に使用する起点を表しています。これらのクラスのコメント化されたセクションによって、ホスト マシンで PIL を実行するためのターゲットの接続性設定が実装されます。このデモはすべてホスト マシンで実行しますが、組み込みターゲット ハードウェアの接続性設定は、同じ手順に従って作成できます。この演習の後半で、これらのコメント化されたセクションを編集して接続性設定をアクティブ化します。</p><pre class="codeinput"><span class="comment">% You can view these skeleton classes (do not make any changes at this</span>
+<span class="comment">% stage)</span>
+edit <span class="string">mypil.Launcher</span>
+edit <span class="string">mypil.TargetApplicationFramework</span>
+edit <span class="string">mypil.ConnectivityConfig</span>
+</pre><h2>sl_customization を使用したターゲットの接続性設定の登録<a name="5"></a></h2><p>新しい PIL 設定を使用するには、sl_customization ファイルを指定する必要があります。sl_customization ファイルには作成した新しいターゲット接続性設定を登録し、この設定を使用するために満たさなければならない条件を指定します。このファイルで指定する条件には、システム ターゲット ファイルの名前と Hardware Implementation 設定を含めることができます。</p><pre class="codeinput"><span class="comment">% You can view the sl_customization file (for the demo there is no need to</span>
+<span class="comment">% make any changes to this file</span>
+edit(fullfile(sl_customization_path,<span class="string">'sl_customization.m'</span>))
+
+<span class="comment">% Add the sl_customization directory to the path and refresh the</span>
+<span class="comment">% customizations</span>
+addpath(sl_customization_path);
+sl_refresh_customizations;
+</pre><h2>スケルトン設定クラスを使用したシミュレーションの実行<a name="6"></a></h2><p>デモ モデルは必ず直前に開いてください。モデルを閉じた後、再び開いてください。そうしないと、更新された設定クラスが選択されません。</p><pre class="codeinput">close_system(<span class="string">'rtwdemo_sil_modelblock'</span>,0)
+open_system(<span class="string">'rtwdemo_sil_modelblock'</span>)
+set_param(<span class="string">'rtwdemo_sil_modelblock/CounterA'</span>,<span class="string">'SimulationMode'</span>,<span class="string">'processor-in-the-loop (pil)'</span>);
+
+<span class="comment">% Attempt to run the simulation</span>
+set_param(<span class="string">'rtwdemo_sil_modelblock'</span>,<span class="string">'StopTime'</span>,<span class="string">'10'</span>);
+<span class="keyword">try</span>
+    sim(<span class="string">'rtwdemo_sil_modelblock'</span>);
+<span class="keyword">catch</span> exceptionObj
+    disp(<span class="string">' '</span>)
+    disp(<span class="string">'What errors occurred? Review the error message above. The error'</span>)
+    disp(<span class="string">'message should indicate that there are some undefined functions:'</span>)
+    disp(<span class="string">'rtIOStreamOpen, rtIOStreamSend, rtIOStreamRecv. These are the'</span>)
+    disp(<span class="string">'names of functions needed by the PIL application running on'</span>)
+    disp(<span class="string">'the target; they are needed to communicate with the host machine.'</span>)
+    disp(<span class="string">'You must provide an implementation of these functions for your'</span>)
+    disp(<span class="string">'target hardware'</span>)
+    disp(<span class="string">' '</span>);
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">### Checking for structural changes in rtwdemo_sil_counter because the model reference rebuild option is set to 'If any changes detected'.Structural changes will cause the model reference SIM target to be rebuilt
+### Checking for structural changes in model reference SIM target for model:
+rtwdemo_sil_counter### The Model Reference SIM target for rtwdemo_sil_counter is up-to-date because no functional changes exist in the referenced model.
+### Checking for structural changes in rtwdemo_sil_counter because the model reference rebuild option is set to 'If any changes detected'.Structural changes will cause the model reference RTW target to be rebuilt
+### Starting Real-Time Workshop build procedure for model:rtwdemo_sil_counter
+### The Model Reference RTW target for rtwdemo_sil_counter is up-to-date because no functional changes exist in the referenced model.
+### Connectivity configuration for referenced model &quot;rtwdemo_sil_counter&quot;:&lt;a href=&quot;matlab:targets_hyperlink_manager('run',5);&quot;&gt;My PIL Example&lt;/a&gt; ###
+### Preparing to start PIL simulation ...
+Setting environment for using Microsoft Visual Studio 2008
+(If you have another version of Visual Studio or Visual C++ installed and wish
+to use its tools from the command line, run vcvars32.bat for that version.)
+
+Microsoft (R) Program Maintenance Utility Version 9.00.30729.01
+Copyright (C) Microsoft Corporation.All rights reserved.
+
+### Compiling B:\matlab\toolbox\rtw\targets\pil\c\pil_interface_lib.c
+	cl  -c -DCRTAPI1=_cdecl -DCRTAPI2=_cdecl -nologo -GS -D_X86_=1  -DWIN32 -D_WIN32 -W3 -D_WINNT -D_WIN32_WINNT=0x0500 -DNTDDI_VERSION=0x05000000 -D_WIN32_IE=0x0500 -DWINVER=0x0500  -D_MT -MT /wd4996 /fp:precise    /Od /Oy- -DMODEL=rtwdemo_sil_counter -DNUMST=1 -DNCSTATES=0  -DMAT_FILE=0 -DINTEGER_CODE=0  -DONESTEPFCN=1 -DTERMFCN=0  -DHAVESTDIO -DMULTI_INSTANCE_CODE=0 -DMT=0  B:\matlab\toolbox\rtw\targets\pil\c\pil_interface_lib.c
+pil_interface_lib.c
+### Compiling pil_interface.c
+	cl  -c -DCRTAPI1=_cdecl -DCRTAPI2=_cdecl -nologo -GS -D_X86_=1  -DWIN32 -D_WIN32 -W3 -D_WINNT -D_WIN32_WINNT=0x0500 -DNTDDI_VERSION=0x05000000 -D_WIN32_IE=0x0500 -DWINVER=0x0500  -D_MT -MT /wd4996 /fp:precise    /Od /Oy- -DMODEL=rtwdemo_sil_counter -DNUMST=1 -DNCSTATES=0  -DMAT_FILE=0 -DINTEGER_CODE=0  -DONESTEPFCN=1 -DTERMFCN=0  -DHAVESTDIO -DMULTI_INSTANCE_CODE=0 -DMT=0  pil_interface.c
+pil_interface.c
+### Compiling B:\matlab\toolbox\rtw\targets\pil\c\pil_rtio_data_stream.c
+	cl  -c -DCRTAPI1=_cdecl -DCRTAPI2=_cdecl -nologo -GS -D_X86_=1  -DWIN32 -D_WIN32 -W3 -D_WINNT -D_WIN32_WINNT=0x0500 -DNTDDI_VERSION=0x05000000 -D_WIN32_IE=0x0500 -DWINVER=0x0500  -D_MT -MT /wd4996 /fp:precise    /Od /Oy- -DMODEL=rtwdemo_sil_counter -DNUMST=1 -DNCSTATES=0  -DMAT_FILE=0 -DINTEGER_CODE=0  -DONESTEPFCN=1 -DTERMFCN=0  -DHAVESTDIO -DMULTI_INSTANCE_CODE=0 -DMT=0  B:\matlab\toolbox\rtw\targets\pil\c\pil_rtio_data_stream.c
+pil_rtio_data_stream.c
+### Linking ...
+	B:\matlab\sys\perl\win32\bin\perl B:\matlab\rtw\c\tools\mkvc_lnk.pl rtwdemo_sil_counter.lnk    pil_interface_lib.obj pil_interface.obj pil_rtio_data_stream.obj
+	link /RELEASE  /INCREMENTAL:NO /NOLOGO -subsystem:console,5.0  kernel32.lib  ws2_32.lib mswsock.lib advapi32.lib libcpmt.lib   ..\rtwdemo_sil_counter_rtwlib.lib    @rtwdemo_sil_counter.lnk @rtwdemo_sil_counter_ref.rsp -out:rtwdemo_sil_counter.exe
+pil_rtio_data_stream.obj :error LNK2019:unresolved external symbol _rtIOStreamOpen referenced in function _pilInit
+pil_rtio_data_stream.obj :error LNK2019:unresolved external symbol _rtIOStreamClose referenced in function _pilTerminateComms
+pil_rtio_data_stream.obj :error LNK2019:unresolved external symbol _rtIOStreamSend referenced in function _pilRtIOStreamSend
+pil_rtio_data_stream.obj :error LNK2019:unresolved external symbol _rtIOStreamRecv referenced in function _pilReadData
+LIBCMT.lib(crt0.obj) :error LNK2019:unresolved external symbol _main referenced in function ___tmainCRTStartup
+rtwdemo_sil_counter.exe :fatal error LNK1120:5 unresolved externals
+NMAKE :fatal error U1077:'&quot;c:\program files\microsoft visual studio 9.0\VC\BIN\link.EXE&quot;' :return code '0x460'
+Stop.
+The make command returned an error of 2
+'An_error_occurred_during_the_call_to_make' is not recognized as an internal or external command,
+operable program or batch file.
+
+ 
+What errors occurred?Review the error message above.The error
+message should indicate that there are some undefined functions:
+rtIOStreamOpen, rtIOStreamSend, rtIOStreamRecv.These are the
+names of functions needed by the PIL application running on
+the target; they are needed to communicate with the host machine.
+You must provide an implementation of these functions for your
+target hardware
+ 
+</pre><h2>ターゲット側通信ドライバーの確認<a name="7"></a></h2><p>rtiostream_tcpip.c ファイルを表示します (変更はしないでください)。</p><pre class="codeinput">rtiostreamtcpip_dir=fullfile(matlabroot,<span class="string">'rtw'</span>,<span class="string">'c'</span>,<span class="string">'src'</span>,<span class="string">'rtiostream'</span>,<span class="keyword">...</span>
+    <span class="string">'rtiostreamtcpip'</span>);
+edit(fullfile(rtiostreamtcpip_dir,<span class="string">'rtiostream_tcpip.c'</span>))
+
+<span class="comment">% Scroll down to the end of this file and note that it file contains an</span>
+<span class="comment">% implementation of the functions rtIOStreamOpen rtIOStreamSend, rtIOStreamRecv</span>
+<span class="comment">% that were noted as 'undefined' in the error reported above</span>
+
+<span class="comment">% To fix the error message above, this file must be added to the build.</span>
+</pre><h2>接続性設定へのターゲット側通信ドライバーの追加<a name="8"></a></h2><p>ビルドに含める追加ファイルを設定するクラスは mypil.TargetApplicationFramework です。このクラスをエディターで開きます。</p><pre class="codeinput">edit(which(<span class="string">'mypil.TargetApplicationFramework'</span>))
+
+<span class="comment">% Review the commented lines ending with %UNCOMMENT.What files will be</span>
+<span class="comment">% added to the build when these lines are uncommented?</span>
+
+<span class="comment">% Once you have completed this review, you can use the MATLAB Editor menu</span>
+<span class="comment">% command Text-&gt;Uncomment to uncomment the lines ending with %UNCOMMENT.You can</span>
+<span class="comment">% make these changes manually or they will be performed automatically in the</span>
+<span class="comment">% next step.</span>
+</pre><h2>ターゲット側通信ドライバーの使用<a name="9"></a></h2><pre class="codeinput"><span class="comment">% Automatically uncomment sections in the file (if not already done manually)</span>
+rtw.mypil.Utils.Uncomment(fullfile(<span class="string">'./+mypil/TargetApplicationFramework.m'</span>));
+
+<span class="comment">% Attempt to run the simulation</span>
+close_system(<span class="string">'rtwdemo_sil_modelblock'</span>,0)
+open_system(<span class="string">'rtwdemo_sil_modelblock'</span>)
+set_param(<span class="string">'rtwdemo_sil_modelblock/CounterA'</span>,<span class="string">'SimulationMode'</span>,<span class="string">'processor-in-the-loop (pil)'</span>);
+set_param(<span class="string">'rtwdemo_sil_modelblock'</span>,<span class="string">'StopTime'</span>,<span class="string">'10'</span>);
+<span class="keyword">try</span>
+    sim(<span class="string">'rtwdemo_sil_modelblock'</span>);
+<span class="keyword">catch</span> exceptionObj
+    disp(<span class="string">' '</span>)
+    disp(exceptionObj.getReport)
+    disp(<span class="string">' '</span>)
+    disp(<span class="string">'What errors occurred? Review the error message above. The error'</span>)
+    disp(<span class="string">'message should indicate that there was a communications failure'</span>)
+    disp(<span class="string">'between the host and target. This is the error that occurs if'</span>)
+    disp(<span class="string">'the target application has not actually been launched. Was there'</span>)
+    disp(<span class="string">'any indication that a process for the PIL executable was started?'</span>)
+    disp(<span class="string">' '</span>)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">### Checking for structural changes in rtwdemo_sil_counter because the model reference rebuild option is set to 'If any changes detected'.Structural changes will cause the model reference SIM target to be rebuilt
+### Checking for structural changes in model reference SIM target for model:rtwdemo_sil_counter
+### The Model Reference SIM target for rtwdemo_sil_counter is up-to-date because no functional changes exist in the referenced model.
+### Checking for structural changes in rtwdemo_sil_counter because the model reference rebuild option is set to 'If any changes detected'.Structural changes will cause the model reference RTW target to be rebuilt
+### Starting Real-Time Workshop build procedure for model:rtwdemo_sil_counter
+### The Model Reference RTW target for rtwdemo_sil_counter is up-to-date because no functional changes exist in the referenced model.
+### Connectivity configuration for referenced model &quot;rtwdemo_sil_counter&quot;:&lt;a href=&quot;matlab:targets_hyperlink_manager('run',5);&quot;&gt;My PIL Example&lt;/a&gt; ###
+### Preparing to start PIL simulation ...
+### Starting application:slprj\ert\rtwdemo_sil_counter\pil\rtwdemo_sil_counter.exe
+ 
+Error using ==&gt; rtwdemo_custom_pil at 197
+Error due to multiple causes.
+
+Error in ==&gt; evalmxdom&gt;instrumentAndRun at 83
+text = evalc(evalstr);
+
+Error in ==&gt; evalmxdom at 21
+[data,text,laste] = instrumentAndRun(file,cellBoundaries,imageDir,imagePrefix,options);
+
+Error in ==&gt; publish at 159
+    dom = evalmxdom(file,dom,cellBoundaries,prefix,imageDir,outputDir,options);
+
+Error in ==&gt; publish_demos at 996
+try, publish('rtwdemo_custom_pil',getappdata(0,'opts')); catch demoE, fprintf('%s%s%s',char(10),getReport(demoE,'extended','hyperlinks','off'),char(10)); end
+
+Caused by:
+    Error using ==&gt; rtwdemo_custom_pil at 197
+    Error in 'rtwdemo_sil_modelblock/TmpSFcnForModelReference_CounterA' while executing C MEX S-function 'rtwdemo_sil_counter_psf', (mdlStart), at time 0.0.
+        Error using ==&gt; rtwdemo_custom_pil at 197
+        An error occurred while calling into the SIL or PIL target connectivity implementation.
+            Error using ==&gt; rtwdemo_custom_pil at 197
+            Communications error: failed to send data to the target.
+    Error using ==&gt; rtwdemo_custom_pil at 197
+    Error in 'rtwdemo_sil_modelblock/TmpSFcnForModelReference_CounterA' while executing C MEX S-function 'rtwdemo_sil_counter_psf', (mdlTerminate), at time 0.0.
+        Error using ==&gt; rtwdemo_custom_pil at 197
+        An error occurred while calling into the SIL or PIL target connectivity implementation.
+            Error using ==&gt; rtwdemo_custom_pil at 197
+            Communications error: failed to send data to the target.
+
+ 
+What errors occurred?Review the error message above.The error
+message should indicate that there was a communications failure
+between the host and target.This is the error that occurs if
+the target application has not actually been launched.Was there
+any indication that a process for the PIL executable was started?
+ 
+</pre><h2>PIL 実行可能ファイルを起動するコードの実装<a name="10"></a></h2><p>PIL 実行可能ファイルを起動するためのツールを設定するクラスは mypil.Launcher です。このクラスをエディターで開いてください。</p><pre class="codeinput">edit(which(<span class="string">'mypil.Launcher'</span>))
+
+<span class="comment">% Review the commented lines ending with %UNCOMMENT.Note the method</span>
+<span class="comment">% setArgString that allows additional command line parameters to be</span>
+<span class="comment">% supplied to the executable; these parameters may include a TCP/IP</span>
+<span class="comment">% port number; for implementation on an embedded processor, it could be</span>
+<span class="comment">% more difficult to supply start-up parameters and you may choose to</span>
+<span class="comment">% have these settings hard-coded.Note the disp commands within the</span>
+<span class="comment">% setArgString method that display debugging information to indicate</span>
+<span class="comment">% when this method is called and the name of the calling file.</span>
+
+<span class="comment">% Remove the comment characters when you have understood the purpose of</span>
+<span class="comment">% the commented out sections</span>
+</pre><h2>ランチャーを使用した PIL 実行可能ファイルの起動<a name="11"></a></h2><pre class="codeinput"><span class="comment">% Automatically uncomment lines in the file</span>
+rtw.mypil.Utils.Uncomment(<span class="string">'./+mypil/Launcher.m'</span>)
+
+<span class="comment">% Attempt to run the simulation</span>
+close_system(<span class="string">'rtwdemo_sil_modelblock'</span>,0)
+open_system(<span class="string">'rtwdemo_sil_modelblock'</span>)
+set_param(<span class="string">'rtwdemo_sil_modelblock/CounterA'</span>,<span class="string">'SimulationMode'</span>,<span class="string">'processor-in-the-loop (pil)'</span>);
+set_param(<span class="string">'rtwdemo_sil_modelblock'</span>,<span class="string">'StopTime'</span>,<span class="string">'10'</span>);
+<span class="keyword">try</span>
+    sim(<span class="string">'rtwdemo_sil_modelblock'</span>);
+<span class="keyword">catch</span> exceptionObj
+    disp(<span class="string">' '</span>)
+    disp(exceptionObj.getReport)
+    disp(<span class="string">' '</span>)
+    disp(<span class="string">' '</span>)
+    disp(<span class="string">'What errors occurred? Carefully review the build log above. Was'</span>)
+    disp(<span class="string">'a process for the PIL application started successfully? You should'</span>)
+    disp(<span class="string">'see that although the PIL application started there was still a failure'</span>)
+    disp(<span class="string">'communicating with the target. Was the setArgString method called? If'</span>)
+    disp(<span class="string">'the setArgString method was not called, the host-target communications'</span>)
+    disp(<span class="string">'were not fully configured.'</span>)
+    disp(<span class="string">' '</span>)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">### Checking for structural changes in rtwdemo_sil_counter because the model reference rebuild option is set to 'If any changes detected'.Structural changes will cause the model reference SIM target to be rebuilt
+### Checking for structural changes in model reference SIM target for model:rtwdemo_sil_counter
+### The Model Reference SIM target for rtwdemo_sil_counter is up-to-date because no functional changes exist in the referenced model.
+### Checking for structural changes in rtwdemo_sil_counter because the model reference rebuild option is set to 'If any changes detected'.Structural changes will cause the model reference RTW target to be rebuilt
+### Starting Real-Time Workshop build procedure for model:rtwdemo_sil_counter
+### The Model Reference RTW target for rtwdemo_sil_counter is up-to-date because no functional changes exist in the referenced model.
+### Connectivity configuration for referenced model &quot;rtwdemo_sil_counter&quot;:&lt;a href=&quot;matlab:targets_hyperlink_manager('run',5);&quot;&gt;My PIL Example&lt;/a&gt; ###
+### Preparing to start PIL simulation ...
+### Starting application:slprj\ert\rtwdemo_sil_counter\pil\rtwdemo_sil_counter.exe
+DEMO:startApplication
+Started new process, pid = 2208
+DEMO:stopApplication
+Terminated process, pid = 2208
+ 
+Error using ==&gt; rtwdemo_custom_pil at 238
+Error due to multiple causes.
+
+Error in ==&gt; evalmxdom&gt;instrumentAndRun at 83
+text = evalc(evalstr);
+
+Error in ==&gt; evalmxdom at 21
+[data,text,laste] = instrumentAndRun(file,cellBoundaries,imageDir,imagePrefix,options);
+
+Error in ==&gt; publish at 159
+    dom = evalmxdom(file,dom,cellBoundaries,prefix,imageDir,outputDir,options);
+
+Error in ==&gt; publish_demos at 996
+try, publish('rtwdemo_custom_pil',getappdata(0,'opts')); catch demoE, fprintf('%s%s%s',char(10),getReport(demoE,'extended','hyperlinks','off'),char(10)); end
+
+Caused by:
+    Error using ==&gt; rtwdemo_custom_pil at 238
+    Error in 'rtwdemo_sil_modelblock/TmpSFcnForModelReference_CounterA' while executing C MEX S-function 'rtwdemo_sil_counter_psf', (mdlStart), at time 0.0.
+        Error using ==&gt; rtwdemo_custom_pil at 238
+        An error occurred while calling into the SIL or PIL target connectivity implementation.
+            Error using ==&gt; rtwdemo_custom_pil at 238
+            Communications error: failed to send data to the target.
+    Error using ==&gt; rtwdemo_custom_pil at 238
+    Error in 'rtwdemo_sil_modelblock/TmpSFcnForModelReference_CounterA' while executing C MEX S-function 'rtwdemo_sil_counter_psf', (mdlTerminate), at time 0.0.
+        Error using ==&gt; rtwdemo_custom_pil at 238
+        An error occurred while calling into the SIL or PIL target connectivity implementation.
+            Error using ==&gt; rtwdemo_custom_pil at 238
+            Communications error: failed to send data to the target.
+
+ 
+ 
+What errors occurred?Carefully review the build log above.Was
+a process for the PIL application started successfully?You should
+see that although the PIL application started there was still a failure
+communicating with the target.Was the setArgString method called?If
+the setArgString method was not called, the host-target communications
+were not fully configured.
+ 
+</pre><h2>通信チャンネルの設定<a name="12"></a></h2><p>ホスト-ターゲット間の通信チャンネルの設定を行うには、mypil.ConnectivityConfig クラスを編集します。</p><pre class="codeinput">edit(which(<span class="string">'mypil.ConnectivityConfig'</span>))
+
+<span class="comment">% Review the lines ending with %UNCOMMENT.You should be able to identify</span>
+<span class="comment">%</span>
+<span class="comment">% * a call to the setArgString method of Launcher that configures</span>
+<span class="comment">%   the target side of the communications channel</span>
+<span class="comment">% * configuration of the host-side of communications channel</span>
+<span class="comment">%</span>
+<span class="comment">% When you are satisfied, remove the comment characters.</span>
+</pre><h2>新しく設定されたホスト-ターゲット間通信の使用<a name="13"></a></h2><pre class="codeinput"><span class="comment">% Automatically uncomment lines in the file</span>
+rtw.mypil.Utils.Uncomment(<span class="string">'./+mypil/ConnectivityConfig.m'</span>)
+
+
+<span class="comment">% Attempt to run the simulation</span>
+close_system(<span class="string">'rtwdemo_sil_modelblock'</span>,0)
+open_system(<span class="string">'rtwdemo_sil_modelblock'</span>)
+set_param(<span class="string">'rtwdemo_sil_modelblock/CounterA'</span>,<span class="string">'SimulationMode'</span>,<span class="string">'processor-in-the-loop (pil)'</span>);
+set_param(<span class="string">'rtwdemo_sil_modelblock'</span>,<span class="string">'StopTime'</span>,<span class="string">'10'</span>);
+sim(<span class="string">'rtwdemo_sil_modelblock'</span>);
+
+disp(<span class="string">' '</span>)
+disp(<span class="string">'Review the output in the command window:were there any errors?There may be '</span>)
+disp(<span class="string">'errors if you tried making your own edits; in this case you should review your '</span>)
+disp(<span class="string">'changes and try to identify the problem.To diagnose and fix the problem, it '</span>)
+disp(<span class="string">'may be helpful to:'</span>)
+disp(<span class="string">' '</span>)
+disp(<span class="string">'  - use the command &quot;netstat -a&quot;, from a command prompt on the host computer, to '</span>)
+disp(<span class="string">'    check for any TCP/IP connections left open on port 14646'</span>)
+disp(<span class="string">'  - kill any zombie processes, on your host computer, called &quot;rtwdemo_sil_counter&quot;'</span>)
+disp(<span class="string">' '</span>)
+disp(<span class="string">'If the simulation ran successfully and there were no errors:congratulations, you'</span>)
+disp(<span class="string">'have implemented a target connectivity configuration for PIL!You can now'</span>)
+disp(<span class="string">'use the same APIs to implement a connectivity configuration for your own'</span>)
+disp(<span class="string">'combination of embedded processor, download tool and communications channel.'</span>)
+</pre><pre class="codeoutput">### Checking for structural changes in rtwdemo_sil_counter because the model reference rebuild option is set to 'If any changes detected'.Structural changes will cause the model reference SIM target to be rebuilt
+### Checking for structural changes in model reference SIM target for model:rtwdemo_sil_counter
+### The Model Reference SIM target for rtwdemo_sil_counter is up-to-date because no functional changes exist in the referenced model.
+### Checking for structural changes in rtwdemo_sil_counter because the model reference rebuild option is set to 'If any changes detected'.Structural changes will cause the model reference RTW target to be rebuilt
+### Starting Real-Time Workshop build procedure for model:rtwdemo_sil_counter
+### The Model Reference RTW target for rtwdemo_sil_counter is up-to-date because no functional changes exist in the referenced model.
+### Connectivity configuration for referenced model &quot;rtwdemo_sil_counter&quot;:&lt;a href=&quot;matlab:targets_hyperlink_manager('run',5);&quot;&gt;My PIL Example&lt;/a&gt; ###
+EXECUTING METHOD SETARGSTRING
+SETARGSTRING called from line 90 of ConnectivityConfig.m
+### Preparing to start PIL simulation ...
+### Starting application:slprj\ert\rtwdemo_sil_counter\pil\rtwdemo_sil_counter.exe
+DEMO:startApplication
+Started new process, pid = 7312
+DEMO:stopApplication
+Terminated process, pid = 7312
+ 
+Review the output in the command window:were there any errors?There may be 
+errors if you tried making your own edits; in this case you should review your 
+changes and try to identify the problem.To diagnose and fix the problem, it 
+may be helpful to:
+ 
+  - use the command &quot;netstat -a&quot;, from a command prompt on the host computer, to 
+    check for any TCP/IP connections left open on port 14646
+  - kill any zombie processes, on your host computer, called &quot;rtwdemo_sil_counter&quot;
+ 
+If the simulation ran successfully and there were no errors:congratulations, you
+have implemented a target connectivity configuration for PIL!You can now
+use the same APIs to implement a connectivity configuration for your own
+combination of embedded processor, download tool and communications channel.
+</pre><h2>クリーン アップ<a name="14"></a></h2><pre class="codeinput"><span class="comment">% Remove the path that was added temporarily</span>
+rmpath(sl_customization_path)
+<span class="comment">% Reset any customizations</span>
+sl_refresh_customizations
+
+<span class="comment">% Close the models</span>
+close_system(<span class="string">'rtwdemo_sil_modelblock'</span>,0)
+close_system(<span class="string">'rtwdemo_sil_counter'</span>,0)
+</pre><p class="footer">Copyright 2008-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Creating a Custom Processor-in-the-Loop (PIL) Configuration % In this demo you will create a target connectivity configuration using the % target connectivity APIs. With a target connectivity configuration you can run % PIL simulations on custom embedded hardware. % % You will learn how to: % %    * Adapt the build process to support PIL %    * Configure a tool to use for downloading and starting execution of a PIL %      executable on the target hardware %    * Configure a communication channel between host and target that is used to %      support PIL simulation on the target processor % % You will start with a model configured for SIL simulation. This demo will % guide you through the process of creating a target connectivity configuration % that allows you to simulate this model in PIL mode. You will start with an % incomplete PIL connectivity configuration that gives errors when you attempt % to use it. You will learn how to fix these errors and create a fully working % PIL configuration. To fix the errors, you have these options: % %    * Edit MATLAB programs and fix the errors yourself %    * Alternatively, allow the demo to make the changes automatically % % Note that this demo requires the Real-Time Workshop Embedded Coder product. %  % See also <matlab:showdemo('rtwdemo_sil_pil_script') rtwdemo_sil_pil_script>, % <matlab:showdemo('rtwdemo_rtiostream') rtwdemo_rtiostream>  %   Copyright 2008-2010 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  %% Preliminaries  % Later in this exercise you will add a directory to the path sl_customization_path = fullfile(matlabroot,...     'toolbox',...     'rtw',...     'rtwdemos',...     'pil_demo'); % If this directory is already on the path, remove it if strfind(path,sl_customization_path)     rmpath(sl_customization_path) end % Reset any customizations sl_refresh_customizations   %% Verify Generated Code Using Software-in-the-Loop (SIL) Simulation % Simulate a model configured for SIL. This uses SIL to verify the generated % code compiled for your host platform by comparing the simulation behavior % with behavior of the corresponding generated code.   % Familiarization with Model block SIL; make sure the demo model is freshly % opened close_system('rtwdemo_sil_modelblock',0); close_system('rtwdemo_sil_counter',0) open_system('rtwdemo_sil_modelblock')  % Note that the Model block CounterA has the text (SIL) displayed on it.  This % shows that the model referenced by this Model block is configured for SIL % simulation.  % Run a simulation of this system set_param('rtwdemo_sil_modelblock','StopTime','10'); sim('rtwdemo_sil_modelblock');  disp(' ') disp('Review the output displayed above. In particular, note that a new') disp('process was launched at the start of the simulation and killed at') disp('the end of the simulation.') disp(' ')  %% Start Work on a Target Connectivity Configuration % In the previous step you ran a simulation in SIL mode. You are now ready to % start work on a target connectivity configuration for PIL. To do this, you % will use a set of skeleton classes that must be modified to create the target % connectivity configuration for PIL.  % Make a local copy of the skeleton classes with new package directory name src_dir = ...     fullfile(matlabroot,'toolbox','rtw','rtw','+rtw','+mypil'); if exist(fullfile('.','+mypil'),'dir')     rmdir('+mypil','s') end mkdir +mypil copyfile(fullfile(src_dir,'Launcher.m'), '+mypil'); copyfile(fullfile(src_dir,'TargetApplicationFramework.m'), '+mypil'); copyfile(fullfile(src_dir,'ConnectivityConfig.m'), '+mypil');  % Ensure the copied files are writable fileattrib('+mypil\*','+w');  % It is necessary to update one of the class files to reflect the change of % package name from rtw.mypil to mypil rtw.mypil.Utils.UpdateClassName(...     './+mypil/ConnectivityConfig.m',...     'rtw.mypil',...     'mypil');  % Check that you now have a folder +mypil in the current directory including % three files Launcher.m, TargetApplicationFramework.m and ConnectivityConfig.m dir './+mypil'  %% View the Skeleton Classes % The skeleton classes in the directories you have created represent a starting % point that you will use for your target connectivity configuration. % Commented-out sections in these classes implement a target connectivity % configuration for running PIL on your host machine. This demo runs entirely on % your host machine, however, you can follow the same steps to create a % connectivity configuration for your embedded target hardware. Later in this % exercise you will edit these commented out sections to activate the % connectivity configuration.  % You can view these skeleton classes (do not make any changes at this % stage) edit mypil.Launcher edit mypil.TargetApplicationFramework edit mypil.ConnectivityConfig  %% Use sl_customization to Register the Target Connectivity Configuration % To use the new PIL configuration you must provide an sl_customization % file. The sl_customization file registers your new target connectivity % configuration and specifies the conditions that must be satisfied in order to % use it. The conditions specified in this file may include the name of your % System Target File and your Hardware Implementation settings.  % You can view the sl_customization file (for the demo there is no need to % make any changes to this file edit(fullfile(sl_customization_path,'sl_customization.m'))  % Add the sl_customization directory to the path and refresh the % customizations addpath(sl_customization_path); sl_refresh_customizations;  %% Try to Run a Simulation Using the Skeleton Configuration Classes % Make sure the demo model is freshly opened: it is important to close and % re-open the model, otherwise the updated configuration classes will not be % picked up close_system('rtwdemo_sil_modelblock',0) open_system('rtwdemo_sil_modelblock') set_param('rtwdemo_sil_modelblock/CounterA','SimulationMode','processor-in-the-loop (pil)');  % Attempt to run the simulation set_param('rtwdemo_sil_modelblock','StopTime','10'); try     sim('rtwdemo_sil_modelblock'); catch exceptionObj     disp(' ')     disp('What errors occurred? Review the error message above. The error')     disp('message should indicate that there are some undefined functions:')     disp('rtIOStreamOpen, rtIOStreamSend, rtIOStreamRecv. These are the')     disp('names of functions needed by the PIL application running on')     disp('the target; they are needed to communicate with the host machine.')     disp('You must provide an implementation of these functions for your')     disp('target hardware')     disp(' '); end  %% Review the Target-Side Communications Drivers % View the file rtiostream_tcpip.c (do not make any changes): rtiostreamtcpip_dir=fullfile(matlabroot,'rtw','c','src','rtiostream',...     'rtiostreamtcpip'); edit(fullfile(rtiostreamtcpip_dir,'rtiostream_tcpip.c'))  % Scroll down to the end of this file and note that it file contains an % implementation of the functions rtIOStreamOpen rtIOStreamSend, rtIOStreamRecv % that were noted as 'undefined' in the error reported above  % To fix the error message above, this file must be added to the build.  %% Add Target-Side Communications Drivers to the Connectivity Configuration % The class that configures additional files to include in the build is % mypil.TargetApplicationFramework. Open this class in the editor: edit(which('mypil.TargetApplicationFramework'))  % Review the commented lines ending with %UNCOMMENT. What files will be % added to the build when these lines are uncommented?  % Once you have completed this review, you can use the MATLAB Editor menu % command Text->Uncomment to uncomment the lines ending with %UNCOMMENT. You can % make these changes manually or they will be performed automatically in the % next step.  %% Use the Target-Side Communications Drivers  % Automatically uncomment sections in the file (if not already done manually) rtw.mypil.Utils.Uncomment(fullfile('./+mypil/TargetApplicationFramework.m'));  % Attempt to run the simulation close_system('rtwdemo_sil_modelblock',0) open_system('rtwdemo_sil_modelblock') set_param('rtwdemo_sil_modelblock/CounterA','SimulationMode','processor-in-the-loop (pil)'); set_param('rtwdemo_sil_modelblock','StopTime','10'); try     sim('rtwdemo_sil_modelblock'); catch exceptionObj     disp(' ')     disp(exceptionObj.getReport)     disp(' ')     disp('What errors occurred? Review the error message above. The error')     disp('message should indicate that there was a communications failure')     disp('between the host and target. This is the error that occurs if')     disp('the target application has not actually been launched. Was there')     disp('any indication that a process for the PIL executable was started?')     disp(' ') end  %% Implement Code to Launch the PIL Executable % The class that configures a tool for launching the PIL executable is % mypil.Launcher. Open this class in the editor: edit(which('mypil.Launcher'))  % Review the commented lines ending with %UNCOMMENT. Note the method % setArgString that allows additional command line parameters to be % supplied to the executable; these parameters may include a TCP/IP % port number; for implementation on an embedded processor, it could be % more difficult to supply start-up parameters and you may choose to % have these settings hard-coded. Note the disp commands within the % setArgString method that display debugging information to indicate % when this method is called and the name of the calling file.  % Remove the comment characters when you have understood the purpose of % the commented out sections  %% Use the Launcher to Start the PIL Executable  % Automatically uncomment lines in the file rtw.mypil.Utils.Uncomment('./+mypil/Launcher.m')  % Attempt to run the simulation close_system('rtwdemo_sil_modelblock',0) open_system('rtwdemo_sil_modelblock') set_param('rtwdemo_sil_modelblock/CounterA','SimulationMode','processor-in-the-loop (pil)'); set_param('rtwdemo_sil_modelblock','StopTime','10'); try     sim('rtwdemo_sil_modelblock'); catch exceptionObj     disp(' ')     disp(exceptionObj.getReport)     disp(' ')     disp(' ')     disp('What errors occurred? Carefully review the build log above. Was')     disp('a process for the PIL application started successfully? You should')     disp('see that although the PIL application started there was still a failure')     disp('communicating with the target. Was the setArgString method called? If')     disp('the setArgString method was not called, the host-target communications')     disp('were not fully configured.')     disp(' ') end  %% Configure the Communications Channel % To complete the configuration of the host-target communications channel, edit % the class mypil.ConnectivityConfig: edit(which('mypil.ConnectivityConfig'))  % Review the lines ending with %UNCOMMENT. You should be able to identify % % * a call to the setArgString method of Launcher that configures %   the target side of the communications channel % * configuration of the host-side of communications channel % % When you are satisfied, remove the comment characters.  %% Use the Newly Configured Host-Target Communications  % Automatically uncomment lines in the file rtw.mypil.Utils.Uncomment('./+mypil/ConnectivityConfig.m')   % Attempt to run the simulation close_system('rtwdemo_sil_modelblock',0) open_system('rtwdemo_sil_modelblock') set_param('rtwdemo_sil_modelblock/CounterA','SimulationMode','processor-in-the-loop (pil)'); set_param('rtwdemo_sil_modelblock','StopTime','10'); sim('rtwdemo_sil_modelblock');  disp(' ') disp('Review the output in the command window: were there any errors? There may be ') disp('errors if you tried making your own edits; in this case you should review your ') disp('changes and try to identify the problem. To diagnose and fix the problem, it ') disp('may be helpful to:') disp(' ') disp('  - use the command "netstat -a", from a command prompt on the host computer, to ') disp('    check for any TCP/IP connections left open on port 14646') disp('  - kill any zombie processes, on your host computer, called "rtwdemo_sil_counter"') disp(' ') disp('If the simulation ran successfully and there were no errors: congratulations, you') disp('have implemented a target connectivity configuration for PIL! You can now') disp('use the same APIs to implement a connectivity configuration for your own') disp('combination of embedded processor, download tool and communications channel.')  %% Clean Up  % Remove the path that was added temporarily rmpath(sl_customization_path) % Reset any customizations sl_refresh_customizations  % Close the models close_system('rtwdemo_sil_modelblock',0) close_system('rtwdemo_sil_counter',0)  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,127 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using an AUTOSAR Client-Server Interface</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_autosar_clientserver_script.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_autosar_clientserver_script">Open rtwdemo_autosar_clientserver_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_autosar_clientserver_script">Run in the Command Window</a></div></div><div class="content"><h1>Using an AUTOSAR Client-Server Interface</h1><!--introduction--><p>This demonstration shows you how to configure and generate AUTOSAR-compliant code and export AUTOSAR-compliant XML files for a Simulink&reg; model with an AUTOSAR client-server interface.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Simulation and Code Generation for a Client Model that Invokes a Server Operation</a></li><li><a href="#4">Code Generation for a Model Implementing a Server Operation</a></li><li><a href="#11">Importing an AUTOSAR Client-Server Description File to Create the Invoke AUTOSAR Server Operation Block Implementations</a></li></ul></div><h2>Simulation and Code Generation for a Client Model that Invokes a Server Operation<a name="1"></a></h2><p>An AUTOSAR client-server interface defines the interaction between a software component that provides the interface (the server) and a software component that requires the interface (the client). A client model can invoke server operations using two different implementations. One which is used for code generation and one for simulation. A convenience block is provided to switch between all these blocks in your model. Creating the implementations of the Invoke AUTOSAR Server Operation block is described later in this demonstration.</p><pre class="codeinput">open_system( <span class="string">'rtwdemo_autosar_client'</span> );
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_clientserver_script_01.png" alt=""> <img vspace="5" hspace="5" src="rtwdemo_autosar_clientserver_script_02.png" alt=""> <p>You can simulate the model as follows:</p><div><ol><li>Double-click the Mode Switch for AUTOSAR Server Operation block to change the current mode from "code generation" to "simulation"</li><li>Select <b>Simulation</b> &gt; <b>Start</b></li></ol></div><p>You can generate code for the model as follows:</p><div><ol><li>Double-click the Mode Switch for AUTOSAR Server Operation block to change the current mode from "simulation" to "code generation"</li><li>Select <b>Tools</b> &gt; <b>Real-Time Workshop</b> &gt; <b>Build Model</b></li></ol></div><h2>Code Generation for a Model Implementing a Server Operation<a name="4"></a></h2><p>You can use the server operation model to:</p><div><ul><li>Generate AUTOSAR-compliant code and XML files for server operations.</li><li>Provide simulation support for the client.</li></ul></div><pre class="codeinput">open_system( <span class="string">'rtwdemo_autosar_server_operation'</span> );
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_clientserver_script_03.png" alt=""> <p>The inports and outports of such a model correspond to the arguments of the server operation. Use the following command to open the AUTOSAR configuration GUI, where the operation prototype is already specified:</p><pre class="codeinput">autosar_gui_launch( <span class="string">'rtwdemo_autosar_server_operation'</span> );
+</pre><p>To generate code for the server operation model, select <b>Tools</b> &gt; <b>Real-Time Workshop</b> &gt; <b>Build Model</b>. Alternatively, run the following command:</p><pre class="codeinput">rtwbuild( <span class="string">'rtwdemo_autosar_server_operation'</span> );
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model: rtwdemo_autosar_server_operation
+### Generating XML files description for model: rtwdemo_autosar_server_operation
+### Successful completion of Real-Time Workshop code generation for model: rtwdemo_autosar_server_operation
+</pre><p><img vspace="5" hspace="5" src="rtwdemo_autosar_server_operation_code.jpg" alt=""> </p><p><b>Figure 1: Portion of the generated code for the server operation</b></p><p><img vspace="5" hspace="5" src="rtwdemo_autosar_server_operation_arxml.jpg" alt=""> </p><p><b>Figure 2: Portion of the generated xml for the server operation</b></p><h2>Importing an AUTOSAR Client-Server Description File to Create the Invoke AUTOSAR Server Operation Block Implementations<a name="11"></a></h2><p>Using an AUTOSAR description file that defines the client-server interface, you can generate a Simulink library containing configurable subsystems that reference the Invoke AUTOSAR Server Operation used for code generation and Server Operation Model Reference blocks used for simulation.</p><p>Note that there are different ways of generating the client-server interface. For example, you can construct a server operation model and then build the model to generate the interface, or you can use an AUTOSAR authoring tool.</p><p>Once the client-server interface is created, you can generate the configurable subsystems using the following commands:</p><pre class="codeinput"><span class="comment">% Create an AUTOSAR importer object</span>
+obj = arxml.importer(<span class="string">'rtwdemo_autosar_csinterface.arxml'</span>);
+
+<span class="comment">% Create the client/server operation configurable subsystem library</span>
+obj.createOperationAsConfigurableSubsystems(<span class="string">'/PortInterface/csinterface'</span>, <span class="keyword">...</span>
+                                            <span class="string">'CreateSimulinkObject'</span>, false);
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_clientserver_script_04.png" alt=""> <img vspace="5" hspace="5" src="rtwdemo_autosar_clientserver_script_05.png" alt=""> <p>You can now drag the Template block into your client model. To allow switching between "simulation" and "code generation", place the Mode Switch for Invoke AUTOSAR Server Operation block in your model. Double-click this block to toggle between the two modes.</p><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using an AUTOSAR Client-Server Interface
+% This demonstration shows you how to configure and generate AUTOSAR-compliant
+% code and export AUTOSAR-compliant XML files for a Simulink(R) model with an AUTOSAR
+% client-server interface.
+%
+%
+
+%   Copyright 2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.2 $  $Date: 2009/05/23 08:07:00 $
+
+
+%% Simulation and Code Generation for a Client Model that Invokes a Server Operation
+% An AUTOSAR client-server interface defines the interaction between a software
+% component that provides the interface (the server) and a software component
+% that requires the interface (the client). A client model can invoke server
+% operations using two different implementations. One which is used for code
+% generation and one for simulation. A convenience block is provided to switch
+% between all these blocks in your model. Creating the implementations of the
+% Invoke AUTOSAR Server Operation block is described later in this
+% demonstration.
+
+open_system( 'rtwdemo_autosar_client' );
+
+%%
+% You can simulate the model as follows:
+%
+% # Double-click the Mode Switch for AUTOSAR Server Operation block to change the
+% current mode from "code generation" to "simulation"
+% # Select *Simulation* > *Start*
+
+%%
+% You can generate code for the model as follows:
+%
+% # Double-click the Mode Switch for AUTOSAR Server Operation block to change the
+% current mode from "simulation" to "code generation"
+% # Select *Tools* > *Real-Time Workshop* > *Build Model*
+
+%% Code Generation for a Model Implementing a Server Operation
+% You can use the server operation model to:
+%
+% * Generate AUTOSAR-compliant code and XML files for server operations.
+% * Provide simulation support for the client.
+
+open_system( 'rtwdemo_autosar_server_operation' );
+
+%%
+% The inports and outports of such a model correspond to the arguments of the
+% server operation. Use the following command to open the AUTOSAR configuration
+% GUI, where the operation prototype is already specified:
+autosar_gui_launch( 'rtwdemo_autosar_server_operation' );
+
+%%
+% To generate code for the server operation model, select *Tools* > *Real-Time
+% Workshop* > *Build Model*. Alternatively, run the following command:
+rtwbuild( 'rtwdemo_autosar_server_operation' );
+
+%%
+%
+% <<rtwdemo_autosar_server_operation_code.jpg>>
+
+%% 
+% *Figure 1: Portion of the generated code for the server operation*
+
+%%
+%
+% <<rtwdemo_autosar_server_operation_arxml.jpg>>
+%%
+% *Figure 2: Portion of the generated xml for the server operation*
+
+
+%% Importing an AUTOSAR Client-Server Description File to Create the Invoke AUTOSAR Server Operation Block Implementations
+% Using an AUTOSAR description file that defines the client-server interface,
+% you can generate a Simulink library containing configurable subsystems that
+% reference the Invoke AUTOSAR Server Operation used for code generation and
+% Server Operation Model Reference blocks used for simulation.
+
+%%
+% Note that there are different ways of generating the client-server
+% interface. For example, you can construct a server operation model and then
+% build the model to generate the interface, or you can use an AUTOSAR authoring
+% tool.
+
+%%
+% Once the client-server interface is created, you can generate the configurable
+% subsystems using the following commands:
+
+% Create an AUTOSAR importer object
+obj = arxml.importer('rtwdemo_autosar_csinterface.arxml');
+
+% Create the client/server operation configurable subsystem library
+obj.createOperationAsConfigurableSubsystems('/PortInterface/csinterface', ...
+                                            'CreateSimulinkObject', false);
+
+%%
+% You can now drag the Template block into your client model. To allow switching
+% between "simulation" and "code generation", place the Mode Switch for Invoke
+% AUTOSAR Server Operation block in your model. Double-click this block to
+% toggle between the two modes.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

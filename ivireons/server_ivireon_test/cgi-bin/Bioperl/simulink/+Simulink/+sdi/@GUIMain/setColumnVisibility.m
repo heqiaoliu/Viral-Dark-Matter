@@ -1,0 +1,23 @@
+function setColumnVisibility(this, columnIndex, columnVisible, treeTable)
+    % Column visibility is handled through separate class
+    % Copyright 2010 The MathWorks, Inc.
+
+    tcc = javaObjectEDT('com.jidesoft.grid.TableColumnChooser');
+    
+    % The table is not robust to hiding and already hidden column.
+    % The same holds for showing already visible columns.  We
+    % must add this robustness in.
+    actualVisible = tcc.isVisibleColumn(treeTable, ...
+        columnIndex);
+    if columnVisible && ~actualVisible
+        javaMethodEDT('showColumn',      ...
+            tcc,               ...
+            treeTable, ...
+            columnIndex, -1);
+    elseif ~columnVisible && actualVisible
+        javaMethodEDT('hideColumn',      ...
+            tcc,               ...
+            treeTable, ...
+            columnIndex);
+    end
+end

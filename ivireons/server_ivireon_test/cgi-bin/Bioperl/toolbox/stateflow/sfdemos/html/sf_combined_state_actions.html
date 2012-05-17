@@ -1,0 +1,80 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using Combined Entry, Exit and During Actions in States</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_combined_state_actions.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_combined_state_actions.mdl</div><div class="right"><a href="matlab:sf_combined_state_actions">Open this model</a></div></div><div class="content"><h1>Using Combined Entry, Exit and During Actions in States</h1><p>This model demonstrates a simple use of combined actions in the Stateflow action language. Starting from R2010a, you can combine separate actions in the action language of a state into a single composite action, making your code more concise.</p><img vspace="5" hspace="5" src="sf_combined_state_actions_01.png" alt=""> <p><b>Combined Actions</b></p><p>The chart <tt>CombinedActions</tt> demonstrates how the entry and during actions in a state can be combined into a single action.</p><img vspace="5" hspace="5" src="sf_combined_state_actions_02.png" alt=""> <p>Note that combining an entry and a during action does not preclude another, separate entry action.</p><p><b>Separate Actions</b></p><p>The chart <tt>SeparateActions</tt> depicts the same code as in <tt>CombinedActions/A</tt>, without the use of combined actions.</p><img vspace="5" hspace="5" src="sf_combined_state_actions_03.png" alt=""> <p>Collapsing actions that perform the same tasks into composite actions improves the readability of the code. This feature is purely a syntactic construct, with no implications on the semantics of the state. Note that both the <tt>CombinedActions</tt> and <tt>SeparateActions</tt> charts produce the exact same output when simulated.</p><img vspace="5" hspace="5" src="sf_combined_state_actions_04.png" alt=""> <p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using Combined Entry, Exit and During Actions in States
+%
+% This model demonstrates a simple use of combined actions in the
+% Stateflow action language. Starting from R2010a, you can combine separate 
+% actions in the action language of a state into a single composite action, 
+% making your code more concise.
+%
+
+% Copyright 2009 The MathWorks, Inc.
+
+clear all
+close all
+bdclose all
+
+model = 'sf_combined_state_actions';
+open_system(model);
+rt = sfroot;
+m = rt.find('-isa', 'Stateflow.Machine', 'Name', model);
+
+c_comb = m.find('-isa', 'Stateflow.Chart', 'Name', 'CombinedActions');
+c_sep = m.find('-isa', 'Stateflow.Chart', 'Name', 'SeparateActions');
+
+% close all charts initially
+c_comb.Visible = 0;
+c_sep.Visible = 0;
+
+%% 
+% *Combined Actions*
+%
+% The chart |CombinedActions| demonstrates how the entry and during
+% actions in a state can be combined into a single action. 
+%
+c_comb.Visible = 1;
+
+%%
+%
+% Note that combining an entry and a during action does not preclude
+% another, separate entry action. 
+%
+%% 
+% *Separate Actions*
+%
+% The chart |SeparateActions| depicts the same code as in
+% |CombinedActions/A|, without the use of combined actions.
+% 
+c_comb.Visible = 0;
+c_sep.Visible = 1;
+
+%%
+%
+% Collapsing actions that perform the same tasks into composite actions 
+% improves the readability of the code. This feature is purely a syntactic 
+% construct, with no implications on the semantics of the state. Note that 
+% both the |CombinedActions| and |SeparateActions| charts produce the
+% exact same output when simulated. 
+%
+evalc(['sim(''' model ''')']);
+
+%%
+%
+open_system([model '/Scope']);
+
+%% 
+bdclose all
+close all
+clear all
+
+##### SOURCE END #####
+--></body></html>

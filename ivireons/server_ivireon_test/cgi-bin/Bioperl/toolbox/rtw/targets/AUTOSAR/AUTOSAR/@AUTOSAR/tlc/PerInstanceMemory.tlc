@@ -1,0 +1,388 @@
+%% PerInstanceMemory.tlc
+%%
+%% Copyright 2009-2010 The MathWorks, Inc.
+
+%% File Abstract ================================================================
+%%
+%% AUTOSAR Per Instance Memory custom storage class
+
+%% Target language is C
+%implements * "C"
+
+%% Function: DataAccess =========================================================
+%% Abstract:
+%%   DataAccess provides an API for requesting code fragments or other
+%%   information corresponding to data of a custom storage class.
+%%
+
+%function DataAccess(record, request, idx, reim, newValue) void
+
+  %assign name     = LibGetRecordIdentifier(record) 
+  %<FcnCheckConstraints(name)>
+  %assign dt       = LibGetRecordCompositeDataTypeName(record)
+  %assign dTypeId  = LibGetRecordDataTypeId(record)
+  %assign width    = LibGetDataWidth(record)
+  %assign props    = LibGetCustomStorageAttributes(record)
+
+  %assign Rte_api  = "Rte_Pim_%<name>"
+  %assign Rte_data =  Rte_api + "_data"
+  %% avoid use of "Rte" prefix for non-AUTOSAR initialization function
+  %% use model name instead
+  %assign nvramInit_api = "%<CompiledModel.Name>_Init_Pim_%<name>"
+
+  %if width > 1
+    %assign dt = FcnAutosarArrayType("Rte_", dTypeId, width)
+  %endif
+ 
+  
+  %switch request
+
+    %case "declare"
+      %assign ca = LibGetCustomStorageAttributes(record)
+      %assign type = name + "_" +  dt
+      %assign typedef = dt
+      %%Add to pimInfo to codeInfo
+      %<SLibAutosarAddPIMDef( type , typedef )>
+      %if SLibAutosarGenRTEHeader()
+
+        %openfile autosarPIMDeclBuf
+          %<type>* %<Rte_api>();
+         %if ca.needsNVRAMAccess
+           void %<nvramInit_api>();
+         %endif
+         %closefile autosarPIMDeclBuf
+    
+         %openfile autosarPIMImplBuf
+         %<type> %<Rte_data>;
+         %<type>* %<Rte_api>(){ 
+             return &%<Rte_data>; 
+         }
+         %if ca.needsNVRAMAccess
+           void %<nvramInit_api>(){
+             %<FcnInitializePIM(record)>
+           }
+         %endif
+         %closefile autosarPIMImplBuf
+        
+         %<LibSetSourceFileSection(::autosarRtePIMHFile,"Declarations",autosarPIMDeclBuf)>
+         %<LibSetSourceFileSection(::autosarRtePIMCFile,"Definitions",autosarPIMImplBuf)>
+
+         %%Set switch to #include header file in Rte_<SWC>.h
+         %assign ::AUTOSARPIMNeeded = TLC_TRUE
+
+       %endif
+      %return ""
+      %break
+
+    %case "define"
+
+      %return ""
+      %break
+
+    %case "contents"
+      %% As we access this PIM, update access info
+      %if SLibAutosarActive()
+
+           %<FcnAddAccessInfoForAutosarRunnable(record)>
+
+      %endif
+        
+      %return "(*%<Rte_api>())%<idx>"
+      %break
+
+    %case "set"
+      %% As we access this PIM, update access info
+      %if SLibAutosarActive()
+    
+           %<FcnAddAccessInfoForAutosarRunnable(record)>
+
+      %endif
+        
+      %return "(*%<Rte_api>())%<idx> = %<newValue>;"
+      %break
+
+    %case "address"
+      %% As we access this PIM, update access info
+      %if SLibAutosarActive()
+
+           %<FcnAddAccessInfoForAutosarRunnable(record)>
+       
+      %endif 
+    
+      %assign addrStr = ""
+
+      %if width == 1  
+         %assign addrStr = "%<Rte_api>()"
+      %else
+          %%g601374
+          %assign addrStr = "(*%<Rte_api>())"
+      %endif
+
+      %return addrStr
+
+      %break
+
+    %case "initialize"
+      %return ""
+      %break
+
+    %case "layout"
+      %% LibDefaultCustomStorageLayout is the default layout function, and may
+        %%PIM's are addressable, scalar or vector! So do not return "other"
+        %% AUTOSAR vectors can be accessed like Simulink vectors
+        %% Matrices have been excluded by Setup function
+        %return LibDefaultCustomStorageLayout(record)        
+        %break
+
+    %case "qualifier"
+      %% RTE is responsible for storing the calibration data
+      %return ""
+      %break
+
+    %% ==========================================================================
+    %% Handle unrecognized requests
+    %%
+    %default
+      %return LibDefaultCustomStorageUnknownDataAccessType ...
+	(record, request, idx, reim)
+      %break
+
+  %endswitch
+
+%endfunction
+
+
+%% Function: ClassAccess ========================================================
+%% Abstract:
+%%   ClassAccess provides an API for requesting information or actions
+%%   corresponding to a custom storage class.
+%%
+%function ClassAccess(record, request) void
+
+  %switch request
+
+    %case "setup"
+      %assign numData = LibCustomStorageClassRecordNumData(record)
+      %foreach idx = numData
+        %assign data = LibGetDataRecord(record, idx)
+        %<FcnCheckConstraints(LibGetRecordIdentifier(data))>
+
+        %% error if data is complex
+        %<LibCustomStorageVerifyRecordIsNonComplex(data)>
+
+        %% error out if data is a matrix
+        %if(!CompiledModel.ConfigSet.AutosarMatrixIOAsArray)
+          %<FcnCustomStorageVerifyRecordIsScalarOrVector(data)>
+        %endif
+
+        %% Mark data type as exported 
+        %assign dtypeId = SLibGetRecordDataTypeId( data )
+        %<SLibAutosarMarkDataTypeAsExported(dtypeId)>
+        %<SLibAutosarMarkChildrenDataTypeAsExported(dtypeId)> 
+
+        %% DeclareAsPointer for array type access
+        %if LibGetRecordWidth(data) > 1
+          %addtorecord data DeclareAsPointer 1
+        %endif
+        
+        %% Mark as using PerInstanceMemory
+        %addtorecord data AutosarPIMDSM 1
+        
+      %endforeach
+
+      %if SLibAutosarActive() && SLibAutosarGenRTEHeader()
+        %assign mainAutosarInterface = MainAutosarInterfaceName()
+        %assign SILFileName = mainAutosarInterface + "_PIM"
+      
+        %% create RTE source and header (*.h) file for SIL data marshalling for PerInstanceMemory
+        %assign ::autosarRtePIMHFile = LibCreateSourceFile("Header","Custom",SILFileName) 
+        %<SLibSetModelFileAttribute(autosarRtePIMHFile, "Group", "other")>
+        %assign ::autosarRtePIMCFile = LibCreateSourceFile("Source","Custom",SILFileName)
+        %<SLibSetModelFileAttribute(autosarRtePIMCFile, "Group", "other")>
+        
+        %% RTE files should be placed in stub directory
+        %<SLibAutosarLocateFileInStubDir(autosarRtePIMHFile)>
+        %<SLibAutosarLocateFileInStubDir(autosarRtePIMCFile)>
+        
+        %% Include a comment indicating the file's contents and description
+        %<LibSetSourceFileSection(autosarRtePIMHFile,"Includes",SLibAutosarWarnUserToDiscardFileForProduction())>
+
+        %% Include a comment indicating the file's contents and decription
+        %openfile SILBanner
+        %<SLibAutosarWarnUserToDiscardFileForProduction()>
+        #include "%<CompiledModel.Name>.h"
+        #include "%<mainAutosarInterface>.h"
+        %closefile SILBanner
+        %<LibSetSourceFileSection(autosarRtePIMCFile,"Includes",SILBanner)>
+
+        %% Request that autosarsup.tlc includes special Rte PIM header
+        %assign ::AUTOSARPIMNeeded = 1
+      %endif %% SLibAutosarActive && GenerateERTSFunctions
+      
+      %return
+      %break
+
+    %case "comment"
+      %% General comment that code uses AUTOSAR PIM APIs
+      %return "/* Uses AUTOSAR Per Instance Memory data : PIM.Signal */"
+      %break
+
+    %% ==========================================================================
+    %% Handle unrecognized requests
+    %%
+    %default
+      %% Unknown access
+      %return LibDefaultCustomStorageUnknownClassAccessType(record, request)
+      %break
+
+  %endswitch
+
+%endfunction
+
+%% Function: Version ============================================
+%% Abstract:
+%%   The Version function returns the number corresponding to the 
+%%   version used by this custom storage class.  When using this template, 
+%%   return 2.  If this function is not defined, version 1 is assumed.
+%%
+%% Function argurments:
+%%   record
+%%     An entry in the global memory map corresponding to a custom storage
+%%     class. 
+%%
+%function Version(record) void
+  %return 2
+%endfunction
+
+
+
+
+%% Function: FcnCustomStorageVerifyRecordIsScalarOrVector(record) ==
+%% Abstract: 
+%%   Report an error if record is not a scalar or vector
+%%
+%function FcnCustomStorageVerifyRecordIsScalarOrVector(record) void
+
+  %assign layout = LibGetDataLayout(record)
+  %if layout[0] == "col-mat-nd" || layout[0] == "col-mat"
+    %assign id = LibGetRecordIdentifier(record)
+    %assign sc = LibGetCustomStorageClassName(record)
+    %assign errTxt = "Custom storage class '%<sc>' " + ...
+      "is not legal for '%<id>' because it is not a scalar or vector"
+    %<LibReportError(errTxt)>
+  %endif
+  %return
+
+%endfunction
+
+
+%% Function: FcnAddAccessInfoForAutosarRunnable ===============
+%% Abstract: 
+%%   Records accessing runnable name - needed for xml export
+%%
+%function FcnAddAccessInfoForAutosarRunnable(record) void
+ 
+  %if !ISFIELD(record, "RunnableAccessInfo")
+    %addtorecord record RunnableAccessInfo {}
+  %endif
+
+  %with record.RunnableAccessInfo
+    %if EXISTS("BlockFcn")
+      %if ::BlockFcn == "Initialize" || ::BlockFcn == "Start"
+        %assign InitRunnableName = CompiledModel.RTWAutosar.InitRunnables.Runnable[0].Name
+        %if !ISFIELD(RunnableAccessInfo, InitRunnableName)
+          %addtorecord RunnableAccessInfo %<InitRunnableName> 1
+        %endif
+      %elseif ::BlockFcn == "Output" || ::BlockFcn == "OutputUpdate"
+          %assign activeSys = CompiledModel.System[::activeSysIdx]
+          %<FcnAddRunnableAccessInfo(activeSys, RunnableAccessInfo)>
+        %elseif ::BlockFcn == "GlobalMap"
+        %% Okay
+      %else %% Unknown BlockFcn type
+        %assert TLC_FALSE
+      %endif
+    %else %% BlockFcn does not exist
+      %assert TLC_FALSE
+    %endif
+  %endwith
+%endfunction
+
+%% Function: FcnAddRunnableAccessInfo ===============
+%% Abstract: 
+%%   Recursively records parent runnable(s) name of system 
+%%
+%function FcnAddRunnableAccessInfo(system, RunnableAccessInfo) void
+  %assign runnableIdx = system.RunnableIdx 
+  %if runnableIdx >= 0
+    %assign runnable = CompiledModel.RTWAutosar.PeriodicRunnables.Runnable[runnableIdx]
+    %if !ISFIELD(runnable, "HasPerInstanceMemoryDSM")
+      %addtorecord runnable HasPerInstanceMemoryDSM 1
+    %endif
+    %assign RunnableName = runnable.Name
+    %if !ISFIELD(RunnableAccessInfo, RunnableName)
+      %addtorecord RunnableAccessInfo %<RunnableName> 1
+    %endif
+  %else
+    %assign numCallers = SIZE(system.CallSites, 0)
+    %foreach idx = numCallers
+      %<FcnAddRunnableAccessInfo(...
+        CompiledModel.System[system.CallSites[idx][0]], RunnableAccessInfo)>
+    %endforeach
+  %endif
+%endfunction
+
+%% Function: FcnCheckConstraints ====================
+%% Abstract: 
+%%     Impose constraints
+%function FcnCheckConstraints(name) void
+  %if IsModelReferenceTarget()
+    %assign errText = "The AUTOSAR.Signal object '" + name + ...
+      "' can not be referenced from the model '" + CompiledModel.Name + ...
+      "' because that model is being referenced as a sub-model, " + ...
+      "and the object's custom storage class 'PerInstanceMemory' " + ...
+      "is only supported for the top model in a model hierarchy."
+    %<LibReportFatalError(errText)>
+  %elseif !SLibAutosarActive()
+    %assign errText = "The AUTOSAR.Signal object '" + name + ...
+      "' can not be referenced from the model '" + CompiledModel.Name + ...
+      "' because that model is not using an AUTOSAR target"
+    %<LibReportFatalError(errText)>
+  %endif
+%endfunction
+
+%% Function: FcnInitializePIM ===============================
+%% Abstract:
+%%   generate the code to initialize a PIM for SIL or PIL
+%%
+%function FcnInitializePIM(dw) void
+  %openfile buffer
+  %assign initValue = dw.InitialValue
+  %assign width = LibGetRecordWidth(dw)
+  %assign dTypeId  = SLibGetRecordDataTypeId(dw)
+  %assign isComplex = SLibGetRecordIsComplex(dw)
+  %foreach icIdx = width
+    %assign icIdxStr = SLibGet1DArrayIndexer(width, "", "", icIdx)
+    %if isComplex
+      %if LibIsNonBuiltInTypeNeededForFixpt(dTypeId)
+        %assign initRe = FcnGetNonBuiltInRe(initValue[icIdx])
+        %assign initIm = FcnGetNonBuiltInIm(initValue[icIdx])
+      %else
+        %assign initRe = REAL(initValue[icIdx])
+        %assign initIm = IMAG(initValue[icIdx])
+      %endif
+      %assign rval = SLibGetFormattedValue(dw, initRe)
+      %assign ival = SLibGetFormattedValue(dw, initIm)
+      %<LibAccessCustomData(dw, "set", icIdxStr, tRealPart, rval)>
+      %<LibAccessCustomData(dw, "set", icIdxStr, tImagPart, ival)>
+    %else
+      %assign val = SLibGetFormattedValue(dw, initValue[icIdx])
+      %<LibAccessCustomData(dw, "set", icIdxStr, "", val)>
+    %endif
+  %endforeach
+  %closefile buffer
+  %return buffer
+%endfunction
+  
+  
+  
+%% [EOF] PerInstanceMemory.tlc

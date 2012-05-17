@@ -1,0 +1,117 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling a Clutch</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_clutch.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_clutch.mdl</div><div class="right"><a href="matlab:sf_clutch">Open this model</a></div></div><div class="content"><h1>Modeling a Clutch</h1><!--introduction--><p>This model implements the <a href="matlab:open_system('sldemo_clutch')">Simulink&reg; clutch demo</a> using a combination of Simulink enabled subsystems and a Stateflow&reg; chart. Note that you can find a detailed explanation of the physical system, including figures and equations, in the demo for the Simulink clutch model with enabled subsystems.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">Recommended Workflow</a></li><li><a href="#4">Simulation Results</a></li></ul></div><img vspace="5" hspace="5" src="sf_clutch_01.png" alt=""> <h2>Recommended Workflow<a name="2"></a></h2><p>This model demonstrates the recommended way of modeling hybrid systems using Simulink and Stateflow when the continuous dynamics are complex (necessitating the use of Simulink or physical modeling tools) and there are mode changes that are coupled with the dynamics.</p><p>Modeling a hybrid system involves addressing the following concerns:</p><p><b>Continuous Dynamics</b> Hybrid systems have multiple modes of operation where each mode of operation is defined by some continuous dynamics.  When the continuous dynamics are complex, it is a good idea to use Simulink enabled subsystems to model them. In this case, we have the "Locked" and "Slipping" enabled subsystems that represent the two modes of operation of a clutch. Note that the inputs to each of the enabled subsystems represent both the inputs driving the dynamics, as well as the initial conditions for the differential equations.</p><p><b>Mode Logic</b> This refers to the conditions under which we switch from one mode of operation to another.  In this example, the mode logic is described in a Stateflow chart.</p><img vspace="5" hspace="5" src="sf_clutch_02.png" alt=""> <p>Note the following salient points about this chart:</p><div><ol><li>The Stateflow chart has two states "Locked" and "Slipping" that represent the two modes of operation of the clutch. Each of the states has the "Output state activity" property enabled. This causes the chart to have additional outputs called "Slipping" and "Locked" that control the activity of the Simulink subsystems of the same name.</li><li>In general, the transition conditions will depend on continuous time signals that are computed in the enabled subsystems. For example, in this demo, the condition for switching from the "Slipping" state to the "Locked" state depends on the current values of the integrators in the "Slipping" state. In order to accurately model such situations, we need to connect the state outports of the integrators in the enabled subsystems to the inputs of the Stateflow chart that control the mode logic. From/Goto blocks are used because Simulink disallows connecting state outports to outputs of conditionally executed subsystems.</li></ol></div><p><b>State Handoff</b> When switching from one mode of operation to another, the integrators in the newly activated subsystem need to be initialized properly in order to get smooth output. This is done by using the Stateflow outputs to drive the initial condition ports of the Simulink enabled subsystems. For example, the Stateflow chart drives the Inport called <tt>we_0</tt> of the "Slipping" subsystem, which is itself connected to the IC port of the integrator block "Slipping/Engine Integrator". The initial conditions are set in the Stateflow chart as part of the transition action when switching states.</p><h2>Simulation Results<a name="4"></a></h2><p>When the system is simulated, the engine and vehicle velocities are as shown in the following graph. The plates lock at about 4 seconds and begin slipping again at about 6.25 seconds. Note that you can only use the Engine and Vehicle speeds when the system is in the Slipping state. These values are invalid when the system is in the Locked state.</p><img vspace="5" hspace="5" src="sf_clutch_03.png" alt=""> <p class="footer">Copyright 2007-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling a Clutch
+%
+% This model implements the <matlab:open_system('sldemo_clutch')
+% Simulink(R) clutch demo> using a combination of Simulink enabled
+% subsystems and a Stateflow(R) chart. Note that you can find a detailed
+% explanation of the physical system, including figures and equations, in
+% the demo for the Simulink clutch model with enabled subsystems. 
+%
+%% 
+
+%   Copyright 2007-2008 The MathWorks, Inc.
+
+clear all
+close all
+bdclose all
+
+open_system('sf_clutch');
+close_system('sf_clutch/Speeds');
+
+r = sfroot;
+m = r.find('-isa', 'Stateflow.Machine');
+c = m.find('-isa', 'Stateflow.Chart', 'Name', 'Friction Mode');
+
+c.Visible = 0;
+
+%% Recommended Workflow
+%
+% This model demonstrates the recommended way of modeling hybrid systems
+% using Simulink and Stateflow when the continuous dynamics are complex
+% (necessitating the use of Simulink or physical modeling tools) and there
+% are mode changes that are coupled with the dynamics.
+% 
+% Modeling a hybrid system involves addressing the following concerns:
+% 
+% *Continuous Dynamics*
+% Hybrid systems have multiple modes of operation where each mode of
+% operation is defined by some continuous dynamics.  When the continuous
+% dynamics are complex, it is a good idea to use Simulink enabled
+% subsystems to model them. In this case, we have the "Locked" and
+% "Slipping" enabled subsystems that represent the two modes of operation
+% of a clutch. Note that the inputs to each of the enabled subsystems
+% represent both the inputs driving the dynamics, as well as the initial
+% conditions for the differential equations. 
+% 
+% *Mode Logic*
+% This refers to the conditions under which we switch from one mode of
+% operation to another.  In this example, the mode logic is described in
+% a Stateflow chart.
+
+c.Visible = 1;
+
+%% 
+% Note the following salient points about this chart:
+% 
+% # The Stateflow chart has two states "Locked" and "Slipping" that
+% represent the two modes of operation of the clutch. Each of the states
+% has the "Output state activity" property enabled. This causes the chart
+% to have additional outputs called "Slipping" and "Locked" that control
+% the activity of the Simulink subsystems of the same name. 
+% # In general, the transition conditions will depend on continuous time
+% signals that are computed in the enabled subsystems. For example, in this
+% demo, the condition for switching from the "Slipping" state to the
+% "Locked" state depends on the current values of the integrators in the
+% "Slipping" state. In order to accurately model such situations, we need
+% to connect the state outports of the integrators in the enabled
+% subsystems to the inputs of the Stateflow chart that control the mode
+% logic. From/Goto blocks are used because Simulink disallows connecting
+% state outports to outputs of conditionally executed subsystems.
+%  
+% *State Handoff*
+% When switching from one mode of operation to another, the integrators in
+% the newly activated subsystem need to be initialized properly in order to
+% get smooth output. This is done by using the Stateflow outputs to drive
+% the initial condition ports of the Simulink enabled subsystems. For
+% example, the Stateflow chart drives the Inport called |we_0| of the
+% "Slipping" subsystem, which is itself connected to the IC port of the
+% integrator block "Slipping/Engine Integrator". The initial conditions are
+% set in the Stateflow chart as part of the transition action when
+% switching states.
+
+%% Simulation Results
+% 
+% When the system is simulated, the engine and vehicle velocities are as
+% shown in the following graph. The plates lock at about 4 seconds and
+% begin slipping again at about 6.25 seconds. Note that you can only use
+% the Engine and Vehicle speeds when the system is in the Slipping state.
+% These values are invalid when the system is in the Locked state.
+
+% evalc hides any output from being incorporated into the demo text.
+c.Visible = 0;
+evalc('sim(''sf_clutch'')');
+plot(sldemo_clutch_output.EngineSpeed.time, sldemo_clutch_output.EngineSpeed.Data, ...
+     sldemo_clutch_output.VehicleSpeed.time, sldemo_clutch_output.VehicleSpeed.Data, ...
+     sldemo_clutch_output.ShaftSpeed.time, sldemo_clutch_output.ShaftSpeed.Data);
+xlabel('Time');
+ylabel('Engine, Vehicle and Shaft speeds');
+legend('Engine', 'Vehicle', 'Shaft');
+
+%% 
+
+bdclose all;
+clear all;
+close all;
+
+##### SOURCE END #####
+--></body></html>

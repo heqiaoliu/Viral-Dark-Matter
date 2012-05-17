@@ -1,0 +1,143 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Computing Operating Point Snapshots at Triggered Events</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdidlespeedtrigpad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdidlespeedtrigpad">Open scdidlespeedtrigpad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdidlespeedtrigpad">Run in the Command Window</a></div></div><div class="content"><h1>Computing Operating Point Snapshots at Triggered Events</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">Generation of Operating Points Using Triggered Snapshots</a></li><li><a href="#8">Model Linearization</a></li><li><a href="#10">Snapshot Generation in the Control and Estimation Tools Manager</a></li></ul></div><p>This demonstration introduces the generation of operating points using triggered snapshots. The model can be opened using the command:</p><pre class="codeinput">scdspeedtrigger
+</pre><img vspace="5" hspace="5" src="scdidlespeedtrigpad_01.png" alt=""> <h2>Generation of Operating Points Using Triggered Snapshots<a name="2"></a></h2><p>In this example the model will be linearized at steady state operating points of 2500, 3000, and 3500 RPM. To get these operating points, simulation is used to generate operating point snapshots of the steady state conditions. Since the exact time a system reaches a steady state value is not always known, blocks such as the subsystem - Generate settling time events can be built to generate settling events. The block in this example sends rising edge trigger signals when a model is near a settling condition. The mask shown below allows for multiple settling conditions to be entered. In this example the block is configured to fire the rising edge triggers when the engine speed settles near 2500, 3000, and 3500 RPM for a minimum of 5 seconds.</p><p><img vspace="5" hspace="5" src="../html_extra/scdspeedtrigger/BlockDialog.png" alt=""> </p><p>The output settling time events are then fed to an Operating Point Snapshot block. In this example, the block creates operating point snapshots in the event of a rising edge trigger.</p><p><img vspace="5" hspace="5" src="../html_extra/scdspeedtrigger/SnapShotDialog.png" alt=""> </p><p>Using the FINDOP command, the simulation is run for 60 seconds and returns the operating points when engine speed is near steady state.</p><pre class="codeinput">op = findop(<span class="string">'scdspeedtrigger'</span>,60);
+</pre><p>The first operating point is near the 2500 RPM (261.8 rad/s) settling condition.</p><pre class="codeinput">op(1)
+</pre><pre class="codeoutput">
+ Operating Point for the Model scdspeedtrigger.
+ (Time-Varying Components Evaluated at time t=10.63)
+
+States: 
+----------
+(1.) scdspeedtrigger/PID Controller/Filter
+      x: 0            
+(2.) scdspeedtrigger/PID Controller/Integrator
+      x: 10.5         
+(3.) scdspeedtrigger/Throttle &amp; Manifold/Intake Manifold/p0 = 0.543 bar
+      x: 0.511        
+(4.) scdspeedtrigger/Vehicle Dynamics/w = T//J w0 = 209 rad//s
+      x: 262          
+
+Inputs: None 
+----------
+</pre><p>The second operating point is near the 3000 RPM (314.16 rad/s) settling condition.</p><pre class="codeinput">op(2)
+</pre><pre class="codeoutput">
+ Operating Point for the Model scdspeedtrigger.
+ (Time-Varying Components Evaluated at time t=28.3703)
+
+States: 
+----------
+(1.) scdspeedtrigger/PID Controller/Filter
+      x: 0            
+(2.) scdspeedtrigger/PID Controller/Integrator
+      x: 11.9         
+(3.) scdspeedtrigger/Throttle &amp; Manifold/Intake Manifold/p0 = 0.543 bar
+      x: 0.49         
+(4.) scdspeedtrigger/Vehicle Dynamics/w = T//J w0 = 209 rad//s
+      x: 314          
+
+Inputs: None 
+----------
+</pre><p>The third operating point is near the 3500 RPM (366.52 rad/s) settling condition.</p><pre class="codeinput">op(3)
+</pre><pre class="codeoutput">
+ Operating Point for the Model scdspeedtrigger.
+ (Time-Varying Components Evaluated at time t=48.2688)
+
+States: 
+----------
+(1.) scdspeedtrigger/PID Controller/Filter
+      x: 0            
+(2.) scdspeedtrigger/PID Controller/Integrator
+      x: 13.3         
+(3.) scdspeedtrigger/Throttle &amp; Manifold/Intake Manifold/p0 = 0.543 bar
+      x: 0.478        
+(4.) scdspeedtrigger/Vehicle Dynamics/w = T//J w0 = 209 rad//s
+      x: 367          
+
+Inputs: None 
+----------
+</pre><h2>Model Linearization<a name="8"></a></h2><p>The operating points are used for linearization. First specify the input and output points using the commands:</p><pre class="codeinput">io(1) = linio(<span class="string">'scdspeedtrigger/Reference Steps'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'scdspeedtrigger/rad//s to rpm'</span>,1,<span class="string">'out'</span>);
+</pre><p>Linearize the model and plot the Bode plot for each of the closed loop transfer functions.</p><pre class="codeinput">sys = linearize(<span class="string">'scdspeedtrigger'</span>,op(1:3),io);
+bode(sys)
+</pre><img vspace="5" hspace="5" src="scdidlespeedtrigpad_02.png" alt=""> <h2>Snapshot Generation in the Control and Estimation Tools Manager<a name="10"></a></h2><p>The operating points in the example above can be recalculated in the Control and Estimation Tools Manager GUI. The operating point snapshots are generated in the node Operating Points as shown in the image below.</p><p><img vspace="5" hspace="5" src="../html_extra/scdspeedtrigger/TriggerShapshotGUIImage.png" alt=""> </p><pre class="codeinput">bdclose(<span class="string">'scdspeedtrigger'</span>)
+</pre><p class="footer">Copyright 2005-2006 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Computing Operating Point Snapshots at Triggered Events
+% Copyright 2005-2006 The MathWorks, Inc.
+% $Revision: 1.1.6.8 $ $Date: 2009/11/09 16:35:39 $
+
+%%
+% This demonstration introduces the generation of operating points using
+% triggered snapshots. The model can be opened using the command:
+scdspeedtrigger
+
+%% Generation of Operating Points Using Triggered Snapshots
+% In this example the model will be linearized at steady state operating
+% points of 2500, 3000, and 3500 RPM. To get these operating points,
+% simulation is used to generate operating point snapshots of the steady
+% state conditions. Since the exact time a system reaches a steady state
+% value is not always known, blocks such as the subsystem - Generate
+% settling time events can be built to generate settling events. The block
+% in this example sends rising edge trigger signals when a model is near a
+% settling condition. The mask shown below allows for multiple settling
+% conditions to be entered. In this example the block is configured to fire
+% the rising edge triggers when the engine speed settles near 2500, 3000,
+% and 3500 RPM for a minimum of 5 seconds.
+%
+% <<../html_extra/scdspeedtrigger/BlockDialog.png>>
+
+%%
+% The output settling time events are then fed to an Operating Point
+% Snapshot block. In this example, the block creates operating point 
+% snapshots in the event of a rising edge trigger.
+%
+% <<../html_extra/scdspeedtrigger/SnapShotDialog.png>>
+
+%%
+% Using the FINDOP command, the simulation is run for 60 seconds and
+% returns the operating points when engine speed is near steady state. 
+op = findop('scdspeedtrigger',60);
+
+%%
+% The first operating point is near the 2500 RPM (261.8 rad/s) settling
+% condition.
+op(1)
+%%
+% The second operating point is near the 3000 RPM (314.16 rad/s) settling
+% condition.
+op(2)
+%%
+% The third operating point is near the 3500 RPM (366.52 rad/s) settling
+% condition.
+op(3)
+
+%% Model Linearization
+% The operating points are used for linearization. First specify the input
+% and output points using the commands:
+io(1) = linio('scdspeedtrigger/Reference Steps',1,'in');
+io(2) = linio('scdspeedtrigger/rad//s to rpm',1,'out');
+%% 
+% Linearize the model and plot the Bode plot for each of the closed loop
+% transfer functions.
+sys = linearize('scdspeedtrigger',op(1:3),io);
+bode(sys)
+
+%% Snapshot Generation in the Control and Estimation Tools Manager
+% The operating points in the example above can be recalculated in the 
+% Control and Estimation Tools Manager GUI. The operating point snapshots 
+% are generated in the node Operating Points as shown in the image below.
+%
+% <<../html_extra/scdspeedtrigger/TriggerShapshotGUIImage.png>>
+
+bdclose('scdspeedtrigger')
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

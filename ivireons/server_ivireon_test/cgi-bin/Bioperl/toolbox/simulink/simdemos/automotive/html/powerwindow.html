@@ -1,0 +1,2359 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Simulink&reg; Power Window Controller Specification</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="powerwindow.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">powerwindow.mdl</div><div class="right"><a href="matlab:powerwindow">Open this model</a></div></div><div class="content"><h1>Simulink&reg; Power Window Controller Specification</h1><!--introduction--><p>The MATLAB&reg; and Simulink&reg; product families consists of a set of versatile tools that support Model-Based Development for embedded control design all the way from initial specification to code generation.</p><p>To manage the complexity of not only today's engineered systems but also of their design teams, structured analysis methods are used to systematically arrive at rigorous, unambiguous, and consistent specifications.</p><p>In this context, the MATLAB and Simulink product families can be used to provide executable specifications that support system design closer to its actual realization than typical Computer-Aided Systems/Software Engineering (CASE) tools can.</p><p>This example shows how you can use MathWorks&reg; tool set and the Model-Based Development process to go from concept through to implementation. In addition, this demo illustrates how you can link your model to your system documentation.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Requirements</a></li><li><a href="#5">High Level Discrete Event Control Specification</a></li><li><a href="#49">Validation of the Control Subsystem</a></li><li><a href="#59">Hybrid Dynamic System: Combine Discrete Event Control and Continuous Plant</a></li><li><a href="#107">Detailed Modeling of Power Effects</a></li><li><a href="#133">Visualization of the System in Motion</a></li><li><a href="#149">Control Law Evaluation</a></li><li><a href="#155">Realistic Armature Measurement</a></li><li><a href="#162">Reorganizing the Model</a></li><li><a href="#166">Communication Protocols</a></li><li><a href="#174">Automatic Code Generation for Control Subsystem</a></li><li><a href="#180">References</a></li></ul></div><h2>Requirements<a name="1"></a></h2><p>Nowadays, electronics are used in automobiles to control, e.g., the opening and closing of windows and sun-roof, adjusting the mirrors/headlights, and to lock and unlock the doors. These systems are subject to stringent operation constraints as failure may result in dangerous and possibly life-threatening situations. Therefore, a careful design and analysis is mandatory before deployment.</p><p>In this example, let's concentrate on the power window system of an automobile, specifically, the passenger-side window. A critical aspect of this system is that it can never exert a force of more than 100 [N] on an object when closing the window, see:</p><p><img vspace="5" hspace="5" src="pw_window1b.jpg" alt=""> </p><p>When such an object is detected, the window is to be lowered by about 10 [cm].</p><p>More formally, the quantitative requirements for the control can be stated:</p><div><ul><li>The window has to be fully opened and fully closed within 4 [s].</li><li>If the up or down command is issued for at least 200 [ms] and at most 1 [s], the window has to be fully opened or closed, respectively.</li><li>The window has to start moving 200 [ms] after the command is issued.</li><li>The force to detect when an object is present should be less than 100 [N].</li><li>When an object is present, the window should be lowered by approximately 10 [cm].</li></ul></div><h2>High Level Discrete Event Control Specification<a name="5"></a></h2><p>The discrete event control of the window can be modeled by a statechart, i.e., a finite state machine with hierarchy and parallelism. This state machine contains the basic states of the power window system <tt>up</tt>, <tt>auto-up</tt>, <tt>down</tt>, <tt>auto-down</tt>, <tt>rest</tt>, and <tt>emergency</tt>. It models the state transitions between these and accounts for the precedence of driver commands over the passenger commands. It also includes emergency behavior that is to be activated when an object is detected to be present between the window and the frame while moving up.</p><p>The initial Simulink model for the power window control is a discrete event controller that runs at a given sample rate.</p><img vspace="5" hspace="5" src="powerwindow_01.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_02.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_03.png" alt=""> <p>The discrete event control is a Stateflow&reg; model that extends the state transition diagram notion with hierarchy and parallelism. Note that state changes because of passenger commands are encapsulated in a <i>super state</i> that corresponds to no active driver commands.</p><p>Here, the control of the passenger window is considered. This window can be moved up and down by either the passenger or the driver. The model includes this control input as switches that can be manually operated by double-clicking them.</p><img vspace="5" hspace="5" src="powerwindow_04.png" alt=""> <p>The state machine that controls a power window is tested by running the input test vectors and verifying that the desired internal state is reached and output is generated. The power window has four external inputs:</p><div><ul><li>passenger input consists of a vector with three elements</li></ul></div><p>
+<ul><ul>
+<li><font face="Courier">neutral</font>: the passenger control switch is not depressed</li>
+<li><font face="Courier">up</font>: the passenger control switch generates the up signal</li>
+<li><font face="Courier">down</font>: the passenger control switch generates the down signal</li>
+</ul></ul>
+</p><div><ul><li>driver input</li></ul></div><p>
+<ul><ul>
+<li><font face="Courier">neutral</font>: the driver control switch is not depressed</li>
+<li><font face="Courier">up</font>: the driver control switch generates the up signal</li>
+<li><font face="Courier">down</font>: the driver control switch generates the down signal</li>
+</ul></ul>
+</p><div><ul><li>whether top or bottom of the window frame is reached</li></ul></div><p>
+<ul><ul>
+<li>0: window moves freely between top or bottom</li>
+<li>1: window is stuck at the top or bottom because of physical limitations</li>
+</ul></ul>
+</p><div><ul><li>whether an obstacle is present between the window and its frame</li></ul></div><p>
+<ul><ul>
+<li>0: window moves freely between top or bottom</li>
+<li>1: window is stuck at the top or bottom because of physical limitations</li>
+</ul></ul>
+</p><p>The passenger and driver input signals are generated by mapping the up and down signals according to the following table</p><img vspace="5" hspace="5" src="powerwindow_05.png" alt=""> <p>
+<table border=1 align="center" bordercolor="#000000" cellspacing="2" cellpadding="4">
+  <tr align="center"><!-- Row 1 -->
+    <td bordercolor="#FF0000" bgcolor="#FF8888"><b>up</b></td>
+    <td bordercolor="#FF0000" bgcolor="#FF8888"><b>down</b></td>
+    <td bordercolor="#0000FF" bgcolor="#8888FF"><b>neutral</b></td>
+    <td bordercolor="#0000FF" bgcolor="#8888FF"><b>up</b></td>
+    <td bordercolor="#0000FF" bgcolor="#8888FF"><b>down</b></td>
+  </tr>
+  <tr align="center"><!-- Row 2 -->
+    <td bordercolor="#FF0000" bgcolor="FFCCCC">0</td>
+    <td bordercolor="#FF0000" bgcolor="FFCCCC">0</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">1</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+  </tr>
+  <tr align="center"><!-- Row 3 -->
+    <td bordercolor="#FF0000" bgcolor="FFCCCC">0</td>
+    <td bordercolor="#FF0000" bgcolor="FFCCCC">1</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">1</td>
+  </tr>
+  <tr align="center"><!-- Row 4 -->
+    <td bordercolor="#FF0000" bgcolor="FFCCCC">1</td>
+    <td bordercolor="#FF0000" bgcolor="FFCCCC">0</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">1</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+  </tr>
+  <tr align="center"><!-- Row 5 -->
+    <td bordercolor="#FF0000" bgcolor="FFCCCC">1</td>
+    <td bordercolor="#FF0000" bgcolor="FFCCCC">1</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">1</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+    <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+  </tr>
+</table>
+</p><p>to explicitly generate the <tt>neutral</tt> event from the <tt>up</tt> and <tt>down</tt> events as generated by pressing a power window control switch. The blue part of the table is entered as truth table in the map.</p><p><b>Window Up</b></p><p>To observe the state machine behavior, first run the simulation and then double-click the passenger window up switch.</p><img vspace="5" hspace="5" src="powerwindow_06.png" alt=""> <p>If the switch was pressed for more than one second, the window moves up till the up switch is released (or the top of the window frame is reached and the <tt>endstop</tt> event is generated).</p><img vspace="5" hspace="5" src="powerwindow_07.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_08.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_09.png" alt=""> <p><b>Window Auto-Up</b></p><p>If the passenger up switch was pressed for a short period of time (less than a second), <i>auto-up</i> is activated and the window continues to move up. Ultimately, the window reaches the top of the frame and the <tt>endstop</tt> event is generated that moves the state machine back to its  neutral state.</p><img vspace="5" hspace="5" src="powerwindow_10.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_11.png" alt=""> <p><b>Driver-side Precedence</b></p><p>The driver switch for the passenger window takes precedence over the driver commands. To observe the state machine behavior, first run the simulation and then move the system to its <tt>passenger up</tt> state by double-clicking the passenger window up switch.</p><img vspace="5" hspace="5" src="powerwindow_12.png" alt=""> <p>Next, double-click the driver window down switch.</p><img vspace="5" hspace="5" src="powerwindow_13.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_14.png" alt=""> <p>Notice how the state machine moves to the driver control part to generate the window down output instead of the window up output.</p><p>When the driver control is switched to up, the driver window up state is reached that generates the window up output again, i.e., <tt>windowUp = 1</tt>.</p><img vspace="5" hspace="5" src="powerwindow_15.png" alt=""> <p>To observe state behavior when an object is present between the window and its frame, double-click the obstacle switch.</p><img vspace="5" hspace="5" src="powerwindow_16.png" alt=""> <p>On the next sample time, the state machine moves to its <tt>emergencyDown</tt> state to lower the window a few inches. How far exactly depends on how long the state machine is in the <tt>emergencyDown</tt> state and is part of the next analysis phase.</p><img vspace="5" hspace="5" src="powerwindow_17.png" alt=""> <p>Note that if any of the driver or passenger window switches is still active, the state machine moves into the up or down states upon the next sample time after the emergency state is departed. If the obstacle switch is still active too, the emergency state is then activated at again the next sample time.</p><h2>Validation of the Control Subsystem<a name="49"></a></h2><p>We can now validate the discrete event control of the window with the model coverage tool. This tool will help us determine the extent to which a model test case exercises the conditional branches of the controller. It helps evaluate whether all transitions in the discrete event control are taken given the test case we run as well as whether all clauses in a condition that enables a particular transition have become true. One transition may be enabled by multiple clauses, e.g., the transition from emergency back to neutral occurs when either 100 ticks have occurred or whether the end stop is reached.</p><p>To achieve full coverage, it is required that each of the individual clauses evaluates to true and false for the test cases used. The percentage of transitions that a test case exercises is called its model coverage. Model coverage is a measure of how thoroughly a test exercises a model.</p><p>Using Simulink&reg; Verification and Validation&#8482;, let us apply the following test to our power window controller:</p><p>
+<table border="1" align="center" bordercolor="#000000" cellspacing="2" cellpadding="4">
+  <tr align="center"><!-- Row 1 -->
+    <td><b>step</b></td>
+    <td><b>0</b></td>
+    <td><b>1</b></td>
+    <td><b>2</b></td>
+    <td><b>3</b></td>
+    <td><b>4</b></td>
+    <td><b>5</b></td>
+    <td><b>6</b></td>
+  </tr>
+  <tr align="center"><!-- Row 2 -->
+    <td><b>passenger up</b></td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+  </tr>
+  <tr align="center"><!-- Row 3 -->
+    <td><b>passenger down</b></td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>1</td>
+    <td>0</td>
+    <td>1</td>
+    <td>1</td>
+  </tr>
+  <tr align="center"><!-- Row 4 -->
+    <td><b>driver up</b></td>
+    <td>0</td>
+    <td>0</td>
+    <td>1</td>
+    <td>0</td>
+    <td>1</td>
+    <td>0</td>
+    <td>1</td>
+  </tr>
+  <tr align="center"><!-- Row 5 -->
+    <td><b>driver down</b></td>
+    <td>0</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>1</td>
+    <td>1</td>
+    <td>0</td>
+  </tr>
+</table>
+</p><p>With this test, all switches are inactive at time 0. At regular 1 [s] steps, the state of one or more of the switches is changed. For example, after 1 [s], the driver down switch becomes active. To automatically run these input vectors, replace the manual switches by prescribed sequences of input. To see the pre-constructed model:</p><p><tt>open_system('powerwindow_cv')</tt></p><img vspace="5" hspace="5" src="powerwindow_18.png" alt=""> <p>The commands to generate the test and create the Simulink Verification and Validation coverage report are as follows:</p><div><ul><li>Create a test object to hold the coverage results. <tt>testObj1 = cvtest('powerwindow_cv', 'first_test', 'load firsttest')</tt></li><li>Simulate the system for 7 [s]. <tt>[dataObj1,T,X,Y]=cvsim(testObj1,[0 7])</tt></li><li>Create and open an HTML report with the coverage data. <tt>cvhtml('powerwindow_cv report',dataObj1)</tt></li></ul></div><p>You can use the above commands to create the coverage report.</p><p>The results in the report reveal the following:</p><p>The test we have run handles 100% of the decision outcomes from the "driver neutral, up, down map" block while only 50% of the decision outcome of the "passenger neutral, up, down map" block is handled by the test. Also, the "endstop" and "obstacle" blocks are covered at 50% of their decision outcomes.</p><h2>Hybrid Dynamic System: Combine Discrete Event Control and Continuous Plant<a name="59"></a></h2><p>Once the discrete event control has been designed and verified, it can be coupled to the continuous time plant behavior. To this end, first remove initial input/output blocks that connect to ports that have to be connected to the continuous plant behavior.</p><img vspace="5" hspace="5" src="powerwindow_19.png" alt=""> <p>The plant is modeled as a second order differential equation with step-wise changes in its input:</p><div><ul><li>when the Stateflow chart generates <tt>windowUp</tt> the input is 1,</li><li>when the Stateflow chart generates <tt>windowDown</tt> the input is -1,</li><li>otherwise, the input is 0.</li></ul></div><p>This phase allows analysis of the interaction between the discrete event state behavior, its sample rate, and the continuous behavior of the window movement. There are threshold values established to generate the window frame top and bottom, i.e., <tt>endStop</tt>, events and the event when an obstacle is present, i.e., <tt>obstacle</tt>.</p><img vspace="5" hspace="5" src="powerwindow_20.png" alt=""> <p>Before simulation, a continuous time solver has to be selected. You can do so by selecting the <tt>Simulation</tt> menu, then the <tt>Simulation parameters</tt> item and next the <tt>Solver</tt> tab. You can change the solver parameter to the Bogacki-Shampine solver.</p><p>A structured analysis of a system results in a functional decomposition of the system, a data dictionary with the specifics of the system signals, and the timing constraints. Another aspect is the implementation architecture, which is not discussed here.</p><p><b>Activity Diagrams</b></p><p>Activity diagrams are a means to graphically capture the specification and gain understanding of system operation. A hierarchical structure facilitates analysis of even large systems. At the top-level, a <i>context diagram</i> describes the system environment its interaction with the system under study in terms of (i) data exchange and (ii) control operations. The system is then decomposed into an activity diagram with processes and control specifications (called a CSPEC). The processes guide the hierarchical decomposition: Each process is specified by another activity diagram or a primitive specification (called a PSPEC). A PSPEC can be given in a number of representations with a formal semantic, e.g., a Simulink block diagram.</p><p>The following figure represents the context diagram of a power window system. The square boxes capture the environment. In this case, the driver, passenger and the window. Both the driver and passenger can send commands to the window to move it up and down. The controller infers the correct command to be sent to the window actuator (e.g., the driver command has priority over the passenger command). In addition, the state of the window system is monitored to establish when the window is fully opened and closed and to detect whether an object is present between the window and frame.</p><p><b>CONTEXT DIAGRAM:</b> POWER WINDOW SYSTEM</p><p><img vspace="5" hspace="5" src="pw_CONTEXT.jpg" alt=""> </p><p>The power window controller is depicted by a circle (also referred to as 'bubble'). This is the graphical notation for a process. Processes capture the transformation of input data into output data. In case of a primitive process, control may also be generated. CSPECs typically consist of combinational or sequential logic to infer output control signals from input control.</p><p>Let's rearrange the Simulink model to resemble the activity diagram by</p><div><ul><li>combining the plant behavior into one subsystem,</li><li>combining the driver and passenger switches into two subsystems,</li><li>putting the control in one subsystem, and</li><li>connecting the new subsystems.</li><li>resize for the context diagram.</li></ul></div><p><tt>open_system('powerwindow01')</tt></p><img vspace="5" hspace="5" src="powerwindow_21.png" alt=""> <p>Now, the power window controller of the context diagram can be decomposed into parts by using an activity diagram as shown below. The input and output signals present in the context diagram are shown here again so they can be easily traced to their origins.</p><p><b>AD 1:</b> POWER WINDOW CONTROL</p><p><img vspace="5" hspace="5" src="pw_AD1.jpg" alt=""> </p><p>The power window control consists of three processes and a CSPEC. Two of the processes validate the driver and passenger input to ensure their input is meaningful given the state of the system (e.g., if the window is completely opened, the 'window down' command is not sensible). The remaining process detects whether the window is completely opened or completely closed and whether an object may be present. The CSPEC takes the control signals and infers whether the window should be moved up or down (e.g., if an object is present, the window should be moved down for about one second or until an endstop is reached).</p><p>In Simulink, open the power window control subsystem and note that the Stateflow chart with the discrete event control forms the CSPEC, represented by the tilted thick bar in the bottom right corner. The threshold detection mechanisms are encapsulated in the detect_obstacle_endstop subsystem.</p><img vspace="5" hspace="5" src="powerwindow_22.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_23.png" alt=""> <p>Data validation functionality was added for the driver and passenger commands to ensure correct operation (e.g., when the window has reached its top, the up command should be blocked). Each of the validation process can be decomposed in new subsystems. Let's have a look at the validation of the driver's commands (validation of the passenger's commands is similar). First, it has to be checked whether the 'up' or 'down' commands can be executed. The 'down' command is only allowed when the window is not completely opened. The 'up' command is only allowed when the window is not completely closed and no object is detected. The third process ensures that only one of the three commands ('neutral', 'up', 'down') is sent to the controller. Note that in an actual implementation, it may well be possible that both 'up' and 'down' are true simultaneously (e.g., because of switch bouncing effects).</p><img vspace="5" hspace="5" src="powerwindow_24.png" alt=""> <p><b>AD 1.1:</b> VALIDATE DRIVER</p><p><img vspace="5" hspace="5" src="pw_AD11.jpg" alt=""> </p><p>Each of the processes in the VALIDATE DRIVER activity chart is primitive and specified by a PSPEC. These PSPECs are given below according to the previous discussion. Note that in the MAKE EXCLUSIVE PSPEC the 'down' command takes precedence over the 'up' command, for safety reasons.</p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>PSPEC 1.1.1:</b> CHECK DOWN
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+CHECKED_DOWN
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+DOWN <b>and</b> <b>not</b> RESET
+</td></tr>
+</table>
+</p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>PSPEC 1.1.2:</b> CHECK UP
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+CHECKED_UP
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+UP <b>and</b> <b>not</b> RESET
+</td></tr>
+</table>
+</p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>PSPEC 1.1.3:</b> MAKE EXCLUSIVE
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+VALIDATED_DOWN
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+CHECKED_DOWN
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+VALIDATED_UP
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+CHECKED_UP <b>and</b> <b>not</b> CHECKED_DOWN
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+VALIDATED_NEUTRAL
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+(NEUTRAL <b>and</b> <b>not</b> (CHECKED_UP <b>and</b> <b>not</b> CHECKED_DOWN))
+<b>or</b> <b>not</b> (CHECKED_UP <b>or</b> CHECKED_DOWN)
+</td></tr>
+</table>
+</p><p>The internals of the VALIDATE PASSENGER process are exactly the same as the VALIDATE DRIVER process. The only difference between the two are the different input and output. The VALIDATE PASSENGER is given below.</p><p><b>AD 1.2:</b> VALIDATE PASSENGER</p><p><img vspace="5" hspace="5" src="pw_AD12.jpg" alt=""> </p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>PSPEC 1.2.1:</b> CHECK DOWN
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+CHECKED_DOWN
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+DOWN <b>and</b> <b>not</b> RESET
+</td></tr>
+</table>
+</p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>PSPEC 1.2.2:</b> CHECK UP
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+CHECKED_UP
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+UP <b>and</b> <b>not</b> RESET
+</td></tr>
+</table>
+</p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>PSPEC 1.2.3:</b> MAKE EXCLUSIVE
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+VALIDATED_DOWN
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+CHECKED_DOWN
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+VALIDATED_UP
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+CHECKED_UP <b>and</b> <b>not</b> CHECKED_DOWN
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+VALIDATED_NEUTRAL
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+(NEUTRAL <b>and</b> <b>not</b> (CHECKED_UP <b>and</b> <b>not</b> CHECKED_DOWN))
+<b>or</b> <b>not</b> (CHECKED_UP <b>or</b> CHECKED_DOWN)
+</td></tr>
+</table>
+</p><p>The third process in the POWER WINDOW CONTROL activity diagram is the one to detect the presence of an obstacle or when the window reaches its top or bottom ('endstop'). The detection mechanism is based on the armature current of the window actuator. During normal operation, this current is within certain bounds. When the window reaches its top or bottom, the electro-motor draws a large current (more than 15 [A] or less than -15 [A]) to try and sustain its angular velocity. Similarly, during normal operation the current is about 2 [A] or -2 [A] (depending on whether the window is opening or closing). When an object is present, there is a slight deviation from this value. To ensure the window force on the object is less than 100 [N], the control switches to its emergency operation when a current is detected that is less than -2.5 [A] (this is only necessary in case the window is rolling up, which corresponds to a negative current in the particular wiring of this model). This functionality is embodied by the DETECT OBSTACLE ENDSTOP activity diagram and the process specifications given below.</p><p><b>AD 1.3:</b> DETECT OBSTACLE ENDSTOP</p><p><img vspace="5" hspace="5" src="pw_AD13.jpg" alt=""> </p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffefbf" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>CSPEC 1.3:</b> DETECT OBSTACLE ENDSTOP
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+RESET
+</td><td valign="top" width="1">
+=
+</td><td halign="left" width="100%">
+OBSTACLE <b>or</b> ENDSTOP
+</td></tr>
+</table>
+</p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>PSPEC 1.3.1:</b> DETECT ENDSTOP
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+ENDSTOP
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+ARMATURE_CURRENT &gt; ENDSTOP_MAX
+</td></tr>
+</table>
+</p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>PSPEC 1.3.2:</b> DETECT OBSTACLE
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+OBSTACLE
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+(ARMATURE_CURRENT &gt; OBSTACLE_MAX) <b>and</b> MOVE_UP <b>for</b> 500 [ms]
+</td></tr>
+</table>
+</p><p>
+<table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+<tr>
+<td colspan=4>
+<div class=PSPEC>
+<b>PSPEC 1.3.3:</b> ABSOLUTE VALUE
+</div>
+</td></tr><tr><td width="5"></td><td valign="top" width="1">
+ABSOLUTE_ARMATURE_CURRENT
+</td><td valign="top" width="1">
+=
+</td><td halign="left">
+<b>abs</b>(ARMATURE_CURRENT)
+</td></tr>
+</table>
+</p><p><b>Data Dictionary</b></p><p>The functional decomposition specifies each of the processes unambiguously by their decomposition or primitive specification (PSPEC). In addition, the signals in the activity diagrams have to be formally specified as well. This is the goal of the <i>data dictionary</i>.</p><p>The data dictionary contains a table with entries for each of the signals used in any of the activity diagrams.</p><p>
+<table width="100%" cellspacing="2" cellpadding="2" border="2">
+<DIV CLASS=table>
+  <tr BGCOLOR="#DDDDDD"><!-- Row 1 -->
+    <td><b>AD0</b></td>
+    <td COLSPAN=5>POWER WINDOW SYSTEM</td>
+  </tr>
+  <tr><!-- Row 2 -->
+    <td>DRIVER_COMMAND</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>AGGREGATE</td>
+    <td>NEUTRAL,UP,DOWN</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 3 -->
+    <td>PASSENGER_COMMAND</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>AGGREGATE</td>
+    <td>NEUTRAL,UP,DOWN</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 4 -->
+    <td>WINDOW_POSITION</td>
+    <td>DATA</td>
+    <td>CONTINUOUS</td>
+    <td>REAL</td>
+    <td>MIN: 0 [m]</td>
+    <td>MAX: 0.4 [m}</td>
+  </tr>
+  <tr><!-- Row 5 -->
+    <td>MOVE_UP</td>
+    <td>CONTROL</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 6 -->
+    <td>MOVE_DOWN</td>
+    <td>CONTROL</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr BGCOLOR="#DDDDDD"><!-- Row 7 -->
+    <td><b>AD1</b></td>
+    <td COLSPAN=5>POWER WINDOW CONTROLLER</td>
+  </tr>
+  <tr><!-- Row 8 -->
+    <td>RESET</td>
+    <td>CONTROL</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 9 -->
+    <td>VALIDATED_DRIVER_COMMAND</td>
+    <td>CONTROL</td>
+    <td>DISCRETE</td>
+    <td>AGGREGATE</td>
+    <td>NEUTRAL,UP,DOWN</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 10 -->
+    <td>VALIDATED_PASSENGER_COMMAND</td>
+    <td>CONTROL</td>
+    <td>DISCRETE</td>
+    <td>AGGREGATE</td>
+    <td>NEUTRAL,UP,DOWN</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 11 -->
+    <td>OBSTACLE</td>
+    <td>CONTROL</td>
+     <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 12 -->
+    <td>ENDSTOP</td>
+    <td>CONTROL</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr BGCOLOR="#DDDDDD"><!-- Row 13 -->
+    <td><b>AD1.1</b></td>
+    <td COLSPAN=5>VALIDATE_DRIVER</td>
+  </tr>
+  <tr><!-- Row 14 -->
+    <td>NEUTRAL</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 15 -->
+    <td>UP</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 16 -->
+    <td>DOWN</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 17 -->
+    <td>CHECKED UP</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 18 -->
+    <td>CHECKED DOWN</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr BGCOLOR="#DDDDDD"><!-- Row 19 -->
+    <td><b>AD1.2</b></td>
+    <td COLSPAN=5>VALIDATE_PASSENGER</td>
+  </tr>
+  <tr><!-- Row 20 -->
+    <td>NEUTRAL</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 21 -->
+    <td>UP</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 22 -->
+    <td>DOWN</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 23 -->
+    <td>CHECKED UP</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 24 -->
+    <td>CHECKED DOWN</td>
+    <td>DATA</td>
+    <td>DISCRETE</td>
+    <td>BOOLEAN</td>
+    <td>'TRUE','FALSE'</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr BGCOLOR="#DDDDDD"><!-- Row 25 -->
+    <td><b>AD1.3</b></td>
+    <td COLSPAN=5>DETECT_OBSTACLE_ENDSTOP</td>
+  </tr>
+  <tr><!-- Row 26 -->
+    <td>ENDSTOP_MIN</td>
+    <td>DATA</td>
+    <td>CONSTANT</td>
+    <td>REAL</td>
+    <td>VALUE: 0.0 [m]</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 27 -->
+    <td>ENDSTOP_MAX</td>
+    <td>DATA</td>
+    <td>CONSTANT</td>
+    <td>REAL</td>
+    <td>VALUE: 0.4 [m]</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 28 -->
+    <td>OBSTACLE_MAX</td>
+    <td>DATA</td>
+    <td>CONSTANT</td>
+    <td>REAL</td>
+    <td>VALUE: 0.3 [m]</td>
+    <td>&nbsp;</td>
+  </tr>
+</DIV>
+</table>
+</p><p><b>Timing Requirements</b></p><p>Now, reopen powerwindow01 and open the <tt>position</tt> measurement&gt; (in [m]) to view the window movement and run the simulation.</p><img vspace="5" hspace="5" src="powerwindow_25.png" alt=""> <p>Double-click the passenger window up switch to start moving the window up.</p><img vspace="5" hspace="5" src="powerwindow_26.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_27.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_28.png" alt=""> <p>After 30 [cm], the <tt>obstacle</tt> event is generated and the Stateflow chart moves into its <tt>emergencyDown</tt> state. In this state, <tt>windowDown</tt> is output for some time to lower the window by about 10 [cm]. Because the passenger window up switch is still on, the window starts moving up again and this process repeats.  Stop the simulation and press the <tt>Autoscale</tt> button on the position scope to observe the oscillating process. Note that in case of an emergency the discrete event control rolls down the window approximately 10 [cm].</p><h2>Detailed Modeling of Power Effects<a name="107"></a></h2><p>After an initial analysis of the discrete event control and continuous dynamics, a detailed plant model can be used to evaluate performance in a more realistic situation. Models at such a level of detail are best designed in the <i>power</i> domain, i.e., as energy flows. This is facilitated by several domain specific blocksets.</p><p>Before including this behavior, first remove the continuous behavior included before and add a more detailed subsystem consisting of power electronics and a multi-body system.</p><p><tt>open_system('powerwindow02');</tt></p><img vspace="5" hspace="5" src="powerwindow_29.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_30.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_31.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_32.png" alt=""> <p>Let's have a look at these in detail next.</p><p><b>Power Electronics</b></p><p>The control signals generated by the discrete event controller have to be 'amped up' to be sufficiently powerful to drive the DC motor that moves the window.</p><img vspace="5" hspace="5" src="powerwindow_33.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_34.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_35.png" alt=""> <p>This is modeled by the amplification modules. It shows that a switch either connects the DC motor to the battery voltage or ground. By connecting the battery reversely, a negative voltage is obtained and the window can be moved up, down, or remain at its position. Note that the window is always driven at maximum power, i.e., no DC motor controller is present to apply a prescribed velocity.</p><img vspace="5" hspace="5" src="powerwindow_36.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_37.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_38.png" alt=""> <p><b>Multi-Body System</b></p><p>The window is modeled by using the multi-body system blockset.</p><img vspace="5" hspace="5" src="powerwindow_39.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_40.png" alt=""> <p>This consists of a library of noncausal multi-body elements such as bodies, joints, and actuators. The  window model consists of</p><img vspace="5" hspace="5" src="powerwindow_41.png" alt=""> <p>a worm gear</p><img vspace="5" hspace="5" src="powerwindow_42.png" alt=""> <p>and lever</p><img vspace="5" hspace="5" src="powerwindow_43.png" alt=""> <p>to move the window holder in the vertical direction.</p><img vspace="5" hspace="5" src="powerwindow_44.png" alt=""> <p>The following figure shows how the mechanical parts move:</p><p><img vspace="5" hspace="5" src="pw_window2b.jpg" alt=""> </p><p><b>Design Iteration</b></p><p>An important effect of the more detailed implementation is that there is no window position measurement available. Instead, the current of the DC motor is measured and used to detect the endstops and whether an obstacle is present. This brings about the next stage in system design which now allows to analyze the control and whether it indeed does not cause too large a force when an obstacle is present.</p><p>In the originally designed system, the obstacle and endstop detection based on the window position was removed and replaced with a current based implementation, and the process was connected to the controller and position and force measurements. This means that the data dictionary has to be modified to reflect the different signals used.</p><p>
+<table width="100%" cellspacing="2" cellpadding="2" border="2">
+<DIV CLASS=table>
+  <tr BGCOLOR="#DDDDDD"><!-- Row 1 -->
+    <td><b>AD0</b></td>
+    <td COLSPAN=5>POWER WINDOW SYSTEM</td>
+  </tr>
+  <tr><!-- Row 4 -->
+    <td>ARMATURE_CURRENT</td>
+    <td>DATA</td>
+    <td>CONTINUOUS</td>
+    <td>REAL</td>
+    <td>MIN: -20 [A]</td>
+    <td>MAX: 20 [A}</td>
+  </tr>
+  <tr BGCOLOR="#DDDDDD"><!-- Row 25 -->
+    <td><b>AD1.3</b></td>
+    <td COLSPAN=5>DETECT_OBSTACLE_ENDSTOP</td>
+  </tr>
+  <tr><!-- Row 26 -->
+    <td>ABSOLUTE_ARMATURE_CURRENT</td>
+    <td>DATA</td>
+    <td>CONTINUOUS</td>
+    <td>REAL</td>
+    <td>MIN: 0 [A]</td>
+    <td>MAX: 20 [A]</td>
+  </tr>
+  <tr><!-- Row 27 -->
+    <td>ENDSTOP_MAX</td>
+    <td>DATA</td>
+    <td>CONSTANT</td>
+    <td>REAL</td>
+    <td>VALUE: 15 [A]</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr><!-- Row 27 -->
+    <td>OBSTACLE_MAX</td>
+    <td>DATA</td>
+    <td>CONSTANT</td>
+    <td>REAL</td>
+    <td>VALUE: 2.5 [A]</td>
+    <td>&nbsp;</td>
+  </tr>
+</DIV>
+</table>
+</p><p>A control mechanism was added to conveniently switch between the presence and absence of the object.</p><h2>Visualization of the System in Motion<a name="133"></a></h2><p>To view the geometrics of the system in motion, add a virtual reality world and open it by double-clicking on the block.</p><p><tt>open_system('powerwindow03')</tt></p><img vspace="5" hspace="5" src="powerwindow_45.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_46.png" alt=""> <p>Select a stiff solver, e.g., the TR-BDF2 (an implicit Runge-Kutta formula).</p><p>Set the passenger up switch to on and the driver up switch to off and run the simulation again. After some  initial time less than 1 [s] but more than 10 [ms] in simulation time (simulation time is displayed in the bottom-right corner of the model window status bar), switch off the passenger up switch to initiate the auto-up behavior.</p><img vspace="5" hspace="5" src="powerwindow_47.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_48.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_49.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_50.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_51.png" alt=""> <p>Notice how the window holder starts to move vertically to close the window. When the object is encountered, the window is rolled down.</p><p>Click the driver down switch to roll down the window completely. Again, after some initial time (less than one second simulation time) switch off the driver down switch to initiate the auto-down behavior.</p><img vspace="5" hspace="5" src="powerwindow_52.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_53.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_54.png" alt=""> <p>When the window has reached the bottom of the frame, stop the simulation.</p><p>Now, look at the <tt>position</tt> measurement&gt; (in [m]) and at the <tt>armature current</tt> (Ia) measurement (in [A]).</p><p><b>Note</b> that the absolute value of the armature current transient during normal behavior does not exceed 10 [A].  The obstacle is detected when the absolute value of the armature current required to move the window up exceeds 2.5 [A] (in fact, it less than -2.5 [A]) where during normal operation this is about 2 [A]. You probably have to zoom in to have a good look at this. The window endstop is detected when the absolute value of the armature current exceeds 15 [A].</p><p>Variation in the armature current during normal operation is due to friction that is included by sensing joint velocities and positions and applying window specific coefficients.</p><img vspace="5" hspace="5" src="powerwindow_55.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_56.png" alt=""> <p>A look-up table is used to this end and noise is added to allow evaluation of the control robustness.</p><img vspace="5" hspace="5" src="powerwindow_57.png" alt=""> <h2>Control Law Evaluation<a name="149"></a></h2><p>While the idealized continuous plant allowed access to the window position for <tt>endStop</tt> and <tt>obstacle</tt> event generation, in the more realistic situation, these events have to be generated from accessible physical variables. In case of the power window system, this typical is the armature current, <tt>Ia</tt>, of the DC motor that drives the worm gear.</p><p>While moving the window, this current will have a value around 2 [A] and when switched on, a transient current is drawn that may reach values of around 10 [A]. End stop detection is activated when the current exceeds a value of 15 [A], which is drawn when the angular velocity of the motor is kept almost 0 despite a positive or negative input voltage.</p><p>Detecting the presence of an object is much more difficult in this setup. Because safety restrictions prescribe that the window force should not exceed 100 [N], an object should be detected by an armature current much less than 10 [A]. However, this conflicts with the transient values achieved during normal operation.</p><p>Here, a control law is implemented that disables object detection during the transient. Now, when an armature current that is more than 2 [A] is measured, an object is considered to be present and the <tt>emergencyDown</tt> state of the discrete event control is entered. Open the <tt>window force</tt> measurement (in [N]) to verify that the force exerted when an object is present and the window reverses its velocity remains less than 100 [N].</p><img vspace="5" hspace="5" src="powerwindow_58.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_59.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_60.png" alt=""> <p>Note that far more sophisticated control laws are possible and implemented in reality. For example, neural-network based learning feedforward control techniques can be implemented to emulate the friction characteristic of each individual vehicle and its changes over time.</p><h2>Realistic Armature Measurement<a name="155"></a></h2><p>The armature current as used in the power window control is an ideal value that is accessible because of the use of an actuator model. In a more realistic situation, this current value has to be measured by data acquisition components.</p><p>To include these, first remove the ideal measurement. Next, add the more realistic measurement that include a signal conditioning block where the current is derived based on a voltage measurement.</p><img vspace="5" hspace="5" src="powerwindow_61.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_62.png" alt=""> <p>This voltage is within the range of an analog-to-digital converter (ADC) that discretizes based on a given number of bits. The resulting value has to be scaled based on the value of the resistor that is used and the range of the ADC that is chosen.</p><p>Include these operations as fixed point computations. Notice that 16 bits are required instead of 8 to achieve the necessary resolution with the given range.</p><img vspace="5" hspace="5" src="powerwindow_63.png" alt=""> <p>Study the same scenario</p><div><ul><li>set the passenger up switch</li><li>run the simulation</li><li>after some time switch off the passenger up switch</li><li>when the window has been rolled down, click the driver down switch</li><li>after some time switch off the driver down switch</li><li>when the window has reached the bottom of the frame, stop the simulation.</li></ul></div><img vspace="5" hspace="5" src="powerwindow_64.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_65.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_66.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_67.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_68.png" alt=""> <p>Notice how the armature current now has a discretized appearance by zooming in on it.</p><h2>Reorganizing the Model<a name="162"></a></h2><p>To avoid cluttered diagrams, the designed model was reorganized using subsystems.</p><div><ul><li>First, collapse the DAQ subsystem</li></ul></div><img vspace="5" hspace="5" src="powerwindow_69.png" alt=""> <img vspace="5" hspace="5" src="powerwindow_70.png" alt=""> <div><ul><li>Next, collapse the actuator and plant subsystems</li></ul></div><img vspace="5" hspace="5" src="powerwindow_71.png" alt=""> <h2>Communication Protocols<a name="166"></a></h2><p>Similar to the Stateflow output part, the input events have to be generated by hardware, in this case the window control switches in the door and center control panels. These events are generated by local processors and then communicated to the window controller by a CAN bus.</p><p><tt>open_system('powerwindow05')</tt></p><img vspace="5" hspace="5" src="powerwindow_72.png" alt=""> <p>To include these phenomena, first remove the idealized input and add input from a CAN bus. Next, add switch components that generate the events and put these on the CAN bus.  If you open the switch subsystem,</p><img vspace="5" hspace="5" src="powerwindow_73.png" alt=""> <p>you note a structure very similar to the window control system: again, there is a plant model that represents the control switch,</p><p>a data acquisition subsystem that includes, among other things, signal conditioning components,</p><p>a control module to map the commands from the physical switch to logical commands,</p><p>and a CAN module to post the events to the vehicle data bus.</p><p>Additional communication effects (e.g., because of other systems using the CAN bus) and more realism can be added similar to the described phases. Each of these phases allows analysis of the discrete event controller in an increasingly realistic situation. Once a sufficient level of detail is achieved, controller code can be automatically generated for any specific target platform.</p><h2>Automatic Code Generation for Control Subsystem<a name="174"></a></h2><p>To generate code of the designed control</p><img vspace="5" hspace="5" src="powerwindow_74.png" alt=""> <p>first check the sample rates of the controller by selecting <tt>Sample time colors</tt> from the <tt>Port/Signal Displays</tt> entry of the <tt>Format</tt> menu. This shows that the controller runs at a uniform sample rate.</p><img vspace="5" hspace="5" src="powerwindow_75.png" alt=""> <p>Now, click your right mouse-button on the window control module and from <tt>Real-Time Workshop(R)</tt> select <tt>Build Subsystem</tt> to build real-time code of the subsystem.</p><h2>References<a name="180"></a></h2><p>Pieter J. Mosterman, Janos Sztipanovits, and Sebastian Engell, "Computer-Automated Multiparadigm Modeling in Control Systems Technology," <i>IEEE Transactions on Control Systems Technology</i>, vol. 12, no. 2, pp. 223-234, 2004.</p><p class="footer">Copyright 1990-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Simulink(R) Power Window Controller Specification
+% The MATLAB(R) and Simulink(R) product families consists of a set of
+% versatile tools that support Model-Based Development for embedded control 
+% design all the way from initial specification to code generation.
+%
+% To manage the complexity of not only today's engineered systems but also of
+% their design teams, structured analysis methods are used to systematically
+% arrive at rigorous, unambiguous, and consistent specifications. 
+%
+% In this context, the MATLAB and Simulink product families can be used to
+% provide executable specifications that support system design closer to its
+% actual realization than typical Computer-Aided Systems/Software Engineering
+% (CASE) tools can.
+%
+% This example shows how you can use MathWorks(R) tool set and the 
+% Model-Based Development process to go from concept through to implementation.
+% In addition, this demo illustrates how you can link your model to your system
+% documentation.
+
+% Copyright 1990-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.6 $ $Date: 2009/12/07 20:47:16 $
+
+%% Requirements
+%
+% Nowadays, electronics are used in automobiles to control, e.g., the opening
+% and closing of windows and sun-roof, adjusting the mirrors/headlights, and
+% to lock and unlock the doors. These systems are subject to stringent operation
+% constraints as failure may result in dangerous and possibly life-threatening
+% situations. Therefore, a careful design and analysis is mandatory before
+% deployment.
+
+%%
+% In this example, let's concentrate on the power window system of an automobile,
+% specifically, the passenger-side window. A critical aspect of this system is
+% that it can never exert a force of more than 100 [N] on an object
+% when closing the window, see:
+%
+% <<pw_window1b.jpg>>
+%
+
+%%
+% When such an object is detected, the window is to be lowered by about 10 [cm].
+
+%% 
+% More formally, the quantitative requirements for the control can be stated:
+%
+% * The window has to be fully opened and fully closed within 4 [s].
+% * If the up or down command is issued for at least 200 [ms] and at most 1 [s], the window has to be fully opened or closed, respectively.
+% * The window has to start moving 200 [ms] after the command is issued.
+% * The force to detect when an object is present should be less than 100 [N].
+% * When an object is present, the window should be lowered by approximately 10 [cm].
+%
+
+%% High Level Discrete Event Control Specification
+% The discrete event control of the window can be modeled by a statechart,
+% i.e., a finite state machine with hierarchy and parallelism. This state
+% machine contains the basic states of the power window system |up|,
+% |auto-up|, |down|, |auto-down|, |rest|, and |emergency|.
+% It models the state transitions between these and accounts for the 
+% precedence of driver commands over the passenger commands.
+% It also includes emergency behavior that is to be activated when
+% an object is detected to be present between the window and the frame
+% while moving up. 
+
+%%
+% The initial Simulink model for the power window control is a discrete
+% event controller that runs at a given sample rate. 
+
+open_system('powerwindow')
+hilite_system('powerwindow/control','find')
+
+%%
+open_system('powerwindow/control','force')
+
+%%
+close_system('powerwindow',0);
+
+%%
+open_system('powerwindow')
+hilite_system('powerwindow/10 ms','find')
+
+%%
+close_system('powerwindow',0);
+
+%%
+% The discrete event control is a Stateflow(R) model that extends the 
+% state transition diagram notion with hierarchy and parallelism.
+% Note that state changes because of passenger commands are encapsulated
+% in a _super state_ that corresponds to no active driver commands.
+
+%%
+% Here, the control of the passenger window is considered. This window can
+% be moved up and down by either the passenger or the driver. The model
+% includes this control input as switches that can be manually operated by
+% double-clicking them.  
+
+%%
+open_system('powerwindow')
+hilite_system('powerwindow/passenger up','find');
+hilite_system('powerwindow/passenger down','find');
+hilite_system('powerwindow/driver up','find');
+hilite_system('powerwindow/driver down','find');
+
+%%
+close_system('powerwindow',0);
+
+%%
+% The state machine that controls a power window is tested by running the
+% input test vectors and verifying that the desired internal state is
+% reached and output is generated. The power window has four external
+% inputs: 
+%
+% * passenger input consists of a vector with three elements
+%
+% <html>
+% <ul><ul>
+% <li><font face="Courier">neutral</font>: the passenger control switch is not depressed</li>
+% <li><font face="Courier">up</font>: the passenger control switch generates the up signal</li>
+% <li><font face="Courier">down</font>: the passenger control switch generates the down signal</li>
+% </ul></ul>
+% </html>
+% 
+% * driver input
+% 
+% <html>
+% <ul><ul>
+% <li><font face="Courier">neutral</font>: the driver control switch is not depressed</li>
+% <li><font face="Courier">up</font>: the driver control switch generates the up signal</li>
+% <li><font face="Courier">down</font>: the driver control switch generates the down signal</li>
+% </ul></ul>
+% </html> 
+% 
+% * whether top or bottom of the window frame is reached
+% 
+% <html>
+% <ul><ul>
+% <li>0: window moves freely between top or bottom</li>
+% <li>1: window is stuck at the top or bottom because of physical limitations</li>
+% </ul></ul>
+% </html> 
+% 
+% * whether an obstacle is present between the window and its frame
+% 
+% <html>
+% <ul><ul>
+% <li>0: window moves freely between top or bottom</li>
+% <li>1: window is stuck at the top or bottom because of physical limitations</li>
+% </ul></ul>
+% </html> 
+% 
+
+%%
+% The passenger and driver input signals are generated by mapping the up
+% and down signals according to the following table  
+
+%%
+open_system('powerwindow')
+hilite_system('powerwindow/passenger neutral, up, down map','find')
+hilite_system('powerwindow/driver neutral, up, down map','find')
+
+%%
+close_system('powerwindow',0);
+
+%%
+% 
+% <html>
+% <table border=1 align="center" bordercolor="#000000" cellspacing="2" cellpadding="4">
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 1 REPLACE_WITH_DASH_DASH>
+%     <td bordercolor="#FF0000" bgcolor="#FF8888"><b>up</b></td>
+%     <td bordercolor="#FF0000" bgcolor="#FF8888"><b>down</b></td>
+%     <td bordercolor="#0000FF" bgcolor="#8888FF"><b>neutral</b></td>
+%     <td bordercolor="#0000FF" bgcolor="#8888FF"><b>up</b></td>
+%     <td bordercolor="#0000FF" bgcolor="#8888FF"><b>down</b></td>
+%   </tr>
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 2 REPLACE_WITH_DASH_DASH>
+%     <td bordercolor="#FF0000" bgcolor="FFCCCC">0</td>
+%     <td bordercolor="#FF0000" bgcolor="FFCCCC">0</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">1</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+%   </tr>
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 3 REPLACE_WITH_DASH_DASH>
+%     <td bordercolor="#FF0000" bgcolor="FFCCCC">0</td>
+%     <td bordercolor="#FF0000" bgcolor="FFCCCC">1</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">1</td>
+%   </tr>
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 4 REPLACE_WITH_DASH_DASH>
+%     <td bordercolor="#FF0000" bgcolor="FFCCCC">1</td>
+%     <td bordercolor="#FF0000" bgcolor="FFCCCC">0</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">1</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+%   </tr>
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 5 REPLACE_WITH_DASH_DASH>
+%     <td bordercolor="#FF0000" bgcolor="FFCCCC">1</td>
+%     <td bordercolor="#FF0000" bgcolor="FFCCCC">1</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">1</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+%     <td bordercolor="#0000FF" bgcolor="CCCCFF">0</td>
+%   </tr>
+% </table>
+% </html>
+%
+
+%%
+% to explicitly generate the |neutral| event from the |up| and |down|
+% events as generated by pressing a power window control switch. The blue
+% part of the table is entered as truth table in the map. 
+
+%%
+% *Window Up*
+%
+% To observe the state machine behavior, first run the simulation and then
+% double-click the passenger window up switch.  
+
+open_system('powerwindow')
+hilite_system('powerwindow/passenger up','find');
+open_system('powerwindow/passenger up')
+
+%%
+close_system('powerwindow',0);
+
+%%
+% If the switch was pressed for more than one second, the window moves up
+% till the up switch is released (or the top of the window frame is reached
+% and the |endstop| event is generated). 
+
+open_system('powerwindow')
+hilite_system('powerwindow/passenger up','find');
+open_system('powerwindow/passenger up')
+open_system('powerwindow/passenger up')
+
+%%
+close_system('powerwindow',0);
+
+%%
+open_system('powerwindow')
+hilite_system('powerwindow/endstop','find');
+open_system('powerwindow/endstop')
+
+%%
+hilite_system('powerwindow/endstop','none');
+open_system('powerwindow/endstop')
+
+%%
+set_param('powerwindow','stopTime','10')
+set_param(['powerwindow/window',char(10),'command'],'limitDataPoints','off')
+open_system(['powerwindow/window',char(10),'command'])
+set_param('powerwindow','SimulationCommand','start')
+open_system('powerwindow/passenger up')
+pause(1)
+open_system('powerwindow/passenger up')
+pause(0.8)
+open_system('powerwindow/passenger up')
+pause(0.8)
+open_system('powerwindow/endstop')
+pause(1)
+set_param('powerwindow','SimulationCommand','stop') 
+
+%%
+close_system('powerwindow',0);
+
+%% 
+% *Window Auto-Up*
+% 
+% If the passenger up switch was pressed for a short period of time (less
+% than a second), _auto-up_ is activated and the window continues to move
+% up. Ultimately, the window reaches the top of the frame and the |endstop|
+% event is generated that moves the state machine back to its  neutral state.
+
+open_system('powerwindow')
+hilite_system('powerwindow/passenger up','find');
+
+%%
+set_param('powerwindow','stopTime','10')
+set_param(['powerwindow/window',char(10),'command'],'limitDataPoints','off')
+open_system(['powerwindow/window',char(10),'command'])
+set_param('powerwindow','SimulationCommand','start')
+open_system('powerwindow/passenger up')
+pause(0.1)
+open_system('powerwindow/passenger up')
+pause(9)
+set_param('powerwindow','SimulationCommand','stop') 
+
+%%
+close_system('powerwindow',0);
+
+%% 
+% *Driver-side Precedence*
+%
+% The driver switch for the passenger window takes precedence over the
+% driver commands. To observe the state machine behavior, first run the
+% simulation and then move the system to its |passenger up| state by
+% double-clicking the passenger window up switch.
+
+open_system('powerwindow')
+hilite_system('powerwindow/passenger up','find');
+open_system('powerwindow/passenger up')
+
+%%
+close_system('powerwindow',0);
+
+%%
+% Next, double-click the driver window down switch.
+
+open_system('powerwindow')
+hilite_system('powerwindow/driver down','find');
+open_system('powerwindow/passenger up')
+open_system('powerwindow/driver down')
+
+%%
+hilite_system('powerwindow/driver down','none');
+open_system('powerwindow/passenger up')
+open_system('powerwindow/driver down')
+
+%%
+set_param('powerwindow','stopTime','10')
+set_param(['powerwindow/window',char(10),'command'],'limitDataPoints','off')
+open_system(['powerwindow/window',char(10),'command'])
+set_param('powerwindow','SimulationCommand','start')
+open_system('powerwindow/passenger up')
+pause(0.5)
+open_system('powerwindow/driver down')
+pause(9)
+set_param('powerwindow','SimulationCommand','stop')
+
+%%
+close_system('powerwindow',0);
+
+%%
+% Notice how the state machine moves to the driver control part to generate
+% the window down output instead of the window up output. 
+
+%%
+% When the driver control is switched to up, the driver window up state is
+% reached that generates the window up output again, i.e., |windowUp = 1|.
+
+%%
+open_system('powerwindow')
+open_system('powerwindow/passenger up')
+hilite_system('powerwindow/driver up','find');
+open_system('powerwindow/driver up')
+
+%%
+close_system('powerwindow',0);
+%%
+% To observe state behavior when an object is present between the window and its
+% frame, double-click the obstacle switch. 
+
+%%
+open_system('powerwindow')
+open_system('powerwindow/passenger up')
+open_system('powerwindow/driver up')
+hilite_system('powerwindow/obstacle','find')
+open_system('powerwindow/obstacle')
+
+%%
+hilite_system('powerwindow/obstacle','none')
+open_system('powerwindow/obstacle')
+open_system('powerwindow/driver up')
+open_system('powerwindow/passenger up')
+
+%%
+% On the next sample time, the state machine moves to its |emergencyDown| state to
+% lower the window a few inches. How far exactly depends on how long the
+% state machine is in the |emergencyDown| state and is part of the next 
+% analysis phase.
+
+%%
+set_param('powerwindow','stopTime','10')
+set_param(['powerwindow/window',char(10),'command'],'limitDataPoints','off')
+open_system(['powerwindow/window',char(10),'command'])
+set_param('powerwindow','SimulationCommand','start')
+open_system('powerwindow/passenger up')
+pause(0.5)
+open_system('powerwindow/driver down')
+pause(0.75)
+open_system('powerwindow/driver down')
+open_system('powerwindow/driver up')
+pause(0.75)
+open_system('powerwindow/obstacle')
+pause(6)
+set_param('powerwindow','SimulationCommand','stop')
+
+%%
+% Note that if any of the driver or passenger window
+% switches is still active, the state machine 
+% moves into the up or down states upon the next sample time after the emergency
+% state is departed. If the obstacle switch is still active too, the emergency
+% state is then activated at again the next sample time.
+
+%%
+close_system('powerwindow',0);
+
+%% Validation of the Control Subsystem
+%
+% We can now validate the discrete event control of the window with 
+% the model coverage tool. This tool will help us determine the extent 
+% to which a model test case exercises the conditional branches of
+% the controller. It helps evaluate whether all transitions in the
+% discrete event control are taken given the test case we run as well as
+% whether all clauses in a condition that enables a particular transition have become 
+% true. One transition may be enabled by multiple clauses, e.g.,
+% the transition from emergency back to neutral occurs when either
+% 100 ticks have occurred or whether the end stop is reached.
+
+%%
+% To achieve full coverage, it is required that each of the individual
+% clauses evaluates to true and false for the test cases used.
+% The percentage of transitions that a test case exercises is 
+% called its model coverage. Model coverage is a measure of how thoroughly a test
+% exercises a model.
+
+%%
+% Using Simulink(R) Verification and Validation(TM), let us apply the
+% following test to our power window controller: 
+
+%%
+% 
+% <html>
+% <table border="1" align="center" bordercolor="#000000" cellspacing="2" cellpadding="4">
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 1 REPLACE_WITH_DASH_DASH>
+%     <td><b>step</b></td>
+%     <td><b>0</b></td>
+%     <td><b>1</b></td>
+%     <td><b>2</b></td>
+%     <td><b>3</b></td>
+%     <td><b>4</b></td>
+%     <td><b>5</b></td>
+%     <td><b>6</b></td>
+%   </tr>
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 2 REPLACE_WITH_DASH_DASH>
+%     <td><b>passenger up</b></td>
+%     <td>0</td>
+%     <td>0</td>
+%     <td>0</td>
+%     <td>0</td>
+%     <td>0</td>
+%     <td>0</td>
+%     <td>0</td>
+%   </tr>
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 3 REPLACE_WITH_DASH_DASH>
+%     <td><b>passenger down</b></td>
+%     <td>0</td>
+%     <td>0</td>
+%     <td>0</td>
+%     <td>1</td>
+%     <td>0</td>
+%     <td>1</td>
+%     <td>1</td>
+%   </tr>
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 4 REPLACE_WITH_DASH_DASH>
+%     <td><b>driver up</b></td>
+%     <td>0</td>
+%     <td>0</td>
+%     <td>1</td>
+%     <td>0</td>
+%     <td>1</td>
+%     <td>0</td>
+%     <td>1</td>
+%   </tr>
+%   <tr align="center"><!REPLACE_WITH_DASH_DASH Row 5 REPLACE_WITH_DASH_DASH>
+%     <td><b>driver down</b></td>
+%     <td>0</td>
+%     <td>1</td>
+%     <td>0</td>
+%     <td>0</td>
+%     <td>1</td>
+%     <td>1</td>
+%     <td>0</td>
+%   </tr>
+% </table>
+% </html>
+% 
+
+%%
+% With this test, all switches are inactive at time 0. At regular 1 [s]
+% steps, the state of one or more of the switches is changed. For example,
+% after 1 [s], the driver down switch becomes active.
+% To automatically run these input vectors, replace the manual switches by
+% prescribed sequences of input. To see the pre-constructed model: 
+%
+% |open_system('powerwindow_cv')|
+
+open_system('powerwindow_cv')
+
+%%
+close_system('powerwindow_cv',0);
+
+%%
+% The commands to generate the test and create the Simulink Verification
+% and Validation coverage report are as follows:  
+% 
+% * Create a test object to hold the coverage results.
+% |testObj1 = cvtest('powerwindow_cv', 'first_test', 'load firsttest')|
+% * Simulate the system for 7 [s].
+% |[dataObj1,T,X,Y]=cvsim(testObj1,[0 7])|
+% * Create and open an HTML report with the coverage data.
+% |cvhtml('powerwindow_cv report',dataObj1)|
+
+%% 
+% You can use the above commands to create the coverage report. 
+
+%%
+% The results in the report reveal the following: 
+
+%%
+% The test we have run handles 100% of the decision outcomes from the
+% "driver neutral, up, down map" block while only 50% of the decision
+% outcome of the "passenger neutral, up, down map" block is handled by the
+% test. Also, the "endstop" and "obstacle" blocks are covered at 50% of
+% their decision outcomes.
+
+%% Hybrid Dynamic System: Combine Discrete Event Control and Continuous Plant
+%
+% Once the discrete event control has been designed and verified, it can
+% be coupled to the continuous time plant behavior. To this end, first 
+% remove initial input/output blocks that connect to ports that have to be
+% connected to the continuous plant behavior. 
+
+open_system('powerwindow_DEC_CP1')
+
+%%
+close_system('powerwindow_DEC_CP1',0)
+
+%%
+% The plant is modeled as a second order differential equation with step-wise
+% changes in its input:
+% 
+% * when the Stateflow chart generates |windowUp| the input is 1,
+% * when the Stateflow chart generates |windowDown| the input is -1,
+% * otherwise, the input is 0.
+
+%%
+% This phase allows analysis of the interaction between the discrete event
+% state behavior, its sample rate, and the continuous behavior of the window
+% movement. There are threshold values established to generate the window frame
+% top and bottom, i.e., |endStop|, events and the event when an
+% obstacle is present, i.e., |obstacle|.
+
+open_system('powerwindow_DEC_CP1')
+hilite_system('powerwindow_DEC_CP1/c101','find');
+hilite_system('powerwindow_DEC_CP1/c102','find');
+
+%%
+close_system('powerwindow_DEC_CP1',0)
+
+%%
+% Before simulation, a continuous time solver has to be selected. You can
+% do so by selecting the |Simulation| menu, then the |Simulation parameters| 
+% item and next the |Solver| tab. You can change the solver parameter to
+% the Bogacki-Shampine solver.
+
+%%
+% A structured analysis of a system results in a functional decomposition
+% of the system, a data dictionary with the specifics of the system signals,
+% and the timing constraints. Another aspect is the implementation architecture,
+% which is not discussed here.
+
+%% 
+% *Activity Diagrams*
+%
+% Activity diagrams are a means to graphically capture the specification and
+% gain understanding of system operation. A hierarchical structure facilitates
+% analysis of even large systems. At the top-level, a _context diagram_
+% describes the system environment its interaction with the system under study
+% in terms of (i) data exchange and (ii) control operations.
+% The system is then decomposed into an activity diagram with processes and
+% control specifications (called a CSPEC).
+% The processes guide the hierarchical decomposition:
+% Each process is specified by another activity diagram or a primitive
+% specification (called a PSPEC). A PSPEC can be given in a number of 
+% representations with a formal semantic, e.g., a Simulink
+% block diagram.
+
+%%
+% The following figure represents the context diagram of a power window system.
+% The square boxes capture the environment. In this case, the driver, passenger
+% and the window. Both the driver and passenger can send commands to the window
+% to move it up and down. The controller infers the correct command to be sent
+% to the window actuator (e.g., the driver command has priority over the passenger
+% command). In addition, the state of the window system is monitored to establish
+% when the window is fully opened and closed and to detect whether an object is
+% present between the window and frame.    
+
+%%
+% *CONTEXT DIAGRAM:* POWER WINDOW SYSTEM
+%
+% <<pw_CONTEXT.jpg>>
+
+%%
+% The power window controller is depicted by a circle (also referred to as 'bubble').
+% This is the graphical notation for a process. Processes capture the
+% transformation of input data into output data. In case of a primitive
+% process, control may also be generated. CSPECs typically consist of
+% combinational or sequential logic to infer output control signals from
+% input control. 
+
+%%
+% Let's rearrange the Simulink model to resemble the activity diagram by
+% 
+% * combining the plant behavior into one subsystem,
+% * combining the driver and passenger switches into two subsystems,
+% * putting the control in one subsystem, and
+% * connecting the new subsystems.
+% * resize for the context diagram.
+%
+% |open_system('powerwindow01')|
+
+%%
+open_system('powerwindow01')
+close_system('powerwindow01/position',0)
+
+%%
+close_system('powerwindow01',0)
+
+%%
+% Now, the power window controller of the context diagram can be decomposed into
+% parts by using an activity diagram as shown below. The input and output
+% signals present in the context diagram are shown here again so they can
+% be easily traced to their origins. 
+
+%%
+% *AD 1:* POWER WINDOW CONTROL
+%
+% <<pw_AD1.jpg>>
+
+%%
+% The power window control consists of three processes and a CSPEC.
+% Two of the processes validate the driver and passenger input to ensure their
+% input is meaningful given the state of the system (e.g., if the window
+% is completely opened, the 'window down' command is not sensible).
+% The remaining process detects whether the window is completely opened
+% or completely closed and whether an object may be present.
+% The CSPEC takes the control signals and infers whether the window
+% should be moved up or down (e.g., if an object is present, the window
+% should be moved down for about one second or until an endstop is
+% reached).
+
+%%
+% In Simulink, open the power window control subsystem and note that the
+% Stateflow chart with the discrete event control forms the CSPEC,
+% represented by the tilted thick bar in the bottom right corner. The
+% threshold detection mechanisms are encapsulated in the
+% detect_obstacle_endstop subsystem.  
+
+open_system('powerwindow01')
+close_system('powerwindow01/position',0)
+hilite_system('powerwindow01/power_window_control_system','find')
+
+%%
+hilite_system('powerwindow01/power_window_control_system','none')
+
+%%
+open_system('powerwindow01/power_window_control_system','force');
+hilite_system('powerwindow01/power_window_control_system/detect_obstacle_endstop','find')
+
+%%
+close_system('powerwindow01/power_window_control_system',0)
+
+%%
+% Data validation functionality was added
+% for the driver and passenger commands to ensure correct operation (e.g.,
+% when the window has reached its top, the up command should be blocked). 
+% Each of the validation process can be decomposed in new subsystems.
+% Let's have a look at the validation of the driver's commands (validation
+% of the passenger's commands is similar). First, it has to be checked
+% whether the 'up' or 'down' commands can be executed. The 'down' command
+% is only allowed when the window is not completely opened. The 'up'
+% command is only allowed when the window is not completely closed and no
+% object is detected. The third process ensures that only one of the three
+% commands ('neutral', 'up', 'down') is sent to the controller. Note that
+% in an actual implementation, it may well be possible that both 'up' and
+% 'down' are true simultaneously (e.g., because of switch bouncing effects).
+
+open_system('powerwindow01/power_window_control_system','force');
+hilite_system('powerwindow01/power_window_control_system/detect_obstacle_endstop','none')
+hilite_system('powerwindow01/power_window_control_system/validate_driver','find')
+hilite_system('powerwindow01/power_window_control_system/validate_passenger','find')
+
+
+%%
+close_system('powerwindow01',0)
+
+%%
+% *AD 1.1:* VALIDATE DRIVER
+%
+% <<pw_AD11.jpg>>
+
+%%
+% Each of the processes in the VALIDATE DRIVER activity chart is
+% primitive and specified by a PSPEC. These PSPECs are given below
+% according to the previous discussion. Note that in the MAKE EXCLUSIVE
+% PSPEC the 'down' command takes precedence over the 'up' command,
+% for safety reasons.
+
+%%
+% 
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>PSPEC 1.1.1:</b> CHECK DOWN
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% CHECKED_DOWN
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% DOWN <b>and</b> <b>not</b> RESET
+% </td></tr>
+% </table>
+% </html>
+
+%%
+% 
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>PSPEC 1.1.2:</b> CHECK UP
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% CHECKED_UP
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% UP <b>and</b> <b>not</b> RESET
+% </td></tr>
+% </table>
+% </html>
+ 
+
+%%
+%
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>PSPEC 1.1.3:</b> MAKE EXCLUSIVE
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% VALIDATED_DOWN
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% CHECKED_DOWN
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% VALIDATED_UP
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% CHECKED_UP <b>and</b> <b>not</b> CHECKED_DOWN
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% VALIDATED_NEUTRAL
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% (NEUTRAL <b>and</b> <b>not</b> (CHECKED_UP <b>and</b> <b>not</b> CHECKED_DOWN))
+% <b>or</b> <b>not</b> (CHECKED_UP <b>or</b> CHECKED_DOWN)
+% </td></tr>
+% </table>
+% </html>
+
+%%
+% The internals of the VALIDATE PASSENGER process are exactly the same as the
+% VALIDATE DRIVER process. The only difference between the two are the 
+% different input and output. The VALIDATE PASSENGER is given below.
+
+%%
+% *AD 1.2:* VALIDATE PASSENGER
+%
+% <<pw_AD12.jpg>>
+
+%%
+%
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>PSPEC 1.2.1:</b> CHECK DOWN
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% CHECKED_DOWN
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% DOWN <b>and</b> <b>not</b> RESET
+% </td></tr>
+% </table>
+% </html>
+
+%%
+%
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>PSPEC 1.2.2:</b> CHECK UP
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% CHECKED_UP
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% UP <b>and</b> <b>not</b> RESET
+% </td></tr>
+% </table>
+% </html>
+
+%%
+%
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>PSPEC 1.2.3:</b> MAKE EXCLUSIVE
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% VALIDATED_DOWN
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% CHECKED_DOWN
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% VALIDATED_UP
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% CHECKED_UP <b>and</b> <b>not</b> CHECKED_DOWN
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% VALIDATED_NEUTRAL
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% (NEUTRAL <b>and</b> <b>not</b> (CHECKED_UP <b>and</b> <b>not</b> CHECKED_DOWN))
+% <b>or</b> <b>not</b> (CHECKED_UP <b>or</b> CHECKED_DOWN)
+% </td></tr>
+% </table>
+% </html>
+
+%%
+% The third process in the POWER WINDOW CONTROL activity diagram is the one
+% to detect the presence of an obstacle or when the window reaches its
+% top or bottom ('endstop'). The detection mechanism is based on the armature
+% current of the window actuator. During normal operation, this current is 
+% within certain bounds. When the window reaches its top or bottom, the
+% electro-motor draws a large current (more than 15 [A] or less than -15 [A])
+% to try and sustain its angular velocity. Similarly, during normal operation
+% the current is about 2 [A] or -2 [A] (depending on whether the window is
+% opening or closing). When an object is present, there is a slight deviation
+% from this value. To ensure the window force on the object is less than 
+% 100 [N], the control switches to its emergency operation when a current
+% is detected that is less than -2.5 [A] (this is only necessary in case
+% the window is rolling up, which corresponds to a negative current in the
+% particular wiring of this model). This functionality is embodied by the
+% DETECT OBSTACLE ENDSTOP activity diagram and the process specifications
+% given below.
+
+%%
+% *AD 1.3:* DETECT OBSTACLE ENDSTOP
+%
+% <<pw_AD13.jpg>>
+
+%%
+%
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffefbf" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>CSPEC 1.3:</b> DETECT OBSTACLE ENDSTOP
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% RESET
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left" width="100%">
+% OBSTACLE <b>or</b> ENDSTOP
+% </td></tr>
+% </table>
+% </html>
+
+%%
+%
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>PSPEC 1.3.1:</b> DETECT ENDSTOP
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% ENDSTOP
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% ARMATURE_CURRENT &gt; ENDSTOP_MAX
+% </td></tr>
+% </table>
+% </html>
+
+%%
+%
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>PSPEC 1.3.2:</b> DETECT OBSTACLE
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% OBSTACLE
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% (ARMATURE_CURRENT &gt; OBSTACLE_MAX) <b>and</b> MOVE_UP <b>for</b> 500 [ms] 
+% </td></tr>
+% </table>
+% </html>
+
+%%
+%
+% <html>
+% <table border=0 cellspacing=0 cellpadding=5 bgcolor="#ffe4b0" width="100%">
+% <tr>
+% <td colspan=4>
+% <div class=PSPEC>
+% <b>PSPEC 1.3.3:</b> ABSOLUTE VALUE
+% </div>
+% </td></tr><tr><td width="5"></td><td valign="top" width="1">
+% ABSOLUTE_ARMATURE_CURRENT
+% </td><td valign="top" width="1">
+% =
+% </td><td halign="left">
+% <b>abs</b>(ARMATURE_CURRENT)
+% </td></tr>
+% </table>
+% </html>
+
+%% 
+% *Data Dictionary*
+%
+% The functional decomposition specifies each of the processes unambiguously
+% by their decomposition or primitive specification (PSPEC). In addition,
+% the signals in the activity diagrams have to be formally specified as
+% well. This is the goal of the _data dictionary_.
+
+%%
+% The data dictionary contains a table with entries for each of the signals
+% used in any of the activity diagrams.
+
+%%
+%
+% <html>
+% <table width="100%" cellspacing="2" cellpadding="2" border="2">
+% <DIV CLASS=table>
+%   <tr BGCOLOR="#DDDDDD"><!REPLACE_WITH_DASH_DASH Row 1 REPLACE_WITH_DASH_DASH>
+%     <td><b>AD0</b></td>
+%     <td COLSPAN=5>POWER WINDOW SYSTEM</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 2 REPLACE_WITH_DASH_DASH>
+%     <td>DRIVER_COMMAND</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>AGGREGATE</td>
+%     <td>NEUTRAL,UP,DOWN</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 3 REPLACE_WITH_DASH_DASH>
+%     <td>PASSENGER_COMMAND</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>AGGREGATE</td>
+%     <td>NEUTRAL,UP,DOWN</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 4 REPLACE_WITH_DASH_DASH>
+%     <td>WINDOW_POSITION</td>
+%     <td>DATA</td>
+%     <td>CONTINUOUS</td>
+%     <td>REAL</td>
+%     <td>MIN: 0 [m]</td>
+%     <td>MAX: 0.4 [m}</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 5 REPLACE_WITH_DASH_DASH>
+%     <td>MOVE_UP</td>
+%     <td>CONTROL</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 6 REPLACE_WITH_DASH_DASH>
+%     <td>MOVE_DOWN</td>
+%     <td>CONTROL</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr BGCOLOR="#DDDDDD"><!REPLACE_WITH_DASH_DASH Row 7 REPLACE_WITH_DASH_DASH>
+%     <td><b>AD1</b></td>
+%     <td COLSPAN=5>POWER WINDOW CONTROLLER</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 8 REPLACE_WITH_DASH_DASH>
+%     <td>RESET</td>
+%     <td>CONTROL</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 9 REPLACE_WITH_DASH_DASH>
+%     <td>VALIDATED_DRIVER_COMMAND</td>
+%     <td>CONTROL</td>
+%     <td>DISCRETE</td>
+%     <td>AGGREGATE</td>
+%     <td>NEUTRAL,UP,DOWN</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 10 REPLACE_WITH_DASH_DASH>
+%     <td>VALIDATED_PASSENGER_COMMAND</td>
+%     <td>CONTROL</td>
+%     <td>DISCRETE</td>
+%     <td>AGGREGATE</td>
+%     <td>NEUTRAL,UP,DOWN</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 11 REPLACE_WITH_DASH_DASH>
+%     <td>OBSTACLE</td>
+%     <td>CONTROL</td>
+%      <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 12 REPLACE_WITH_DASH_DASH>
+%     <td>ENDSTOP</td>
+%     <td>CONTROL</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr BGCOLOR="#DDDDDD"><!REPLACE_WITH_DASH_DASH Row 13 REPLACE_WITH_DASH_DASH>
+%     <td><b>AD1.1</b></td>
+%     <td COLSPAN=5>VALIDATE_DRIVER</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 14 REPLACE_WITH_DASH_DASH>
+%     <td>NEUTRAL</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 15 REPLACE_WITH_DASH_DASH>
+%     <td>UP</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 16 REPLACE_WITH_DASH_DASH>
+%     <td>DOWN</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 17 REPLACE_WITH_DASH_DASH>
+%     <td>CHECKED UP</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 18 REPLACE_WITH_DASH_DASH>
+%     <td>CHECKED DOWN</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr BGCOLOR="#DDDDDD"><!REPLACE_WITH_DASH_DASH Row 19 REPLACE_WITH_DASH_DASH>
+%     <td><b>AD1.2</b></td>
+%     <td COLSPAN=5>VALIDATE_PASSENGER</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 20 REPLACE_WITH_DASH_DASH>
+%     <td>NEUTRAL</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 21 REPLACE_WITH_DASH_DASH>
+%     <td>UP</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 22 REPLACE_WITH_DASH_DASH>
+%     <td>DOWN</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 23 REPLACE_WITH_DASH_DASH>
+%     <td>CHECKED UP</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 24 REPLACE_WITH_DASH_DASH>
+%     <td>CHECKED DOWN</td>
+%     <td>DATA</td>
+%     <td>DISCRETE</td>
+%     <td>BOOLEAN</td>
+%     <td>'TRUE','FALSE'</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr BGCOLOR="#DDDDDD"><!REPLACE_WITH_DASH_DASH Row 25 REPLACE_WITH_DASH_DASH>
+%     <td><b>AD1.3</b></td>
+%     <td COLSPAN=5>DETECT_OBSTACLE_ENDSTOP</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 26 REPLACE_WITH_DASH_DASH>
+%     <td>ENDSTOP_MIN</td>
+%     <td>DATA</td>
+%     <td>CONSTANT</td>
+%     <td>REAL</td>
+%     <td>VALUE: 0.0 [m]</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 27 REPLACE_WITH_DASH_DASH>
+%     <td>ENDSTOP_MAX</td>
+%     <td>DATA</td>
+%     <td>CONSTANT</td>
+%     <td>REAL</td>
+%     <td>VALUE: 0.4 [m]</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 28 REPLACE_WITH_DASH_DASH>
+%     <td>OBSTACLE_MAX</td>
+%     <td>DATA</td>
+%     <td>CONSTANT</td>
+%     <td>REAL</td>
+%     <td>VALUE: 0.3 [m]</td>
+%     <td>&nbsp;</td>
+%   </tr>
+% </DIV>
+% </table>
+% </html>
+
+%% 
+% *Timing Requirements*
+%
+% Now, reopen powerwindow01 and open the |position| measurement> (in [m])
+% to view the window movement and run the simulation. 
+
+open_system('powerwindow01');
+close_system('powerwindow01/position',0)
+
+%%
+close_system('powerwindow01',0);
+
+%%
+% Double-click the passenger window up switch to start moving the window up. 
+
+open_system('powerwindow01');
+close_system('powerwindow01/position',0)
+hilite_system('powerwindow01/passenger_switch/up control','find')
+
+%%
+set_param('powerwindow01','stopTime','10')
+set_param('powerwindow01/position','limitDataPoints','off')
+open_system('powerwindow01/position')
+set_param('powerwindow01','SimulationCommand','start')
+open_system('powerwindow01/passenger_switch/up control')
+pause(10)
+set_param('powerwindow01','SimulationCommand','stop') 
+
+%%
+% After 30 [cm], the |obstacle| event is
+% generated and the Stateflow chart moves into its |emergencyDown| state.
+% In this state, |windowDown| is output for some time to lower the window
+% by about 10 [cm]. Because the passenger window up switch is still on, the
+% window starts moving up again and this process repeats.  Stop the simulation
+% and press the |Autoscale| button on the position scope to observe the
+% oscillating process. Note that in case of an emergency the discrete event
+% control rolls down the window approximately 10 [cm].
+
+%%
+close_system('powerwindow01',0);
+
+%% Detailed Modeling of Power Effects
+%
+% After an initial analysis of the discrete event control and continuous dynamics,
+% a detailed plant model can be used to evaluate performance in a more realistic
+% situation. Models at such a level of detail are best designed in the
+% _power_ domain, i.e., as energy flows. This is facilitated by several
+% domain specific blocksets.
+
+%%
+% Before including this behavior, first remove the continuous behavior
+% included before and add a more detailed subsystem consisting of power
+% electronics and a multi-body system.
+%
+% |open_system('powerwindow02');|
+
+open_system('powerwindow02');
+close_system('powerwindow02/position',0)
+close_system('powerwindow02/force',0)
+close_system('powerwindow02/armature_current',0)
+hilite_system('powerwindow02/window_system/amplification up','find')
+hilite_system('powerwindow02/window_system/amplification down','find')
+hilite_system('powerwindow02/window_system/actuator','find')
+
+%%
+close_system('powerwindow02',0);
+
+%%
+open_system('powerwindow02');
+close_system('powerwindow02/position',0)
+close_system('powerwindow02/force',0)
+close_system('powerwindow02/armature_current',0)
+hilite_system('powerwindow02/window_system/plant','find')
+
+%%
+close_system('powerwindow02',0);
+
+%%
+% Let's have a look at these in detail next.
+
+%% 
+% *Power Electronics*
+%
+% The control signals generated by the discrete event controller
+% have to be 'amped up' to be sufficiently powerful to drive the 
+% DC motor that moves the window. 
+
+open_system('powerwindow02');
+close_system('powerwindow02/position',0)
+close_system('powerwindow02/force',0)
+close_system('powerwindow02/armature_current',0)
+hilite_system('powerwindow02/window_system/actuator','find')
+open_system('powerwindow02/window_system/actuator','force');
+hilite_system('powerwindow02/window_system/actuator/DC Machine1','find')
+
+%%
+close_system('powerwindow02',0);
+
+%%
+% This is modeled by the amplification modules.
+% It shows that a switch either connects the DC motor
+% to the battery voltage or ground. By connecting the battery reversely, a
+% negative voltage is obtained and the window can be moved up, down, or remain
+% at its position. Note that the window is always driven at maximum power, i.e.,
+% no DC motor controller is present to apply a prescribed velocity.
+
+%%
+open_system('powerwindow02');
+close_system('powerwindow02/position',0)
+close_system('powerwindow02/force',0)
+close_system('powerwindow02/armature_current',0)
+hilite_system('powerwindow02/window_system/amplification up','find')
+hilite_system('powerwindow02/window_system/amplification down','find')
+
+%%
+open_system('powerwindow02/window_system/amplification up','force')
+
+%%
+close_system('powerwindow02',0);
+
+%% 
+% *Multi-Body System*
+%
+% The window is modeled by using the multi-body system blockset.
+
+%%
+open_system('powerwindow02');
+close_system('powerwindow02/position',0)
+close_system('powerwindow02/force',0)
+close_system('powerwindow02/armature_current',0)
+hilite_system('powerwindow02/window_system/plant','find')
+
+%%
+% This consists of a library of noncausal multi-body elements such as bodies, joints, and
+% actuators. The  window model consists of 
+
+open_system('powerwindow02/window_system/plant','force');
+hilite_system('powerwindow02/window_system/plant/window','find')
+
+%%
+% a worm gear
+open_system('powerwindow02/window_system/plant/window','force');
+hilite_system('powerwindow02/window_system/plant/window/worm','find')
+hilite_system('powerwindow02/window_system/plant/window/worm gear','find')
+hilite_system('powerwindow02/window_system/plant/window/main gear','find')
+hilite_system('powerwindow02/window_system/plant/window/door','find')
+hilite_system('powerwindow02/window_system/plant/window/Revolute6','find')
+hilite_system('powerwindow02/window_system/plant/window/Revolute8','find')
+hilite_system('powerwindow02/window_system/plant/window/Revolute1','find')
+hilite_system('powerwindow02/window_system/plant/window/GND2','find')
+
+%%
+hilite_system('powerwindow02/window_system/plant/window/worm','none')
+hilite_system('powerwindow02/window_system/plant/window/worm gear','none')
+hilite_system('powerwindow02/window_system/plant/window/main gear','none')
+hilite_system('powerwindow02/window_system/plant/window/door','none')
+hilite_system('powerwindow02/window_system/plant/window/Revolute6','none')
+hilite_system('powerwindow02/window_system/plant/window/Revolute8','none')
+hilite_system('powerwindow02/window_system/plant/window/Revolute1','none')
+hilite_system('powerwindow02/window_system/plant/window/GND2','none')
+close_system('powerwindow02/window_system/plant/window',0);
+
+%%
+% and lever 
+
+open_system('powerwindow02/window_system/plant/window','force');
+hilite_system('powerwindow02/window_system/plant/window/rotate & slide','find')
+
+%%
+hilite_system('powerwindow02/window_system/plant/window/rotate & slide','none')
+close_system('powerwindow02/window_system/plant/window',0);
+        
+%%
+% to move the window holder in the vertical direction. 
+open_system('powerwindow02/window_system/plant/window','force');
+hilite_system('powerwindow02/window_system/plant/window/window','find')
+hilite_system('powerwindow02/window_system/plant/window/up & down','find')
+hilite_system('powerwindow02/window_system/plant/window/GND','find')
+
+%%
+close_system('powerwindow02',0);
+
+%%
+% The following figure shows how the mechanical parts move:
+%
+% <<pw_window2b.jpg>>
+
+%% 
+% *Design Iteration*
+%
+% An important effect of the more detailed implementation is that there is no
+% window position measurement available. Instead, the current of the DC motor
+% is measured and used to detect the endstops and whether an obstacle is present.
+% This brings about the next stage in system design which now allows to analyze
+% the control and whether it indeed does not cause too large a force when an
+% obstacle is present.
+
+%%
+% In the originally designed system, the obstacle and endstop detection
+% based on the window position was removed and replaced with a
+% current based implementation, and the process was connected
+% to the controller and position and force measurements. This means that
+% the data dictionary has to be modified to reflect the different signals
+% used. 
+
+%%
+%
+% <html>
+% <table width="100%" cellspacing="2" cellpadding="2" border="2">
+% <DIV CLASS=table>
+%   <tr BGCOLOR="#DDDDDD"><!REPLACE_WITH_DASH_DASH Row 1 REPLACE_WITH_DASH_DASH>
+%     <td><b>AD0</b></td>
+%     <td COLSPAN=5>POWER WINDOW SYSTEM</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 4 REPLACE_WITH_DASH_DASH>
+%     <td>ARMATURE_CURRENT</td>
+%     <td>DATA</td>
+%     <td>CONTINUOUS</td>
+%     <td>REAL</td>
+%     <td>MIN: -20 [A]</td>
+%     <td>MAX: 20 [A}</td>
+%   </tr>
+%   <tr BGCOLOR="#DDDDDD"><!REPLACE_WITH_DASH_DASH Row 25 REPLACE_WITH_DASH_DASH>
+%     <td><b>AD1.3</b></td>
+%     <td COLSPAN=5>DETECT_OBSTACLE_ENDSTOP</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 26 REPLACE_WITH_DASH_DASH>
+%     <td>ABSOLUTE_ARMATURE_CURRENT</td>
+%     <td>DATA</td>
+%     <td>CONTINUOUS</td>
+%     <td>REAL</td>
+%     <td>MIN: 0 [A]</td>
+%     <td>MAX: 20 [A]</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 27 REPLACE_WITH_DASH_DASH>
+%     <td>ENDSTOP_MAX</td>
+%     <td>DATA</td>
+%     <td>CONSTANT</td>
+%     <td>REAL</td>
+%     <td>VALUE: 15 [A]</td>
+%     <td>&nbsp;</td>
+%   </tr>
+%   <tr><!REPLACE_WITH_DASH_DASH Row 27 REPLACE_WITH_DASH_DASH>
+%     <td>OBSTACLE_MAX</td>
+%     <td>DATA</td>
+%     <td>CONSTANT</td>
+%     <td>REAL</td>
+%     <td>VALUE: 2.5 [A]</td>
+%     <td>&nbsp;</td>
+%   </tr>
+% </DIV>   
+% </table>
+% </html>
+
+%%
+% A control mechanism was added to conveniently switch between the presence
+% and absence of the object.
+
+%% Visualization of the System in Motion
+%
+% To view the geometrics of the system in motion, add a virtual reality
+% world and open it by double-clicking on the block.
+%
+% |open_system('powerwindow03')|
+
+open_system('powerwindow03')
+close_system('powerwindow03/position',0)
+close_system('powerwindow03/force',0)
+close_system('powerwindow03/armature_current',0)
+hilite_system('powerwindow03/window_world','find');
+
+%%
+open_system('powerwindow03/window_world/VR Sink');
+close_system('powerwindow03/window_world',0);
+
+%%
+% Select a stiff solver, e.g., the TR-BDF2 (an implicit Runge-Kutta formula).
+
+%%
+% Set the passenger up switch to on and the driver up switch to off and run
+% the simulation again. After some  initial time less than 1 [s] but more
+% than 10 [ms] in simulation time (simulation time is displayed in the
+% bottom-right corner of the model window status bar), switch off the
+% passenger up switch to initiate the auto-up behavior.
+
+%%
+set_param('powerwindow03','stopTime','10')
+open_system('powerwindow03/position')
+open_system('powerwindow03/force')
+open_system('powerwindow03/armature_current')
+set_param('powerwindow03','SimulationCommand','start')
+open_system('powerwindow03/driver_switch/up control')
+open_system('powerwindow03/passenger_switch/up control')
+pause(0.25)
+open_system('powerwindow03/passenger_switch/up control')
+pause(6)
+set_param('powerwindow03','SimulationCommand','stop')
+
+%%
+% Notice how the window holder starts to
+% move vertically to close the window. When the object is encountered, the
+% window is rolled down. 
+
+%%
+% Click the driver down switch to roll down the window completely. Again,
+% after some initial time (less than one second simulation time) switch off
+% the driver down switch to initiate the auto-down behavior. 
+
+%%
+close_system('powerwindow03/position', 0)
+close_system('powerwindow03/force', 0)
+close_system('powerwindow03/armature_current', 0)
+
+%%
+set_param('powerwindow03','stopTime','10')
+open_system('powerwindow03/position')
+open_system('powerwindow03/force')
+open_system('powerwindow03/armature_current')
+set_param('powerwindow03','SimulationCommand','start')
+open_system('powerwindow03/passenger_switch/up control')
+pause(0.25)
+open_system('powerwindow03/passenger_switch/up control')
+pause(1)
+open_system('powerwindow03/driver_switch/down control')
+pause(0.25)
+open_system('powerwindow03/driver_switch/down control')
+pause(6)
+set_param('powerwindow03','SimulationCommand','stop')
+
+%%
+close_system('powerwindow03',0)
+
+%%
+% When the window has reached the bottom of the frame, stop the simulation.
+
+%%
+% Now, look at the |position| measurement> (in [m]) and at the |armature
+% current| (Ia) measurement (in [A]). 
+
+%%
+% *Note* that the absolute value of the armature current transient during
+% normal behavior does not exceed 10 [A].  The obstacle is detected when
+% the absolute value of the armature current required to move the window up
+% exceeds 2.5 [A] (in fact, it less than -2.5 [A]) where during normal
+% operation this is about 2 [A]. You probably have to zoom in to have a
+% good look at this. The window endstop is detected when the absolute value
+% of the armature current exceeds 15 [A]. 
+
+%%
+% Variation in the armature current during normal operation is due to 
+% friction that is included by sensing joint velocities and positions and
+% applying window specific coefficients. 
+
+open_system('powerwindow03')
+close_system('powerwindow03/position',0)
+close_system('powerwindow03/force',0)
+close_system('powerwindow03/armature_current',0)
+hilite_system('powerwindow03/window_system/plant/window/friction','find')
+
+%%
+% A look-up table is used to this end and noise is added to allow
+% evaluation of the control robustness.  
+
+open_system('powerwindow03/window_system/plant/window/friction','force');
+hilite_system('powerwindow03/window_system/plant/window/friction/vehicle characteristic friction','find')
+
+%%
+hilite_system('powerwindow03/window_system/plant/window/friction/vehicle characteristic friction','none')
+close_system('powerwindow03/window_system/plant/window/friction',0);
+
+%% Control Law Evaluation
+%
+% While the idealized continuous plant allowed access to the window position
+% for |endStop| and |obstacle| event generation, in the more
+% realistic situation, these events have to be generated from accessible 
+% physical variables. In case of the power window system, this typical is
+% the armature current, |Ia|, of the DC motor that drives the worm gear.
+
+%%
+% While moving the window, this current will have a value around 2 [A] and 
+% when switched on, a transient current is drawn that may reach values of
+% around 10 [A]. End stop detection is activated when the current exceeds
+% a value of 15 [A], which is drawn when the angular velocity of the motor
+% is kept almost 0 despite a positive or negative input voltage.
+
+%%
+% Detecting the presence of an object is much more difficult in this setup.
+% Because safety restrictions prescribe that the window force should not 
+% exceed 100 [N], an object should be detected by an armature current much
+% less than 10 [A]. However, this conflicts with the transient values achieved
+% during normal operation.
+
+%%
+% Here, a control law is implemented that disables object detection during the
+% transient. Now, when an armature current that is more than 2 [A] is measured,
+% an object is considered to be present and the |emergencyDown| state
+% of the discrete event control is entered. Open the |window force| measurement (in [N])
+% to verify that the force exerted when an object is present and the window
+% reverses its velocity remains less than 100 [N].
+
+set_param('powerwindow03','stopTime','10')
+open_system('powerwindow03/force')
+set_param('powerwindow03','SimulationCommand','start')
+open_system('powerwindow03/driver_switch/up control')
+open_system('powerwindow03/passenger_switch/up control')
+pause(0.25)
+open_system('powerwindow03/passenger_switch/up control')
+pause(1)
+open_system('powerwindow03/driver_switch/down control')
+pause(0.25)
+open_system('powerwindow03/driver_switch/down control')
+pause(6)
+set_param('powerwindow03','SimulationCommand','stop')
+
+%%
+% Note that far more sophisticated control laws are possible and
+% implemented in reality. For example, neural-network based learning
+% feedforward control techniques can be implemented to emulate the friction
+% characteristic of each individual vehicle and its changes over time.
+
+%%
+close_system('powerwindow03',0)
+
+%% Realistic Armature Measurement
+%
+% The armature current as used in the power window control is an ideal value
+% that is accessible because of the use of an actuator model. In a more realistic
+% situation, this current value has to be measured by data acquisition components.
+
+%%
+% To include these, first remove the ideal measurement. Next, add the more
+% realistic measurement that include a signal conditioning block where the
+% current is derived based on a voltage measurement. 
+
+open_system('powerwindow04')
+close_system('powerwindow04/position', 0)
+close_system('powerwindow04/force', 0)
+close_system('powerwindow04/armature_current', 0)
+open_system('powerwindow04/window_system')
+
+%%
+% This voltage is within the range of an analog-to-digital
+% converter (ADC) that discretizes based on a given number of bits. The resulting
+% value has to be scaled based on the value of the resistor that is used and
+% the range of the ADC that is chosen. 
+
+%%
+% Include these operations as fixed point computations.
+% Notice that 16 bits are required instead of 8 to achieve the necessary
+% resolution with the given range.
+
+open_system('powerwindow04/power_window_control_system/detect_obstacle_endstop')
+hilite_system('powerwindow04/power_window_control_system/detect_obstacle_endstop/process_current','find');
+
+%%
+% Study the same scenario
+% 
+% * set the passenger up switch 
+% * run the simulation
+% * after some time switch off the passenger up switch
+% * when the window has been rolled down, click the driver down switch
+% * after some time switch off the driver down switch
+% * when the window has reached the bottom of the frame, stop the simulation.
+
+set_param('powerwindow04','stopTime','10')
+open_system('powerwindow04/position')
+open_system('powerwindow04/force')
+open_system('powerwindow04/armature_current')
+set_param('powerwindow04','SimulationCommand','start')
+open_system('powerwindow04/passenger_switch/up control')
+pause(0.25)
+open_system('powerwindow04/passenger_switch/up control')
+pause(0.5)
+open_system('powerwindow04/driver_switch/down control')
+pause(0.5)
+open_system('powerwindow04/driver_switch/down control')
+pause(5)
+set_param('powerwindow04','SimulationCommand','stop')
+
+%%
+close_system('powerwindow04',0)
+
+%% 
+% Notice how the armature current now has a discretized appearance by
+% zooming in on it.
+
+%% Reorganizing the Model
+% 
+% To avoid cluttered diagrams, the designed model was reorganized using
+% subsystems.
+% 
+% * First, collapse the DAQ subsystem
+
+open_system('powerwindow04')
+close_system('powerwindow04/position',0)
+close_system('powerwindow04/force',0)
+close_system('powerwindow04/armature_current',0)
+hilite_system('powerwindow04/window_system/window DAQ/DAC up','find')
+hilite_system('powerwindow04/window_system/window DAQ/DAC down','find')
+hilite_system('powerwindow04/window_system/window DAQ/amplification up','find')
+hilite_system('powerwindow04/window_system/window DAQ/amplification down','find')
+hilite_system(['powerwindow04/window_system/window DAQ/conditioning',char(10),'Ia measurement'],'find')
+hilite_system(['powerwindow04/window_system/window DAQ/ADC',char(10),'Ia'],'find')
+
+%%
+hilite_system('powerwindow04/window_system/window DAQ/DAC up','none')
+hilite_system('powerwindow04/window_system/window DAQ/DAC down','none')
+hilite_system('powerwindow04/window_system/window DAQ/amplification up','none')
+hilite_system('powerwindow04/window_system/window DAQ/amplification down','none')
+hilite_system(['powerwindow04/window_system/window DAQ/conditioning',char(10),'Ia measurement'],'none')
+hilite_system(['powerwindow04/window_system/window DAQ/ADC',char(10),'Ia'],'none')
+close_system('powerwindow04/window_system/',0)
+
+%%
+% * Next, collapse the actuator and plant subsystems
+
+set_param(sprintf('powerwindow04/window_system/process'),'LinkStatus','inactive');
+set_param(sprintf('powerwindow04/window_system/process/actuator'),'LinkStatus','inactive');
+set_param(sprintf('powerwindow04/window_system/process/plant'),'LinkStatus','inactive');
+hilite_system('powerwindow04/window_system/process/actuator','find')
+hilite_system('powerwindow04/window_system/process/plant','find')
+
+%%
+close_system('powerwindow04',0)
+
+%% Communication Protocols
+%
+% Similar to the Stateflow output part, the input events have to be generated
+% by hardware, in this case the window control switches in the door 
+% and center control panels. These events are generated by local processors
+% and then communicated to the window controller by a CAN bus.
+%
+% |open_system('powerwindow05')|
+
+open_system('powerwindow05')
+close_system('powerwindow05/position',0)
+close_system('powerwindow05/force',0)
+close_system('powerwindow05/armature_current',0)
+set_param(sprintf('powerwindow05/driver\nswitch'),'LinkStatus','inactive');
+
+%%
+% To include these phenomena, first remove the idealized input and add
+% input from a CAN bus. Next, add switch components that generate the
+% events and put these on the CAN bus.  If you open the switch subsystem,
+
+open_system('powerwindow05/passenger switch','force');
+
+%%
+% you note a structure very similar to the window control system: 
+% again, there is a plant model that represents the control switch, 
+
+hilite_system('powerwindow05/passenger switch/switch','find');
+
+%%
+% a data acquisition
+% subsystem that includes, among other things, signal conditioning
+% components, 
+
+hilite_system('powerwindow05/passenger switch/switch','none');
+hilite_system('powerwindow05/passenger switch/DAQ','find');
+
+%% 
+% a control module to map the commands from the physical switch to logical commands, 
+
+hilite_system('powerwindow05/passenger switch/DAQ','none');
+hilite_system('powerwindow05/passenger switch/control','find');
+
+%%
+% and a CAN module to post the events to the vehicle data bus. 
+
+hilite_system('powerwindow05/passenger switch/control','none');
+hilite_system('powerwindow05/passenger switch/CAN module','find');
+
+
+%%
+close_system('powerwindow05', 0);
+
+%%
+% Additional communication effects (e.g., because of other systems using
+% the CAN bus) and more realism can be added similar to the described
+% phases. Each of these phases allows analysis of the discrete event
+% controller in an increasingly realistic situation. Once a sufficient
+% level of detail is achieved, controller code can be automatically
+% generated for any specific target platform.
+
+%% Automatic Code Generation for Control Subsystem
+% 
+% To generate code of the designed control
+
+%%
+open_system('powerwindow04');
+close_system('powerwindow04/position',0)
+close_system('powerwindow04/force',0)
+close_system('powerwindow04/armature_current',0)
+hilite_system('powerwindow04/power_window_control_system','find')
+
+%%
+close_system('powerwindow04', 0);
+
+%%
+% first check the sample rates of the controller by selecting |Sample time
+% colors| from the |Port/Signal Displays| entry of the |Format| menu. This
+% shows that the controller runs at a uniform sample rate.  
+
+open_system('powerwindow04');
+close_system('powerwindow04/position',0)
+close_system('powerwindow04/force',0)
+close_system('powerwindow04/armature_current',0)
+hilite_system('powerwindow04/power_window_control_system','none')
+set_param('powerwindow04','Solver','ode23tb')
+set_param('powerwindow04','SampleTimeColors','on')
+powerwindow04( [ ], [ ], [ ], 'compile')
+powerwindow04([ ], [ ], [ ], 'term')
+
+%%
+% Now, click your right mouse-button on the window control module 
+% and from |Real-Time Workshop(R)| select |Build Subsystem| to build real-time
+% code of the subsystem. 
+
+%%
+close_system('powerwindow04',0);
+
+%% References
+% 
+% Pieter J. Mosterman, Janos Sztipanovits, and Sebastian Engell,
+% "Computer-Automated Multiparadigm Modeling in Control Systems Technology,"
+% _IEEE Transactions on Control Systems Technology_, vol. 12, no. 2, 
+% pp. 223-234, 2004.
+
+
+##### SOURCE END #####
+--></body></html>

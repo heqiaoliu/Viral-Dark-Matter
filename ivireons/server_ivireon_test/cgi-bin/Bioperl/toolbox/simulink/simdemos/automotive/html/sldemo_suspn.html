@@ -1,0 +1,209 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Automotive Suspension</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_suspn.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_suspn.mdl</div><div class="right"><a href="matlab:sldemo_suspn">Open this model</a></div></div><div class="content"><h1>Automotive Suspension</h1><!--introduction--><p>This demo describes a simplified half-car model that includes an independent front and rear vertical suspension. The model also includes body pitch and bounce degrees of freedom. The demo provides a description of the model to show how simulation can be used to investigate ride characteristics. You can use this model in conjunction with a powertrain simulation to investigate longitudinal shuffle resulting from changes in throttle setting.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analysis and Physics</a></li><li><a href="#5">The Model</a></li><li><a href="#10">Running the Simulation</a></li><li><a href="#13">Closing the Model</a></li><li><a href="#14">Conclusions</a></li></ul></div><h2>Analysis and Physics<a name="1"></a></h2><p><img vspace="5" hspace="5" src="sldemo_suspn_figure1.png" alt=""> </p><p><b>Figure 1:</b> A free-body diagram of the half-car model</p><p>Figure 1 illustrates the modeled characteristics of the half-car. The front and rear suspension are modeled as spring/damper systems. A more detailed model would include a tire model, and damper nonlinearities such as velocity-dependent damping (with greater damping during rebound than compression). The vehicle body has pitch and bounce degrees of freedom. They are represented in the model by four states: vertical displacement, vertical velocity, pitch angular displacement, and pitch angular velocity. A full model with six degrees of freedom can be implemented using vector algebra blocks to perform axis transformations and force/displacement/velocity calculations. The front suspension influences the bounce (i.e. vertical degree of freedom) according to Equation 1.</p><p><b>Equation 1</b></p><p><img src="sldemo_suspn_eq43898.png" alt="$$F_{front} = 2K_f (L_f \theta - z) + 2C_f(L_f \dot{\theta} -\dot{z})$$"></p><p><img src="sldemo_suspn_eq31904.png" alt="$$F_{front}, F_{rear} = \mbox{ upward force on body from front/rear suspension}$$"></p><p><img src="sldemo_suspn_eq66209.png" alt="$$K_f, K_r = \mbox{ front and rear suspension spring constant}$$"></p><p><img src="sldemo_suspn_eq04044.png" alt="$$C_f, C_r = \mbox{ front and rear suspension damping rate}$$"></p><p><img src="sldemo_suspn_eq42057.png" alt="$$L_f, L_r = \mbox{ horizontal distance from gravity center to front/rear suspension}$$"></p><p><img src="sldemo_suspn_eq37403.png" alt="$$\theta, \dot{\theta} = \mbox{ pitch (rotational) angle and its rate of change}$$"></p><p><img src="sldemo_suspn_eq22746.png" alt="$$z, \dot{z} = \mbox{ bounce (vertical) distance and its rate of change}$$"></p><p>The pitch contribution to the front suspension is given by Equation 2.</p><p><b>Equation 2</b></p><p><img src="sldemo_suspn_eq25351.png" alt="$$ M_{front} = -L_{front}F_{front} \mbox{ (pitch moment due to front suspension)}$$"></p><p>Equation 3 contains expressions for the rear suspension.</p><p><b>Equation 3</b></p><p><img src="sldemo_suspn_eq01113.png" alt="$$F_{rear} = -2K_r (L_r\theta + z) -2C_r ( L_r \dot{\theta} + \dot{z})$$"></p><p><img src="sldemo_suspn_eq05172.png" alt="$$M_{rear} = L_r F_{rear} \mbox{ pitch moment due to rear suspension}$$"></p><p>The forces and moments result in body motion according to Newton's Second Law (see Equation 4).</p><p><b>Equation 4</b></p><p><img src="sldemo_suspn_eq54410.png" alt="$$m_b\ddot{z} = F_{front} + F_{rear} - m_b g$$"></p><p><img src="sldemo_suspn_eq67014.png" alt="$$I_{yy} \ddot{\theta} = M_{front} + M_{rear} + M_y $$"></p><p><img src="sldemo_suspn_eq54749.png" alt="$$ m_b = \mbox{ body mass}$$"></p><p><img src="sldemo_suspn_eq68535.png" alt="$$ M_y = \mbox{ pitch moment induced by vehicle acceleration}$$"></p><p><img src="sldemo_suspn_eq20274.png" alt="$$I_{yy} = \mbox{ body moment of inertia about gravity center}$$"></p><h2>The Model<a name="5"></a></h2><p>To <a href="matlab:open_system('sldemo_suspn')">open</a> this model, type <tt>sldemo_suspn</tt> in MATLAB&reg; Command Window. Figure 2 shows the top-level diagram of the suspension model.</p><img vspace="5" hspace="5" src="sldemo_suspn_01.png" alt=""> <p><b>Figure 2:</b> Top-level diagram of the suspension model</p><p>The suspension model shown in Figure 2 has two inputs, and both input blocks are blue on the model diagram. The first input is the road height. A step input here corresponds to the vehicle driving over a road surface with a step change in height. The second input is a horizontal force acting through the center of the wheels that results from braking or acceleration maneuvers. This input appears only as a moment about the pitch axis because the longitudinal body motion is not modeled.</p><img vspace="5" hspace="5" src="sldemo_suspn_02.png" alt=""> <p><b>Figure 3:</b> The Spring/Damper model used in FrontSuspension and RearSuspension subsystems</p><p>The spring/damper subsystem that models the front and rear suspensions is shown in Figure 3. Right click on the Front/Rear Suspension block and select "Look Under Mask" to see the front/rear suspension subsystem. The suspension subsystems are used to model Equations 1-3. The equations are implemented directly in the Simulink&reg; diagram through the straightforward use of Gain and Summation blocks.</p><p>The differences between front and rear are accounted for as follows. Because the subsystem is a masked block, a different data set (<tt>L</tt>, <tt>K</tt> and <tt>C</tt>) can be entered for each instance. Furthermore, <tt>L</tt> is thought of as the Cartesian coordinate x, being negative or positive with respect to the origin, or center of gravity. Thus, <tt>Kf</tt>, <tt>Cf</tt>, and <tt>-Lf</tt> are used for the front suspension block whereas <tt>Kr</tt>, <tt>Cr</tt>, and <tt>Lr</tt> are used for the rear suspension block.</p><h2>Running the Simulation<a name="10"></a></h2><p>To run this model, press the Play button on the toolbar in the model window. Initial conditions are loaded into the model workspace from the <tt>sldemo_suspdat.m</tt> file (<a href="matlab:edit('sldemo_suspdat.m')">open this file</a> to view its contents). To see the contents of the model workspace go to View menu &gt; Model Explorer, look under the contents of the <tt>sldemo_suspn</tt> model and select "Model Workspace". Loading initial conditions in the model workspace prevents any accidental modifications of parameters and keeps MATLAB workspace clean.</p><p>Note that the model logs relevant data to MATLAB workspace in a data structure called <tt>sldemo_suspn_output</tt>. Type the name of the structure to see what data it contains. Read more about signal logging in Simulink Help.</p><img vspace="5" hspace="5" src="sldemo_suspn_03.png" alt=""> <p><b>Figure 4:</b> Simulation results</p><p>Simulation results are displayed in Figure 4. The results are plotted by the <tt>sldemo_suspgraph.m</tt> (you can <a href="matlab:edit('sldemo_suspgraph.m')">open this file</a> to see how it is done). The default initial conditions are given in Table 1 below.</p><p><b>Table 1:</b> Default initial conditions</p><pre>Lf = 0.9;    % front hub displacement from body gravity center (m)
+Lr = 1.2;    % rear hub displacement from body gravity center (m)
+Mb = 1200;   % body mass (kg)
+Iyy = 2100;  % body moment of inertia about y-axis in (kg m^2)
+kf = 28000;  % front suspension stiffness in (N/m)
+kr = 21000;  % rear suspension stiffness in (N/m)
+cf = 2500;   % front suspension damping in (N sec/m)
+cr = 2000;   % rear suspension damping in (N sec/m)</pre><h2>Closing the Model<a name="13"></a></h2><p>Close the model and delete generated data from MATLAB workspace.</p><h2>Conclusions<a name="14"></a></h2><p>This model allows you to simulate the effects of changing the suspension damping and stiffness, thereby investigating the tradeoff between comfort and performance. In general, racing cars have very stiff springs with a high damping factor, whereas passenger vehicles have softer springs and a more oscillatory response.</p><p class="footer">Copyright 1990-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Automotive Suspension 
+%
+% This demo describes a simplified half-car model that includes an independent
+% front and rear vertical suspension. The model also includes body pitch and
+% bounce degrees of freedom. The demo provides a description of the model to
+% show how simulation can be used to investigate ride characteristics. You can
+% use this model in conjunction with a powertrain simulation to investigate
+% longitudinal shuffle resulting from changes in throttle setting.
+
+% Copyright 1990-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.2 $  $Date: 2007/12/10 22:40:51 $
+
+%% Analysis and Physics
+%
+% <<sldemo_suspn_figure1.png>>
+%
+% *Figure 1:* A free-body diagram of the half-car model
+%
+% Figure 1 illustrates the modeled characteristics of the half-car.
+% The front and rear suspension are modeled as spring/damper systems. A more
+% detailed model would include a tire model, and damper nonlinearities
+% such as velocity-dependent damping (with greater damping during rebound than
+% compression). The vehicle body has pitch and bounce degrees of freedom. They
+% are represented in the model by four states: vertical displacement, vertical
+% velocity, pitch angular displacement, and pitch angular velocity. A full model
+% with six degrees of freedom can be implemented using vector algebra blocks to
+% perform axis transformations and force/displacement/velocity calculations.
+% The front suspension influences the bounce (i.e. vertical degree of freedom)
+% according to Equation 1.
+%
+% *Equation 1*
+%
+% $$F_{front} = 2K_f (L_f \theta - z) + 2C_f(L_f \dot{\theta} -\dot{z})$$
+%
+% $$F_{front}, F_{rear} = \mbox{ upward force on body from front/rear suspension}$$
+%
+% $$K_f, K_r = \mbox{ front and rear suspension spring constant}$$
+%
+% $$C_f, C_r = \mbox{ front and rear suspension damping rate}$$
+%
+% $$L_f, L_r = \mbox{ horizontal distance from gravity center to front/rear suspension}$$
+%
+% $$\theta, \dot{\theta} = \mbox{ pitch (rotational) angle and its rate of change}$$
+%
+% $$z, \dot{z} = \mbox{ bounce (vertical) distance and its rate of change}$$
+
+%%
+%
+% The pitch contribution to the front suspension is given by Equation 2.
+%
+% *Equation 2*
+%
+% $$ M_{front} = -L_{front}F_{front} \mbox{ (pitch moment due to front suspension)}$$
+
+%%
+%
+% Equation 3 contains expressions for the rear suspension.
+%
+% *Equation 3*
+%
+% $$F_{rear} = -2K_r (L_r\theta + z) -2C_r ( L_r \dot{\theta} + \dot{z})$$
+%
+% $$M_{rear} = L_r F_{rear} \mbox{ pitch moment due to rear suspension}$$
+%
+
+%%
+%
+% The forces and moments result in body motion according to Newton's Second Law
+% (see Equation 4).
+%
+% *Equation 4*
+%
+% $$m_b\ddot{z} = F_{front} + F_{rear} - m_b g$$
+%
+% $$I_{yy} \ddot{\theta} = M_{front} + M_{rear} + M_y $$
+%
+% $$ m_b = \mbox{ body mass}$$
+% 
+% $$ M_y = \mbox{ pitch moment induced by vehicle acceleration}$$
+%
+% $$I_{yy} = \mbox{ body moment of inertia about gravity center}$$
+
+%% The Model
+% 
+% To <matlab:open_system('sldemo_suspn') open> this model, type |sldemo_suspn| in
+% MATLAB(R) Command Window. Figure 2 shows the top-level diagram of the suspension model.
+
+open_system('sldemo_suspn');
+
+%%
+%
+% *Figure 2:* Top-level diagram of the suspension model
+
+%%
+%
+% The suspension model shown in Figure 2 has two inputs, and both input blocks
+% are blue on the model diagram. The first input is the road height. A step
+% input here corresponds to the vehicle driving over a road surface with a step
+% change in height. The second input is a horizontal force acting through the
+% center of the wheels that results from braking or acceleration maneuvers. This
+% input appears only as a moment about the pitch axis because the longitudinal
+% body motion is not modeled.
+%
+
+open_system('sldemo_suspn/Front Suspension','force'); %look under the mask
+
+%%
+%
+% *Figure 3:* The Spring/Damper model used in FrontSuspension and RearSuspension
+% subsystems
+
+%%
+%
+% The spring/damper subsystem that models the front and rear suspensions is
+% shown in Figure 3. Right click on the Front/Rear Suspension block and select
+% "Look Under Mask" to see the front/rear suspension subsystem. The suspension
+% subsystems are used to model Equations 1-3. The equations are
+% implemented directly in the Simulink(R) diagram through the straightforward use
+% of Gain and Summation blocks. 
+%
+% The differences between front and rear are accounted for as follows. Because
+% the subsystem is a masked block, a different data set (|L|, |K| and |C|) can
+% be entered for each instance. Furthermore, |L| is thought of as the Cartesian
+% coordinate x, being negative or positive with respect to the origin, or center
+% of gravity. Thus, |Kf|, |Cf|, and |-Lf| are used for the front suspension block
+% whereas |Kr|, |Cr|, and |Lr| are used for the rear suspension block.
+
+%% Running the Simulation
+%
+% To run this model, press the Play button on the toolbar in the model
+% window. Initial conditions are loaded into the model workspace from the
+% |sldemo_suspdat.m| file (<matlab:edit('sldemo_suspdat.m') open this file> to
+% view its contents). To see the contents of the model workspace go to View menu
+% > Model Explorer, look under the contents of the |sldemo_suspn| model and
+% select "Model Workspace". Loading initial conditions in the model workspace
+% prevents any accidental modifications of parameters and keeps MATLAB workspace
+% clean.
+%
+% Note that the model logs relevant data to MATLAB workspace in a data structure
+% called |sldemo_suspn_output|. Type the name of the structure to see what data
+% it contains. Read more about signal logging in Simulink Help. 
+
+evalc('sim(''sldemo_suspn'')');
+
+%%
+%
+% *Figure 4:* Simulation results
+
+%%
+%
+% Simulation results are displayed in Figure 4. The results are plotted by the
+% |sldemo_suspgraph.m| (you can <matlab:edit('sldemo_suspgraph.m') open this file> to
+% see how it is done). The default initial conditions are given in Table 1
+% below.
+%
+% *Table 1:* Default initial conditions
+%
+%  Lf = 0.9;    % front hub displacement from body gravity center (m)
+%  Lr = 1.2;    % rear hub displacement from body gravity center (m)
+%  Mb = 1200;   % body mass (kg)
+%  Iyy = 2100;  % body moment of inertia about y-axis in (kg m^2)
+%  kf = 28000;  % front suspension stiffness in (N/m)
+%  kr = 21000;  % rear suspension stiffness in (N/m)
+%  cf = 2500;   % front suspension damping in (N sec/m)
+%  cr = 2000;   % rear suspension damping in (N sec/m)
+%
+
+%% Closing the Model
+%
+% Close the model and delete generated data from MATLAB workspace.
+
+close_system('sldemo_suspn',0); %close, don't save any changes
+clear sldemo_suspn_output;
+
+% close the plot is it exists
+if ~isempty( findobj('Tag','SimulationResultsPlot') )
+    close( findobj('Tag','SimulationResultsPlot') );
+end
+
+
+%% Conclusions
+%
+% This model allows you to simulate the effects of changing the suspension
+% damping and stiffness, thereby investigating the tradeoff between comfort and
+% performance. In general, racing cars have very stiff springs with a high
+% damping factor, whereas passenger vehicles have softer springs and a more
+% oscillatory response.
+
+
+##### SOURCE END #####
+--></body></html>

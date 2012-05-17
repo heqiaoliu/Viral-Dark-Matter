@@ -1,0 +1,55 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>スパース行列</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="sparsity.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sparsity">エディターで sparsity.m を開く</a></div><div class="right"><a href="matlab:echodemo sparsity">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>スパース行列</h1><!--introduction--><p>このデモでは、スパース行列 S の行と列を並べ替えると、S をそのコレスキー分解 S=L*L' に分解するなどの行列操作に必要な時間とストレージに影響を与える可能性があることを示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">スパース行列の可視化</a></li><li><a href="#2">コレスキー因子の計算</a></li><li><a href="#3">計算速度を上げるための並べ替え</a></li><li><a href="#4">逆 Cuthill-McKee 法を使用</a></li><li><a href="#6">列カウント法を使用</a></li><li><a href="#8">最小次数法を使用</a></li><li><a href="#10">結果のまとめ</a></li></ul></div><h2>スパース行列の可視化<a name="1"></a></h2><p>SPY プロットは、行列の非零の要素を示します。</p><p>この SPY プロットは、Harwell-Boeing のテスト行列 &quot;west0479&quot; の一部から取り出した SPARSE 正定値対称行列で、化学プラントにおける回析列のモデル内での連結を記述する行列を示します。</p><pre class="codeinput">load(<span class="string">'west0479.mat'</span>)
+A = west0479;
+S = A * A' + speye(size(A));
+pct = 100 / numel(A);
+
+clf; spy(S), title(<span class="string">'A Sparse Symmetric Matrix'</span>)
+nz = nnz(S);
+xlabel(sprintf(<span class="string">'nonzeros=%d (%.3f%%)'</span>,nz,nz*pct));
+</pre><img vspace="5" hspace="5" src="../sparsity_01.png" alt=""> <h2>コレスキー因子の計算<a name="2"></a></h2><p>S=L*L' となるコレスキー因子 L を計算します。コレスキー分解の計算により &quot;fill-in&quot;(非零要素) が発生するため、行列 L は、分解されていない S より非常に多くの非零要素を含みます。これはアルゴリズム速度を低下させ、ストレージ コストを増加させてしまいます。</p><pre class="codeinput">tic, L = chol(S)'; t(1) = toc;
+spy(L), title(<span class="string">'Cholesky decomposition of S'</span>)
+nc(1) = nnz(L);
+xlabel(sprintf(<span class="string">'nonzeros=%d (%.2f%%)   time=%.2f sec'</span>,nc(1),nc(1)*pct,t(1)));
+</pre><img vspace="5" hspace="5" src="../sparsity_02.png" alt=""> <h2>計算速度を上げるための並べ替え<a name="3"></a></h2><p>行列の行と列を並べ替えることで、分解で得られる行列の非零要素の量を減らし、それにより時間やストレージ コストを減らすことができる可能性があります。</p><p>MATLAB&reg; がサポートする 3 つの異なる並べ替えを試してみましょう。</p><div><ul><li>逆 Cuthill-McKee 法</li><li>列カウント法</li><li>最小次数法</li></ul></div><h2>逆 Cuthill-McKee 法を使用<a name="4"></a></h2><p>SYMRCM コマンドは、すべての非零要素を対角要素の近くに移動させ、元の行列の &quot;帯域幅&quot; を小さくする、逆 Cuthill-McKee 並べ替えアルゴリズムを使用します。</p><pre class="codeinput">p = symrcm(S);
+spy(S(p,p)), title(<span class="string">'S(p,p) after Cuthill-McKee ordering'</span>)
+nz = nnz(S);
+xlabel(sprintf(<span class="string">'nonzeros=%d (%.3f%%)'</span>,nz,nz*pct));
+</pre><img vspace="5" hspace="5" src="../sparsity_03.png" alt=""> <p>並べ替えを行った行列の分解が、時間とストレージをあまりかけないように、コレスキー分解によって得られる非零要素は帯上のみに限られます。</p><pre class="codeinput">tic, L = chol(S(p,p))'; t(2) = toc;
+spy(L), title(<span class="string">'chol(S(p,p)) after Cuthill-McKee ordering'</span>)
+nc(2) = nnz(L);
+xlabel(sprintf(<span class="string">'nonzeros=%d (%.2f%%)   time=%.2f sec'</span>, nc(2),nc(2)*pct,t(2)));
+</pre><img vspace="5" hspace="5" src="../sparsity_04.png" alt=""> <h2>列カウント法を使用<a name="6"></a></h2><p>COLPERM コマンドは、列カウント並べ替えアルゴリズムを使用して、非零要素数のより多い行と列を行列の最後に移動します。</p><pre class="codeinput">q = colperm(S);
+spy(S(q,q)), title(<span class="string">'S(q,q) after column count ordering'</span>)
+nz = nnz(S);
+xlabel(sprintf(<span class="string">'nonzeros=%d (%.3f%%)'</span>,nz,nz*pct));
+</pre><img vspace="5" hspace="5" src="../sparsity_05.png" alt=""> <p>この例では、列数の並べ替えは、コレスキー分解にかかる時間とストレージを減少させますが、これは一般的には期待できません。</p><pre class="codeinput">tic, L = chol(S(q,q))'; t(3) = toc;
+spy(L), title(<span class="string">'chol(S(q,q)) after column count ordering'</span>)
+nc(3) = nnz(L);
+xlabel(sprintf(<span class="string">'nonzeros=%d (%.2f%%)   time=%.2f sec'</span>,nc(3),nc(3)*pct,t(3)));
+</pre><img vspace="5" hspace="5" src="../sparsity_06.png" alt=""> <h2>最小次数法を使用<a name="8"></a></h2><p>SYMAMD コマンドは、近似最小次数アルゴリズム (強力なグラフ理論の手法) を使用して、行列の中に大きな 0 のブロックを作成します。</p><pre class="codeinput">r = symamd(S);
+spy(S(r,r)), title(<span class="string">'S(r,r) after minimum degree ordering'</span>)
+nz = nnz(S);
+xlabel(sprintf(<span class="string">'nonzeros=%d (%.3f%%)'</span>,nz,nz*pct));
+</pre><img vspace="5" hspace="5" src="../sparsity_07.png" alt=""> <p>最小次数アルゴリズムによって得られた 0 のブロックは、コレスキー分解中に貯えられます。これにより、時間とストレージ コストを大幅に削減できます。</p><pre class="codeinput">tic, L = chol(S(r,r))'; t(4) = toc;
+spy(L), title(<span class="string">'chol(S(r,r)) after minimum degree ordering'</span>)
+nc(4) = nnz(L);
+xlabel(sprintf(<span class="string">'nonzeros=%d (%.2f%%)   time=%.2f sec'</span>,nc(4),nc(4)*pct,t(4)));
+</pre><img vspace="5" hspace="5" src="../sparsity_08.png" alt=""> <h2>結果のまとめ<a name="10"></a></h2><pre class="codeinput">labels={<span class="string">'original'</span>,<span class="string">'Cuthill-McKee'</span>,<span class="string">'column count'</span>,<span class="string">'min degree'</span>};
+
+subplot(2,1,1)
+bar(nc*pct)
+title(<span class="string">'Nonzeros after Cholesky factorization'</span>)
+ylabel(<span class="string">'Percent'</span>);
+set(gca,<span class="string">'xticklabel'</span>,labels)
+
+subplot(2,1,2)
+bar(t)
+title(<span class="string">'Time to complete Cholesky factorization'</span>)
+ylabel(<span class="string">'Seconds'</span>);
+set(gca,<span class="string">'xticklabel'</span>,labels)
+</pre><img vspace="5" hspace="5" src="../sparsity_09.png" alt=""> <p class="footer">Copyright 1984-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Sparse Matrices % This demonstration shows that reordering the rows and columns of a sparse  % matrix S can affect the time and storage required for a matrix operation  % such as factoring S into its Cholesky decomposition, S=L*L'. % % Copyright 1984-2009 The MathWorks, Inc. % $Revision: 1.1.6.10.2.1 $ $Date: 2010/07/29 21:28:53 $   %% Visualizing a Sparse Matrix % A SPY plot shows the nonzero elements in a matrix. %  % This spy plot shows a SPARSE symmetric positive definite matrix derived from  % a portion of the Harwell-Boeing test matrix "west0479", a matrix describing  % connections in a model of a diffraction column in a chemical plant.  load('west0479.mat') A = west0479; S = A * A' + speye(size(A)); pct = 100 / numel(A);  clf; spy(S), title('A Sparse Symmetric Matrix') nz = nnz(S); xlabel(sprintf('nonzeros=%d (%.3f%%)',nz,nz*pct));   %% Computing the Cholesky Factor % Now we compute the Cholesky factor L, where S=L*L'. Notice that L contains % MANY more nonzero elements than the unfactored S, because the computation of % the Cholesky factorization creates "fill-in" nonzeros.  This slows down the % algorithm and increases storage cost.  tic, L = chol(S)'; t(1) = toc; spy(L), title('Cholesky decomposition of S') nc(1) = nnz(L); xlabel(sprintf('nonzeros=%d (%.2f%%)   time=%.2f sec',nc(1),nc(1)*pct,t(1)));   %% Reordering to Speed Up the Calculation % By reordering the rows and columns of a matrix, it may be possible to reduce % the amount of fill-in created by factorization, thereby reducing time and  % storage cost. %  % We will now try three different orderings supported by MATLAB(R). % % * reverse Cuthill-McKee % * column count % * minimum degree   %% Using the Reverse Cuthill-McKee % The SYMRCM command uses the reverse Cuthill-McKee reordering algorithm to  % move all nonzero elements closer to the diagonal, reducing the "bandwidth" of % the original matrix.  p = symrcm(S); spy(S(p,p)), title('S(p,p) after Cuthill-McKee ordering') nz = nnz(S); xlabel(sprintf('nonzeros=%d (%.3f%%)',nz,nz*pct));  %% % The fill-in produced by Cholesky factorization is confined to the band, so  % that factorization of the reordered matrix takes less time and less storage.  tic, L = chol(S(p,p))'; t(2) = toc; spy(L), title('chol(S(p,p)) after Cuthill-McKee ordering') nc(2) = nnz(L); xlabel(sprintf('nonzeros=%d (%.2f%%)   time=%.2f sec', nc(2),nc(2)*pct,t(2)));   %% Using Column Count % The COLPERM command uses the column count reordering algorithm to move rows % and columns with higher nonzero count towards the end of the matrix.  q = colperm(S); spy(S(q,q)), title('S(q,q) after column count ordering') nz = nnz(S); xlabel(sprintf('nonzeros=%d (%.3f%%)',nz,nz*pct));  %% % For this example, the column count ordering happens to reduce the time and % storage for Cholesky factorization, but this behavior cannot be expected in % general.  tic, L = chol(S(q,q))'; t(3) = toc; spy(L), title('chol(S(q,q)) after column count ordering') nc(3) = nnz(L); xlabel(sprintf('nonzeros=%d (%.2f%%)   time=%.2f sec',nc(3),nc(3)*pct,t(3)));   %% Using Minimum Degree % The SYMAMD command uses the approximate minimum degree algorithm (a powerful  % graph-theoretic technique) to produce large blocks of zeros in the matrix.  r = symamd(S); spy(S(r,r)), title('S(r,r) after minimum degree ordering') nz = nnz(S); xlabel(sprintf('nonzeros=%d (%.3f%%)',nz,nz*pct));  %% % The blocks of zeros produced by the minimum degree algorithm are preserved % during the Cholesky factorization.  This can significantly reduce time and % storage costs.  tic, L = chol(S(r,r))'; t(4) = toc; spy(L), title('chol(S(r,r)) after minimum degree ordering') nc(4) = nnz(L); xlabel(sprintf('nonzeros=%d (%.2f%%)   time=%.2f sec',nc(4),nc(4)*pct,t(4)));   %% Summarizing the Results  labels={'original','Cuthill-McKee','column count','min degree'};  subplot(2,1,1) bar(nc*pct) title('Nonzeros after Cholesky factorization') ylabel('Percent'); set(gca,'xticklabel',labels)  subplot(2,1,2) bar(t) title('Time to complete Cholesky factorization') ylabel('Seconds'); set(gca,'xticklabel',labels)   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

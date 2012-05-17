@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Document   : MXS.xsd
+    Created on : April 14, 2006, 10:52 AM
+    Author     : Jennifer Black
+    Description:
+        Schema definition for the MATLAB XML Serialization project
+-->
+
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:xi="http://www.w3.org/2001/XInclude">
+ 
+<!-- Root element -->
+  <xsd:element name="matlab_data" type="MatlabDataType"/>
+  
+  <!-- 
+     The matlab_data tag is the root-level element of an XML file
+     created by the MATLAB XML serialization command.  There are
+     three main components to this tag:  a table of root information
+     which identifies all variables being serialized by name and 
+     id number; a relations table that describes the relationship
+     hierarchy that exists within the serialized data; and one or
+     more occurrences of actual data.  
+      
+     The data types that can appear at the highest level are:
+       array
+       object_array
+       object
+       struct_array
+       struct
+       cell_array
+  -->
+  
+  <xsd:complexType name="MatlabDataType">
+    <xsd:sequence>
+      <xsd:element name="roots"              minOccurs="1" maxOccurs="1"  type="RootListType"/>
+      <xsd:element name="relations"          minOccurs="1" maxOccurs="1"  type="RelationsListType"/>
+      <xsd:element name="data_content"       minOccurs="1" maxOccurs="1"  type="DataContentListType"/>
+    </xsd:sequence>
+    <xsd:attribute name="schemaVersion" type="xsd:string"  use="required"/>
+  </xsd:complexType>
+  
+  
+  <xsd:complexType name="RootListType">
+    <xsd:sequence>
+      <xsd:element name="root" minOccurs="1" maxOccurs="unbounded" type="RootType"/>
+    </xsd:sequence>  
+  </xsd:complexType>
+  
+  
+  <xsd:complexType name="RootType">
+    <xsd:attribute name="name" type="xsd:string"  use="required"/>
+    <xsd:attribute name="matlab.id"   type="xsd:integer" use="required"/>
+  </xsd:complexType>
+  
+  
+  <xsd:complexType name="RelationsListType">
+    <xsd:sequence>
+      <xsd:element name="relation" minOccurs="1" maxOccurs="unbounded" type="RelationType"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  
+  
+  <xsd:complexType name="RelationType">
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="matlab.id" type="xsd:string" use="required"/>
+      </xsd:extension>
+    </xsd:simpleContent>  
+  </xsd:complexType>
+  
+  <xsd:complexType name="DataContentListType">
+    <xsd:sequence>
+      <xsd:group   ref="DataStructuresGroup" minOccurs="1" maxOccurs="unbounded"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  
+  <xsd:group name="DataStructuresGroup">
+    <xsd:choice>
+      <xsd:group ref="ObjectArrayGroup"/>
+      <xsd:group ref="ObjectGroup"/>
+      <xsd:group ref="StructArrayGroup"/>
+      <xsd:group ref="StructGroup"/>
+      <xsd:group ref="CellArrayGroup"/>
+      <xsd:group ref="ArrayGroup"/>
+    </xsd:choice>
+  </xsd:group>
+  
+  
+  <xsd:group name="ObjectArrayGroup">
+    <xsd:sequence>
+       <xsd:element name="object_array" minOccurs="1" maxOccurs="1" type="ObjectArrayType"/>
+     </xsd:sequence>
+  </xsd:group>
+
+
+  <xsd:complexType name="ObjectArrayType">
+    <xsd:complexContent>
+      <xsd:extension base="ObjectArrayContentsType">
+        <xsd:attribute name="matlab.id" type="xsd:string" use="required"/>
+        <xsd:attribute name="class"     type="xsd:string" use="optional"/>
+        <xsd:attribute name="ndims"     type="xsd:string" use="optional"/>
+        <xsd:attribute name="dims"      type="xsd:string" use="required"/>
+      </xsd:extension>
+    </xsd:complexContent>  
+  </xsd:complexType>
+  
+  
+  <xsd:complexType name="ObjectArrayContentsType">
+    <xsd:sequence>
+      <xsd:group ref="ObjectArrayContentsGroup" minOccurs="1" maxOccurs="unbounded"/>
+    </xsd:sequence>  
+  </xsd:complexType>  
+  
+  
+  <xsd:group name="ObjectArrayContentsGroup">
+    <xsd:choice>
+        <xsd:group ref="ObjectGroup"/>
+        <xsd:group ref="RefGroup"/>
+     </xsd:choice>
+  </xsd:group>
+  
+  
+  <xsd:group name="ObjectGroup">
+    <xsd:sequence>
+       <xsd:element name="object" minOccurs="1" maxOccurs="1" type="ObjectType"/>
+     </xsd:sequence>
+  </xsd:group>
+  
+  
+  <xsd:complexType name="ObjectType">
+    <xsd:complexContent>
+      <xsd:extension base="FieldListType">
+        <xsd:attribute name="matlab.id" type="xsd:string" use="required"/>
+        <xsd:attribute name="class"     type="xsd:string" use="required"/>
+      </xsd:extension>
+    </xsd:complexContent>  
+  </xsd:complexType>
+  
+  
+  <xsd:group name="StructArrayGroup">
+    <xsd:sequence>
+       <xsd:element name="struct_array" minOccurs="1" maxOccurs="1" type="StructArrayType"/>
+     </xsd:sequence>
+  </xsd:group>
+  
+  
+  <xsd:complexType name="StructArrayType">
+    <xsd:complexContent>
+      <xsd:extension base="StructArrayContentsType">
+        <xsd:attribute name="matlab.id" type="xsd:string" use="required"/>
+        <xsd:attribute name="ndims"     type="xsd:string" use="optional"/>
+        <xsd:attribute name="dims"      type="xsd:string" use="required"/>
+      </xsd:extension>
+    </xsd:complexContent>  
+  </xsd:complexType>
+  
+  
+  <xsd:complexType name="StructArrayContentsType">
+    <xsd:sequence>
+      <xsd:group ref="StructArrayContentsGroup" minOccurs="1" maxOccurs="unbounded"/>
+    </xsd:sequence>  
+  </xsd:complexType>  
+  
+  
+   <xsd:group name="StructArrayContentsGroup">
+    <xsd:choice>
+        <xsd:group ref="StructGroup"/>
+        <xsd:group ref="RefGroup"/>
+     </xsd:choice>
+  </xsd:group>
+  
+  
+  <xsd:group name="StructGroup">
+    <xsd:sequence>
+       <xsd:element name="struct" minOccurs="1" maxOccurs="1" type="StructType"/>
+     </xsd:sequence>
+  </xsd:group>
+  
+  
+  <xsd:complexType name="StructType">
+    <xsd:complexContent>
+      <xsd:extension base="FieldListType">
+        <xsd:attribute name="matlab.id" type="xsd:string" use="required"/>
+      </xsd:extension>
+    </xsd:complexContent>  
+  </xsd:complexType>
+  
+  
+  <xsd:group name="CellArrayGroup">
+    <xsd:sequence>
+       <xsd:element name="cell_array" minOccurs="1" maxOccurs="1" type="CellArrayType"/>
+     </xsd:sequence>
+  </xsd:group>
+  
+  
+  <xsd:complexType name="CellArrayType">
+    <xsd:complexContent>
+      <xsd:extension base="CellArrayContentsType">
+        <xsd:attribute name="matlab.id"    type="xsd:string" use="required"/>
+        <xsd:attribute name="ndims" type="xsd:string" use="optional"/>
+        <xsd:attribute name="dims"  type="xsd:string" use="required"/>
+      </xsd:extension>
+    </xsd:complexContent>  
+  </xsd:complexType>
+  
+  
+  <xsd:complexType name="CellArrayContentsType">
+    <xsd:sequence>
+      <xsd:group ref="CellGroup" maxOccurs="unbounded"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  
+  
+   <xsd:complexType name="CellGroup">
+    <xsd:choice>
+      <xsd:group ref="ObjectArrayGroup"/>
+      <xsd:group ref="ObjectGroup"/>
+      <xsd:group ref="StructArrayGroup"/>
+      <xsd:group ref="StructGroup"/>
+      <xsd:group ref="CellArrayGroup"/>
+      <xsd:group ref="ArrayGroup"/>
+      <xsd:group ref="RefGroup"/>
+    </xsd:choice>  
+  </xsd:complexType>  
+  
+  
+  <xsd:group name="CellGroup">
+    <xsd:choice>
+      <xsd:group ref="ObjectArrayGroup"/>
+      <xsd:group ref="ObjectGroup"/>
+      <xsd:group ref="StructArrayGroup"/>
+      <xsd:group ref="StructGroup"/>
+      <xsd:group ref="CellArrayGroup"/>
+      <xsd:group ref="ArrayGroup"/>
+      <xsd:group ref="RefGroup"/>
+    </xsd:choice>
+  </xsd:group>
+  
+  
+  <xsd:group name="ArrayGroup">
+    <xsd:sequence>
+      <xsd:element name="array" minOccurs="1" maxOccurs="1" type="ArrayType"/>
+    </xsd:sequence>
+  </xsd:group>
+  
+  
+  <xsd:complexType name="ArrayType">
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="matlab.id" type="xsd:string" use="required"/>
+        <xsd:attribute name="class"     type="xsd:string" use="required"/>
+        <xsd:attribute name="ndims"     type="xsd:string" use="optional"/>
+        <xsd:attribute name="dims"      type="xsd:string" use="required"/>
+      </xsd:extension>
+    </xsd:simpleContent>  
+  </xsd:complexType>
+  
+  
+  <xsd:group name="RefGroup">
+    <xsd:sequence>
+       <xsd:element name="ref" minOccurs="1" maxOccurs="1">
+         <xsd:complexType>
+           <xsd:attribute name="matlab.idref" type="xsd:string" use="required"/>
+         </xsd:complexType>
+       </xsd:element>
+     </xsd:sequence>
+  </xsd:group>
+  
+ 
+  <xsd:complexType name="FieldListType">
+    <xsd:sequence> 
+      <xsd:element name="field" minOccurs="0" maxOccurs="unbounded" type="FieldType"/>
+    </xsd:sequence>
+  </xsd:complexType>
+
+
+  <xsd:complexType name="FieldType">
+    <xsd:complexContent>
+      <xsd:extension base="FieldContentsType">
+        <xsd:attribute name="name" type="xsd:string" use="required"/>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+   
+   
+  <xsd:complexType name="FieldContentsType">
+    <xsd:choice>
+      <xsd:group ref="ObjectArrayGroup"/>
+      <xsd:group ref="ObjectGroup"/>
+      <xsd:group ref="StructArrayGroup"/>
+      <xsd:group ref="StructGroup"/>
+      <xsd:group ref="CellArrayGroup"/>
+      <xsd:group ref="ArrayGroup"/>
+      <xsd:group ref="RefGroup"/>
+    </xsd:choice>
+  </xsd:complexType>
+
+</xsd:schema>

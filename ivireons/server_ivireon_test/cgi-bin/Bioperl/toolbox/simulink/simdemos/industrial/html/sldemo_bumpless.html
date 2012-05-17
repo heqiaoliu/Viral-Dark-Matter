@@ -1,0 +1,209 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Bumpless Control Transfer Between Manual and PID Control</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_bumpless.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_bumpless.mdl</div><div class="right"><a href="matlab:sldemo_bumpless">Open this model</a></div></div><div class="content"><h1>Bumpless Control Transfer Between Manual and PID Control</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Model Description</a></li><li><a href="#8">Configuring the Block for Tracking Mode</a></li><li><a href="#12">Setting Up the Switching Mechanism</a></li><li><a href="#15">Simulating the Bumpless Control Transfer</a></li><li><a href="#28">Summary</a></li><li><a href="#29">References</a></li></ul></div><h2>Model Description<a name="1"></a></h2><p>This demo illustrates how to use the PID Controller block in Simulink&reg; to control a first-order process with dead-time, and to achieve bumpless control transfer when switching from manual control to PID control.</p><p>We start by opening the model.</p><img vspace="5" hspace="5" src="sldemo_bumpless_01.png" alt=""> <p><b>Figure 1:</b> Simulink model of PID control with bumpless transfer.</p><p>To open this model, type <tt>sldemo_bumpless</tt> in a MATLAB&reg; terminal.</p><p>The PID Controller has been tuned with saturation ignored using the PID tuner of Simulink&reg; Control Design&#8482;.</p><p>The controlled plant is a first-order process with dead-time described by</p><p><img src="sldemo_bumpless_eq39415.png" alt="$$P(s)=\frac{4}{2.5s+1}e^{-s}$$"></p><p>For several operational reasons, the engineers decided to start the control process in an open-loop manner by feeding the plant input with a saturating ramp signal to drive the output of the plant slowly to a desired steady-state value of 40. A control transfer is scheduled to happen a t = 150. This transition between open-loop control and closed-loop control therefore involves two control phases of operation:</p><div><ol><li>Manual: A saturated ramp signal feeds the plant input during start-up until t = 150.</li><li>Automatic: A PID controller will engage the plant at t = 150, and must take over the process without introducing bumps at the plant input.</li></ol></div><p>To support smooth control transition, the PID Controller block supports two modes of operation: a <b>tracking mode</b> and a <b>control mode</b>. In control mode, the PID Controller block operates as an ordinary PID controller. In tracking mode, however, the block has an extra input that allows the PID block to adjust its internal state by changing its integrator output so that the block output tracks a prescribed signal feeding this extra input port.</p><p>To achieve bumpless control transfer, the PID Controller block must be in tracking mode when the plant is in the manual control phase (open-loop control), and in control mode when the plant is in the automatic control phase (closed-loop control).</p><h2>Configuring the Block for Tracking Mode<a name="8"></a></h2><p>To activate signal tracking, go to the <b>PID Advanced</b> tab in the block's dialog; select <b>Enable tracking mode</b>, and specify the gain <tt>Kt</tt>. The inverse of this gain is the time constant of the tracking loop. For more information on how to choose this gain, see Reference [1].</p><p><img vspace="5" hspace="5" src="../images/blkDlgTracking.png" alt=""> </p><p><b>Figure 2:</b> Enabling the <tt>tracking mode</tt> of the PID Controller block.</p><p>As shown in Figure 1, once tracking mode is enabled, the block has a second input port denoted by TR. Internally this new port is wired as shown under mask:</p><img vspace="5" hspace="5" src="sldemo_bumpless_02.png" alt=""> <p><b>Figure 3:</b> Under-mask view of the PID Controller block with tracking mode.</p><h2>Setting Up the Switching Mechanism<a name="12"></a></h2><p>In addition to enabling tracking mode for the PID Controller block, a switching mechanism is needed to achieve the control transfer. Switch 1 determines which signal feeds the plant input and feeds the tracking port of the PID Controller block.</p><p>At time t = 0, Switch 1 directs the manual control signal to the plant input and the tracking port of the PID Controller block. This allows the output of the PID Controller block to track the manual control signal during the manual phase by adjusting the PID Controller's internal integrator. When control transfer occurs, therefore, the PID Controller output will be approximately the same as the manual control signal.</p><p>At time t = 150, Switch 1 switches, directing the output of the PID Controller block to the plant input and the PID Controller block's tracking input. The PID Controller block now tracks its own output, which is equivalent to control mode.</p><h2>Simulating the Bumpless Control Transfer<a name="15"></a></h2><p>The setpoint signal and the closed-loop response of the model are shown in Figure 4.</p><img vspace="5" hspace="5" src="sldemo_bumpless_03.png" alt=""> <p><b>Figure 4:</b> Setpoint vs. measured output.</p><p>Figure 4 clearly shows that the measured output tracks the Setpoint profile without any output bumps at the time of switching (t = 150). To investigate this further, the plant input, control signals are shown in Figure 5.</p><img vspace="5" hspace="5" src="sldemo_bumpless_04.png" alt=""> <p><b>Figure 5:</b> Control signal switching.</p><img vspace="5" hspace="5" src="sldemo_bumpless_05.png" alt=""> <p><b>Figure 6:</b> Plant input.</p><p>Figures 5 and 6 show that at the switching instance, the plant input has experienced no step changes (bumps), and therefore the control transfer happens in smooth bumpless fashion as intended.</p><p>To see the significance of the bumpless transfer setup, consider the case were tracking mode is not used. In this case, the following setup is obtained:</p><img vspace="5" hspace="5" src="sldemo_bumpless_06.png" alt=""> <p><b>Figure 7:</b> Simulink model of PID control with no bumpless transfer.</p><p>To open this model, type <tt>sldemo_bumplessno</tt> in a MATLAB terminal.</p><p>Figures 8 and 9 show the performance in the absence of an appropriate bumpless control transfer strategy.</p><img vspace="5" hspace="5" src="sldemo_bumpless_07.png" alt=""> <p><b>Figure 8:</b> Setpoint vs. measured output.</p><img vspace="5" hspace="5" src="sldemo_bumpless_08.png" alt=""> <p><b>Figure 9:</b> Control signal switching.</p><p>It is evident from Figures 8 and 9 that allowing the PID controller to float while the plant is under manual control can result in undesirable large transients upon switching.</p><h2>Summary<a name="28"></a></h2><p>As this demo shows, the PID Controller block supports bumpless control transfer through the use of tracking mode.</p><h2>References<a name="29"></a></h2><p>
+[1]  K. &Aring;str&ouml;m, T. H&auml;gglund, <i>Advanced PID
+Control</i>, ISA, Research Triangle Park, NC, August 2005.
+</p><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Bumpless Control Transfer Between Manual and PID Control
+%
+% Copyright 2009 The MathWorks, Inc.
+% $Revision: 1.1.6.3 $  $Date: 2010/01/25 23:00:30 $
+
+%% Model Description
+% This demo illustrates how to use the PID Controller block in Simulink(R)
+% to control a first-order process with dead-time, and to achieve bumpless
+% control transfer when switching from manual control to PID control.
+%
+% We start by opening the model.
+
+open_system('sldemo_bumpless')
+
+%%
+% *Figure 1:* Simulink model of PID control with bumpless transfer.
+
+%%
+% To open this model, type |sldemo_bumpless| in a MATLAB(R) terminal.
+
+%%
+% The PID Controller has been tuned with saturation ignored using the
+% PID tuner of Simulink(R) Control Design(TM).
+
+%%
+% The controlled plant is a first-order process with dead-time described
+% by
+%
+% $$P(s)=\frac{4}{2.5s+1}e^{-s}$$
+% 
+% For several operational reasons, the engineers decided to start the
+% control process in an open-loop manner by feeding the plant input with a
+% saturating ramp signal to drive the output of the plant slowly to a
+% desired steady-state value of 40. A control transfer is scheduled to
+% happen a t = 150. This transition between open-loop control and
+% closed-loop control therefore involves two control phases of operation:
+% 
+% # Manual: A saturated ramp signal feeds the plant input during start-up
+% until t = 150.
+% # Automatic: A PID controller will engage the plant at t = 150, and must
+% take over the process without introducing bumps at the plant input.
+
+%%
+% To support smooth control transition, the PID Controller block supports
+% two modes of operation: a *tracking mode* and a *control mode*. In
+% control mode, the PID Controller block operates as an ordinary PID
+% controller. In tracking mode, however, the block has an extra input that
+% allows the PID block to adjust its internal state by changing its
+% integrator output so that the block output tracks a prescribed signal
+% feeding this extra input port.
+
+%%
+% To achieve bumpless control transfer, the PID Controller block must be in
+% tracking mode when the plant is in the manual control phase (open-loop
+% control), and in control mode when the plant is in the automatic control
+% phase (closed-loop control).
+
+%% Configuring the Block for Tracking Mode
+% To activate signal tracking, go to the *PID Advanced* tab in the block's
+% dialog; select *Enable tracking mode*, and specify the gain |Kt|. The
+% inverse of this gain is the time constant of the tracking loop. For more
+% information on how to choose this gain, see Reference [1].
+
+%%
+% 
+% <<../images/blkDlgTracking.png>>
+%
+% *Figure 2:* Enabling the |tracking mode| of the PID Controller block.
+
+%%
+% As shown in Figure 1, once tracking mode is enabled, the block has a
+% second input port denoted by TR. Internally this new port is wired as
+% shown under mask:
+
+open_system('sldemo_bumpless/PID Controller','force');
+
+%%
+% *Figure 3:* Under-mask view of the PID Controller block with tracking
+% mode.
+
+%% Setting Up the Switching Mechanism
+% In addition to enabling tracking mode for the PID Controller block, a
+% switching mechanism is needed to achieve the control transfer. Switch 1
+% determines which signal feeds the plant input and feeds the tracking port
+% of the PID Controller block.
+%
+
+%%
+% At time t = 0, Switch 1 directs the manual control signal to the plant
+% input and the tracking port of the PID Controller block. This allows the
+% output of the PID Controller block to track the manual control signal
+% during the manual phase by adjusting the PID Controller's internal
+% integrator. When control transfer occurs, therefore, the PID Controller
+% output will be approximately the same as the manual control signal.
+
+%%
+% At time t = 150, Switch 1 switches, directing the output of the PID
+% Controller block to the plant input and the PID Controller block's
+% tracking input. The PID Controller block now tracks its own output, which
+% is equivalent to control mode.
+
+%% Simulating the Bumpless Control Transfer
+% The setpoint signal and the closed-loop response of the model are shown
+% in Figure 4.
+ 
+close_system('sldemo_bumpless/PID Controller');
+open_system('sldemo_bumpless/Scope');
+open_system('sldemo_bumpless/Scope1'); % This ensures legends get displayed
+open_system('sldemo_bumpless/Scope2'); % This ensures legends get displayed
+sim('sldemo_bumpless');
+close_system('sldemo_bumpless/Scope1');
+close_system('sldemo_bumpless/Scope2');
+
+%%
+% *Figure 4:* Setpoint vs. measured output.
+
+
+%% 
+% Figure 4 clearly shows that the measured output tracks the Setpoint
+% profile without any output bumps at the time of switching (t = 150). To
+% investigate this further, the plant input, control signals are shown in
+% Figure 5.
+
+open_system('sldemo_bumpless/Scope1');
+
+%%
+% *Figure 5:* Control signal switching.
+
+open_system('sldemo_bumpless/Scope2');
+
+%%
+% *Figure 6:* Plant input.
+
+
+%%
+% Figures 5 and 6 show that at the switching instance, the plant input has
+% experienced no step changes (bumps), and therefore the control transfer
+% happens in smooth bumpless fashion as intended.
+
+bdclose('sldemo_bumpless')
+
+%%
+% To see the significance of the bumpless transfer setup, consider the case
+% were tracking mode is not used. In this case, the following setup is
+% obtained:
+
+open_system('sldemo_bumplessno')
+
+%%
+% *Figure 7:* Simulink model of PID control with no bumpless transfer.
+
+%%
+% To open this model, type |sldemo_bumplessno| in a MATLAB terminal.
+
+%%
+% Figures 8 and 9 show the performance in the absence of an appropriate
+% bumpless control transfer strategy.
+
+open_system('sldemo_bumplessno/Scope');
+open_system('sldemo_bumplessno/Scope1'); % This ensures legends get displayed
+sim('sldemo_bumplessno');
+close_system('sldemo_bumplessno/Scope1');
+
+%%
+% *Figure 8:* Setpoint vs. measured output.
+
+open_system('sldemo_bumplessno/Scope1');
+
+%%
+% *Figure 9:* Control signal switching.
+
+%%
+% It is evident from Figures 8 and 9 that allowing the PID controller to
+% float while the plant is under manual control can result in undesirable
+% large transients upon switching.
+
+%% Summary
+% As this demo shows, the PID Controller block supports bumpless
+% control transfer through the use of tracking mode.
+%
+
+bdclose('sldemo_bumplessno')
+
+%% References
+% 
+% <html>
+% [1]  K. &Aring;str&ouml;m, T. H&auml;gglund, <i>Advanced PID
+% Control</i>, ISA, Research Triangle Park, NC, August 2005.
+% </html>
+%
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,79 @@
+%% File: can_comm_setup.tlc
+%%
+%% Abstract:
+%%   
+%%
+%% $Revision: 1.14.4.2 $
+%% $Date: 2008/11/04 21:24:10 $
+%%
+%% Copyright 2001-2002 The MathWorks, Inc.
+
+%%-------------------------------------
+%% Add the names that will be generated
+%% in C for the CAN data types
+%% ------------------------------------
+%function SetupCanDataTypes(block) void
+    %if !EXISTS(::have_registered_can_datatypes)
+        %assign ::have_registered_can_datatypes = TLC_TRUE
+        %with CompiledModel.DataTypes
+          %foreach dtIdx = NumDataTypes
+            %assign dt = DataType[dtIdx]
+            %if (ISEQUAL(dt.Name,"CAN_MESSAGE_STANDARD") || ISEQUAL(dt.Name,"CAN_MESSAGE_EXTENDED") || \
+                 ISEQUAL(dt.Name, "CAN_MESSAGE"))
+    
+                %<SLibSetDataTypeName(dt, "CAN_DATATYPE")>
+                %<SLibSetDataTypeGroundName(dt,"CAN_DATATYPE")>
+                %<SLibSetDataTypeGroundValue(dt,"CAN_DATATYPE_GROUND")>
+            %endif
+          %endforeach
+        %endwith
+        %% Make a ground reference for CAN_FRAME
+        %openfile buffer
+        #include "can_message.h"
+        %closefile buffer
+        %<LibExportFileCustomCode(buffer,"header")>
+
+        %openfile buffer = "can_datatype_ground.c"
+            #include "can_message.h"
+            /* A ground reference for CAN_DATATYPE */
+            CAN_DATATYPE CAN_DATATYPE_GROUND;
+        %closefile buffer
+        %<LibAddToModelSources("can_datatype_ground")>
+        %<LibCacheExtern("extern CAN_DATATYPE CAN_DATATYPE_GROUND;")>
+
+        %% add in required includes to the main header file
+        %<LibAddToCommonIncludes("can_message.h")>
+        %<LibAddToCommonIncludes("<string.h>")>
+    %endif
+%endfunction
+
+/%
+    SfcnCANDataTypeOutput {
+        InitialValue {
+            Extended    U8
+            Length      U8
+            Remote      U8
+            Error       U8
+            Timestamp   U32
+            ID          U32
+            Data        [U8, U8, U8, U8, U8, U8, U8, U8]
+        }
+    }
+%/
+
+%function CAN_BlockInitialValues(block, system, canBlock) void
+    %assign ret = ""
+    %with SfcnCanDataTypeOutput.InitialValue
+        %assign ret =  "{ %<Extended>, %<Length>, %<Remote>, %<Error>, %<Timestamp>, %<ID>, { \\\n" 
+        %foreach idx = 8
+            %if idx == 0
+                %assign ret = ret + "%<Data[idx]> " 
+            %else
+                %assign ret = ret + ", %<Data[idx]> " 
+            %endif
+        %endforeach
+        %assign ret = ret + " }\\\n }"
+    %endwith
+    %assign ret = [ "%<ret>" ]
+    %return ret
+%endfunction

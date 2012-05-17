@@ -1,0 +1,328 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Variant Subsystems</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_variant_subsystems.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_variant_subsystems.mdl</div><div class="right"><a href="matlab:sldemo_variant_subsystems">Open this model</a></div></div><div class="content"><h1>Variant Subsystems</h1><!--introduction--><p>This demo illustrates Simulink&reg; variant subsystems. Variant subsystems let you provide multiple implementations for a subsystem where only one implementation is active during simulation. You can programmatically swap out the active implementation and replace it with one of the other implementations without modifying the model.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Overview of Variant Subsystems</a></li><li><a href="#2">Using Variant Subsystems</a></li><li><a href="#5">Switching Active Variants</a></li><li><a href="#8">Enumerations and Reuse</a></li><li><a href="#10">Code Generation</a></li></ul></div><h2>Overview of Variant Subsystems<a name="1"></a></h2><p>A Variant Subsystem block contains two or more child subsystems where one child is active during model execution. The active child subsystem is referred to as the <i>active variant</i>. You can programmatically switch the active variant of the Variant Subsystem block by changing values of variables in the base workspace, or by manually overriding variant selection using the Variant Subsystem block dialog.  The <i>active</i> <i>variant</i> is programmatically wired to the Inport and Outport blocks of the Variant Subsystem by Simulink during model compilation.</p><p>To programmatically control variant selection, a <tt>Simulink.Variant</tt> object is associated with each child subsystem in the Variant Subsystem block dialog. <tt>Simulink.Variant</tt> objects are created in the MATLAB&reg; base workspace. These objects have a property named <tt>Condition</tt>, which is an expression, that evaluates to a boolean value and is used to determine the active variant child subsystem.  For example, defining</p><p><tt>VSS_NONLINEAR_CONTROLLER=Simulink.Variant('VSS_MODE==1');</tt></p><p>in the base workspace creates a <tt>Simulink.Variant</tt> object where the constructor argument <tt>('VSS_MODE==1')</tt> defines when the variant is active. Using the Variant Subsystem dialog, you then associate <tt>VSS_NONLINEAR_CONTROLLER</tt> with one of the child subsystems within the Variant Subsystem. Defining</p><p><tt>VSS_MODE=1</tt></p><p>in the base workspace, activates the <tt>VSS_NONLINEAR_CONTROLLER</tt> variant. The condition argument can be a <i>simple</i> <i>expression</i> consisting of scalar variables, enumerations, equality, inequality, &amp;&amp;, ||, and ~. Parenthesis () can be used for precedence grouping.</p><h2>Using Variant Subsystems<a name="2"></a></h2><p>The model in this demo uses the following variant objects and variant control variable, which are defined in the MATLAB base workspace:</p><p><tt>VSS_NONLINEAR_CONTROLLER=Simulink.Variant('VSS_MODE==1');</tt></p><p><tt>VSS_SECOND_ORDER_CONTROLLER=Simulink.Variant('VSS_MODE==2');</tt></p><p><tt>VSS_MODE=1;</tt></p><p>Opening the demo model <a href="matlab:open_system('sldemo_variant_subsystems')"><tt>sldemo_variant_subsystems</tt></a> runs the <b>PreLoadFcn</b> defined in <tt>File -&gt; ModelProperties -&gt; Callbacks</tt>. This populates the base workspace with the variables for the Variant Subsystem block named Controller:</p><pre class="codeoutput"> 
+VSS_NONLINEAR_CONTROLLER =
+ 
+Simulink.Variant
+    Condition: 'VSS_MODE==1'
+
+ 
+VSS_SECOND_ORDER_CONTROLLER =
+ 
+Simulink.Variant
+    Condition: 'VSS_MODE==2'
+
+
+VSS_MODE =
+
+     1
+
+</pre><img vspace="5" hspace="5" src="sldemo_variant_subsystems_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_variant_subsystems_02.png" alt=""> <p><b>Figure 1:</b> The demo model, <tt>sldemo_variant_subsystems</tt></p><p>To specify the <tt>Simulink.Variant</tt> objects association for the Controller subsystem, right-click on the Controller subsystem and select <tt>Subsystem Parameters</tt>, which will open the <a href="matlab:load_system('sldemo_variant_subsystems');open_system('sldemo_variant_subsystems/Controller','parameter')">Controller subsystem block dialog</a>.</p><p>The Controller subsystem block dialog specifies two potential variants. The two variants are in turn associated with the two <tt>Simulink.Variant</tt> objects <tt>VSS_NONLINEAR_CONTROLLER</tt> and <tt>VSS_SECOND_ORDER_CONTROLLER</tt>, which exist in the base workspace.  These objects have a property named <b>Condition</b>, an expression that evaluates to a boolean and that determines which variant is active.  The condition is also shown in the Variant Subsystem block dialog. In this example, the Condition properties of <tt>VSS_NONLINEAR_CONTROLLER</tt> and <tt>VSS_SECOND_ORDER_CONTROLLER</tt> are <tt>VSS_MODE == 1</tt> and <tt>VSS_MODE == 2</tt>, respectively.  The variable <tt>VSS_MODE</tt> resides in the base workspace, and can be a standard MATLAB variable or a <tt>Simulink.Parameter</tt>.</p><p>If there is no associated variant object or a '%' (comment) character prefixes the variant object in the Variant Subsystem parameters dialog box, then the child subsystem is considered commented out and is not used during model execution.</p><img vspace="5" hspace="5" src="sldemo_variant_subsystems_03.png" alt=""> <p><b>Figure 2:</b> Contents of the Controller subsystem block</p><p>Within a Variant Subsystem block, you can place Inport, Outport, and Subsystem blocks. In this example, the <tt>Second-Order Controller</tt> Subsystem block is associated with the variant object, <tt>VSS_SECOND_ORDER_CONTROLLER</tt>, and the <tt>Nonlinear Controller</tt> Subsystem block is associated with the variant object, <tt>VSS_NONLINEAR_CONTROLLER</tt>.</p><p>Signal connections are not allowed in the Variant Subsystem. Simulink programmatically wires up the Inport and Outport blocks to the active variant when simulating the model.</p><h2>Switching Active Variants<a name="5"></a></h2><p>To simulate using the <tt>Nonlinear Controller</tt> variant, define:</p><p><tt>VSS_MODE=1</tt></p><p>in the base workspace and then simulate the model.</p><img vspace="5" hspace="5" src="sldemo_variant_subsystems_04.png" alt=""> <p><b>Figure 3:</b> Simulation using the <tt>Nonlinear Controller</tt> variant</p><p>To simulate using the <tt>Second-Order Controller</tt>, define</p><p><tt>VSS_MODE=2</tt></p><p>in the base workspace and then simulate the model.</p><img vspace="5" hspace="5" src="sldemo_variant_subsystems_05.png" alt=""> <p><b>Figure 4:</b> Simulation using the <tt>Second-Order Controller</tt> variant</p><h2>Enumerations and Reuse<a name="8"></a></h2><p>The <tt>sldemo_variant_subsystems_enum</tt> model illustrates the following <tt>Simulink.Variant</tt> capabilities:</p><p>1. <b>Enumerations:</b> MATLAB enumeration classes can be used to improve    readability in the conditions of the variant object.</p><p>2. <b>Reuse:</b> <tt>Simulink.Variant</tt> objects can be reused in different    Variant Subsystem blocks.</p><p>This demo uses the following variables which are defined in the MATLAB base workspace:</p><p><tt>VSSE_NONLINEAR_CONTROLLER=Simulink.Variant( ...   'VSSE_MODE==sldemo_vss_CONTROLLER_TYPE.NONLINEAR')</tt></p><p><tt>VSSE_SECOND_ORDER_CONTROLLER=Simulink.Variant( ...   'VSSE_MODE==sldemo_vss_CONTROLLER_TYPE.SECOND_ORDER')</tt></p><p><tt>VSSE_MODE=sldemo_vss_CONTROLLER_TYPE.SECOND_ORDER</tt></p><p><tt>VSSE_PROTOTYPE=Simulink.Variant( ...   'VSSE_MODE_BUILD==sldemo_vss_BUILD_TYPE.PROTOTYPE')</tt></p><p><tt>VSSE_PRODUCTION=Simulink.Variant( ...   'VSSE_MODE_BUILD==sldemo_vss_BUILD_TYPE.PRODUCTION')</tt></p><p><tt>VSSE_MODE_BUILD=sldemo_vss_BUILD_TYPE.PRODUCTION</tt></p><p>In these <tt>Simulink.Variant</tt> objects, we use the enumeration classes, <a href="matlab:edit('sldemo_vss_BUILD_TYPE.m');">sldemo_vss_BUILD_TYPE.m</a>, and <a href="matlab:edit('sldemo_vss_CONTROLLER_TYPE.m');">sldemo_vss_CONTROLLER_TYPE.m</a> to define the <tt>Simulink.Variant</tt> <b>Condition</b> parameters which improves readability.</p><p>The three filter Variant Subsystems blocks, Filter1, Filter2, and Filter3 all use the <tt>VSSE_PROTOTYPE</tt> and <tt>VSSE_PRODUCTION</tt> <tt>Simulink.Variant</tt> objects.</p><p>Opening the demo model <a href="matlab:open_system('sldemo_variant_subsystems_enum')"><tt>sldemo_variant_subsystems_enum</tt></a> runs the <b>PreLoadFcn</b> defined in <tt>File -&gt; ModelProperties -&gt; Callbacks</tt>. This populates the base workspace with variables for the Variant Subsystem blocks:</p><pre class="codeoutput"> 
+VSSE_NONLINEAR_CONTROLLER =
+ 
+Simulink.Variant
+    Condition: 'VSSE_MODE==sldemo_vss_CONTROLLER_TYPE.NONLINEAR'
+
+ 
+VSSE_SECOND_ORDER_CONTROLLER =
+ 
+Simulink.Variant
+    Condition: 'VSSE_MODE==sldemo_vss_CONTROLLER_TYPE.SECOND_ORDER'
+
+
+VSSE_MODE = 
+
+    SECOND_ORDER
+
+ 
+VSSE_PROTOTYPE =
+ 
+Simulink.Variant
+    Condition: 'VSSE_CURRENT_BUILD==sldemo_vss_BUILD_TYPE.PROTOTYPE'
+
+ 
+VSSE_PRODUCTION =
+ 
+Simulink.Variant
+    Condition: 'VSSE_CURRENT_BUILD==sldemo_vss_BUILD_TYPE.PRODUCTION'
+
+
+VSSE_CURRENT_BUILD = 
+
+    PRODUCTION
+
+</pre><img vspace="5" hspace="5" src="sldemo_variant_subsystems_06.png" alt=""> <p><b>Figure 5:</b> The demo model, <tt>sldemo_variant_subsystems_enum</tt></p><h2>Code Generation<a name="10"></a></h2><p>You can use the Real-Time Workshop&reg; to generate code from a model containing Variant Subsystem blocks. By default the generated code contains only the active variant. Alternatively, you can generate code for all variants guarded by C preprocessor conditionals (<tt>#if</tt>, <tt>#elif</tt>, <tt>#endif</tt>) when using the Real-Time Workshop&reg; Embedded Coder&#8482;.</p><p>To generate preprocessor conditionals, the types of blocks that you can place within the child subsystems of a Variant Subsystem block are limited. During the code generation process, one Merge block is placed at the input of each Outport block within the variant subsystem and connected to the child subsystems within the variant subsystem. Thus, the restrictions placed on Merge blocks apply to the contents of Variant Subsystem blocks. The restriction checks are only performed when generating code.  In addition, the child subsystems of the Variant Subsystem block must be Atomic subsystems, which are created by selecting the <b>Treat as atomic unit</b> parameter of the Subsystem parameters dialog box.</p><p>Code generation of preprocessor conditionals is active when</p><div><ol><li><b>Inline Parameters</b> is selected on the Optimization pane of the Configuration Parameters dialog box.</li><li>Real-Time Workshop Embedded Coder target is selected on the Real-Time Workshop pane of the Configuration Parameters dialog box.</li><li>The <b>Override variant conditions and use following variant</b> is <i>not</i> selected on the Variant Subsystem block parameter dialog box.</li></ol></div><p>and</p><div><ol><li><b>Generate preprocessor conditionals</b> in the Real-Time Workshop/Interface pane of the Configuration Parameters dialog is set to <tt>Use local settings</tt> and you have selected <b>Generate preprocessor conditionals</b> on the Variant Subsystem block parameter dialog box, or</li><li><b>Generate preprocessor conditionals</b> in the Real-Time Workshop/Interface pane of the Configuration Parameters dialog is set to <tt>Enable all</tt>. In this case, preprocessor conditionals will be generated for all Variant Subsystem blocks that have <i>not</i> selected the <b>Override variant conditions and use following variant</b> Variant Subsystem parameter dialog box.</li></ol></div><p>When code generation of preprocessor conditionals is active, the generated code contains all child subsystems of the Variant Subsystem blocks protected by C preprocessor conditionals. In this case, the selection of the active variants is deferred until compile-time of the generated code. Only one variant object which is encoded in C macros, must evaluate to true (be active).</p><p>In addition, the variant control variables (such as <tt>VSS_MODE</tt> and <tt>VSSE_MODE</tt> above) must be <tt>Simulink.Parameter</tt> objects that specify how the <tt>#define</tt>'s for the variant control variables are managed in the generated code. For the <tt>sldemo_variant_subsystems</tt>, you can clear the <tt>VSS_MODE</tt> double from the base workspace. Use <tt>Model Explorer -&gt; Simulink Root -&gt; Base Workspace</tt> to add a new <tt>Simulink.Parameter</tt> named <tt>VSS_MODE</tt>. Specify the parameter <b>Value</b> as <tt>1</tt> or <tt>2</tt>, the <b>Data Type</b> as <tt>int32</tt>, and <b>Storage class</b> as <tt>ImportedDefine (Custom)</tt> with <b>Custom attributes Header file</b> as <tt>sldemo_variant_subsystems_vdef.h</tt>. You should then create this header in the current working directory:</p><pre>/* File: sldemo_variant_subsystems_vdef.h */
+#ifndef SLDEMO_VARIANT_SUBSYSTEM_VDEF_H
+#define SLDEMO_VARIANT_SUBSYSTEM_VDEF_H
+#define VSS_MODE 1
+#endif</pre><p>See the Real-Time Workshop Embedded Coder for more information on code generation for variant subsystems.</p><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Variant Subsystems
+% This demo illustrates Simulink(R) variant subsystems. Variant subsystems let
+% you provide multiple implementations for a subsystem where only one
+% implementation is active during simulation. You can programmatically swap out
+% the active implementation and replace it with one of the other implementations
+% without modifying the model.
+
+% Copyright 2010 The MathWorks, Inc.
+
+
+%% Overview of Variant Subsystems
+% A Variant Subsystem block contains two or more child subsystems where one
+% child is active during model execution. The active child subsystem is referred
+% to as the _active variant_. You can programmatically switch the active variant
+% of the Variant Subsystem block by changing values of variables in the base
+% workspace, or by manually overriding variant selection using the Variant
+% Subsystem block dialog.  The _active_ _variant_ is programmatically wired to
+% the Inport and Outport blocks of the Variant Subsystem by Simulink during
+% model compilation.
+%
+% To programmatically control variant selection, a |Simulink.Variant| object is
+% associated with each child subsystem in the Variant Subsystem block dialog.
+% |Simulink.Variant| objects are created in the MATLAB(R) base workspace. These
+% objects have a property named |Condition|, which is an expression, that
+% evaluates to a boolean value and is used to determine the active variant child
+% subsystem.  For example, defining
+%
+% |VSS_NONLINEAR_CONTROLLER=Simulink.Variant('VSS_MODE==1');|
+%
+% in the base workspace creates a |Simulink.Variant| object where the constructor
+% argument |('VSS_MODE==1')| defines when the variant is active.
+% Using the Variant Subsystem dialog, you then associate
+% |VSS_NONLINEAR_CONTROLLER| with one of the child subsystems within the Variant
+% Subsystem. Defining
+%
+% |VSS_MODE=1|
+%
+% in the base workspace, activates the |VSS_NONLINEAR_CONTROLLER|
+% variant. The condition argument can be a _simple_ _expression_ consisting of
+% scalar variables, enumerations, equality, inequality, &&, ||, and ~.
+% Parenthesis () can be used for precedence grouping.
+
+%% Using Variant Subsystems
+% The model in this demo uses the following variant objects and variant control
+% variable, which are defined in the MATLAB base workspace:
+%
+% |VSS_NONLINEAR_CONTROLLER=Simulink.Variant('VSS_MODE==1');|
+%
+% |VSS_SECOND_ORDER_CONTROLLER=Simulink.Variant('VSS_MODE==2');|
+%
+% |VSS_MODE=1;|
+%
+% Opening the demo model <matlab:open_system('sldemo_variant_subsystems')
+% |sldemo_variant_subsystems|> runs the *PreLoadFcn* defined in |File ->
+% ModelProperties -> Callbacks|. This populates the base workspace with the
+% variables for the Variant Subsystem block named Controller:
+%
+open_system('sldemo_variant_subsystems')
+
+%%
+% *Figure 1:* The demo model, |sldemo_variant_subsystems|
+%
+% To specify the |Simulink.Variant| objects association for the Controller
+% subsystem, right-click on the Controller subsystem and select |Subsystem
+% Parameters|, which will open the
+% <matlab:load_system('sldemo_variant_subsystems');open_system('sldemo_variant_subsystems/Controller','parameter')
+% Controller subsystem block dialog>.
+%
+% The Controller subsystem block dialog specifies two potential variants. The two
+% variants are in turn associated with the two |Simulink.Variant| objects
+% |VSS_NONLINEAR_CONTROLLER| and |VSS_SECOND_ORDER_CONTROLLER|, which exist in
+% the base workspace.  These objects have a property named *Condition*, an
+% expression that evaluates to a boolean and that determines which variant is
+% active.  The condition is also shown in the Variant Subsystem block dialog.
+% In this example, the Condition properties of |VSS_NONLINEAR_CONTROLLER| and
+% |VSS_SECOND_ORDER_CONTROLLER| are |VSS_MODE == 1| and |VSS_MODE == 2|,
+% respectively.  The variable |VSS_MODE| resides in the base workspace, and can
+% be a standard MATLAB variable or a |Simulink.Parameter|.
+%
+% If there is no associated variant object or a '%' (comment) character prefixes
+% the variant object in the Variant Subsystem parameters dialog box, then the
+% child subsystem is considered commented out and is not used during model
+% execution.
+%
+open_system('sldemo_variant_subsystems/Controller');
+
+%%
+% *Figure 2:* Contents of the Controller subsystem block
+%
+% Within a Variant Subsystem block, you can place Inport, Outport, and Subsystem
+% blocks. In this example, the |Second-Order Controller| Subsystem block is
+% associated with the variant object, |VSS_SECOND_ORDER_CONTROLLER|,
+% and the |Nonlinear Controller| Subsystem block is associated
+% with the variant object, |VSS_NONLINEAR_CONTROLLER|.
+%
+% Signal connections are not allowed in the Variant Subsystem. Simulink
+% programmatically wires up the Inport and Outport blocks to the active
+% variant when simulating the model.
+
+%% Switching Active Variants
+%
+% To simulate using the |Nonlinear Controller| variant, define:
+%
+% |VSS_MODE=1|
+%
+% in the base workspace and then simulate the model.
+%
+open_system('sldemo_variant_subsystems/Controller','parameter');
+close_system('sldemo_variant_subsystems/Controller')
+VSS_MODE=1; %#ok (used by sldemo_variant_subsystems)
+sim sldemo_variant_subsystems;
+%%
+% *Figure 3:* Simulation using the |Nonlinear Controller| variant
+%
+% To simulate using the |Second-Order Controller|, define
+%
+% |VSS_MODE=2|
+%
+% in the base workspace and then simulate the model.
+%
+VSS_MODE=2; %#ok (used by sldemo_variant_subsystems)
+sim sldemo_variant_subsystems;
+
+%%
+% *Figure 4:* Simulation using the |Second-Order Controller| variant
+%
+
+%% Enumerations and Reuse
+% The |sldemo_variant_subsystems_enum| model illustrates the following
+% |Simulink.Variant| capabilities:
+%
+% 1. *Enumerations:* MATLAB enumeration classes can be used to improve
+%    readability in the conditions of the variant object.
+%
+% 2. *Reuse:* |Simulink.Variant| objects can be reused in different
+%    Variant Subsystem blocks.
+%
+% This demo uses the following variables which are defined in the MATLAB base
+% workspace:
+%
+% |VSSE_NONLINEAR_CONTROLLER=Simulink.Variant( ...
+%   'VSSE_MODE==sldemo_vss_CONTROLLER_TYPE.NONLINEAR')|
+%
+% |VSSE_SECOND_ORDER_CONTROLLER=Simulink.Variant( ...
+%   'VSSE_MODE==sldemo_vss_CONTROLLER_TYPE.SECOND_ORDER')|
+%
+% |VSSE_MODE=sldemo_vss_CONTROLLER_TYPE.SECOND_ORDER|
+%
+% |VSSE_PROTOTYPE=Simulink.Variant( ...
+%   'VSSE_MODE_BUILD==sldemo_vss_BUILD_TYPE.PROTOTYPE')|
+%
+% |VSSE_PRODUCTION=Simulink.Variant( ...
+%   'VSSE_MODE_BUILD==sldemo_vss_BUILD_TYPE.PRODUCTION')|
+%
+% |VSSE_MODE_BUILD=sldemo_vss_BUILD_TYPE.PRODUCTION|
+%
+% In these |Simulink.Variant| objects, we use the enumeration classes,
+% <matlab:edit('sldemo_vss_BUILD_TYPE.m'); sldemo_vss_BUILD_TYPE.m>, and
+% <matlab:edit('sldemo_vss_CONTROLLER_TYPE.m'); sldemo_vss_CONTROLLER_TYPE.m> to
+% define the |Simulink.Variant| *Condition* parameters which improves
+% readability.
+%
+% The three filter Variant Subsystems blocks, Filter1, Filter2, and Filter3 all
+% use the |VSSE_PROTOTYPE| and |VSSE_PRODUCTION| |Simulink.Variant| objects.
+%
+% Opening the demo model <matlab:open_system('sldemo_variant_subsystems_enum')
+% |sldemo_variant_subsystems_enum|> runs the *PreLoadFcn* defined in |File ->
+% ModelProperties -> Callbacks|. This populates the base workspace with
+% variables for the Variant Subsystem blocks:
+
+open_system('sldemo_variant_subsystems_enum')
+
+%%
+% *Figure 5:* The demo model, |sldemo_variant_subsystems_enum|
+
+%% Code Generation
+% You can use the Real-Time Workshop(R) to generate code from a model containing
+% Variant Subsystem blocks. By default the generated code contains only the
+% active variant. Alternatively, you can generate code for all variants guarded
+% by C preprocessor conditionals (|#if|, |#elif|, |#endif|) when using
+% the Real-Time Workshop(R) Embedded Coder(TM).
+%
+% To generate preprocessor conditionals, the types of blocks that you can place
+% within the child subsystems of a Variant Subsystem block are limited. During
+% the code generation process, one Merge block is placed at the input of each
+% Outport block within the variant subsystem and connected to the child
+% subsystems within the variant subsystem. Thus, the restrictions placed on
+% Merge blocks apply to the contents of Variant Subsystem blocks. The
+% restriction checks are only performed when generating code.  In addition, the
+% child subsystems of the Variant Subsystem block must be Atomic subsystems,
+% which are created by selecting the *Treat as atomic unit* parameter of the
+% Subsystem parameters dialog box.
+%
+% Code generation of preprocessor conditionals is active when
+%
+% # *Inline Parameters* is selected on the Optimization pane of the
+% Configuration Parameters dialog box.
+% # Real-Time Workshop Embedded Coder target is selected on the
+% Real-Time Workshop pane of the Configuration Parameters dialog box.
+% # The *Override variant conditions and use following variant* is _not_ selected
+% on the Variant Subsystem block parameter dialog box.
+%
+% and
+%
+% # *Generate preprocessor conditionals* in the Real-Time Workshop/Interface
+% pane of the Configuration Parameters dialog is set to
+% |Use local settings| and you have selected *Generate preprocessor conditionals*
+% on the Variant Subsystem block parameter dialog box, or
+% # *Generate preprocessor conditionals* in the Real-Time Workshop/Interface
+% pane of the Configuration Parameters dialog is set to
+% |Enable all|. In this case, preprocessor conditionals will be generated
+% for all Variant Subsystem blocks that have _not_ selected the *Override variant
+% conditions and use following variant* Variant Subsystem parameter dialog box.
+%
+% When code generation of preprocessor conditionals is active, the generated code
+% contains all child subsystems of the Variant Subsystem blocks protected by C
+% preprocessor conditionals. In this case, the selection of the active variants
+% is deferred until compile-time of the generated code. Only one variant object
+% which is encoded in C macros, must evaluate to true (be active).
+%
+% In addition, the variant control variables (such as |VSS_MODE| and |VSSE_MODE|
+% above) must be |Simulink.Parameter| objects that specify how the |#define|'s
+% for the variant control variables are managed in the generated code. For the
+% |sldemo_variant_subsystems|, you can clear the |VSS_MODE| double from the base
+% workspace. Use |Model Explorer -> Simulink Root -> Base Workspace| to add a
+% new |Simulink.Parameter| named |VSS_MODE|. Specify the parameter *Value* as |1|
+% or |2|, the *Data Type* as |int32|, and *Storage class* as |ImportedDefine
+% (Custom)| with *Custom attributes Header file* as
+% |sldemo_variant_subsystems_vdef.h|. You should then create this header in the
+% current working directory:
+%
+%  /* File: sldemo_variant_subsystems_vdef.h */
+%  #ifndef SLDEMO_VARIANT_SUBSYSTEM_VDEF_H
+%  #define SLDEMO_VARIANT_SUBSYSTEM_VDEF_H
+%  #define VSS_MODE 1
+%  #endif
+%
+% See the Real-Time Workshop Embedded Coder for more information on code
+% generation for variant subsystems.
+
+%REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH-%
+% Cleanup %
+%REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH-%
+
+% Close models
+close_system('sldemo_variant_subsystems',0);
+close_system('sldemo_variant_subsystems_enum',0);
+
+% Clear variables created by models
+clear VSS_MODE VSS_NONLINEAR_CONTROLLER VSS_SECOND_ORDER_CONTROLLER tout
+clear VSSE_MODE VSSE_MODE_BUILD VSSE_NONLINEAR_CONTROLLER
+clear VSSE_PRODUCTION VSSE_CURRENT_BUILD
+clear VSSE_PROTOTYPE VSSE_SECOND_ORDER_CONTROLLER
+
+% Clear demo MEX files that may have been created when referencing
+% models with the Simulation Mode parameter set to Accelerated.
+% This need to be done before attempting to remove the tempdir
+% which contains the generated MEX files.
+clear mex
+
+##### SOURCE END #####
+--></body></html>

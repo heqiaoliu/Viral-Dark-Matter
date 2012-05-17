@@ -1,0 +1,30 @@
+%% ==============================================================================
+%% Abstract:
+%%   Example file process TLC script for Real-Time Workshop Embedded Coder
+%%   for demo model rtwdemo_international.mdl.
+%%
+%%   This 'File customization template,' which is entered into Templates page
+%%   of the Configuration Parameters, writes the necessary model data to a
+%%   separate file model_data.c.
+%%
+%%   See Real-Time Workshop Embedded Code User's Guide for more information on
+%%   this capability.
+%%
+%% Copyright 1994-2004 The MathWorks, Inc.
+%% $Revision: 1.1.6.1 $
+%%
+%selectfile NULL_FILE
+
+%% Create a source file model_data.c
+%assign cFile = LibCreateSourceFile("Source", "Custom", "custom_data")
+
+%% Extract the model data
+%openfile tmpBuf
+
+/* Japanese characters in tlc: tlcÌ§²Ù‚Å‚Ì“ú–{Œê‚Ì•¶š */
+%assign returnVal= FEVAL("strcat","/* Japanese characters read from MATLAB: MATLAB‚Å“ú–{Œê‚Ì•¶š‚ğ“Ç‚İ‚Ş */")
+%<returnVal>
+%closefile tmpBuf
+
+%% Put data into the appropriate section of the file
+%<LibSetSourceFileSection(cFile, "Definitions", tmpBuf)>

@@ -1,0 +1,199 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Thermal Model of a House</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-09-25"><meta name="m-file" content="sldemo_househeat_script"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sldemo_househeat_script">Open sldemo_househeat_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo sldemo_househeat_script">Run in the Command Window</a></div></div><div class="content"><h1>Thermal Model of a House</h1><!--introduction--><p>This demo illustrates how you can use Simulink&reg; to create the thermal model of a house. This system models the outdoor environment, the thermal characteristics of the house, and the house heating system.</p><p>The <a href="matlab:edit('sldemo_househeat_data.m')">sldemo_househeat_data.m</a> file initializes data in the model workspace. To make changes, you can edit the model workspace directly or edit the m-file and re-load the model workspace. To view the model workspace, select View &gt; Model Explorer from the Simulink editor.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Opening the Model</a></li><li><a href="#3">Model Initialization</a></li><li><a href="#5">Model Components</a></li><li><a href="#17">Running the Simulation and Visualizing the Results</a></li><li><a href="#20">Closing the Model</a></li><li><a href="#21">Remarks</a></li></ul></div><h2>Opening the Model<a name="1"></a></h2><p>In the MATLAB&reg; window, load the model by executing the following code (select the code and press F9 to evaluate selection).</p><pre class="codeinput">mdl=<span class="string">'sldemo_househeat'</span>;
+open_system(mdl);
+</pre><img vspace="5" hspace="5" src="sldemo_househeat_script_01.png" alt=""> <p><b>Figure 1:</b> The House Heating Model</p><h2>Model Initialization<a name="3"></a></h2><p>This model calculates heating costs for a generic house. When the model is opened, it loads the information about the house from the <a href="matlab:edit('sldemo_househeat_data.m')">sldemo_househeat_data.m</a> file.  The M-file does the following:</p><div><ul><li>Defines the house geometry (size, number of windows)</li><li>Specifies the thermal properties of house materials</li><li>Calculates the thermal resistance of the house</li><li>Provides the heater characteristics (temperature of the hot air, flow-rate)</li><li>Defines the cost of electricity (0.09$/kWhr)</li><li>Specifies the initial room temperature (20 deg. Celsius = 68 deg. Fahrenheit)</li></ul></div><div><ul><li><b>Note:</b> Time is given in units of hours. Certain quantities, like air flow-rate, are expressed per hour (not per second).</li></ul></div><h2>Model Components<a name="5"></a></h2><p><b>Set Point</b></p><p>"Set Point" is a constant block. It specifies the temperature that must be maintained indoors. It is 70 degrees Fahrenheit by default. Temperatures are given in Fahrenheit, but then are converted to Celsius to perform the calculations.</p><p><b>Thermostat</b></p><p>"Thermostat" is a subsystem that contains a Relay block. The thermostat allows fluctuations of 5 degrees Fahrenheit above or below the desired room temperature. If air temperature drops below 65 degrees Fahrenheit, the thermostat turns on the heater. See the thermostat subsystem below.</p><pre class="codeinput">open_system([mdl,<span class="string">'/Thermostat'</span>]);
+</pre><img vspace="5" hspace="5" src="sldemo_househeat_script_02.png" alt=""> <p><b>Figure 2:</b> The "Thermostat" Subsystem</p><p><b>Heater</b></p><p>"Heater" is a subsystem that has a constant air flow rate, "Mdot", which is specified in the <a href="matlab:edit('sldemo_househeat_data.m')">sldemo_househeat_data.m</a> M-file. The thermostat signal turns the heater on or off. When the heater is on, it blows hot air at temperature THeater (50 degrees Celsius = 122 degrees Fahrenheit by default) at a constant flow rate of Mdot (1kg/sec = 3600kg/hr by default). The heat flow into the room is expressed by the Equation 1.</p><p><b>Equation 1</b></p><p><img src="sldemo_househeat_script_eq26030.png" alt="$$\frac{dQ}{dt}=\left( T_{heater} - T_{room} \right) \cdot Mdot \cdot c$$"></p><p><img src="sldemo_househeat_script_eq50528.png" alt="$$\frac{dQ}{dt} = \mbox{ heat flow from the heater into the room}$$"></p><p><img src="sldemo_househeat_script_eq86860.png" alt="$$c = \mbox{ heat capacity of air at constant pressure}$$"></p><p><img src="sldemo_househeat_script_eq84386.png" alt="$$Mdot = \mbox{ air mass flow rate through heater (kg/hr)}$$"></p><p><img src="sldemo_househeat_script_eq42219.png" alt="$$T_{heater} = \mbox{ temperature of hot air from heater}$$"></p><p><img src="sldemo_househeat_script_eq66793.png" alt="$$T_{room} = \mbox{ current room air temperature}$$"></p><pre class="codeinput">open_system([mdl,<span class="string">'/Heater'</span>]);
+</pre><img vspace="5" hspace="5" src="sldemo_househeat_script_03.png" alt=""> <p><b>Figure 3: The Heater Subsystem</b></p><p><b>Cost Calculator</b></p><p>"Cost Calculator" is a Gain block. "Cost Calculator" integrates the heat flow over time and multiplies it by the energy cost.  The cost of heating is plotted in the "PlotResults" scope.</p><p><b>House</b></p><p>"House" is a subsystem that calculates room temperature variations. It takes into consideration the heat flow from the heater and heat losses to the environment. Heat losses and the temperature time derivative are expressed by Equation 2.</p><p><b>Equation 2</b></p><p><img src="sldemo_househeat_script_eq72970.png" alt="$$\left( \frac{dQ}{dt} \right) _{losses} = \frac{T_{room}-T_{out}}{R_{eq}}$$"></p><p><img src="sldemo_househeat_script_eq25106.png" alt="$$\frac{dT_{room}}{dt} = \frac{1}{M_{air} \cdot c} \cdot \left(  \frac{dQ_{heater}}{dt} - \frac{dQ_{losses}}{dt} \right) $$"></p><p><img src="sldemo_househeat_script_eq53802.png" alt="$$M_{air} = \mbox{ mass of air inside the house}$$"></p><p><img src="sldemo_househeat_script_eq95607.png" alt="$$R_{eq} = \mbox{ equivalent thermal resistance of the house}$$"></p><pre class="codeinput">open_system([mdl,<span class="string">'/House'</span>]);
+</pre><img vspace="5" hspace="5" src="sldemo_househeat_script_04.png" alt=""> <p><b>Figure 4:</b> The House Subsystem</p><p><b>Modeling the Environment</b></p><p>We model the environment as a heat sink with infinite heat capacity and time varying temperature Tout.  The constant block "Avg Outdoor Temp" specifies the average air temperature outdoors. The "Daily Temp Variation" Sine Wave block generates daily temperature fluctuations of outdoor temperature. Vary these parameters and see how they affect the heating costs.</p><h2>Running the Simulation and Visualizing the Results<a name="17"></a></h2><p>Run the simulation and visualize the results. Open the "PlotResults" scope to visualize the results. The heat cost and indoor versus outdoor temperatures are plotted on the scope. The temperature outdoor varies sinusoidally, whereas the indoors temperature is maintained within 5 degrees Fahrenheit of "Set Point". Time axis is labeled in hours.</p><pre class="codeinput">evalc(<span class="string">'sim(mdl)'</span>);
+open_system([mdl <span class="string">'/PlotResults'</span>]),
+</pre><img vspace="5" hspace="5" src="sldemo_househeat_script_05.png" alt=""> <p><b>Figure 5:</b> Simulation results (time axis labeled in hours)</p><p>According to this model, it would cost around $30 to heat the house for two days. Try varying the parameters and observe the system response.</p><h2>Closing the Model<a name="20"></a></h2><pre class="codeinput">close_system(mdl);
+</pre><h2>Remarks<a name="21"></a></h2><p>This particular model is designed to calculate the heating costs only. If the temperature of the outside air is higher than the room temperature, the room temperature will exceed the desired "Set Point".</p><p>You can modify this model to include an air conditioner. You can implement the air conditioner as a modified heater.  To do this, add parameters like the following to <a href="matlab:edit('sldemo_househeat_data.m')">sldemo_househeat_data.m</a>.</p><div><ul><li>Cold air output</li><li>Temperature of the stream from the air conditioner</li><li>Air conditioner efficiency</li></ul></div><p>You would also need to modify the thermostat to control both the air conditioner and the heater.</p><p class="footer">Copyright 2004-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Thermal Model of a House
+%
+% This demo illustrates how you can use Simulink(R) to create the thermal model of
+% a house. This system models the outdoor environment, the thermal
+% characteristics of the house, and the house heating system.
+%        
+% The <matlab:edit('sldemo_househeat_data.m') sldemo_househeat_data.m> file
+% initializes data in the model workspace. To make changes, you can edit the
+% model workspace directly or edit the m-file and re-load the model
+% workspace. To view the model workspace, select View > Model Explorer from the
+% Simulink editor.
+
+%   Copyright 2004-2007 The MathWorks, Inc.
+
+%% Opening the Model
+%
+% In the MATLAB(R) window, load the model by executing the following code
+% (select the code and press F9 to evaluate selection).  
+
+mdl='sldemo_househeat';
+open_system(mdl);
+
+%%
+% *Figure 1:* The House Heating Model
+
+%% Model Initialization
+%
+% This model calculates heating costs for a generic house. When the model is
+% opened, it loads the information about the house from the
+% <matlab:edit('sldemo_househeat_data.m') sldemo_househeat_data.m> file.  The
+% M-file does the following:
+%
+% * Defines the house geometry (size, number of windows)
+% * Specifies the thermal properties of house materials
+% * Calculates the thermal resistance of the house
+% * Provides the heater characteristics (temperature of the hot air, flow-rate)
+% * Defines the cost of electricity (0.09$/kWhr)
+% * Specifies the initial room temperature (20 deg. Celsius = 68 deg. Fahrenheit)
+
+%%
+% * *Note:* Time is given in units of hours. Certain quantities, like air
+% flow-rate, are expressed per hour (not per second).
+
+%%  Model Components
+
+%%
+% *Set Point*
+%
+% "Set Point" is a constant block. It specifies the temperature that must be
+% maintained indoors. It is 70 degrees Fahrenheit by default. Temperatures are
+% given in Fahrenheit, but then are converted to Celsius to perform the
+% calculations.
+
+%%
+% *Thermostat*
+%
+% "Thermostat" is a subsystem that contains a Relay block. The thermostat allows
+% fluctuations of 5 degrees Fahrenheit above or below the desired room
+% temperature. If air temperature drops below 65 degrees Fahrenheit, the
+% thermostat turns on the heater. See the thermostat subsystem below.
+
+open_system([mdl,'/Thermostat']);
+
+%%
+% *Figure 2:* The "Thermostat" Subsystem
+
+%%
+% *Heater*
+%
+% "Heater" is a subsystem that has a constant air flow rate, "Mdot", which is
+% specified in the <matlab:edit('sldemo_househeat_data.m')
+% sldemo_househeat_data.m> M-file. The thermostat signal turns the heater on or
+% off. When the heater is on, it blows hot air at temperature THeater (50
+% degrees Celsius = 122 degrees Fahrenheit by default) at a constant flow rate
+% of Mdot (1kg/sec = 3600kg/hr by default). The heat flow into the room is expressed by the
+% Equation 1.
+
+%%
+% *Equation 1*
+%
+% $$\frac{dQ}{dt}=\left( T_{heater} - T_{room} \right) \cdot Mdot \cdot c$$
+%
+% $$\frac{dQ}{dt} = \mbox{ heat flow from the heater into the room}$$
+%
+% $$c = \mbox{ heat capacity of air at constant pressure}$$
+%
+% $$Mdot = \mbox{ air mass flow rate through heater (kg/hr)}$$
+%
+% $$T_{heater} = \mbox{ temperature of hot air from heater}$$
+%
+% $$T_{room} = \mbox{ current room air temperature}$$
+
+open_system([mdl,'/Heater']);
+%%
+% *Figure 3: The Heater Subsystem*
+
+%%
+% *Cost Calculator*
+%
+% "Cost Calculator" is a Gain block. "Cost Calculator" integrates the heat flow
+% over time and multiplies it by the energy cost.  The cost of heating is
+% plotted in the "PlotResults" scope.
+
+%%
+% *House*
+%
+% "House" is a subsystem that calculates room temperature variations. It takes
+% into consideration the heat flow from the heater and heat losses to the
+% environment. Heat losses and the temperature time derivative are expressed by
+% Equation 2.
+
+%% 
+% *Equation 2*
+%
+% $$\left( \frac{dQ}{dt} \right) _{losses} = \frac{T_{room}-T_{out}}{R_{eq}}$$
+%
+% $$\frac{dT_{room}}{dt} = \frac{1}{M_{air} \cdot c} \cdot \left(  \frac{dQ_{heater}}{dt} - \frac{dQ_{losses}}{dt} \right) $$
+%
+% $$M_{air} = \mbox{ mass of air inside the house}$$
+%
+% $$R_{eq} = \mbox{ equivalent thermal resistance of the house}$$
+
+open_system([mdl,'/House']);
+
+%%
+% *Figure 4:* The House Subsystem
+
+%% 
+% *Modeling the Environment*
+%
+% We model the environment as a heat sink with infinite heat capacity and time
+% varying temperature Tout.  The constant block "Avg Outdoor Temp" specifies the
+% average air temperature outdoors. The "Daily Temp Variation" Sine Wave block
+% generates daily temperature fluctuations of outdoor temperature. Vary these
+% parameters and see how they affect the heating costs.
+
+%% Running the Simulation and Visualizing the Results
+%
+% Run the simulation and visualize the results. Open the "PlotResults" scope to
+% visualize the results. The heat cost and indoor versus outdoor temperatures
+% are plotted on the scope. The temperature outdoor varies sinusoidally, whereas
+% the indoors temperature is maintained within 5 degrees Fahrenheit of "Set
+% Point". Time axis is labeled in hours.
+%
+
+evalc('sim(mdl)');
+open_system([mdl '/PlotResults']),
+
+%%
+% *Figure 5:* Simulation results (time axis labeled in hours)
+
+%%
+%
+% According to this model, it would cost around $30 to heat the house for two
+% days. Try varying the parameters and observe the system response.
+%
+
+%% Closing the Model
+close_system(mdl);
+
+%% Remarks
+%
+% This particular model is designed to calculate the heating costs only. If the
+% temperature of the outside air is higher than the room temperature, the room
+% temperature will exceed the desired "Set Point".
+%
+% You can modify this model to include an air conditioner. You can implement the
+% air conditioner as a modified heater.  To do this, add parameters like the
+% following to <matlab:edit('sldemo_househeat_data.m') sldemo_househeat_data.m>.
+%
+% * Cold air output
+% * Temperature of the stream from the air conditioner
+% * Air conditioner efficiency
+%
+% You would also need to modify the thermostat to control both the air
+% conditioner and the heater.
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

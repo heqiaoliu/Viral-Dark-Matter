@@ -1,0 +1,97 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>遅延を持つ制御システムの解析</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="MADelayResponse.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit MADelayResponse">エディターで MADelayResponse.m を開く</a></div><div class="right"><a href="matlab:echodemo MADelayResponse">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>遅延を持つ制御システムの解析</h1><!--introduction--><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">遅延を持つプロセスの制御</a></li><li><a href="#2">例: むだ時間を持つ PI 制御ループ</a></li><li><a href="#8">むだ時間のパデ近似</a></li><li><a href="#11">感度解析</a></li><li><a href="#14">離散化</a></li><li><a href="#17">遅延システムに固有の機能</a></li></ul></div><h2>遅延を持つプロセスの制御<a name="1"></a></h2><p>多くのプロセスでは、輸送遅延や時間ラグとも呼ばれるむだ時間が発生します。遅延は制御帯域を制限し、閉ループの安定性に影響する線形位相シフトを発生させるため、このようなプロセスを制御することは困難です。</p><p>状態空間表現を使用すると、遅延を持つ制御システムに対して正確な開ループ モデルまたは閉ループ モデルを作成し、近似なしでその安定性や性能を解析できます。モデルを組み合わせた場合、&quot;内部&quot; 遅延は状態空間 (SS) オブジェクトによって自動的に追跡されます。詳細は、「むだ時間の指定」チュートリアルを参照してください。</p><p>このチュートリアルでは、Control System Toolbox™ を使用して、遅延を持つ制御システムを解析および設計する方法を説明します。</p><h2>例: むだ時間を持つ PI 制御ループ<a name="2"></a></h2><p>次の標準的な設定値追従ループを考えてみます。</p><p><img vspace="5" hspace="5" src="../../Figures/smith_01.png" alt=""> </p><p>ここで、プロセス モデル <tt>P</tt> には 2.6 秒のむだ時間があり、補償器 <tt>C</tt> は PI コントローラです。</p><p><img src="../MADelayResponse_eq51828.png" alt="$$ P(s) = {e^{-2.6 s} (s+3) \over s^2+0.3 s+1} , \;\; C(s) = 0.06 (1 +
+{1 \over s}) $$"></p><p>これら 2 つの伝達関数は、次のように指定できます。</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);
+P = exp(-2.6*s)*(s+3)/(s^2+0.3*s+1);
+C = 0.06 * (1 + 1/s);
+</pre><p>閉ループ応答を解析するには、<tt>ysp</tt> から <tt>y</tt> への閉ループ伝達のモデル <tt>T</tt> を作成します。このフィードバック ループには遅延が存在するため、<tt>P</tt> および <tt>C</tt> は状態空間に変換し、解析に状態空間表現を使用しなければなりません。</p><pre class="codeinput">T = feedback(ss(P*C),1)
+</pre><pre class="codeoutput"> 
+a = 
+          x1     x2     x3
+   x1  -0.36  -1.24  -0.18
+   x2      1      0      0
+   x3      0      1      0
+ 
+b = 
+        u1
+   x1  0.5
+   x2    0
+   x3    0
+ 
+c = 
+         x1    x2    x3
+   y1  0.12  0.48  0.36
+ 
+d = 
+       u1
+   y1   0
+ 
+(すべての内部遅延がゼロに設定された状態で値を計算)
+
+内部遅延:  2.6 
+ 
+連続時間モデル。
+</pre><p>結果は、2.6 秒の内部遅延を持つ 3 次モデルになります。内部では、遅延が他のダイナミクスとどのように連動するかが状態空間オブジェクト <tt>T</tt> によって追跡されます。この構造情報はユーザーには示されず、上の表示は遅延がゼロに設定されている場合の A、B、C、D の値のみを示します。</p><p><tt>STEP</tt> コマンドを使用して、<tt>ysp</tt> から <tt>y</tt> への閉ループ ステップ応答をプロットします。</p><pre class="codeinput">step(T)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_01.png" alt=""> <p>閉ループの振動は、開ループ応答 <tt>P*C</tt> で見られるように、弱いゲイン余裕が原因です。</p><pre class="codeinput">margin(P*C)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_02.png" alt=""> <p>閉ループ周波数応答には共振も見られます。</p><pre class="codeinput">bode(T)
+grid, title(<span class="string">'Closed-loop frequency response'</span>)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_03.png" alt=""> <p>設計を改善するには、1 rad/s 付近の共振点にノッチ フィルターを適用します。</p><pre class="codeinput">notch = tf([1 0.2 1],[1 .8 1]);
+C = 0.05 * (1 + 1/s);
+Tnotch = feedback(ss(P*C*notch),1);
+
+step(Tnotch), grid
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_04.png" alt=""> <h2>むだ時間のパデ近似<a name="8"></a></h2><p>多くの制御設計アルゴリズムは、むだ時間を直接取り扱うことができません。一般的な回避策は、パデ近似 (オールパス フィルター) によって遅延を置き換えることです。この近似は低周波数でのみ有効であるので、真の応答と近似の応答を比較し、正しい近似の次数を選択して近似の正しさを確認することが重要です。</p><p><tt>PADE</tt> コマンドを使用して、遅延を持つ LTI モデルのパデ近似を計算します。上記の PI 制御例では、正確な閉ループ応答 <tt>T</tt> を、遅延の 1 次のパデ近似に対して得られた応答と比較できます。</p><pre class="codeinput">T1 = pade(T,1);
+step(T,<span class="string">'b'</span>,T1,<span class="string">'r'</span>,100)
+grid, legend(<span class="string">'Exact'</span>,<span class="string">'First-Order Pade'</span>)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_05.png" alt=""> <p>この近似誤差はかなり大きくなります。より良い近似を得るために、遅延の 2 次のパデ近似を試みます。</p><pre class="codeinput">T2 = pade(T,2);
+step(T,<span class="string">'b'</span>,T2,<span class="string">'r'</span>,100)
+grid, legend(<span class="string">'Exact'</span>,<span class="string">'Second-Order Pade'</span>)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_06.png" alt=""> <p>応答は、パデ近似によりもたらされた非最小の位相の結果を除いて、よく一致します。</p><h2>感度解析<a name="11"></a></h2><p>遅延が正確に知られていることはめったにありません。したがって、制御システムが遅延の値に対し、どれほどの感度があるかを理解することが重要な場合がよくあります。そのような感度解析は、LTI 配列と InternalDelay プロパティを使用して簡単に実行できます。</p><p>たとえば、上のノッチ PI 制御の感度を解析するには、2.0 ～ 3.0 の範囲の遅延値を持つモデルを 5 つ作成します。</p><pre class="codeinput">tau = linspace(2,3,5);                    <span class="comment">% 5 delay values</span>
+Tsens = repsys(Tnotch,[1 1 5]);           <span class="comment">% 5 copies of Tnotch</span>
+<span class="keyword">for</span> j=1:5
+Tsens(:,:,j).InternalDelay = tau(j);    <span class="comment">% jth delay value -&gt; jth model</span>
+<span class="keyword">end</span>
+</pre><p>次に、<tt>STEP</tt> を使用して包絡線プロットを作成します。</p><pre class="codeinput">step(Tsens)
+grid, title(<span class="string">'Closed-loop response for 5 delay values between 2.0 and 3.0'</span>)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_07.png" alt=""> <p>次のプロットは、遅延の値の不確かさは閉ループ特性にほとんど影響しないことを示しています。内部遅延の値を変更できる一方、これはモデル構造の一部なので、存在している数は変更できないことに注意してください。いくつかの内部遅延を除去するには、それらの値をゼロに設定するか、あるいは 0 次の <tt>PADE</tt> を使用します。</p><pre class="codeinput">Tnotch0 = Tnotch;
+Tnotch0.InternalDelay = 0;
+bode(Tnotch,<span class="string">'b'</span>,Tnotch0,<span class="string">'r'</span>,{1e-2,3})
+grid, legend(<span class="string">'Delay = 2.6'</span>,<span class="string">'No delay'</span>,<span class="string">'Location'</span>,<span class="string">'SouthWest'</span>)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_08.png" alt=""> <h2>離散化<a name="14"></a></h2><p><tt>C2D</tt> を使用して、連続時間むだ時間のシステムを離散化できます。利用できるメソッドには、ゼロ次ホールド (ZOH)、1 次ホールド (FOH)、および Tustin があります。内部遅延を持つモデルに対して、ZOH 離散化は必ずしも正確ではありません。つまり、連続および離散化されたステップ応答は一致しません。</p><pre class="codeinput">Td = c2d(T,1);
+step(T,<span class="string">'b'</span>,Td,<span class="string">'r'</span>)
+grid, legend(<span class="string">'Continuous'</span>,<span class="string">'ZOH Discretization'</span>)
+</pre><pre class="codeoutput">警告: 離散化は、初期遅延のため近似のみ行います。離散化誤差が大きい場合は、高速サンプリング レートを使用してください。
+ 
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_09.png" alt=""> <p>そのような離散化のギャップを訂正するには、連続と離散の応答が一致するまでサンプリング周期を減らします。</p><pre class="codeinput">Td = c2d(T,0.05);
+step(T,<span class="string">'b'</span>,Td,<span class="string">'r'</span>)
+grid, legend(<span class="string">'Continuous'</span>,<span class="string">'ZOH Discretization'</span>)
+</pre><pre class="codeoutput">警告: 離散化は、初期遅延のため近似のみ行います。離散化誤差が大きい場合は、高速サンプリング レートを使用してください。
+ 
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_10.png" alt=""> <p>内部遅延は離散化されたモデル内に留まり、モデル次数を上げないことに注意してください。</p><pre class="codeinput">order(Td)
+Td.InternalDelay
+</pre><pre class="codeoutput">
+ans =
+
+     3
+
+
+ans =
+
+    52
+
+</pre><h2>遅延システムに固有の機能<a name="17"></a></h2><p>遅延のない LTI 解析にのみ慣れていると、遅延のあるシステムの時間応答と周波数応答は奇妙に見えます。時間応答は無秩序に動作し、ボード線図はゲインの振動などを示すことがあります。これらの予測できない動作はソフトウェアによるものではなく、このようなシステムの実際の特性です。以下では、これらの現象について少し説明します。</p><p>ゲイン リップル:</p><pre class="codeinput">G = exp(-5*s)/(s+1);
+T = feedback(ss(G),.5);
+bodemag(T)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_11.png" alt=""> <p>ゲイン振動:</p><pre class="codeinput">G = ss(1) + 0.5 * exp(-3*s);
+bodemag(G)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_12.png" alt=""> <p>ギザギザのステップ応答 (初期ステップの &quot;エコー&quot; に注目してください):</p><pre class="codeinput">G = exp(-s) * (0.8*s^2+s+2)/(s^2+s);
+T = feedback(ss(G),1);
+step(T)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_13.png" alt=""> <p>カオス応答:</p><pre class="codeinput">G = ss(1/(s+1)) + exp(-4*s);
+T = feedback(1,G);
+
+step(T)
+</pre><img vspace="5" hspace="5" src="../MADelayResponse_14.png" alt=""> <p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Analyzing Control Systems with Delays  %   Copyright 1986-2009 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $    %% Control of Processes with Delays % Many processes involve dead times, also referred to as transport delays % or time lags. Controlling such processes is challenging because delays % cause linear phase shifts that limit the control bandwidth % and affect closed-loop stability. % % Using the state-space representation, you can create accurate open- or closed-loop % models of control systems with delays and analyze their stability and % performance without approximation. The state-space (SS) object % automatically keeps track of "internal" delays when combining models, see % the "Specifying Time Delays" tutorial for more details. % % This tutorial shows how to use Control System Toolbox(TM) to analyze and % design control systems with delays.   %% Example: PI Control Loop with Dead Time % Consider the standard setpoint tracking loop: % % <<../Figures/smith_01.png>> % % where the process model |P| has a 2.6 second dead time and the compensator % |C| is a PI controller: % % $$ P(s) = {e^{-2.6 s} (s+3) \over s^2+0.3 s+1} , \;\; C(s) = 0.06 (1 + % {1 \over s}) $$ % % You can specify these two transfer functions as s = tf('s'); P = exp(-2.6*s)*(s+3)/(s^2+0.3*s+1); C = 0.06 * (1 + 1/s);   %%  % To analyze the closed-loop response, construct a model |T| of the  % closed-loop transfer from |ysp| to |y|. Because there is a delay % in this feedback loop, you must convert |P| and |C| to state space % and use the state-space representation for analysis: T = feedback(ss(P*C),1)  %% % The result is a third-order model with an internal delay of 2.6 seconds. % Internally, the state-space object |T| tracks how the % delay is coupled with the remaining dynamics. This structural information % is not visible to users, and the display above only gives the A,B,C,D values % when the delay is set to zero. % % Use the |STEP| command to plot the closed-loop step response from |ysp| to |y|: step(T)  %% % The closed-loop oscillations are due to a weak gain margin % as seen from the open-loop response |P*C|: margin(P*C)  %% % There is also a resonance in the closed-loop frequency response: bode(T) grid, title('Closed-loop frequency response')  %% % To improve the design, you can try to notch out the resonance near % 1 rad/s: notch = tf([1 0.2 1],[1 .8 1]); C = 0.05 * (1 + 1/s);  Tnotch = feedback(ss(P*C*notch),1);  step(Tnotch), grid  %% Pade Approximation of Time Delays % Many control design algorithms cannot handle time delays directly.  % A common workaround consists of replacing delays by their Pade  % approximations (all-pass filters). Because this approximation % is only valid at low frequencies, it is important % to compare the true and approximate responses to choose the right % approximation order and check the approximation validity. % % Use the |PADE| command to compute Pade approximations of LTI models % with delays. For the PI control example above, you can compare  % the exact closed-loop response |T| with the response % obtained for a first-order Pade approximation of the delay: T1 = pade(T,1); step(T,'b',T1,'r',100) grid, legend('Exact','First-Order Pade')  %% % The approximation error is fairly large. To get a better approximation,  % try a second-order Pade approximation of the delay: T2 = pade(T,2); step(T,'b',T2,'r',100) grid, legend('Exact','Second-Order Pade')  %% % The responses now match closely except for the non-minimum phase artifact % introduced by the Pade approximation.  %% Sensitivity Analysis % Delays are rarely known accurately, so it is often important to understand  % how sensitive a control system is to the delay value. Such sensitivity % analysis is easily performed using LTI arrays and the InternalDelay % property.  % % For example, to analyze the sensitivity of the notched PI control above,  % create 5 models with delay values ranging from 2.0 to 3.0: tau = linspace(2,3,5);                    % 5 delay values Tsens = repsys(Tnotch,[1 1 5]);           % 5 copies of Tnotch for j=1:5   Tsens(:,:,j).InternalDelay = tau(j);    % jth delay value -> jth model end  %% % Then use |STEP| to create an envelope plot: step(Tsens) grid, title('Closed-loop response for 5 delay values between 2.0 and 3.0')  %% % This plot shows that uncertainty on the delay value has little effect on % closed-loop characteristics. Note that while you can change the values of % internal delays, you cannot change how many there are because this is % part of the model structure. To eliminate some internal delays, set their % value to zero or use |PADE| with order zero: Tnotch0 = Tnotch; Tnotch0.InternalDelay = 0; bode(Tnotch,'b',Tnotch0,'r',{1e-2,3}) grid, legend('Delay = 2.6','No delay','Location','SouthWest')  %% Discretization % You can use |C2D| to discretize continuous-time delay systems. Available % methods include zero-order hold (ZOH), first-order hold (FOH), and Tustin.  % For models with internal delays, the ZOH discretization is not always "exact," % i.e., the continuous and discretized step responses may not match: Td = c2d(T,1); step(T,'b',Td,'r') grid, legend('Continuous','ZOH Discretization')  %% % To correct such discretization gaps, reduce the sampling period until % the continuous and discrete responses match closely: Td = c2d(T,0.05); step(T,'b',Td,'r') grid, legend('Continuous','ZOH Discretization')  %% % Note that internal delays remain internal in the discretized model and % do not inflate the model order: order(Td) Td.InternalDelay  %% Some Unique Features of Delay Systems % The time and frequency responses of delay systems can look bizarre  % and suspicious to those only familiar with delay-free LTI analysis. % Time responses can behave chaotically, Bode plots can exhibit gain % oscillations, etc. These are not software quirks but real features of % such systems. Below are a few illustrations of these phenomena  %% % Gain ripples: G = exp(-5*s)/(s+1);  T = feedback(ss(G),.5);  bodemag(T)   %% % Gain oscillations: G = ss(1) + 0.5 * exp(-3*s); bodemag(G)  %% % Jagged step response (note the "echoes" of the initial step): G = exp(-s) * (0.8*s^2+s+2)/(s^2+s); T = feedback(ss(G),1);  step(T)  %% % Chaotic response: G = ss(1/(s+1)) + exp(-4*s); T = feedback(1,G);  step(T)  displayEndOfDemoMessage(mfilename)   ##### SOURCE END ##### --></body></html>

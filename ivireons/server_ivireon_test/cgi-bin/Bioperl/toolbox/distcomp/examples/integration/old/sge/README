@@ -1,0 +1,63 @@
+This directory contains a number of files to allow DCT to be used with Sun Grid
+Engine via the "generic scheduler interface".
+
+Copyright 2006-2010 The MathWorks, Inc.
+
+RUNNING DISTRIBUTED JOBS
+========================
+
+For running distributed jobs, the following files are needed:
+
+* sgeSubmitFcn.m - the submit function, which submits individual SGE jobs to the
+  scheduler using "qsub". The submitted script is always "sgeWrapper.sh".
+
+* sgeWrapper.sh - simply launches MATLAB on the cluster, and forwards the
+  correct environment variables needed by the decode function.
+
+* sgeDecodeFunc.m - the SGE decode function for distributed jobs - this must be
+  on the MATLAB path of the worker machines. One way to achieve this is to put
+  this file into $MATLABROOT/toolbox/local.
+
+RUNNING PARALLEL JOBS
+=====================
+
+For running parallel jobs, an SGE parallel environment is required. The "matlab"
+parallel environment is based on the "MPI" example shipped with SGE. To use this
+parallel environment, the "matlabpe.template" must be used.  This template must
+be customised to match the number of slots available, and to match where the
+"startmatlabpe.sh" and "stopmatlabpe.sh" scripts are installed on your cluster.
+
+The following stages are needed to create the parallel environment, and then
+make it runnable on a particular queue:
+
+1. Add the "matlab" parallel environment, using a shell command like:
+       
+       $ qconf -Ap matlabpe.template
+
+2. Make the "matlab" PE runnable on all queues:
+
+       $ qconf -mq all.q
+
+   This will bring up a text editor for you to make changes: search for the line
+   "pe_list", and add "matlab"
+
+3. Ensure you can submit a trivial job to the PE:
+
+       $ echo "hostname" | qsub -pe matlab 1
+
+   Check that the job runs correctly using "qstat", and check the output file
+   which will have a default name of "~/STDIN.o###" where "###" is the SGE job
+   number.
+
+Once SGE is correctly configured, the following files are then used:
+
+* sgeParallelSubmitFcn.m - the parallel submit function, which submits jobs to
+  the "matlab" PE.
+
+* sgeParallelWrapper.sh - the parallel wrapper, which launches SMPD on all the
+  hosts allocated by SGE, and then uses mpiexec to launch MATLAB
+
+* sgeParallelDecode.m - the parallel decode function - this must be on the
+  MATLAB path of the worker machines.  One way to achieve this is to put this
+  file into $MATLABROOT/toolbox/local.
+

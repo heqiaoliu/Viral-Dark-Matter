@@ -1,0 +1,114 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Preventing State Duplication in System Interconnections</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="NDDModelInterconnections.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit NDDModelInterconnections">Open NDDModelInterconnections.m in the Editor</a></div><div class="right"><a href="matlab:echodemo NDDModelInterconnections">Run in the Command Window</a></div></div><div class="content"><h1>Preventing State Duplication in System Interconnections</h1><!--introduction--><p>This demo gives guidelines for building minimum-order models of LTI system interconnections.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Model Interconnections</a></li><li><a href="#2">Recommended Method</a></li><li><a href="#5">Order-Inflating Method</a></li><li><a href="#9">Conclusion</a></li></ul></div><h2>Model Interconnections<a name="1"></a></h2><p>You can connect LTI models using the operators <tt>+</tt>, <tt>*</tt>, <tt>[,]</tt>, <tt>[;]</tt> and the commands <tt>series</tt>, <tt>parallel</tt>, <tt>feedback</tt>, <tt>lft</tt>, and <tt>connect</tt>. To prevent duplication of some of the dynamics and ensure that the resulting model has minimal order, it is important that you follow some simple rules:</p><div><ul><li>Convert all models to the state-space representation before connecting them</li><li>Respect the block diagram structure</li><li>Avoid closed-form expressions and LTI algebra.</li></ul></div><p>As an illustration, this demo compares two ways to compute a state-space model for the following block diagram</p><p><img vspace="5" hspace="5" src="../Figures/NDDModelInterconnections_Fig01.png" alt=""> </p><p>where</p><pre class="codeinput">G = [1 , tf(1,[1 0]) , 5];
+Fa = tf([1 1] , [1 2 5]);
+Fb = tf([1 2] , [1 3 7]);
+</pre><h2>Recommended Method<a name="2"></a></h2><p>The best way to connect these three blocks is to convert them to state space and treat the block diagram as a series connection of <tt>G</tt> with <tt>[Fa;Fb]</tt>:</p><pre class="codeinput">H1 = [ss(Fa) ; Fb] * G;
+</pre><p>To find the order of <tt>H1</tt>, type</p><pre class="codeinput">order(H1)
+</pre><pre class="codeoutput">
+ans =
+
+     5
+
+</pre><p>The order 5 is minimal. Note that because SS has higher precedence than TF, it is enough to convert one of the blocks to state-space (the remaining conversions take place automatically).</p><h2>Order-Inflating Method<a name="5"></a></h2><p>Observe that the overall transfer function is</p><p><img src="NDDModelInterconnections_eq17558.png" alt="$$ H(s) = \left( \begin{array}{c} F_a (s) G(s) \\ F_b (s) G(s)&#xA;\end{array} \right) $$"></p><p>Therefore, you can also connect the three blocks and compute <tt>H</tt> by typing</p><pre class="codeinput">H2 = ss([Fa * G ; Fb * G]);
+</pre><p>Verify that the frequency responses of <tt>H1</tt> and <tt>H2</tt> match:</p><pre class="codeinput">bode(H1,<span class="string">'b'</span>,H2,<span class="string">'r--'</span>)
+</pre><img vspace="5" hspace="5" src="NDDModelInterconnections_01.png" alt=""> <p>While <tt>H2</tt> is a valid model, its order is 14, almost three times higher than that of <tt>H1</tt>:</p><pre class="codeinput">order(H2)
+</pre><pre class="codeoutput">
+ans =
+
+    14
+
+</pre><p><tt>H2</tt> has higher order because:</p><div><ul><li><tt>G</tt> appears twice in this expression</li><li>The dynamics of <tt>Fa</tt> and <tt>Fb</tt> get replicated three time when evaluating <tt>Fa*G</tt> and <tt>Fb*G</tt></li><li>The state-space conversion is performed on a 2x3 MIMO transfer matrix with four entries of order 2 and two entries of order 3, yielding a total order of 14.</li></ul></div><p>Using a closed-form expression for the overall transfer function is a bad idea in general as it will typically inflate the order and introduce lots of cancelling pole/zero dynamics.</p><h2>Conclusion<a name="9"></a></h2><p>When connecting LTI models, avoid introducing duplicate dynamics by staying away from closed-form expressions, working with the state-space representation, and breaking block diagrams down to elementary series, parallel, and feedback connections. When in doubt, use the function <tt>connect</tt> which is guaranteed to produce minimal realizations of block diagrams.</p><p class="footer">Copyright 1986-2006 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Preventing State Duplication in System Interconnections
+% This demo gives guidelines for building minimum-order models
+% of LTI system interconnections.
+
+%   Copyright 1986-2006 The MathWorks, Inc.
+%   $Revision: 1.1.6.5 $  $Date: 2007/06/07 14:35:03 $
+
+
+%% Model Interconnections
+% You can connect LTI models using the operators |+|, |*|, |[,]|, |[;]| and the commands
+% |series|, |parallel|, |feedback|, |lft|, and |connect|.  
+% To prevent duplication of some of the dynamics and ensure that the resulting model has
+% minimal order, it is important that you follow some simple rules:
+% 
+% * Convert all models to the state-space representation before connecting them
+% * Respect the block diagram structure
+% * Avoid closed-form expressions and LTI algebra.
+%
+% As an illustration, this demo compares two ways to compute a state-space model 
+% for the following block diagram
+%
+% <<../Figures/NDDModelInterconnections_Fig01.png>>
+%
+% where 
+G = [1 , tf(1,[1 0]) , 5];
+Fa = tf([1 1] , [1 2 5]);
+Fb = tf([1 2] , [1 3 7]);
+
+%% Recommended Method
+% The best way to connect these three blocks is to convert them to state space
+% and treat the block diagram as a series connection of |G| with
+% |[Fa;Fb]|:
+H1 = [ss(Fa) ; Fb] * G;
+
+%%
+% To find the order of |H1|, type
+order(H1)
+
+%%
+% The order 5 is minimal. Note that because SS has higher precedence than TF, 
+% it is enough to convert one of the blocks to state-space (the remaining
+% conversions take place automatically).
+
+%% Order-Inflating Method
+% Observe that the overall transfer function is 
+%
+% $$ H(s) = \left( \begin{array}{c} F_a (s) G(s) \\ F_b (s) G(s)
+% \end{array} \right) $$
+% 
+% Therefore, you can also connect the three blocks and compute |H| by
+% typing 
+H2 = ss([Fa * G ; Fb * G]);
+
+%%
+% Verify that the frequency responses of |H1| and |H2| match:
+bode(H1,'b',H2,'rREPLACE_WITH_DASH_DASH')
+
+%%
+% While |H2| is a valid model, its order is 14, almost three times higher than that of |H1|:
+order(H2)
+
+%% 
+% |H2| has higher order because: 
+%
+% * |G| appears twice in this expression
+% * The dynamics of |Fa| and |Fb| get replicated three time when evaluating
+% |Fa*G| and |Fb*G|
+% * The state-space conversion is performed on a 2x3 MIMO transfer matrix
+% with four entries of order 2 and two entries of order 3, yielding a total
+% order of 14.
+%
+% Using a closed-form expression for the overall transfer function is a bad
+% idea in general as it will typically inflate the order and introduce lots
+% of cancelling pole/zero dynamics.
+
+%% Conclusion
+% When connecting LTI models, avoid introducing duplicate dynamics
+% by staying away from closed-form expressions, working with the state-space
+% representation, and breaking block diagrams down to elementary series, 
+% parallel, and feedback connections. When in doubt, use the function |connect| 
+% which is guaranteed to produce minimal realizations of block diagrams.
+
+displayEndOfDemoMessage(mfilename)      
+##### SOURCE END #####
+--></body></html>

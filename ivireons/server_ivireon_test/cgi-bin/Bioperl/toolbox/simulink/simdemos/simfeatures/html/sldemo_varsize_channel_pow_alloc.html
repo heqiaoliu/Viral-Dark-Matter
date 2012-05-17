@@ -1,0 +1,52 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Parallel Channel Power Allocation</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_varsize_channel_pow_alloc.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_varsize_channel_pow_alloc.mdl</div><div class="right"><a href="matlab:sldemo_varsize_channel_pow_alloc">Open this model</a></div></div><div class="content"><h1>Parallel Channel Power Allocation</h1><!--introduction--><p>The purpose of this demo is to show a potential use of the Find block. This block outputs a variable-size signal containing the indices of the nonzero values of the input.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">About This Demo</a></li></ul></div><h2>About This Demo<a name="1"></a></h2><p>Open the demo model <a href="matlab:open_system('sldemo_varsize_channel_pow_alloc')"><tt>sldemo_varsize_channel_pow_alloc</tt></a>. This model implements the waterfilling algorithm for obtaining the optimal power allocation for communication channels when a power budget exists. The communication channels involved are independent (i.e., parallel channels) and have different noise levels.</p><p>The algorithm iteratively increases the value of the waterline, so that the channels which have a noise level less than the waterline are broadcast. The power used by these transmitting channels is equal to the difference between the waterline and the noise level of the channel. The sum of the power used by all the channels transmitting should satisfy the power budget within the specified tolerance.</p><p>The Find block is used in the calculation of the total power used for a certain waterline value. The channels which are set to transmit at that waterline level are selected using logical indexing. The logical indices are obtained after thresholding the difference of the waterline and the channel noise levels. As a result, the channels with noise levels larger than the waterline are assigned a zero, and those with noise levels below the waterline are assigned ones. The Find block is used for converting the logical indices into linear indices. Note that this signal is properly modeled by a variable-size signal since the number of channels below the threshold is unknown at compile time. The linear indices are fed into a Selector block that picks the channel transmission powers. Subsequently, these powers are summed to get the current value of used power. If this value is smaller than the power budget, the waterline is increased and the process is repeated until the used power equals the power constraint.</p><img vspace="5" hspace="5" src="sldemo_varsize_channel_pow_alloc_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_varsize_channel_pow_alloc_02.png" alt=""> <p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Parallel Channel Power Allocation
+% The purpose of this demo is to show a potential use of the Find block.
+% This block outputs a variable-size signal containing the indices of the nonzero 
+% values of the input.
+
+% Copyright 2009 The MathWorks, Inc.
+% $Revision: 1.1.6.1 $  $Date: 2009/11/13 05:06:33 $
+
+%% About This Demo 
+% Open the demo model <matlab:open_system('sldemo_varsize_channel_pow_alloc')
+% |sldemo_varsize_channel_pow_alloc|>. This model implements the waterfilling 
+% algorithm for obtaining the optimal power allocation for communication channels
+% when a power budget exists. The communication channels involved are independent
+% (i.e., parallel channels) and have different noise levels.
+%
+% The algorithm iteratively increases the value of the waterline, so that the 
+% channels which have a noise level less than the waterline are broadcast. The power used 
+% by these transmitting channels is equal to the difference between the waterline
+% and the noise level of the channel. The sum of the power used by all the channels
+% transmitting should satisfy the power budget within the specified tolerance.
+%
+% The Find block is used in the calculation of the total power used for a certain
+% waterline value. The channels which are set to transmit at that waterline level 
+% are selected using logical indexing. The logical indices are obtained after 
+% thresholding the difference of the waterline and the channel noise levels. As a result, 
+% the channels with noise levels larger than the waterline are assigned a zero, and 
+% those with noise levels below the waterline are assigned ones. The Find block is
+% used for converting the logical indices into linear indices. Note that this signal 
+% is properly modeled by a variable-size signal since the number of channels below the
+% threshold is unknown at compile time. The linear indices are fed into a Selector
+% block that picks the channel transmission powers. Subsequently, these powers are summed to get the current 
+% value of used power. If this value is smaller than the power budget, the waterline is
+% increased and the process is repeated until the used power equals the power constraint.
+% 
+
+model = 'sldemo_varsize_channel_pow_alloc';
+open_system(model);
+evalc('sim(model)');
+
+##### SOURCE END #####
+--></body></html>

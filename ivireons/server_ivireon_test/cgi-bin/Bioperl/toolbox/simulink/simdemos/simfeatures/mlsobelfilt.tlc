@@ -1,0 +1,276 @@
+%%
+%% TLC file for Level-2 M file S-Function mlsobelfilt.m used in
+%% the image edge detection demo.
+%% 
+%implements mlsobelfilt "C"
+
+%% Function: Outputs ==========================================================
+%%
+%function Outputs(block, system) Output
+  %assign dir = ParamSettings.Direction
+  %assign hor = (dir == 2)
+  %assign ver = (dir == 1)
+  
+  %assign rollVars = ["U", "Y"]
+  %assign dims = LibBlockOutputSignalDimensions(0)
+  %assign M = dims[0]
+  %assign N = dims[1]
+  {
+    double  g;
+    
+    %if ver
+      static const short hv[9] = {1,2,1,0,0,0,-1,-2,-1};
+    %elseif hor 
+      static const short hh[9] = {1,0,-1,2,0,-2,1,0,-1};
+    %else
+      static const short hv[9] = {1,2,1,0,0,0,-1,-2,-1};
+      static const short hh[9] = {1,0,-1,2,0,-2,1,0,-1};
+    %endif
+    
+    %assign y  = LibBlockOutputSignal(0, "", "",0)
+    %assign u1 = LibBlockInputSignal(0, "", "", 0)
+    %assign u2 = LibBlockInputSignal(0, "", "", M)
+    %assign u3 = LibBlockInputSignal(0, "", "", 1)
+    %assign u4 = LibBlockInputSignal(0, "", "", M+1)
+    
+    /* Top-left corner pixel */
+    %if ver
+      g = abs(hv[4]*%<u1>+hv[5]*%<u2>+hv[7]*%<u3>+hv[8]*%<u4>);
+    %elseif hor
+      g = abs(hh[4]*%<u1>+hh[5]*%<u2>+hh[7]*%<u3>+hh[8]*%<u4>);
+    %else
+       g = abs(hv[4]*%<u1>+hv[5]*%<u2>+hv[7]*%<u3>+hv[8]*%<u4>);
+       g = g+abs(hh[4]*%<u1>+hh[5]*%<u2>+hh[7]*%<u3>+hh[8]*%<u4>);
+    %endif
+    if (g > 255) {
+      g = 255;
+    }
+    %<y> = (uint8_T)g;
+    
+    %assign y  = LibBlockOutputSignal(0, "", "",  M-1)
+    %assign u1 = LibBlockInputSignal(0, "", "",   M-2)
+    %assign u2 = LibBlockInputSignal(0, "", "",   2*M-2)
+    %assign u3 = LibBlockInputSignal(0, "", "",   M-1)
+    %assign u4 = LibBlockInputSignal(0, "", "",   2*M-1)
+    
+    /* Bottom-left corner pixel */
+    %if ver    
+      g = abs(hv[1]*%<u1>+hv[2]*%<u2>+hv[4]*%<u3>+hv[5]*%<u4>);
+    %elseif hor
+      g = abs(hh[1]*%<u1>+hh[2]*%<u2>+hh[4]*%<u3>+hh[5]*%<u4>);
+    %else
+      g = abs(hv[1]*%<u1>+hv[2]*%<u2>+hv[4]*%<u3>+hv[5]*%<u4>);
+      g = g+abs(hh[1]*%<u1>+hh[2]*%<u2>+hh[4]*%<u3>+hh[5]*%<u4>);
+    %endif
+    if (g > 255) {
+      g = 255;
+    }
+    %<y> = (uint8_T)g;
+    
+    %assign y  = LibBlockOutputSignal(0, "", "",(N-1)*M)
+    %assign u1 = LibBlockInputSignal(0, "", "", (N-2)*M)
+    %assign u2 = LibBlockInputSignal(0, "", "", (N-1)*M)
+    %assign u3 = LibBlockInputSignal(0, "", "", (N-2)*M+1)
+    %assign u4 = LibBlockInputSignal(0, "", "", (N-1)*M+1)
+    
+    /* Top-right corner pixel */
+    %if ver
+      g = abs(hv[3]*%<u1>+hv[4]*%<u2>+hv[6]*%<u3>+hv[7]*%<u4>);
+    %elseif hor
+      g = abs(hh[3]*%<u1>+hh[4]*%<u2>+hh[6]*%<u3>+hh[7]*%<u4>);
+    %else
+      g = abs(hv[3]*%<u1>+hv[4]*%<u2>+hv[6]*%<u3>+hv[7]*%<u4>);
+      g = g+abs(hh[3]*%<u1>+hh[4]*%<u2>+hh[6]*%<u3>+hh[7]*%<u4>);
+    %endif
+    if (g > 255) {
+      g = 255;
+    }
+    %<y> = (uint8_T)g;
+    
+    %assign y  = LibBlockOutputSignal(0, "", "",N*M-1)
+    %assign u1 = LibBlockInputSignal(0, "", "", (N-1)*M-2)
+    %assign u2 = LibBlockInputSignal(0, "", "", N*M-2)
+    %assign u3 = LibBlockInputSignal(0, "", "", (N-1)*M-1)
+    %assign u4 = LibBlockInputSignal(0, "", "",  N*M-1)
+    
+    /* Bottom-right corner pixel */
+    %if ver
+      g = abs(hv[0]*%<u1>+hv[1]*%<u2>+hv[3]*%<u3>+hv[4]*%<u4>);
+    %elseif hor
+      g = abs(hh[0]*%<u1>+hh[1]*%<u2>+hh[3]*%<u3>+hh[4]*%<u4>);
+    %else
+      g = abs(hv[0]*%<u1>+hv[1]*%<u2>+hv[3]*%<u3>+hv[4]*%<u4>);
+      g = g+abs(hh[0]*%<u1>+hh[1]*%<u2>+hh[3]*%<u3>+hh[4]*%<u4>);
+    %endif
+    
+    if (g > 255) {
+      g = 255;
+    }
+    %<y> = (uint8_T)g;
+    
+    /* Left edge */
+    %assign hLen = M-3
+    %assign rollRegions = [0:%<hLen>]
+    %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      
+      %assign center = lcv+"+1"
+      
+      %assign u1 = LibBlockInputSignal(0, "", lcv,           k)
+      %assign u2 = LibBlockInputSignal(0, "", lcv+"+%<M>",   k)
+      %assign u3 = LibBlockInputSignal(0, "", center,        k)
+      %assign tmp = M+2
+      %assign u4 = LibBlockInputSignal(0, "", lcv+"+%<tmp>", k)
+      %assign u5 = LibBlockInputSignal(0, "", lcv+"+2",      k)
+      %assign tmp = M+3
+      %assign u6 = LibBlockInputSignal(0, "", lcv+"+%<tmp>", k)
+      
+      %assign y = LibBlockOutputSignal(0, "", center,        k)
+      
+      %if ver
+	g = abs(hv[1]*%<u1>+hv[2]*%<u2>+hv[4]*%<u3>+hv[5]*%<u4>+hv[7]*%<u5>+hv[8]*%<u6>);
+      %elseif hor
+	g = abs(hh[1]*%<u1>+hh[2]*%<u2>+hh[4]*%<u3>+hh[5]*%<u4>+hh[7]*%<u5>+hh[8]*%<u6>);
+      %else
+	g = abs(hv[1]*%<u1>+hv[2]*%<u2>+hv[4]*%<u3>+hv[5]*%<u4>+hv[7]*%<u5>+hv[8]*%<u6>);
+	g = g+abs(hh[1]*%<u1>+hh[2]*%<u2>+hh[4]*%<u3>+hh[5]*%<u4>+hh[7]*%<u5>+hh[8]*%<u6>);
+      %endif
+      if (g > 255) {
+	g = 255;
+      }
+      %<y> = (uint8_T)g;
+    
+    %endroll
+  
+    /* Right edge */
+    %assign rollRegions = [0:%<hLen>]
+    %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      %assign center = lcv+"+1"
+
+      %assign u1 = LibBlockInputSignal(0, "", lcv+"-%<M>",   k)
+      %assign u2 = LibBlockInputSignal(0, "", lcv,           k)
+      %assign tmp = M-1
+      %assign u3 = LibBlockInputSignal(0, "", lcv+"-%<tmp>", k)
+      %assign u4 = LibBlockInputSignal(0, "", center,        k)
+      %assign tmp = M-2
+      %assign u5 = LibBlockInputSignal(0, "", lcv+"-%<tmp>", k)
+      %assign u6 = LibBlockInputSignal(0, "", lcv+"+2",      k)
+      
+      %assign y = LibBlockOutputSignal(0, "", center,        k)
+      
+      %if ver
+	g = abs(hv[0]*%<u1>+hv[1]*%<u2>+hv[3]*%<u3>+hv[4]*%<u4>+hv[6]*%<u5>+hv[7]*%<u6>);
+      %elseif hor
+	g = abs(hh[0]*%<u1>+hh[1]*%<u2>+hh[3]*%<u3>+hh[4]*%<u4>+hh[6]*%<u5>+hh[7]*%<u6>);
+      %else
+	g = abs(hv[0]*%<u1>+hv[1]*%<u2>+hv[3]*%<u3>+hv[4]*%<u4>+hv[6]*%<u5>+hv[7]*%<u6>);
+	g = g+abs(hh[0]*%<u1>+hh[1]*%<u2>+hh[3]*%<u3>+hh[4]*%<u4>+hh[6]*%<u5>+hh[7]*%<u6>);
+      %endif
+      
+      if (g > 255) {
+	g = 255;
+      }
+      %<y> = (uint8_T)g;
+    
+    %endroll
+    
+    /* Top edge */
+    %assign vLen = N-3
+    %assign rollRegions = [0:%<vLen>]
+    %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      %assign center =  "("+lcv+"+1)*%<M>"
+      
+      %assign u1 = LibBlockInputSignal(0, "", center+"-%<M>",   k)
+      %assign u2 = LibBlockInputSignal(0, "", center,           k)
+      %assign u3 = LibBlockInputSignal(0, "", center+"+%<M>",   k)
+      %assign u4 = LibBlockInputSignal(0, "", center+"-%<M>+1", k)
+      %assign u5 = LibBlockInputSignal(0, "", center+"+1",      k)
+      %assign u6 = LibBlockInputSignal(0, "", center+"+%<M>+1", k)
+      
+      %assign y = LibBlockOutputSignal(0, "", center,           k)
+      
+      %if ver
+	g = abs(hv[3]*%<u1>+hv[4]*%<u2>+hv[5]*%<u3>+hv[6]*%<u4>+hv[7]*%<u5>+hv[8]*%<u6>);
+      %elseif hor
+	g = abs(hh[3]*%<u1>+hh[4]*%<u2>+hh[5]*%<u3>+hh[6]*%<u4>+hh[7]*%<u5>+hh[8]*%<u6>);
+      %else
+	g = abs(hv[3]*%<u1>+hv[4]*%<u2>+hv[5]*%<u3>+hv[6]*%<u4>+hv[7]*%<u5>+hv[8]*%<u6>);
+	g = g+abs(hh[3]*%<u1>+hh[4]*%<u2>+hh[5]*%<u3>+hh[6]*%<u4>+hh[7]*%<u5>+hh[8]*%<u6>);
+      %endif
+      if (g > 255) {
+	g = 255;
+      }
+      %<y> = (uint8_T)g;
+    
+    %endroll
+  
+    /* Bottom edge */
+    %assign vLen = N-2
+    %assign rollRegions = [1:%<vLen>]
+    %roll k = rollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      %assign center =  "("+lcv+"+1)*%<M>+%<M>-1"
+      
+      %assign u1 = LibBlockInputSignal(0, "", lcv+"*%<M>-2",    k)
+      %assign u2 = LibBlockInputSignal(0, "", center+"-1",      k)
+      %assign u3 = LibBlockInputSignal(0, "", center+"+%<M>-2", k)
+      %assign u4 = LibBlockInputSignal(0, "", lcv+"*%<M>-1",    k)
+      %assign u5 = LibBlockInputSignal(0, "", center,           k)
+      %assign u6 = LibBlockInputSignal(0, "", center+"+%<M>",   k)
+      
+      %assign y = LibBlockOutputSignal(0, "", center,           k)
+      
+      %if ver
+	g = abs(hv[0]*%<u1>+hv[1]*%<u2>+hv[2]*%<u3>+hv[3]*%<u4>+hv[4]*%<u5>+hv[5]*%<u6>);
+      %elseif hor
+	g = abs(hh[0]*%<u1>+hh[1]*%<u2>+hh[2]*%<u3>+hh[3]*%<u4>+hh[4]*%<u5>+hh[5]*%<u6>);
+      %else
+	g = abs(hv[0]*%<u1>+hv[1]*%<u2>+hv[2]*%<u3>+hv[3]*%<u4>+hv[4]*%<u5>+hv[5]*%<u6>);
+	g = g+abs(hh[0]*%<u1>+hv[1]*%<u2>+hh[2]*%<u3>+hh[3]*%<u4>+hh[4]*%<u5>+hh[5]*%<u6>);
+      %endif
+      if (g > 255) {
+	g = 255;
+      }
+      %<y> = (uint8_T)g;
+    
+    %endroll
+    
+    %assign vrollRegions = [0:%<vLen>]
+    %assign hrollRegions = [0:%<hLen>]
+    %roll j = vrollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      
+      %assign hidx = "("+lcv+"+1)"
+      
+      %roll k = hrollRegions, lcv = RollThreshold, block, "Roller", ""
+
+	%assign center =  "("+lcv+"+1)+%<hidx>*%<M>"
+      
+	%assign u1 = LibBlockInputSignal(0, "", center+"-%<M>-1",   k)
+	%assign u2 = LibBlockInputSignal(0, "", center+"-1",        k)
+	%assign u3 = LibBlockInputSignal(0, "", center+"+%<M>-1",   k)
+	%assign u4 = LibBlockInputSignal(0, "", center+"-%<M>",     k)
+	%assign u5 = LibBlockInputSignal(0, "", center,             k)
+	%assign u6 = LibBlockInputSignal(0, "", center+"+%<M>",     k)
+	%assign u7 = LibBlockInputSignal(0, "", center+"-%<M>+1",   k)
+	%assign u8 = LibBlockInputSignal(0, "", center+"+1",        k)
+	%assign u9 = LibBlockInputSignal(0, "", center+"+%<M>+1",   k)
+      
+	%assign y = LibBlockOutputSignal(0, "", center,             k)
+	
+	%if ver
+	  g = abs(hv[0]*%<u1>+hv[1]*%<u2>+hv[2]*%<u3>+hv[3]*%<u4>+hv[4]*%<u5>+hv[5]*%<u6>+hv[6]*%<u7>+hv[7]*%<u8>+hv[8]*%<u9>);
+	%elseif hor
+	  g = abs(hh[0]*%<u1>+hh[1]*%<u2>+hh[2]*%<u3>+hh[3]*%<u4>+hh[4]*%<u5>+hh[5]*%<u6>+hh[6]*%<u7>+hh[7]*%<u8>+hh[8]*%<u9>);
+	%else
+	  g = abs(hv[0]*%<u1>+hv[1]*%<u2>+hv[2]*%<u3>+hv[3]*%<u4>+hv[4]*%<u5>+hv[5]*%<u6>+hv[6]*%<u7>+hv[7]*%<u8>+hv[8]*%<u9>);
+	  g = g+abs(hh[0]*%<u1>+hh[1]*%<u2>+hh[2]*%<u3>+hh[3]*%<u4>+hh[4]*%<u5>+hh[5]*%<u6>+hh[6]*%<u7>+hh[7]*%<u8>+hh[8]*%<u9>);
+	%endif
+	if (g > 255) {
+	  g = 255;
+	}
+	%<y> = (uint8_T)g;
+      %endroll
+    %endroll   
+  
+  }
+  
+%endfunction 
+  

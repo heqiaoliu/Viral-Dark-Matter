@@ -1,0 +1,413 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling an Automatic Transmission Controller</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_autotrans.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_autotrans.mdl</div><div class="right"><a href="matlab:sldemo_autotrans">Open this model</a></div></div><div class="content"><h1>Modeling an Automatic Transmission Controller</h1><!--introduction--><p>In this demo, Simulink&reg; is used to model an automotive drivetrain. Stateflow&reg; enhances the Simulink model with its representation of the transmission control logic. Simulink provides a powerful environment for the modeling and simulation of dynamic systems and processes. In many systems, though, supervisory functions like changing modes or invoking new gain schedules must respond to events that may occur and conditions that develop over time. As a result, the environment requires a language capable of managing these multiple modes and developing conditions. In the following example, Stateflow demonstrates its strength in this capacity by performing the function of gear selection in an automatic transmission. This function is combined with the drivetrain dynamics in a natural and intuitive manner by incorporating a Stateflow block in the Simulink block diagram.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analysis and Physics</a></li><li><a href="#2">Modeling</a></li><li><a href="#4">Modeling</a></li><li><a href="#12">Results</a></li><li><a href="#17">Closing the Model</a></li><li><a href="#18">Conclusions</a></li></ul></div><h2>Analysis and Physics<a name="1"></a></h2><p>Figure 1 shows the power flow in a typical automotive drivetrain. Nonlinear ordinary differential equations model the engine, four-speed automatic transmission, and vehicle. The model discussed in this demo directly implements the blocks from Figure 1 as modular Simulink subsystems. On the other hand, the logic and decisions made in the Transmission Control Unit (TCU) do not lend themselves to well-formulated equations. TCU is better suited for a Stateflow representation. Stateflow monitors the events which correspond to important relationships within the system and takes the appropriate action as they occur.</p><p><img vspace="5" hspace="5" src="sldemo_autotrans_figure1.png" alt=""> </p><p><b>Figure 1:</b> Generic block diagram for a drivetrain system</p><p>The throttle opening is one of the inputs to the engine. The engine is connected to the impeller of the torque converter which couples it to the transmission (see Equation 1).</p><p><b>Equation 1</b></p><p><img src="sldemo_autotrans_eq91693.png" alt="$$I_{ei} \dot{N}_e = T_e -T_i $$"></p><p><img src="sldemo_autotrans_eq60893.png" alt="$$ N_e = \mbox{ engine speed (RPM)}$$"></p><p><img src="sldemo_autotrans_eq87020.png" alt="$$I_{ei} = \mbox{ moment of inertia of the engine and the impeller}$$"></p><p><img src="sldemo_autotrans_eq08694.png" alt="$$T_e, T_i = \mbox{ engine and impeller torque}$$"></p><p>The input-output characteristics of the torque converter can be expressed as functions of the engine speed and the turbine speed. In this example, the direction of power flow is always assumed to be from the impeller to the turbine (see Equation 2).</p><p><b>Equation 2</b></p><p><img src="sldemo_autotrans_eq01850.png" alt="$$T_i = \frac{N_2^2}{K^2}$$"></p><p><img src="sldemo_autotrans_eq46048.png" alt="$$K= f_2 \frac{N_{in}}{N_e} = \mbox{ K-factor (capacity)}$$"></p><p><img src="sldemo_autotrans_eq15774.png" alt="$$N_{in} = \mbox{ speed of turbine (torque converter output) = transmission input speed (RPM)}$$"></p><p><img src="sldemo_autotrans_eq42384.png" alt="$$R_{TQ} = f_3 \frac{N_{in}}{N_e} = \mbox{ torque ratio}$$"></p><p>The transmission model is implemented via static gear ratios, assuming small shift times (see Equation 3).</p><p><b>Equation 3</b></p><p><img src="sldemo_autotrans_eq61156.png" alt="$$R_{TR} = f_4(gear) = \mbox{ transmission ratio}$$"></p><p><img src="sldemo_autotrans_eq39345.png" alt="$$T_{out} = R_{TR} T_{in}$$"></p><p><img src="sldemo_autotrans_eq60829.png" alt="$$N_{in} = R_{TR} N_{out}$$"></p><p><img src="sldemo_autotrans_eq99955.png" alt="$$T_{in}, T_{out} = \mbox{ transmission input and output torques}$$"></p><p><img src="sldemo_autotrans_eq68254.png" alt="$$N_{in}, N_{out} = \mbox{ transmission input and output speed (RPM)}$$"></p><p>The final drive, inertia, and a dynamically varying load constitute the vehicle dynamics (see Equation 4).</p><p><b>Equation 4</b></p><p><img src="sldemo_autotrans_eq81534.png" alt="$$ I_v \dot{N}_w = R_{fd}(T_{out}-T_{load})$$"></p><p><img src="sldemo_autotrans_eq59212.png" alt="$$I_v = \mbox{ vehicle inertia}$$"></p><p><img src="sldemo_autotrans_eq02022.png" alt="$$N_w = \mbox{ wheel speed (RPM)}$$"></p><p><img src="sldemo_autotrans_eq85809.png" alt="$$R_{fd} = \mbox{ final drive ratio}$$"></p><p><img src="sldemo_autotrans_eq89678.png" alt="$$T_{load} = f_5(N_w) = \mbox{ load torque}$$"></p><p>The load torque includes both the road load and brake torque. The road load is the sum of frictional and aerodynamic losses (see Equation 5).</p><p><b>Equation 5</b></p><p><img src="sldemo_autotrans_eq20040.png" alt="$$ T_{load} = sgn(mph) (R_{load0} + R_{load2} mph^2 + T_{brake}) $$"></p><p><img src="sldemo_autotrans_eq78314.png" alt="$$ R_{load0}, R_{load2} = \mbox{ friction and aerodynamic drag coefficients} $$"></p><p><img src="sldemo_autotrans_eq87767.png" alt="$$ T_{load}, T_{brake} = \mbox{ load and brake torques} $$"></p><p><img src="sldemo_autotrans_eq10030.png" alt="$$ mph = \mbox{ vehicle linear velocity}$$"></p><p>The model programs the shift points for the transmission according to the schedule shown in Figure 2. For a given throttle in a given gear, there is a unique vehicle speed at which an upshift takes place. The simulation operates similarly for a downshift.</p><p><img vspace="5" hspace="5" src="sldemo_autotrans_figure2.png" alt=""> </p><p><b>Figure 2:</b> Shift schedule</p><h2>Modeling<a name="2"></a></h2><p>To <a href="matlab:open_system('sldemo_autotrans')">open</a> this model type <tt>sldemo_autotrans</tt> in MATLAB&reg; terminal. Initial conditions are loaded to the Model Workspace from the <tt>sldemo_autotrans_data.mat</tt> binary file.</p><p>The top-level diagram of the model is shown in Figure 3. To run the simulation, press the Play button on the toolbar in the model window. Note that the model logs relevant data to MATLAB Workspace in a data structure called <tt>sldemo_autotrans_output</tt>. Logged signals have a blue indicator (see Figure 3). After you run the simulation, you can view the components of the data structure by typing <tt>sldemo_autotrans_output</tt> in MATLAB Command Window.</p><img vspace="5" hspace="5" src="sldemo_autotrans_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_autotrans_02.png" alt=""> <p><b>Figure 3:</b> Model diagram and sample simulation results (passing maneuver)</p><h2>Modeling<a name="4"></a></h2><p>The Simulink model shown in Figure 3 is composed of modules which represent the engine, transmission, and the vehicle, with an additional shift logic block to control the transmission ratio. User inputs to the model are in the form of throttle (given in percent) and brake torque (given in ft-lb). The user inputs throttle and brake torques using the ManeuversGUI interface.</p><p>The Engine subsystem consists of a two-dimensional table that interpolates engine torque versus throttle and engine speed. Figure 4 shows the composite Engine subsystem. Double click on this subsystem in the model to view its structure.</p><img vspace="5" hspace="5" src="sldemo_autotrans_03.png" alt=""> <p><b>Figure 4:</b> Engine subsystem</p><p>The TorqueConverter and the TransmissionRatio blocks make up the Transmission subsystem, as shown in Figure 5. Double click on the Transmission subsystem in the model window to view its components.</p><img vspace="5" hspace="5" src="sldemo_autotrans_04.png" alt=""> <p><b>Figure 5:</b> Transmission subsystem</p><p>The TorqueConverter is a masked subsystem, which implements Equation 2. To open this subsystem, right click on it and select "Look Under Mask" from the drop-down menu. The mask requires a vector of speed ratios ( <tt>Nin/Ne</tt> ) and vectors of K-factor (<tt>f2</tt>) and torque ratio (<tt>f3</tt>). Figure 6 shows the implementation of the TorqueConverter subsystem.</p><img vspace="5" hspace="5" src="sldemo_autotrans_05.png" alt=""> <p><b>Figure 6:</b> Torque converter subsystem</p><p>The transmission ratio block determines the ratio shown in Table 1 and computes the transmission output torque and input speed, as indicated in Equation 3. Figure 7 shows the block diagram for the subsystem that realizes this ratio in torque and speed.</p><p><b>Table 1:</b> Transmission gear ratios</p><pre>gear     Rtr = Nin/Ne
+ 1         2.393
+ 2         1.450
+ 3         1.000
+ 4         0.677</pre><img vspace="5" hspace="5" src="sldemo_autotrans_06.png" alt=""> <p><b>Figure 7:</b> Transmission gear ratio subsystem</p><p>The Stateflow block labeled ShiftLogic implements gear selection for the transmission. Double click on ShiftLogic in the model window to open the Stateflow diagram. The Model Explorer is utilized to define the inputs as throttle and vehicle speed and the output as the desired gear number. Two dashed AND states keep track of the gear state and the state of the gear selection process. The overall chart is executed as a discrete-time system, sampled every 40 milliseconds. The Stateflow diagram shown in Figure 8 illustrates the functionality of the block.</p><img vspace="5" hspace="5" src="sldemo_autotrans_07.png" alt=""> <p><b>Figure 8:</b> Stateflow diagram of the transmission shift logic</p><p>The shift logic behavior can be observed during simulation by enabling animation in the Stateflow debugger. The <tt>selection_state</tt> (always active) begins by performing the computations indicated in its <tt>during</tt> function. The model computes the upshift and downshift speed thresholds as a function of the instantaneous values of gear and throttle. While in steady_state, the model compares these values to the present vehicle speed to determine if a shift is required. If so, it enters one of the confirm states (<tt>upshifting</tt> or <tt>downshifting</tt>), which records the time of entry.</p><p>If the vehicle speed no longer satisfies the shift condition, while in the confirm state, the model ignores the shift and it transitions back to <tt>steady_state</tt>. This prevents extraneous shifts due to noise conditions. If the shift condition remains valid for a duration of <tt>TWAIT</tt> ticks, the model transitions through the lower junction and, depending on the current gear, it broadcasts one of the shift events. Subsequently, the model again activates <tt>steady_state</tt> after a transition through one of the central junctions. The shift event, which is broadcast to the <tt>gear_selection</tt> state, activates a transition to the appropriate new gear.</p><p>For example, if the vehicle is moving along in second gear with 25% throttle, the state <tt>second</tt> is active within <tt>gear_state</tt>, and <tt>steady_state</tt> is active in the <tt>selection_state</tt>. The <tt>during</tt> function of the latter, finds that an upshift should take place when the vehicle exceeds 30 mph. At the moment this becomes true, the model enters the <tt>upshifting</tt> state. While in this state, if the vehicle speed remains above 30 mph for <tt>TWAIT</tt> ticks, the model satisfies the transition condition leading down to the lower right junction. This also satisfies the condition [|gear == 2|] on the transition leading from here to <tt>steady_state</tt>, so the model now takes the overall transition from <tt>upshifting</tt> to <tt>steady_state</tt> and broadcasts the event <tt>UP</tt> as a transition action. Consequently, the transition from second to third is taken in <tt>gear_state</tt> which completes the shift logic.</p><p>The Vehicle subsystem (Figure 9) uses the net torque to compute the acceleration and integrate it to compute the vehicle speed, per Equation 4 and Equation 5. The Vehicle subsystem is masked. To see the structure of the Vehicle block, right click on it and select "Look Under Mask" from the drop-down menu. The parameters entered in the mask menu are the final drive ratio, the polynomial coefficients for drag friction and aerodynamic drag, the wheel radius, vehicle inertia, and initial transmission output speed.</p><img vspace="5" hspace="5" src="sldemo_autotrans_08.png" alt=""> <p><b>Figure 9:</b> Vehicle subsystem (masked)</p><h2>Results<a name="12"></a></h2><p>The engine torque map, and torque converter characteristics used in the simulations are shown in Figure 10 and Figure 11.</p><img vspace="5" hspace="5" src="sldemo_autotrans_09.png" alt=""> <p><b>Figure 10:</b> Engine torque map</p><img vspace="5" hspace="5" src="sldemo_autotrans_10.png" alt=""> <p><b>Figure 11:</b> Torque converter characteristics (see Figure 5 and Equation 2)</p><p>The first simulation (passing maneuver) uses the throttle schedule given in Table 2 (this data is interpolated linearly).</p><p><b>Table 2:</b> Throttle schedule for first simulation (passing maneuver)</p><pre>Time (sec)    Throttle (%)
+  0             60
+ 14.9           40
+ 15            100
+100              0
+200              0</pre><p>The first column corresponds to time; the second column corresponds to throttle opening in percent. In this case no brake is applied (brake torque is zero). The vehicle speed starts at zero and the engine at 1000 RPM. Figure 12 shows the plot for the baseline results, using the default parameters. As the driver steps to 60% throttle at <tt>t=0</tt>, the engine immediately responds by more than doubling its speed. This brings about a low speed ratio across the torque converter and, hence, a large torque ratio (see Figure 6 and Figure 11. The vehicle accelerates quickly (no tire slip is modeled) and both the engine and the vehicle gain speed until about <tt>t = 2 sec</tt>, at which time a 1-2 upshift occurs. The engine speed characteristically drops abruptly, then resumes its acceleration. The 2-3 and 3-4 upshifts take place at about four and eight seconds, respectively. Notice that the vehicle speed remains much smoother due to its large inertia.</p><img vspace="5" hspace="5" src="sldemo_autotrans_11.png" alt=""> <p><b>Figure 12:</b> Passing maneuver simulation time history</p><p>At <tt>t=15sec</tt>, the driver steps the throttle to 100% as might be typical of a passing maneuver. The transmission downshifts to third gear and the engine jumps from about 2600 RPM to about 3700 RPM. The engine torque thus increases somewhat, as well as the mechanical advantage of the transmission. With continued heavy throttle, the vehicle accelerates to about 100 mph and then shifts into overdrive at about <tt>t = 21 sec</tt>. The vehicle cruises along in fourth gear for the remainder of the simulation. Double click on the ManeuversGUI block and use the graphical interface to vary the throttle and brake history.</p><h2>Closing the Model<a name="17"></a></h2><p>Close the model, clear generated data.</p><h2>Conclusions<a name="18"></a></h2><p>One can easily enhance this basic system in a modular manner, for example, by replacing the engine or transmission with a more complex model. We can thus build up large systems within this structure via step-wise refinement. The seamless integration of Stateflow control logic with Simulink signal processing enables the construction of a model which is both efficient and visually intuitive.</p><p class="footer">Copyright 1990-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling an Automatic Transmission Controller 
+%
+% In this demo, Simulink(R) is used to model an automotive drivetrain. Stateflow(R)
+% enhances the Simulink model with its representation of the transmission
+% control logic. Simulink provides a powerful environment for the modeling and
+% simulation of dynamic systems and processes. In many systems, though,
+% supervisory functions like changing modes or invoking new gain schedules must
+% respond to events that may occur and conditions that develop over time. As a
+% result, the environment requires a language capable of managing these multiple
+% modes and developing conditions. In the following example, Stateflow
+% demonstrates its strength in this capacity by performing the function of gear
+% selection in an automatic transmission. This function is combined with the
+% drivetrain dynamics in a natural and intuitive manner by incorporating a
+% Stateflow block in the Simulink block diagram.
+
+% Copyright 1990-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.6 $  $Date: 2009/03/05 19:03:19 $
+
+%% Analysis and Physics
+%
+% Figure 1 shows the power flow in a typical automotive drivetrain. Nonlinear
+% ordinary differential equations model the engine, four-speed automatic
+% transmission, and vehicle. The model discussed in this demo directly
+% implements the blocks from Figure 1 as modular Simulink subsystems. On the
+% other hand, the logic and decisions made in the Transmission Control Unit
+% (TCU) do not lend themselves to well-formulated equations. TCU is better
+% suited for a Stateflow representation. Stateflow monitors the events which
+% correspond to important relationships within the system and takes the
+% appropriate action as they occur.
+%
+% <<sldemo_autotrans_figure1.png>>
+%
+% *Figure 1:* Generic block diagram for a drivetrain system
+%
+% The throttle opening is one of the inputs to the engine. The engine is
+% connected to the impeller of the torque converter which couples it to the
+% transmission (see Equation 1).
+%
+% *Equation 1*
+%
+% $$I_{ei} \dot{N}_e = T_e -T_i $$
+%
+% $$ N_e = \mbox{ engine speed (RPM)}$$
+%
+% $$I_{ei} = \mbox{ moment of inertia of the engine and the impeller}$$
+%
+% $$T_e, T_i = \mbox{ engine and impeller torque}$$
+%
+% The input-output characteristics of the torque converter can be expressed as
+% functions of the engine speed and the turbine speed. In this example, the
+% direction of power flow is always assumed to be from the impeller to the
+% turbine (see Equation 2).
+%
+% *Equation 2*
+%
+% $$T_i = \frac{N_2^2}{K^2}$$
+%
+% $$K= f_2 \frac{N_{in}}{N_e} = \mbox{ K-factor (capacity)}$$
+%
+% $$N_{in} = \mbox{ speed of turbine (torque converter output) = transmission input speed (RPM)}$$
+%
+% $$R_{TQ} = f_3 \frac{N_{in}}{N_e} = \mbox{ torque ratio}$$
+%
+% The transmission model is implemented via static gear ratios, assuming small
+% shift times (see Equation 3).
+%
+% *Equation 3*
+%
+% $$R_{TR} = f_4(gear) = \mbox{ transmission ratio}$$
+%
+% $$T_{out} = R_{TR} T_{in}$$
+%
+% $$N_{in} = R_{TR} N_{out}$$
+%
+% $$T_{in}, T_{out} = \mbox{ transmission input and output torques}$$
+%
+% $$N_{in}, N_{out} = \mbox{ transmission input and output speed (RPM)}$$
+%
+% The final drive, inertia, and a dynamically varying load constitute the
+% vehicle dynamics (see Equation 4).
+%
+% *Equation 4*
+%
+% $$ I_v \dot{N}_w = R_{fd}(T_{out}-T_{load})$$
+%
+% $$I_v = \mbox{ vehicle inertia}$$
+%
+% $$N_w = \mbox{ wheel speed (RPM)}$$
+%
+% $$R_{fd} = \mbox{ final drive ratio}$$
+%
+% $$T_{load} = f_5(N_w) = \mbox{ load torque}$$
+%
+% The load torque includes both the road load and brake torque. The road load is
+% the sum of frictional and aerodynamic losses (see Equation 5).
+%
+% *Equation 5*
+%
+% $$ T_{load} = sgn(mph) (R_{load0} + R_{load2} mph^2 + T_{brake}) $$
+%
+% $$ R_{load0}, R_{load2} = \mbox{ friction and aerodynamic drag coefficients} $$
+%
+% $$ T_{load}, T_{brake} = \mbox{ load and brake torques} $$
+%
+% $$ mph = \mbox{ vehicle linear velocity}$$
+%
+% The model programs the shift points for the transmission according to the
+% schedule shown in Figure 2. For a given throttle in a given gear,
+% there is a unique vehicle speed at which an upshift takes place. The
+% simulation operates similarly for a downshift.
+%
+%
+% <<sldemo_autotrans_figure2.png>>
+%
+% *Figure 2:* Shift schedule
+
+%% Modeling
+%
+%
+% To <matlab:open_system('sldemo_autotrans') open> this model type
+% |sldemo_autotrans| in MATLAB(R) terminal. Initial conditions are loaded to the
+% Model Workspace from the |sldemo_autotrans_data.mat| binary file. 
+%
+% The top-level diagram of the model is shown in Figure 3. To run the
+% simulation, press the Play button on the toolbar in the model window. Note
+% that the model logs relevant data to MATLAB Workspace in a data structure
+% called |sldemo_autotrans_output|. Logged signals have a blue indicator (see
+% Figure 3). After you run the simulation, you can view the components of the
+% data structure by typing |sldemo_autotrans_output| in MATLAB Command Window.
+
+open_system('sldemo_autotrans');
+evalc('sim(''sldemo_autotrans'')');
+
+%%
+%
+% *Figure 3:* Model diagram and sample simulation results (passing maneuver)
+
+%% Modeling 
+%
+% The Simulink model shown in Figure 3 is composed of modules which represent
+% the engine, transmission, and the vehicle, with an additional shift logic
+% block to control the transmission ratio. User inputs to the model are in the
+% form of throttle (given in percent) and brake torque (given in ft-lb). The
+% user inputs throttle and brake torques using the ManeuversGUI interface.
+%
+% The Engine subsystem consists of a two-dimensional table that interpolates
+% engine torque versus throttle and engine speed. Figure 4 shows the composite
+% Engine subsystem. Double click on this subsystem in the model to view its
+% structure.
+
+open_system('sldemo_autotrans/Engine');
+
+%%
+%
+% *Figure 4:* Engine subsystem
+%
+% The TorqueConverter and the TransmissionRatio blocks make up the
+% Transmission subsystem, as shown in Figure 5. Double click on the Transmission
+% subsystem in the model window to view its components.
+
+open_system('sldemo_autotrans/Transmission');
+
+%%
+%
+% *Figure 5:* Transmission subsystem
+%
+% The TorqueConverter is a masked subsystem, which implements Equation 2. To
+% open this subsystem, right click on it and select "Look Under Mask" from the
+% drop-down menu. The mask requires a vector of speed ratios ( |Nin/Ne| ) and
+% vectors of K-factor (|f2|) and torque ratio (|f3|). Figure 6 shows the
+% implementation of the TorqueConverter subsystem.
+
+open_system('sldemo_autotrans/Transmission/TorqueConverter','force');
+
+%%
+%
+% *Figure 6:* Torque converter subsystem
+%
+% The transmission ratio block determines the ratio shown in Table 1 and
+% computes the transmission output torque and input speed, as indicated in
+% Equation 3. Figure 7 shows the block diagram for the subsystem
+% that realizes this ratio in torque and speed.
+%
+% *Table 1:* Transmission gear ratios
+%
+%  gear     Rtr = Nin/Ne
+%   1         2.393
+%   2         1.450
+%   3         1.000
+%   4         0.677
+%
+
+
+open_system('sldemo_autotrans/Transmission/TransmissionRatio');
+
+%%
+%
+% *Figure 7:* Transmission gear ratio subsystem
+
+%%
+%
+% The Stateflow block labeled ShiftLogic implements gear selection for the
+% transmission. Double click on ShiftLogic in the model window to open the
+% Stateflow diagram. The Model Explorer is utilized to define the inputs as
+% throttle and vehicle speed and the output as the desired gear number. Two
+% dashed AND states keep track of the gear state and the state of the gear
+% selection process. The overall chart is executed as a discrete-time system,
+% sampled every 40 milliseconds. The Stateflow diagram shown in Figure 8
+% illustrates the functionality of the block.
+
+open_system('sldemo_autotrans/ShiftLogic');
+
+%%
+%
+% *Figure 8:* Stateflow diagram of the transmission shift logic
+%
+% The shift logic behavior can be observed during simulation by enabling
+% animation in the Stateflow debugger. The |selection_state| (always active)
+% begins by performing the computations indicated in its |during| function. The
+% model computes the upshift and downshift speed thresholds as a function of the
+% instantaneous values of gear and throttle. While in steady_state, the model
+% compares these values to the present vehicle speed to determine if a shift is
+% required. If so, it enters one of the confirm states (|upshifting| or
+% |downshifting|), which records the time of entry.
+%
+% If the vehicle speed no longer satisfies the shift condition, while in the
+% confirm state, the model ignores the shift and it transitions back to
+% |steady_state|. This prevents extraneous shifts due to noise conditions. If the
+% shift condition remains valid for a duration of |TWAIT| ticks, the model
+% transitions through the lower junction and, depending on the current gear, it
+% broadcasts one of the shift events. Subsequently, the model again activates
+% |steady_state| after a transition through one of the central junctions. The
+% shift event, which is broadcast to the |gear_selection| state, activates a
+% transition to the appropriate new gear.
+%
+% For example, if the vehicle is moving along in second gear with 25% throttle,
+% the state |second| is active within |gear_state|, and |steady_state| is active in
+% the |selection_state|. The |during| function of the latter, finds that an upshift
+% should take place when the vehicle exceeds 30 mph. At the moment this becomes
+% true, the model enters the |upshifting| state. While in this state, if the
+% vehicle speed remains above 30 mph for |TWAIT| ticks, the model satisfies the 
+% transition condition leading down
+% to the lower right junction. This also satisfies the condition [|gear == 2|] on
+% the transition leading from here to |steady_state|, so the model now takes the
+% overall transition from |upshifting| to |steady_state| and broadcasts the
+% event |UP| as a transition action. Consequently, the transition from
+% second to third is taken in |gear_state| which completes the shift logic.
+%
+% The Vehicle subsystem (Figure 9) uses the net torque to compute the
+% acceleration and integrate it to compute the vehicle speed, per Equation 4 and
+% Equation 5. The Vehicle subsystem is masked. To see the structure of the
+% Vehicle block, right click on it and select "Look Under Mask" from the
+% drop-down menu. The parameters entered in the mask menu are the final drive
+% ratio, the polynomial coefficients for drag friction and aerodynamic drag, the
+% wheel radius, vehicle inertia, and initial transmission output speed.
+
+open_system('sldemo_autotrans/Vehicle','force');
+
+%%
+%
+% *Figure 9:* Vehicle subsystem (masked)
+
+%% Results
+%
+% The engine torque map, and torque converter characteristics used in the
+% simulations are shown in Figure 10 and Figure 11.
+
+% emap is the data table
+% thvec is the throttle vector (0-100% in increments of 10%) [rows in emap]
+% nevec is the engine speed vector (RPM) [columns in emap]
+TorqueMap.Y=getfield(load('sldemo_autotrans_data.mat','emap'), 'emap'); 
+TorqueMap.X=getfield(load('sldemo_autotrans_data.mat','nevec'), 'nevec')';
+TorqueMap.Throttle=getfield(load('sldemo_autotrans_data.mat','thvec'), 'thvec');
+
+
+figure('Units','pixels','Position',[100 100 720 600],'Tag','CloseMe');
+TorqueMap.LineFormat={'k:' 'b:' 'yREPLACE_WITH_DASH_DASH' 'rREPLACE_WITH_DASH_DASH' 'bREPLACE_WITH_DASH_DASH' 'kREPLACE_WITH_DASH_DASH'  'y' 'r' 'b' 'k' };
+hold on;
+for j=1:length(TorqueMap.Throttle)
+    plot(TorqueMap.X, TorqueMap.Y(j,:), TorqueMap.LineFormat{j} );
+    text(4900, TorqueMap.Y(j,end), [num2str(TorqueMap.Throttle(j)) '%'])
+end
+hold off;
+title('Engine Torque Map');
+xlabel('Engine Speed (RPM)');
+ylabel('Engine Torque (ft-lb)');
+axis([500 5300 -100 350]);    
+text(4700, 340, 'Throttle')
+
+%%
+%
+% *Figure 10:* Engine torque map
+
+
+% Get the FactorK (second row) and the TorqueRatio (third row) vs SpeedRatio(first row)
+TorqueMap.TorqueConverter=getfield(load('sldemo_autotrans_data.mat','converter_data'), 'converter_data')';
+
+figure('Units','pixels','Position',[100 100 600 400],'Tag','CloseMe');
+hold on;
+plotyy(TorqueMap.TorqueConverter(1,:), ...
+       TorqueMap.TorqueConverter(2,:), ...
+       TorqueMap.TorqueConverter(1,:), ...
+       TorqueMap.TorqueConverter(3,:) );
+hold off;
+title('Torque Converter Characteristics (f_2, f_3)','Interpreter','Tex');
+xlabel('Speed Ratio N_{in}/N_e','Interpreter','Tex');
+ylabel('K-factor ( RPM/(ft-lb)^{1/2} )','Interpreter','Tex');
+text(.2, 210, 'Torque Ratio');
+text(.2, 150, 'K-factor');
+
+%%
+%
+% *Figure 11:* Torque converter characteristics (see Figure 5 and Equation 2)
+
+
+%%
+%
+% The first simulation (passing maneuver) uses the throttle schedule given in
+% Table 2 (this data is interpolated linearly).
+%
+% *Table 2:* Throttle schedule for first simulation (passing maneuver)
+% 
+%  Time (sec)    Throttle (%)
+%    0             60
+%   14.9           40
+%   15            100
+%  100              0
+%  200              0
+%
+% The first column corresponds to time; the second column corresponds to
+% throttle opening in percent. In this case no brake is applied (brake torque is
+% zero). The vehicle speed starts at zero and the engine at 1000 RPM. Figure 12
+% shows the plot for the baseline results, using the default parameters. As the
+% driver steps to 60% throttle at |t=0|, the engine immediately responds by
+% more than doubling its speed. This brings about a low speed ratio across the
+% torque converter and, hence, a large torque ratio (see Figure 6 and Figure
+% 11. The vehicle accelerates quickly (no tire slip is modeled) and both the
+% engine and the vehicle gain speed until about |t = 2 sec|, at which time a 1-2
+% upshift occurs. The engine speed characteristically drops abruptly, then
+% resumes its acceleration. The 2-3 and 3-4 upshifts take place at about four
+% and eight seconds, respectively. Notice that the vehicle speed remains much
+% smoother due to its large inertia.
+
+%plot the baseline simulation results, two plots on a figure
+figure('Units','pixels','Position',[100 100 600 400],'Tag','CloseMe');
+subplot(2,1,1);
+plot(sldemo_autotrans_output.EngineRPM.Time,sldemo_autotrans_output.EngineRPM.Data);
+title('Baseline Automatic Transmission Simulation');
+ylabel('Engine Speed (RPM)');
+subplot(2,1,2);
+[Handle.Axes, Handle.a, Handle.b]= plotyy(sldemo_autotrans_output.VehicleSpeed.Time, ...
+                                          sldemo_autotrans_output.VehicleSpeed.Data, ...
+                                          sldemo_autotrans_output.Throttle.Time,     ...
+                                          sldemo_autotrans_output.Throttle.Data);
+xlabel('Time (sec)');
+text(5, 80, 'Vehicle Speed (mph)');
+text(16, 40, 'Throttle (%)');
+axis(Handle.Axes(1), [0 30 0 150]); %left axis
+axis(Handle.Axes(2), [0 30 20 120]); %right axis
+
+%%
+%
+% *Figure 12:* Passing maneuver simulation time history
+%
+% At |t=15sec|, the driver steps the throttle to 100% as might be typical of
+% a passing maneuver. The transmission downshifts to third gear and the engine
+% jumps from about 2600 RPM to about 3700 RPM. The engine torque thus increases
+% somewhat, as well as the mechanical advantage of the transmission. With
+% continued heavy throttle, the vehicle accelerates to about 100 mph and then
+% shifts into overdrive at about |t = 21 sec|. The vehicle cruises along in
+% fourth gear for the remainder of the simulation. Double click on the ManeuversGUI
+% block and use the graphical interface to vary the throttle and brake
+% history.
+
+%% Closing the Model
+%
+% Close the model, clear generated data.
+
+close_system('sldemo_autotrans',0);
+close(findobj(0,'Tag','CloseMe')); %close the figures, they all have 'Tag'=='CloseMe';
+clear Handle TorqueMap sldemo_autotrans_output;
+
+%% Conclusions 
+%
+% One can easily enhance this basic system in a modular manner, for example, by
+% replacing the engine or transmission with a more complex model. We can thus
+% build up large systems within this structure via step-wise refinement. The
+% seamless integration of Stateflow control logic with Simulink signal
+% processing enables the construction of a model which is both efficient and
+% visually intuitive.
+
+##### SOURCE END #####
+--></body></html>

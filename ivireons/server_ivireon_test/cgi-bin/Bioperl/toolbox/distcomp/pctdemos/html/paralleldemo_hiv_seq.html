@@ -1,0 +1,99 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Sequential Analysis of the Origin of the Human Immunodeficiency Virus</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-09"><meta name="m-file" content="paralleldemo_hiv_seq"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_hiv_seq">Open paralleldemo_hiv_seq.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_hiv_seq">Run in the Command Window</a></div></div><div class="content"><h1>Sequential Analysis of the Origin of the Human Immunodeficiency Virus</h1><!--introduction--><p>This demo shows pairwise sequence alignment (PWSA). PWSA has multiple applications in bioinformatics, such as multiple sequence analysis and phylogenetic tree reconstruction. We look at a PWSA that uses a global dynamic programming algorithm to align each pair of sequences, and we then calculate the pairwise distances using the Tajima-Nei metric.  This gives us a matrix of distances between sequences that we use for inferring the phylogeny of HIV and SIV viruses. PWSA is a computationally expensive task with complexity O(L*L*N*N), where L is the average length of the sequences and N is the number of sequences [Durbin, et al. Cambridge University Press, 1998].</p><p>For details about the computations, <a href="matlab:edit('pctdemo_setup_hiv.m')">view the code for pctdemo_setup_hiv</a>.</p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox&#8482;</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_hiv_dist.html">Distributed Analysis of the Origin of the Human Immunodeficiency Virus</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Load the Demo Settings and the Data</a></li><li><a href="#3">Calculate the Distances</a></li><li><a href="#4">Measure the Elapsed Time</a></li><li><a href="#5">Plot the Results</a></li></ul></div><h2>Load the Demo Settings and the Data<a name="1"></a></h2><p>We start by getting the demo difficulty level.  If you want to use a different demo difficulty level, use <tt>paralleldemoconfig</tt> and then run this demo again.  See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for full details.</p><pre class="codeinput">difficulty = pctdemo_helper_getDefaults();
+</pre><p>The <tt>pctdemo_setup_hiv</tt> function retrieves the protein sequence information from the NCBI GenBank&reg; database, and the <tt>difficulty</tt> parameter controls how many protein sequences we retrieve. You can <a href="matlab:edit('pctdemo_setup_hiv.m')">view the code for pctdemo_setup_hiv</a> for full details.</p><pre class="codeinput">[fig, pol, description] = pctdemo_setup_hiv(difficulty);
+numViruses = length(pol);
+startTime = clock;
+</pre><pre class="codeoutput">Downloading data from the NCBI GenBank database
+Finished downloading
+</pre><h2>Calculate the Distances<a name="3"></a></h2><p>We call <tt>seqpdist</tt> to align the POL sequences and use the Tajima-Nei metric to measure the distances between them.</p><pre class="codeinput">pold = seqpdist(pol, <span class="string">'method'</span>, <span class="string">'Tajima-Nei'</span>,  <span class="string">'Alphabet'</span>, <span class="string">'NT'</span>, <span class="keyword">...</span>
+                <span class="string">'indel'</span>, <span class="string">'pair'</span>);
+</pre><h2>Measure the Elapsed Time<a name="4"></a></h2><p>The time used for the sequential computations should be compared against the time it takes to perform the same set of calculations using the Parallel Computing Toolbox in the <a href="paralleldemo_hiv_dist.html">Distributed Analysis of the Origin of the Human Immunodeficiency Virus</a> demo. The elapsed time varies with the underlying hardware.</p><pre class="codeinput">elapsedTime = etime(clock, startTime);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 28.0 seconds
+</pre><h2>Plot the Results<a name="5"></a></h2><p>Now that we have all the distances, we can construct the phylogenetic tree for the POL proteins.  You can <a href="matlab:edit('pctdemo_plot_hiv.m')">view the code for pctdemo_plot_hiv</a> for full details.</p><pre class="codeinput">pctdemo_plot_hiv(fig, pold, description);
+</pre><img vspace="5" hspace="5" src="paralleldemo_hiv_seq_01.png" alt=""> <p class="footer">Copyright 2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Sequential Analysis of the Origin of the Human Immunodeficiency Virus
+% This demo shows pairwise sequence alignment (PWSA). PWSA has multiple
+% applications in bioinformatics, such as multiple sequence analysis and
+% phylogenetic tree reconstruction. We look at a PWSA that uses a global dynamic
+% programming algorithm to align each pair of sequences, and we then calculate
+% the pairwise distances using the Tajima-Nei metric.  This gives us a matrix
+% of distances between sequences that we use for inferring the phylogeny of HIV
+% and SIV viruses. PWSA is a computationally expensive task with complexity
+% O(L*L*N*N), where L is the average length of the sequences and N is the number
+% of sequences [Durbin, et al. Cambridge University Press, 1998].
+%
+% For details about the computations,  
+% <matlab:edit('pctdemo_setup_hiv.m') view the code for pctdemo_setup_hiv>.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox(TM)>
+%
+% Related demos:
+%
+% * <paralleldemo_hiv_dist.html 
+% Distributed Analysis of the Origin of the Human Immunodeficiency Virus>
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.3 $  $Date: 2009/11/07 20:53:08 $
+
+%% Load the Demo Settings and the Data
+% We start by getting the demo difficulty level.  If you want to use a
+% different demo difficulty level, use |paralleldemoconfig| and then run this
+% demo again.  See <paralleltutorial_defaults.html 
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% for full details.
+difficulty = pctdemo_helper_getDefaults();
+
+%%
+% The |pctdemo_setup_hiv| function retrieves the protein sequence information
+% from the NCBI GenBank(R) database, and the |difficulty| parameter controls how
+% many protein sequences we retrieve.
+% You can 
+% <matlab:edit('pctdemo_setup_hiv.m') view the code for pctdemo_setup_hiv> 
+% for full details.
+[fig, pol, description] = pctdemo_setup_hiv(difficulty);
+numViruses = length(pol);
+startTime = clock;
+
+%% Calculate the Distances
+% We call |seqpdist| to align the POL sequences and use the Tajima-Nei
+% metric to measure the distances between them. 
+pold = seqpdist(pol, 'method', 'Tajima-Nei',  'Alphabet', 'NT', ...
+                'indel', 'pair');
+
+%% Measure the Elapsed Time
+% The time used for the sequential computations should be compared
+% against the time it takes to perform the same set of calculations
+% using the Parallel Computing Toolbox in the
+% <paralleldemo_hiv_dist.html Distributed Analysis of the Origin of the Human 
+% Immunodeficiency Virus> demo.
+% The elapsed time varies with the underlying hardware.
+elapsedTime = etime(clock, startTime);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+
+
+%% Plot the Results
+% Now that we have all the distances, we can construct the phylogenetic tree
+% for the POL proteins.  You can 
+% <matlab:edit('pctdemo_plot_hiv.m') view the code for pctdemo_plot_hiv> 
+% for full details.
+pctdemo_plot_hiv(fig, pold, description);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

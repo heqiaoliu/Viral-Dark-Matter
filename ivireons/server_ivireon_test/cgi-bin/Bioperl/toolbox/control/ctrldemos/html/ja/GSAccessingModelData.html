@@ -1,0 +1,108 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>モデルデータのアクセスと修正</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="GSAccessingModelData.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit GSAccessingModelData">GSAccessingModelData.m をエディターで開く</a></div><div class="right"><a href="matlab:echodemo GSAccessingModelData">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>モデルデータのアクセスと修正</h1><!--introduction--><p>このデモでは、LTI オブジェクト内のパラメーター値およびメタデータへのアクセス方法または編集方法を紹介します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">データへのアクセス</a></li><li><a href="#6">データのクイック抽出</a></li><li><a href="#8">データの編集</a></li><li><a href="#11">感度解析の例</a></li></ul></div><h2>データへのアクセス<a name="1"></a></h2><p>コマンド <tt>tf</tt>、<tt>zpk</tt>、<tt>ss</tt>、および <tt>frd</tt> は、単一の MATLAB&reg; 変数にモデル データを格納する LTI オブジェクトを作成します。このデータには、モデル固有のパラメーター (状態空間モデルの A、B、C、D 行列など) および一般的なメタデータ (入力名や出力名など) が含まれています。データは、<b>プロパティ</b>と呼ばれるデータ フィールドの固定セットに配置されています。</p><p>モデル データには、以下の方法でアクセスできます。</p><div><ul><li><tt>get</tt> コマンド</li><li>構造体状のドット表記法</li><li>データ抽出コマンド</li></ul></div><p>例示のために、SISO 伝達関数 (TF) を作成します。</p><pre class="codeinput">G = tf([1 2],[1 3 10],<span class="string">'inputdelay'</span>,3)
+</pre><pre class="codeoutput"> 
+Transfer function:
+                s + 2
+exp(-3*s) * --------------
+            s^2 + 3 s + 10
+ 
+</pre><p>TF オブジェクト <tt>G</tt> のすべてのプロパティを表示するために、以下のように入力します。</p><pre class="codeinput">get(G)
+</pre><pre class="codeoutput">            num: {[0 1 2]}
+            den: {[1 3 10]}
+       Variable: 's'
+        ioDelay: 0
+     InputDelay: 3
+    OutputDelay: 0
+             Ts: 0
+       TimeUnit: ''
+      InputName: {''}
+      InputUnit: {''}
+     InputGroup: [1x1 struct]
+     OutputName: {''}
+     OutputUnit: {''}
+    OutputGroup: [1x1 struct]
+           Name: ''
+          Notes: {}
+       UserData: []
+
+</pre><p>最初の 4 つのプロパティ <tt>num</tt>、<tt>den</tt>、<tt>ioDelay</tt>、および <tt>Variable</tt> は、TF 表現固有のプロパティです。 その他のプロパティは、すべての LTI 表現に共通です。 <tt>help tf.num</tt> を使用すると、num プロパティやその他のプロパティの詳細な情報を抽出できます。</p><p>特定のプロパティの値を取得するには、以下を使用します。</p><pre class="codeinput">G.InputDelay    <span class="comment">% get input delay value</span>
+</pre><pre class="codeoutput">
+ans =
+
+     3
+
+</pre><p>一義的である限り、プロパティ名には省略形を使用できます。以下に例を示します。</p><pre class="codeinput">G.iod    <span class="comment">% get transport delay value</span>
+</pre><pre class="codeoutput">
+ans =
+
+     0
+
+</pre><pre class="codeinput">G.var           <span class="comment">% get variable</span>
+</pre><pre class="codeoutput">
+ans =
+
+s
+
+</pre><h2>データのクイック抽出<a name="6"></a></h2><p>また、コマンド <tt>tfdata</tt>、<tt>zpkdata</tt>、<tt>ssdata</tt>、または <tt>frdata</tt> を使用すると、すべてのモデル パラメーターを一度に抽出できます。以下に例を示します。</p><pre class="codeinput">[num,den,Ts] = tfdata(G)
+</pre><pre class="codeoutput">
+num = 
+
+    [1x3 double]
+
+
+den = 
+
+    [1x3 double]
+
+
+Ts =
+
+     0
+
+</pre><p>分子と分母は、セル配列として返されることに注意してください。これは、<tt>num</tt> および <tt>den</tt> が分子と分母の多項式のセル配列 (1 組の I/O に対して 1 つのエントリがある) を含む MIMO の場合と同様です。.SISO 伝達関数では、フラグを使用して分子と分母のデータをベクトルとして返せます。以下に例を示します。</p><pre class="codeinput">[num,den] = tfdata(G,<span class="string">'v'</span>)
+</pre><pre class="codeoutput">
+num =
+
+     0     1     2
+
+
+den =
+
+     1     3    10
+
+</pre><h2>データの編集<a name="8"></a></h2><p>対応するプロパティ値を <tt>set</tt> またはドット表記法で編集すると、LTI オブジェクト内に格納されているデータを変更できます。上で作成した伝達関数 <tt>G</tt> では、</p><pre class="codeinput">G.Ts = 1;
+</pre><p>上記では、サンプリング時間が 0 から 1 に変更され、モデルは離散として再定義されます。</p><pre class="codeinput">G,
+</pre><pre class="codeoutput"> 
+Transfer function:
+             z + 2
+z^(-3) * --------------
+         z^2 + 3 z + 10
+ 
+Sampling time: 1
+</pre><p>コマンド <tt>set</tt> は、ドット代入と同等ですが、以下のように、一度に複数のプロパティの設定ができます。</p><pre class="codeinput">set(G,<span class="string">'Ts'</span>,0.1,<span class="string">'Variable'</span>,<span class="string">'q'</span>)
+G,
+</pre><pre class="codeoutput"> 
+Transfer function:
+             q + 2
+q^(-3) * --------------
+         q^2 + 3 q + 10
+ 
+Sampling time: 0.1
+</pre><h2>感度解析の例<a name="11"></a></h2><p>LTI 配列のサポートと共にモデル編集を使用すると、パラメーターの変化に対する感度を簡単に調査できます。たとえば、以下の 2 次伝達関数の例を見てみます。</p><p><img src="../GSAccessingModelData_eq24648.png" alt="$$ H(s) = { s+5 \over s^2 + 2 \zeta s + 5 } $$"></p><p>周波数応答上の減衰パラメーター <tt>zeta</tt> の影響は、異なる <tt>zeta</tt> 値を持つ 3 つのモデルを作成し、ボード応答を比較することで調査できます。</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);
+
+<span class="comment">% Create 3 transfer functions with num=s+1 and den=1</span>
+H = repsys(s+5,[1 1 3]);
+
+<span class="comment">% Specify denominators using 3 different zeta values</span>
+zeta = [1 .5 .2];
+<span class="keyword">for</span> k=1:3
+  H(:,:,k).den = [1 2*zeta(k) 5];  <span class="comment">% zeta(k) -&gt; k-th model</span>
+<span class="keyword">end</span>
+
+<span class="comment">% Plot Bode response</span>
+bode(H), grid
+</pre><img vspace="5" hspace="5" src="../GSAccessingModelData_01.png" alt=""> <p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Accessing and Modifying the Model Data % This demo shows how to access or edit parameter values and metadata % in LTI objects.  %   Copyright 1986-2009 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $   %% Accessing Data % The |tf|, |zpk|, |ss|, and |frd| commands create LTI objects  % that store model data in a single MATLAB(R) variable. This data % includes model-specific parameters (e.g., A,B,C,D matrices for % state-space models) as well as generic metadata such as input and output  % names. The data is arranged into a fixed set of data fields called % *properties*. % % You can access model data in the following ways: % % * The |get| command % * Structure-like dot notation % * Data retrieval commands % % For illustration purposes, create the SISO transfer function (TF): G = tf([1 2],[1 3 10],'inputdelay',3)  %% % To see all properties of the TF object |G|, type get(G)  %%  % The first four properties |num|, |den|, |ioDelay|, and |Variable| are specific to % the TF representation. The remaining properties are common to all LTI % representations. You can use |help tf.num| to get more information on the "num"  % property and similarly for the other properties. % % To retrieve the value of a particular property, use G.InputDelay    % get input delay value  %% % You can use abbreviations for property names as long as they are % unambiguous, for example: G.iod    % get transport delay value  %% G.var    % get variable  %% Quick Data Retrieval % You can also retrieve all model parameters at once using |tfdata|, % |zpkdata|, |ssdata|, or |frdata|. For example: [num,den,Ts] = tfdata(G)  %% % Note that the numerator and denominator are returned as cell arrays. This % is consistent with the MIMO case where |num| and |den| contain cell arrays % of numerator and denominator polynomials (with one entry per I/O pair). % For SISO transfer functions, you can return the numerator and % denominator data as vectors by using a flag, for example: [num,den] = tfdata(G,'v')  %% Editing Data % You can modify the data stored in LTI objects by editing the % corresponding property values with |set| or dot notation.  % For example, for the transfer function |G| created above,  G.Ts = 1;  %% % changes the sampling time from 0 to 1, which redefines the model as discrete: G,  %% % The |set| command is equivalent to dot assignment, but also lets you set % multiple properties at once: set(G,'Ts',0.1,'Variable','q') G,  %% Sensitivity Analysis Example % Using model editing together with LTI array support, you can easily % investigate sensitivity to parameter variations. For example, consider % the second-order transfer function %  % $$ H(s) = { s+5 \over s^2 + 2 \zeta s + 5 } $$ % % You can investigate the effect of the damping parameter |zeta| on the % frequency response by creating three models with different |zeta| values % and comparing their Bode responses: s = tf('s');  % Create 3 transfer functions with num=s+1 and den=1 H = repsys(s+5,[1 1 3]);    % Specify denominators using 3 different zeta values zeta = [1 .5 .2]; for k=1:3   H(:,:,k).den = [1 2*zeta(k) 5];  % zeta(k) -> k-th model end  % Plot Bode response bode(H), grid   displayEndOfDemoMessage(mfilename)   ##### SOURCE END ##### --></body></html>

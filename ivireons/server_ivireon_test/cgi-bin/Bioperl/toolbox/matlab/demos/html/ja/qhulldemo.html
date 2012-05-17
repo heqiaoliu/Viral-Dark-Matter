@@ -1,0 +1,124 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>散布データのテセレーションと内挿</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="qhulldemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit qhulldemo">エディターで qhulldemo.m を開く</a></div><div class="right"><a href="matlab:echodemo qhulldemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>散布データのテセレーションと内挿</h1><!--introduction--><p>このデモでは、凸包、Delaunay テセレーション、および 3 次元の Voronoi 線図を説明します。3 次元的に散布しているデータを内挿する方法も示します。</p><!--/introduction--><p>化学、工学、統計学、数学などの多くの用途で、データを解析するために凸包、Delaunay テセレーション、Voronoi 線図などの構造を利用します。MATLAB&reg; を使用すると、任意の次元でデータ セットを幾何学的に解析できます。</p><p>凸包を持つ 50 点のセットを 3 次元で示します。</p><pre class="codeinput"><span class="comment">% Create the data.</span>
+n = 50;
+X = randn(n,3);
+<span class="comment">% Plot the points.</span>
+plot3(X(:,1),X(:,2),X(:,3),<span class="string">'ko'</span>,<span class="string">'markerfacecolor'</span>,<span class="string">'k'</span>);
+<span class="comment">% Compute the convex hull.</span>
+C = convhulln(X);
+<span class="comment">% Plot the convex hull.</span>
+hold <span class="string">on</span>
+<span class="keyword">for</span> i = 1:size(C,1)
+   j = C(i,[1 2 3 1]);
+   patch(X(j,1),X(j,2),X(j,3),rand,<span class="string">'FaceAlpha'</span>,0.6);
+<span class="keyword">end</span>
+<span class="comment">% Modify the view.</span>
+view(3), axis <span class="string">equal</span> <span class="string">off</span> <span class="string">tight</span> <span class="string">vis3d</span>; camzoom(1.2)
+colormap(spring)
+rotate3d <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../qhulldemo_01.png" alt=""> <p>中心を加えた立方体の 8 つの頂点のデータ セット X を作成できます。</p><p>X は、各行が 1 つの点の 3 次元座標となる 9 行 3 列の行列です。</p><pre class="codeinput"><span class="comment">% Create X.</span>
+X = zeros(8,3);
+X([5:8,11,12,15,16,18,20,22,24]) = 1; <span class="comment">% Corners.</span>
+X(9,:) = [0.5 0.5 0.5]; <span class="comment">% Center.</span>
+<span class="comment">% Visualize X.</span>
+cla <span class="string">reset</span>; hold <span class="string">on</span>
+d = [1 2 4 3 1 5 6 8 7 5 6 2 4 8 7 3];
+plot3(X(d,1),X(d,2),X(d,3),<span class="string">'b:'</span>);
+plot3(X(:,1),X(:,2),X(:,3),<span class="string">'b.'</span>,<span class="string">'markersize'</span>,20);
+t = text(X(:,1),X(:,2),X(:,3), num2str((1:9)'));
+set(t,<span class="string">'VerticalAlignment'</span>,<span class="string">'bottom'</span>,<span class="string">'FontWeight'</span>,<span class="string">'bold'</span>, <span class="string">'FontSize'</span>,12);
+view(3); axis <span class="string">equal</span> <span class="string">tight</span> <span class="string">off</span> <span class="string">vis3d</span>; camorbit(10,0);
+rotate3d <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../qhulldemo_02.png" alt=""> <p>データ セットの凸包は、データ セットを含む最小の凸領域です。立方体のデータ セット X の凸包は、CONVHULLN で計算できます。</p><p>このデータ セット X の場合、凸包には 12 の面があり、それぞれ K の行に対応しており、上で X でプロットされています。立方体は、すべての面とデータ ポイントを確認できるよう透明になっています。</p><pre class="codeinput"><span class="comment">% Compute the convex hull.</span>
+tri = convhulln(X);
+<span class="comment">% Plot the data</span>
+cla <span class="string">reset</span>;
+plot3(X(:,1),X(:,2),X(:,3),<span class="string">'ko'</span>,<span class="string">'markerfacecolor'</span>,<span class="string">'k'</span>);
+<span class="comment">% Plot the convex hull.</span>
+<span class="keyword">for</span> i = 1:size(tri,1)
+  c = tri(i,[1 2 3 1]);
+  patch(X(c,1),X(c,2),X(c,3),i,<span class="string">'FaceAlpha'</span>, 0.9);
+<span class="keyword">end</span>
+<span class="comment">% Modify the view.</span>
+view(3); axis <span class="string">equal</span> <span class="string">tight</span> <span class="string">off</span> <span class="string">vis3d</span>
+rotate3d <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../qhulldemo_03.png" alt=""> <p>3 次元の Delaunay テセレーションは、いずれの 4 面体の外接球にもデータ ポイントが含まれないような 4 面体の集合です。データ セット X の Delaunay テセレーションは、DELAUNAYN で計算することができます。</p><p>T の 12 の行は、データ セット X を分割する 12 の 4 面体を表します。</p><pre class="codeinput"><span class="comment">% Compute the delaunay tessellation.</span>
+tri = delaunayn(X);
+<span class="comment">% Plot the data.</span>
+plot3(X(:,1),X(:,2),X(:,3),<span class="string">'ko'</span>,<span class="string">'markerfacecolor'</span>,<span class="string">'k'</span>);
+<span class="comment">% Plot the tessellation.</span>
+<span class="keyword">for</span> i = 1:size(tri,1)
+  y = tri(i,[1 1 1 2; 2 2 3 3; 3 4 4 4]);
+  x1 = reshape(X(y,1),3,4);
+  x2 = reshape(X(y,2),3,4);
+  x3 = reshape(X(y,3),3,4);
+  patch(x1,x2,x3,(1:4)*i,<span class="string">'FaceAlpha'</span>,0.8);
+<span class="keyword">end</span>
+<span class="comment">% Modify the view.</span>
+view(3); axis <span class="string">equal</span> <span class="string">tight</span> <span class="string">off</span> <span class="string">vis3d</span>; camorbit(10,0)
+rotate3d <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../qhulldemo_04.png" alt=""> <p>Voronoi 線図は、各データ ポイントに対して 1 つの領域を持つ多面体の領域にデータ空間を分割します。領域内のどこでも、セット内の他のどれよりもそのデータ ポイントに隣接しています。立方体のデータ セット X の Voronoi 線図は、VORONOIN で計算することができます。</p><p>V は、Voronoi の頂点の集合です。C は、Voronoi 領域の集合を表します。データ セット X に対して、C は 9 つの Voronoi 領域を持ちます。立方体の中心点に対する領域である 1 つの Voronoi 領域を示します。</p><pre class="codeinput"><span class="comment">% Compute Voronoi diagram.</span>
+[c,v] = voronoin(X);
+<span class="comment">% Plot the data.</span>
+plot3(X(d,1),X(d,2),X(d,3),<span class="string">'b:.'</span>,X(9,1),X(9,2),X(9,3),<span class="string">'k.'</span>,<span class="string">'markersize'</span>,20);
+<span class="comment">% Plot the Voronoi diagram.</span>
+nx = c(v{9},:);
+tri = convhulln(nx);
+<span class="keyword">for</span> i = 1:size(tri,1)
+   patch(nx(tri(i,:),1),nx(tri(i,:),2),nx(tri(i,:),3),rand,<span class="string">'FaceAlpha'</span>,0.8);
+<span class="keyword">end</span>
+<span class="comment">% Modify the view.</span>
+view(3); axis <span class="string">equal</span> <span class="string">tight</span> <span class="string">off</span> <span class="string">vis3d</span>; camzoom(1.5); camorbit(20,0)
+rotate3d <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../qhulldemo_05.png" alt=""> <p>GRIDDATAN は、多次元の散布データを内挿します。データをテセレーションするために DELAUNAYN を使用し、その後、テセレーションを元に内挿を行います。3 次元にある 500 点のランダムな点のデータ セットから始めて、これらの各点で原点からの距離を二乗する関数の値を計算します。</p><pre class="codeinput"><span class="comment">% Create the data.</span>
+n = 500;
+X = 2*rand(n,3)-1;
+v = sum(X.^2,2);
+<span class="comment">% Draw a picture to show how X is defined.</span>
+cla <span class="string">reset</span>; hold <span class="string">on</span>
+plot3([0.02, 0.47],[0.02,0.57],[0.02,0.57],<span class="string">'k-'</span>,<span class="string">'linewidth'</span>,2);
+plot3(0,0,0,<span class="string">'bo'</span>,<span class="string">'markerfacecolor'</span>,<span class="string">'b'</span>);
+cube = zeros(8,3);
+cube([5:8,11,12,15,16,18,20,22,24]) = 1; <span class="comment">% Corners</span>
+cube(9,:) = [0.5 0.5 0.5]; <span class="comment">% Center.</span>
+plot3(cube(d,1),cube(d,2),cube(d,3),<span class="string">'r:'</span>);
+plot3(0.5,0.6,0.6,<span class="string">'go'</span>,<span class="string">'markerfacecolor'</span>,<span class="string">'g'</span>);
+text(0.02,-0.2,0,<span class="string">'the origin'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'bold'</span>);
+text(0.55,0.6,0.6,<span class="string">'a point in X'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'bold'</span>);
+text(0.28,0.3,0.35,<span class="string">'sqrt(v)'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'bold'</span>);
+view(3); axis <span class="string">equal</span> <span class="string">tight</span> <span class="string">off</span> <span class="string">vis3d</span>;
+camorbit(20,-10);
+rotate3d <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../qhulldemo_06.png" alt=""> <p>GRIDDATAN を使用すると、X とグリッド X0 上の値 v を内挿して、このグリッド上での関数値 v0 を取得できます。</p><p>黒い点は X で、赤い点はグリッド X0 です。</p><pre class="codeinput"><span class="comment">% Grid the data.</span>
+d  = -0.8:0.2:0.8;
+[x0,y0,z0] = meshgrid(d,d,d);
+X0 = [x0(:) y0(:) z0(:)];
+v0 = reshape(griddatan(X,v,X0),size(x0));
+<span class="comment">% Plot results.</span>
+cla <span class="string">reset</span>; hold <span class="string">on</span>;
+plot3(X(:,1),X(:,2),X(:,3),<span class="string">'k+'</span>,<span class="string">'markerfacecolor'</span>,<span class="string">'k'</span>);
+plot3(X0(:,1),X0(:,2),X0(:,3),<span class="string">'r.'</span>,<span class="string">'markerfacecolor'</span>,<span class="string">'r'</span>);
+view(3); axis <span class="string">equal</span> <span class="string">tight</span> <span class="string">off</span> <span class="string">vis3d</span>; camzoom(1.6);
+rotate3d <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../qhulldemo_07.png" alt=""> <p>関数が定数値をとるすべての点の表面を可視化するために、ISOSURFACE と ISONORMALS を使用することができます。関数は原点からの距離を二乗しているため、定数値の表面は球面になります。</p><pre class="codeinput">c = 0.6;  <span class="comment">% constant value</span>
+cla <span class="string">reset</span>; hold <span class="string">on</span>;
+h = patch(isosurface(x0,y0,z0,v0,c),<span class="string">'FaceColor'</span>,<span class="string">'red'</span>,<span class="string">'EdgeColor'</span>,<span class="string">'none'</span>);
+isonormals(x0,y0,z0,v0,h);
+view(3); axis <span class="string">equal</span> <span class="string">tight</span> <span class="string">off</span> <span class="string">vis3d</span>; camzoom(1.6); camlight; lighting <span class="string">phong</span>
+rotate3d <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../qhulldemo_08.png" alt=""> <p>X のより多くのデータ ポイントと細かいグリッド X0 を使うと、計算時間は長くなりますが、球面は滑らかになります。</p><p>X の 5000 点のデータ ポイントと、0.05 のグリッド点間の距離を使用して生成される球面をあらかじめ計算してあります。</p><pre class="codeinput"><span class="comment">% Load saved results.</span>
+load <span class="string">qhulldemo</span>
+cla <span class="string">reset</span>; hold <span class="string">on</span>
+d = -0.8:0.05:0.8;
+[x0,y0,z0] = meshgrid(d,d,d);
+h = patch(isosurface(x0,y0,z0,v0,0.6));
+isonormals(x0,y0,z0,v0,h);
+set(h,<span class="string">'FaceColor'</span>,<span class="string">'red'</span>,<span class="string">'EdgeColor'</span>,<span class="string">'none'</span>);
+view(3); axis <span class="string">equal</span> <span class="string">tight</span> <span class="string">off</span> <span class="string">vis3d</span>; camzoom(1.6)
+camlight; lighting <span class="string">phong</span>
+rotate3d <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../qhulldemo_09.png" alt=""> <p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Tessellation and Interpolation of Scattered Data % This demo describes convex hulls, Delaunay tessellations, and Voronoi diagrams % in 3 dimensions.  It also shows how to interpolate three-dimensional scattered % data. % % Copyright 1984-2007 The MathWorks, Inc. % $Revision: 1.1.6.10.2.1 $  $Date: 2010/07/29 21:28:53 $  %% % Many applications in science, engineering, statistics, and mathematics use % structures like convex hulls, Delaunay tessellations and Voronoi diagrams for % analyzing data.  MATLAB(R) enables you to geometrically analyze data sets in any % dimension. % % Here, in 3 dimensions, we show a set of 50 points with its convex hull.  % Create the data. n = 50; X = randn(n,3);  % Plot the points. plot3(X(:,1),X(:,2),X(:,3),'ko','markerfacecolor','k'); % Compute the convex hull. C = convhulln(X); % Plot the convex hull. hold on for i = 1:size(C,1)    j = C(i,[1 2 3 1]);    patch(X(j,1),X(j,2),X(j,3),rand,'FaceAlpha',0.6); end % Modify the view. view(3), axis equal off tight vis3d; camzoom(1.2) colormap(spring) rotate3d on  %% % We can create a data set X of the 8 vertices of a cube plus its center. % % X is a 9-by-3 matrix where each row is the 3-D coordinates of one point.  % Create X. X = zeros(8,3);  X([5:8,11,12,15,16,18,20,22,24]) = 1; % Corners. X(9,:) = [0.5 0.5 0.5]; % Center. % Visualize X. cla reset; hold on d = [1 2 4 3 1 5 6 8 7 5 6 2 4 8 7 3]; plot3(X(d,1),X(d,2),X(d,3),'b:'); plot3(X(:,1),X(:,2),X(:,3),'b.','markersize',20); t = text(X(:,1),X(:,2),X(:,3), num2str((1:9)')); set(t,'VerticalAlignment','bottom','FontWeight','bold', 'FontSize',12); view(3); axis equal tight off vis3d; camorbit(10,0); rotate3d on  %% % The convex hull of a data set is the smallest convex region that contains the % data set.  The convex hull of the cube data set X can be computed by % CONVHULLN. %  % For this data set X, the convex hull has 12 facets, each corresponding to a % row in K and plotted above with X.  The cube is transparent so that you can % see all the facets and data points.  % Compute the convex hull. tri = convhulln(X); % Plot the data cla reset; plot3(X(:,1),X(:,2),X(:,3),'ko','markerfacecolor','k'); % Plot the convex hull. for i = 1:size(tri,1)   c = tri(i,[1 2 3 1]);   patch(X(c,1),X(c,2),X(c,3),i,'FaceAlpha', 0.9); end % Modify the view. view(3); axis equal tight off vis3d rotate3d on  %% % A Delaunay tessellation in 3 dimensions is a set of tetrahedrons such that no % data points are contained in any tetrahedron's circumsphere.  The Delaunay % tessellation of the data set X can be computed by DELAUNAYN. %  % The 12 rows of T represent the 12 tetrahedrons that partition the data set X.  % Compute the delaunay tessellation. tri = delaunayn(X); % Plot the data. plot3(X(:,1),X(:,2),X(:,3),'ko','markerfacecolor','k'); % Plot the tessellation. for i = 1:size(tri,1)   y = tri(i,[1 1 1 2; 2 2 3 3; 3 4 4 4]);   x1 = reshape(X(y,1),3,4);   x2 = reshape(X(y,2),3,4);   x3 = reshape(X(y,3),3,4);   patch(x1,x2,x3,(1:4)*i,'FaceAlpha',0.8); end % Modify the view. view(3); axis equal tight off vis3d; camorbit(10,0) rotate3d on  %% % A Voronoi diagram partitions the data space into polyhedral regions, with one % region for each data point.  Anywhere within a region is closer to its data % point than any other in the set.  The Voronoi diagram of the cube data set X % can be computed by VORONOIN. % % V is the set of Voronoi vertices.  C represents the set of Voronoi regions. % For our data set X, C has 9 Voronoi regions.  Here we show one Voronoi region, % the region for the center point of the cube.  % Compute Voronoi diagram. [c,v] = voronoin(X); % Plot the data. plot3(X(d,1),X(d,2),X(d,3),'b:.',X(9,1),X(9,2),X(9,3),'k.','markersize',20); % Plot the Voronoi diagram. nx = c(v{9},:); tri = convhulln(nx); for i = 1:size(tri,1)    patch(nx(tri(i,:),1),nx(tri(i,:),2),nx(tri(i,:),3),rand,'FaceAlpha',0.8); end % Modify the view. view(3); axis equal tight off vis3d; camzoom(1.5); camorbit(20,0) rotate3d on  %% % GRIDDATAN interpolates multidimensional scattered data.  It uses DELAUNAYN to % tessellate the data, and then interpolates based on the tessellation.  We % start with a data set of 500 random points in 3 dimensions and compute the % values of a function, the squared distance from the origin, at each of these % points.  % Create the data. n = 500; X = 2*rand(n,3)-1; v = sum(X.^2,2); % Draw a picture to show how X is defined. cla reset; hold on plot3([0.02, 0.47],[0.02,0.57],[0.02,0.57],'k-','linewidth',2); plot3(0,0,0,'bo','markerfacecolor','b'); cube = zeros(8,3); cube([5:8,11,12,15,16,18,20,22,24]) = 1; % Corners cube(9,:) = [0.5 0.5 0.5]; % Center. plot3(cube(d,1),cube(d,2),cube(d,3),'r:'); plot3(0.5,0.6,0.6,'go','markerfacecolor','g'); text(0.02,-0.2,0,'the origin','fontsize',12,'fontweight','bold'); text(0.55,0.6,0.6,'a point in X','fontsize',12,'fontweight','bold'); text(0.28,0.3,0.35,'sqrt(v)','fontsize',12,'fontweight','bold'); view(3); axis equal tight off vis3d; camorbit(20,-10); rotate3d on  %% % With GRIDDATAN we can interpolate X and the values v over a grid X0 to get the % function values v0 over this grid. %  % The black points are X and the red points are the grid X0.  % Grid the data. d  = -0.8:0.2:0.8; [x0,y0,z0] = meshgrid(d,d,d); X0 = [x0(:) y0(:) z0(:)]; v0 = reshape(griddatan(X,v,X0),size(x0)); % Plot results. cla reset; hold on; plot3(X(:,1),X(:,2),X(:,3),'k+','markerfacecolor','k'); plot3(X0(:,1),X0(:,2),X0(:,3),'r.','markerfacecolor','r'); view(3); axis equal tight off vis3d; camzoom(1.6); rotate3d on  %% % To visualize the surface at all points where the function takes on a constant % value, we can use ISOSURFACE and ISONORMALS.  Since the function is the % squared distance from the origin, the surface at a constant value is a sphere.   c = 0.6;  % constant value cla reset; hold on; h = patch(isosurface(x0,y0,z0,v0,c),'FaceColor','red','EdgeColor','none'); isonormals(x0,y0,z0,v0,h); view(3); axis equal tight off vis3d; camzoom(1.6); camlight; lighting phong rotate3d on  %% % With more data points in X and a denser grid X0, the sphere is smoother but % takes longer to compute. %  % Here is a precomputed sphere generated using 5000 data points in X and a % distance between gridpoints of 0.05.  % Load saved results. load qhulldemo cla reset; hold on d = -0.8:0.05:0.8; [x0,y0,z0] = meshgrid(d,d,d); h = patch(isosurface(x0,y0,z0,v0,0.6)); isonormals(x0,y0,z0,v0,h); set(h,'FaceColor','red','EdgeColor','none'); view(3); axis equal tight off vis3d; camzoom(1.6) camlight; lighting phong rotate3d on   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

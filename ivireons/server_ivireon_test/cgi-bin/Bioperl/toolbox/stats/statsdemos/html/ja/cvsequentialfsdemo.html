@@ -1,0 +1,176 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>高次元のデータを分類する特徴の選択</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="cvsequentialfsdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit cvsequentialfsdemo">エディターで cvsequentialfsdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo cvsequentialfsdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>高次元のデータを分類する特徴の選択</h1><!--introduction--><p>統計を学ぶうえで重要なのは、特徴の数 (次元) を減らすことです。特徴の数が多く観測の数が限られているデータセット (バイオインフォマティクス データなど) が多く存在する場合、特徴の数が多いことは、目標とする学習結果を得るには適さず、限られた観測数により、学習アルゴリズムがノイズにオーバーフィットする結果となることがあります。特徴数を減らすと、記憶領域と費やす時間が削減され、より正確に理解できるようになります。</p><p>特徴数を減らすには、特徴選択と特徴変換という 2 つの主な方法があります。特徴選択アルゴリズムでは、オリジナルの特徴セットから特徴のサブセットを選択します。特徴変換方法では、オリジナルの高次元特徴空間から次元の低い新しい空間にデータを変換します。</p><p>このデモでは、特徴選択方法に重点を置いて説明します。また特に、Statistics Toolbox™ を使用して、最も一般的な特徴選択アルゴリズムの 1 つである、逐次特徴選択を実行する方法について説明します。ホールドアウトと交差検定を使用して、選択した特徴の性能を評価する方法についても示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">データの読み込み</a></li><li><a href="#2">トレーニング セットとテスト セットへのデータの分割</a></li><li><a href="#5">すべての特徴を使用してデータを分類する際の問題</a></li><li><a href="#6">簡単なフィルター方法を使用した特徴の選択</a></li><li><a href="#12">逐次特徴選択の適用</a></li></ul></div><h2>データの読み込み<a name="1"></a></h2><p>血清プロテオミクス パターン診断を使用すると、疾患のある患者と疾患のない患者の観測を区別することができます。プロファイル パターンは、SELDI (表面増強レーザ脱着/イオン化) タンパク質質量分析を使用して生成されます。これらの特徴は、特定の質量/充填量値でのイオン強度レベルです。</p><p>このデモのデータについては、<a href="http://home.ccr.cancer.gov/ncifdaproteomics/ppatterns.asp">FDA-NCI 臨床プロテオミクス プログラム データ バンク</a>を参照してください。このデモでは、WCX2 タンパク質配列を使用して生成された高解像度の卵巣癌データセットを使用します。Bioinformatics Toolbox™ の <a href="http://www.mathworks.com/products/bioinfo/demos.html?file=/products/demos/shipping/bioinfo/mspreprodemo.html">Pre-processing Raw Mass Spectrometry Data</a> のデモで説明されている手順と同様の前処理手順を実行した後は、データ セットには、2 つの変数 (<tt>obs</tt> と <tt>grp</tt>) が含まれます。変数 <tt>obs</tt> は、4000 の特徴と 216 の観測から構成されます。<tt>grp</tt> の各要素によって、<tt>obs</tt> の対応する行が属するグループが定義されます。</p><pre class="codeinput">load <span class="string">ovariancancer</span>;
+whos
+</pre><pre class="codeoutput">  Name        Size                Bytes  Class     Attributes
+
+  grp       216x1                 26784  cell                
+  obs       216x4000            3456000  single              
+
+</pre><h2>トレーニング セットとテスト セットへのデータの分割<a name="2"></a></h2><p>このデモで使用される関数の一部は、MATLAB&reg; 組み込み乱数生成関数を呼び出します。このデモで示された結果を再現するには、次のコマンドを実行して既知状態に乱数生成器を設定します。コマンドを実行しないと、結果が異なる場合があります。</p><pre class="codeinput">rand(<span class="string">'twister'</span>,0);
+</pre><p>訓練データの性能 (誤判別の性能) は、独立したテスト セットにおけるモデルの性能を推測するには適切ではありません。誤判別性能は楽観的になりすぎる場合が多くあります。選択したモデルの性能を予測するには、モデルの構築に使用されなかった別のデータ セットでの性能を評価する必要があります。この例題では、<tt>cvpartition</tt> を使用して、サイズ 160 のトレーニング セットとサイズ 56 のテスト セットにデータを分割します。トレーニング セットとテスト セットの比率は、<tt>grp</tt> のグループ比率とおおよそ同じです。訓練データを使用して特徴を選択し、テストデータの選択された特徴の性能を検証します。このような方法は通常、ホールドアウト検定と呼ばれます。モデルを評価および選択するために簡単で広く使用されているもう 1 つの方法には、交差検定があります。交差検定についてはこのデモの後半で説明します。</p><pre class="codeinput">holdoutCVP = cvpartition(grp,<span class="string">'holdout'</span>,56)
+</pre><pre class="codeoutput">
+holdoutCVP = 
+
+Hold-out cross validation partition
+             N: 216
+   NumTestSets: 1
+     TrainSize: 160
+      TestSize: 56
+</pre><pre class="codeinput">dataTrain = obs(holdoutCVP.training,:);
+grpTrain = grp(holdoutCVP.training);
+</pre><h2>すべての特徴を使用してデータを分類する際の問題<a name="5"></a></h2><p>最初に特徴数を減らさないと、特徴数が観測数を大幅に上回るため、このデモで使用されるデータ セットの分類アルゴリズムは失敗する場合があります。このデモでは、分類アルゴリズムとして QDA (2 次判別分析) を使用します。次のコマンドに示すように、すべての特徴を使用してデータに QDA を適用すると、各グループで共分散行列を推定するのに十分な標本を得られないため、誤差が発生します。</p><pre class="codeinput"><span class="keyword"><pre> try</span>
+   yhat = classify(obs(holdoutCVP.test(),:), dataTrain, grpTrain,<span class="string">'quadratic'</span>);
+<span class="keyword">catch</span> ME
+   display(ME.message);
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">TRAINING の各グループの共分散行列は、正定値でなければなりません。
+</pre><h2>簡単なフィルター方法を使用した特徴の選択<a name="6"></a></h2><p>ここでの目的は、優れた分類性能を得ることができる重要な特徴の小規模なセットを見つけ出して、データの次元を減らすことです。特徴選択アルゴリズムは、フィルター方法とラッパー方法の 2 つのカテゴリにおおよそ分類できます。フィルター方法は、データの一般的特性に依存して、選択された学習アルゴリズム (このデモでは QDA) を含まない特徴のサブセットを評価および選択します。ラッパー方法では、選択された学習アルゴリズムの性能を使用して、各候補特徴のサブセットを評価します。ラッパー方法では、選択された学習アルゴリズムに最適な特徴を検索しますが、学習アルゴリズムの実行時間が長い場合、フィルター方法より速度が大幅に低下する可能性があります。「フィルター」と「ラッパー」の概念は、文献 (John G. Kohavi R. (1997) &quot;Wrappers for feature subset selection&quot;, Artificial Intelligence, Vol.97, No.1-2, pp.272-324) を参照してください。このデモでは、フィルター方法とラッパー方法の例題を 1 つずつ示します。</p><p>フィルターは通常、簡単かつ高速であるため、前処理手順として使用されます。バイオインフォマティクス データで広く使用されるフィルター方法では、特徴間に交互作用がないことを前提に、各特徴に一変量基準を個別に適用します。</p><p>たとえば、各特徴に <i>t</i> 検定を適用して、グループの分割における有効性の測定として各特徴の <i>p</i> 値(または <i>t</i> 統計量の絶対値) を比較するとします。</p><pre class="codeinput">dataTrainG1 = dataTrain(grp2idx(grpTrain)==1,:);
+dataTrainG2 = dataTrain(grp2idx(grpTrain)==2,:);
+[h,p,ci,stat] = ttest2(dataTrainG1,dataTrainG2,[],[],<span class="string">'unequal'</span>);
+</pre><p>各特徴によって 2 つのグループがどの程度適切に分割されているかについて一般的な概念を得るには、<i>p</i> 値の実測の累積分布関数 (CDF) をプロットします。</p><pre class="codeinput">ecdf(p);
+xlabel(<span class="string">'P value'</span>);
+ylabel(<span class="string">'CDF value'</span>)
+</pre><img vspace="5" hspace="5" src="../cvsequentialfsdemo_01.png" alt=""> <p>0 値に近い <i>p</i> 値を持つ特徴は 35%、0.05 より小さな <i>p</i> 値を持つ特徴は 50% 存在します。つまり、識別力の大きいオリジナルの 4000 の特徴のうち約 2000 の特徴ということになります。特徴の <i>p</i> 値 (または <i>t</i> 統計量の絶対値) に応じてこれらの特徴を並べ替えて、並べ替えられたリストから特徴を選択することが可能ですが、ドメインに熟知している、または検討可能な特徴の最大数が外部の制約に基づいてあらかじめ指定されている場合を除き、通常、必要な特徴数を決定することは困難です。</p><p>必要な特徴数を決定する簡単な方法の 1 つには、テスト セットの MCE (誤判別エラー、観測数によって除算した誤判別観測数など) を特徴数の関数としてプロットします。トレーニング セットには 160 の観測しか存在しないため、QDA に適用できる特徴の最大数は限られます。それ以外の場合、共分散行列を推定するのに十分な標本が各グループに存在しないことがあります。実際、このデモで使用されるデータの場合、2 つのグループのホールドアウト区分とサイズによって、QDA を適用できる特徴の最大許容数は約 70 であると指定されます。ここで、5 から 70 までの特徴数の MCE を計算し、特徴数の関数として MCE のプロットを示します。選択したモデルの性能を合理的に推定するために重要なのは、QDA モデルに適合する 160 の訓練標本を使用して、56 のテスト観測の MCE (次のプロットで青の円マーク) を計算することです。また、誤判別率がテスト誤差の優れた推定誤差ではない理由を説明するため、誤判別 MCE を赤の三角形マークで示しています。</p><pre class="codeinput">[ignore,featureIdxSortbyP]= sort(p,2); <span class="comment">%sort the features</span>
+testMCE =zeros(1,14);
+resubMCE = zeros(1,14);
+nfs = 5:5:70;
+classf = @(xtrain,ytrain,xtest,ytest) <span class="keyword">...</span>
+             sum(~strcmp(ytest,classify(xtest,xtrain,ytrain,<span class="string">'quadratic'</span>)));
+resubCVP = cvpartition(length(grp),<span class="string">'resubstitution'</span>)
+<span class="keyword">for</span> i=1:14
+   fs = featureIdxSortbyP(1:nfs(i));
+   testMCE(i) = crossval(classf,obs(:,fs),grp,<span class="string">'partition'</span>,holdoutCVP)<span class="keyword">...</span>
+       /holdoutCVP.TestSize;
+   resubMCE(i) = crossval(classf,obs(:,fs),grp,<span class="string">'partition'</span>,resubCVP)/<span class="keyword">...</span>
+       resubCVP.TestSize;
+<span class="keyword">end</span>
+ plot(nfs, testMCE,<span class="string">'o'</span>,nfs,resubMCE,<span class="string">'r^'</span>);
+ xlabel(<span class="string">'Number of Features'</span>);
+ ylabel(<span class="string">'MCE'</span>);
+ legend({<span class="string">'MCE on the test set'</span> <span class="string">'Resubstitution MCE'</span>},<span class="string">'location'</span>,<span class="string">'NW'</span>);
+ title(<span class="string">'Simple Filter Feature Selection Method'</span>);
+</pre><pre class="codeoutput">
+resubCVP = 
+
+Resubstitution (no partition of data)
+             N: 216
+   NumTestSets: 1
+     TrainSize: 216
+      TestSize: 216
+</pre><img vspace="5" hspace="5" src="../cvsequentialfsdemo_02.png" alt=""> <p>便宜上、<tt>classf</tt> は無名関数として定義されています。また、classf は、指定されたトレーニング セットの QDA と適合し、指定されたテスト セットの誤判別の標本数を返します。独自の分類アルゴリズムを作成する場合、次に示すように、classf を別のファイルに配置することをお勧めします。</p><pre class="codeinput"><span class="comment">%  function err = classf(xtrain,ytrain,xtest,ytest)</span>
+<span class="comment">%       yfit = classify(xtest,xtrain,ytrain,'quadratic');</span>
+<span class="comment">%        err = sum(~strcmp(ytest,yfit));</span>
+</pre><p>誤判別 MCE は楽観的過ぎます。MCE では、より多くの特徴が使用されると常に減少し、60 を超える特徴が使用されると 0 になります。ただし、誤判別率が減少しているときにテスト誤差が増加すると、オーバーフィッティングが発生する場合があります。この簡単なフィルター特徴選択方法では、20 の特徴が使用されると、テスト セットで最小の MCE が取得されます。プロットは、20 を超える特徴が使用された場合に発生するオーバーフィッティングを示します。テスト セットの最小の MCE は約 10% です。</p><pre class="codeinput">testMCE(4)
+</pre><pre class="codeoutput">
+ans =
+
+    0.0536
+
+</pre><p>10% MCE を達成する特徴は、並べ替えられたリストの最初の 20 の特徴です。</p><pre class="codeinput">featureIdxSortbyP(1:20)
+</pre><pre class="codeoutput">
+ans =
+
+  Columns 1 through 6
+
+        2814        2897        2813        2650        2642        2645
+
+  Columns 7 through 12
+
+        2644        2338        2643        2730        2337        2398
+
+  Columns 13 through 18
+
+        2399        2731        2898        2452        2651        2637
+
+  Columns 19 through 20
+
+        2636        2638
+
+</pre><h2>逐次特徴選択の適用<a name="12"></a></h2><p>上記の特徴選択アルゴリズムでは、特徴間の相互作用が考慮されていません。また、各ランクに基づいてリストから選択された特徴には、冗長な情報が含まれる可能性があるため、一部の特徴は必要ありません。たとえば、最初に選択された特徴 (301 列) と 2 番目に選択された特徴 (302 列) の間の線形相関係数は 0.965 となります。</p><pre class="codeinput">corrcoef(dataTrain(:,301),dataTrain(:,302))
+</pre><pre class="codeoutput">
+ans =
+
+    1.0000    0.9650
+    0.9650    1.0000
+
+</pre><p>このような簡単な特徴選択手順は通常、高速であるため、前処理手順として使用されます。より高度な特徴選択アルゴリズムでは、性能が向上します。最も広く使用されている方法の 1 つとして、逐次特徴選択があります。この方法では、特定の停止条件に達するまで連続的に追加 (前方検索) または削除 (後方検索) を行うことで、特徴のサブセットを選択します。</p><p>このデモでは、ラッパー形式で前方の逐次特徴選択を使用して重要な特徴を検出します。より具体的には、分類における一般的な目的は、MCE を最小化することであるため、特徴選択手順では、候補特徴サブセットの性能を示すインジケーターとして、各候補特徴サブセットの学習アルゴリズム QDA の MCE を使用して逐次検索を行います。特徴を選択して QDA モデルに適合するにはトレーニング セットを使用し、最終的に選択された特徴の性能を評価するにはテスト セットを使用します。特徴選択手順で各候補特徴サブセットの性能を評価および比較するには、階層化された 10 分割交差検定をトレーニング セットに適用します。交差検定をトレーニング セットに適用することが重要である理由については、後述します。</p><p>まず、トレーニング セットの階層化された 10 分割を生成します。</p><pre class="codeinput">tenfoldCVP = cvpartition(grpTrain,<span class="string">'kfold'</span>,10)
+</pre><pre class="codeoutput">
+tenfoldCVP = 
+
+K-fold cross validation partition
+             N: 160
+   NumTestSets: 10
+     TrainSize: 144  144  144  144  144  144  144  144  144  144
+      TestSize: 16  16  16  16  16  16  16  16  16  16
+</pre><p>前の項で前処理手順として取得したフィルター結果を使用して特徴を選択します。たとえば、次のように 150 の特徴を選択します。</p><pre class="codeinput">fs1 = featureIdxSortbyP(1:150);
+</pre><p>これら 150 の特徴に前方逐次特徴選択を適用します。関数 <tt>sequentialfs</tt> は、必要な特徴数を決定するための簡単な方法 (既定のオプション) を提供します。交差検定 MCE の最初の極小値が検出されると、関数 sequentialfs は停止します。</p><pre class="codeinput"> fsLocal = sequentialfs(classf,dataTrain(:,fs1),grpTrain,<span class="string">'cv'</span>,tenfoldCVP);
+</pre><p>選択された特徴は次のようになります。</p><pre class="codeinput">fs1(fsLocal)
+</pre><pre class="codeoutput">
+ans =
+
+        2814        2731        2646        2659
+
+</pre><p>3 つの特徴を持つ選択されたモデルの性能を評価するには、56 のテスト標本における MCE を計算します。</p><pre class="codeinput">testMCELocal = crossval(classf,obs(:,fs1(fsLocal)),grp,<span class="string">'partition'</span>,<span class="keyword">...</span>
+    holdoutCVP)/holdoutCVP.TestSize
+</pre><pre class="codeoutput">
+testMCELocal =
+
+    0.0536
+
+</pre><p>3 つの特徴だけが選択されているため、MCE は、簡単なフィルター特徴選択方法を使用して最小の MCE と比較できます。</p><p>アルゴリズムは途中で停止する場合があります。合理的な範囲の特徴数ではなく交差検定 MCE の最小値を検索することで、より小さな MCE を達成できる場合があります。たとえば、最大 30 の特徴の特徴数の関数として交差検定 MCE のプロットを次のように描画します。</p><pre class="codeinput">[fsCVfor30,historyCV] = sequentialfs(classf,dataTrain(:,fs1),grpTrain,<span class="keyword">...</span>
+    <span class="string">'cv'</span>,tenfoldCVP,<span class="string">'Nf'</span>,30);
+plot(historyCV.Crit,<span class="string">'o'</span>);
+xlabel(<span class="string">'Number of Features'</span>);
+ylabel(<span class="string">'CV MCE'</span>);
+title(<span class="string">'Forward Sequential Feature Selection with cross-validation'</span>);
+</pre><img vspace="5" hspace="5" src="../cvsequentialfsdemo_03.png" alt=""> <p>9 の特徴が使用されると、交差検定 MCE は最小値に達し、9 から 27 まで (22 の特徴が使用されたときに若干増加する場合を除く) の特徴の範囲でこの曲線は一定に保たれます。28 を超える特徴が使用されると、曲線は右上がりになり、オーバーフィッティングが発生したことを意味します。</p><p>通常、より少ない特徴数が適切であるため、ここでは 9 の特徴を選択します。</p><pre class="codeinput">fsCVfor9 = fs1(historyCV.In(9,:))
+</pre><pre class="codeoutput">
+fsCVfor9 =
+
+  Columns 1 through 6
+
+        2814        2897        2813        2644        2731        2646
+
+  Columns 7 through 9
+
+        2317        2655        2659
+
+</pre><p>前方逐次特徴選択の手順で選択された順序でこれら 9 の特徴を表示するには、<tt>historyCV</tt> 出力でこれらの特徴が初めて true になる行を検索します。</p><pre class="codeinput">[orderlist,ignore] = find( [historyCV.In(1,:); diff(historyCV.In(1:9,:) )]');
+fs1(fsLocal)
+</pre><pre class="codeoutput">
+ans =
+
+  Columns 1 through 6
+
+        2814        2659        2731        2646        2317        2897
+
+  Columns 7 through 9
+
+        2655        2813        2644
+
+</pre><p>これら 9 の特徴を評価するには、テスト セットで QDA の MCE を計算します。これまでで最小の MCE 値が取得されます。</p><pre class="codeinput">testMCECVfor9 = crossval(classf,obs(:,fsCVfor9),grp,<span class="string">'partition'</span>,<span class="keyword">...</span>
+    holdoutCVP)/holdoutCVP.TestSize
+</pre><pre class="codeoutput">
+testMCECVfor9 =
+
+    0.0714
+
+</pre><p>興味深いのは、特徴数の関数として (たとえば、特徴選択手順の実行時に交差検定を実行せずに) トレーニング セットの誤判別 MCE 値のプロットを調べた場合です。</p><pre class="codeinput">[fsResubfor30,historyResub] = sequentialfs(classf,dataTrain(:,fs1),<span class="keyword">...</span>
+     grpTrain,<span class="string">'cv'</span>,<span class="string">'resubstitution'</span>,<span class="string">'Nf'</span>,30);
+plot(1:30, historyCV.Crit,<span class="string">'bo'</span>,1:30, historyResub.Crit,<span class="string">'r^'</span>);
+xlabel(<span class="string">'Number of Features'</span>);
+ylabel(<span class="string">'MCE'</span>);
+legend({<span class="string">'10-fold CV MCE'</span> <span class="string">'Resubstitution MCE'</span>},<span class="string">'location'</span>,<span class="string">'NE'</span>);
+</pre><img vspace="5" hspace="5" src="../cvsequentialfsdemo_04.png" alt=""> <p>ここでも、誤判別 MCE の値は楽観的過ぎます。誤判別 MCE の値は交差検定 MCE の値より小さく、22 の特徴が使用されると、MCE は 0 になります。テスト セットにおけるこれら 22 の特徴の MCE 値を計算して、22 の特徴の性能を確認することができます。</p><pre class="codeinput">fsResubfor22 = fs1(historyResub.In(22,:));
+testMCEResubfor22 = crossval(classf,obs(:,fsResubfor22),grp,<span class="string">'partition'</span>,<span class="keyword">...</span>
+    holdoutCVP)/holdoutCVP.TestSize
+</pre><pre class="codeoutput">
+testMCEResubfor22 =
+
+    0.0893
+
+</pre><p>テスト セットの (特徴選択手順の誤判別によって選択された) 22 の特徴の性能、<tt>testMCEResubfor22</tt> は、テスト セットの (特徴選択手順の 10 分割交差検定によって選択された) 9 の特徴の性能、<tt>testMCECVfor9</tt> より大きくなっています。ここでも、特徴を評価および選択する際に性能の推定として誤判別率を使用するのは適切ではありません。最終的な評価手順の場合だけでなく、特徴選択手順の場合にも、誤判別率の使用を避けることをお勧めします。</p><p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Selecting Features for Classifying High-dimensional Data % Reducing the number of features (dimensionality) is important in  % statistical learning. For many data sets with a large number of features % and a limited number of observations, such as bioinformatics data, % usually many features are not useful for producing a desired learning % result and the limited observations may lead the learning algorithm to % overfit to the noise. Reducing features can also save storage and % computation time and increase comprehensibility. % % There are two main approaches to reducing features: feature selection and % feature transformation.  Feature selection algorithms select a subset of % features from the original feature set; feature transformation % methods transform data from the original high-dimensional feature space % to a new space with reduced dimensionality.  % % This demo focuses on feature selection techniques. More specifically, % this demo shows how to use the functions in the Statistics Toolbox(TM) to % perform sequential feature selection, which is one of the most popular % feature selection algorithms. It also shows how to use holdout and % cross-validation to evaluate the performance of the selected features.  %   Copyright 2007-2009 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:29:29 $  %% Loading the Data % Serum proteomic pattern diagnostics can be used to differentiate observations % from patients with and without disease. Profile patterns are generated % using surface-enhanced laser desorption and ionization (SELDI) protein % mass spectrometry. These features are ion intensity levels at specific % mass/charge values. % % The data in this demo is from the % <http://home.ccr.cancer.gov/ncifdaproteomics/ppatterns.asp FDA-NCI % Clinical Proteomics Program Databank>. This demo uses the high-resolution % ovarian cancer data set that was generated using the WCX2 protein array. % After some pre-processing steps, similar to those shown in the % Bioinformatics Toolbox(TM) demo % <http://www.mathworks.com/products/bioinfo/demos.html?file=/products/demos/shipping/bioinfo/mspreprodemo.html  % Pre-processing Raw Mass Spectrometry % Data>, the data set has two variables |obs| and |grp|. The |obs| % variable consists 216 observations with 4000 features. Each element in % |grp| defines the group to which the corresponding row of |obs| belongs.  load ovariancancer;  whos %% Dividing Data Into a Training Set and a Test Set  % Some of the functions used in this demo call MATLAB(R) built-in random % number generation functions. To duplicate the exact results shown in this % demo, execute the command below to set the random number % generators to a known state. Otherwise, your results may differ. rand('twister',0);  %% % The performance on the training data (resubstitution performance) is not % a good estimate for a model's performance on an independent test set. % Resubstitution performance will usually be over-optimistic. To predict % the performance of a selected model, you need to assess its performance % on another data set that was not used to build the model. Here, we use % |cvpartition| to divide data into a training set of size 160 and a test % set of size of size 56. Both the training set and the test set have % roughly the same group proportions as in |grp|. We select features using % the training data and judge the performance of the selected % features on the test data. This is often called holdout validation. % Another simple and widely-used method for evaluating and selecting a % model is cross-validation, which will be illustrated later in this demo. % holdoutCVP = cvpartition(grp,'holdout',56) %% dataTrain = obs(holdoutCVP.training,:); grpTrain = grp(holdoutCVP.training);  %% The Problem of Classifying Data Using All the Features % Without first reducing the number of features, some classification % algorithms would fail on the data set used in this demo, since the number % of features is much larger than the number of observations. In this demo, % we use Quadratic Discriminant Analysis (QDA) as the classification % algorithm. If we apply QDA on the data using all the features, as shown % in the following, we will get an error because there are not enough % samples in each group to estimate a covariance matrix.  try    yhat = classify(obs(holdoutCVP.test(),:), dataTrain, grpTrain,'quadratic'); catch ME    display(ME.message); end %% Selecting Features Using a Simple Filter Approach % Our goal is to reduce the dimension of the data by finding a small set of % important features which can give good classification performance. % Feature selection algorithms can be roughly grouped into two categories: % filter methods and wrapper methods. Filter methods rely on general % characteristics of the data to evaluate and to select the feature subsets % without involving the chosen learning algorithm (QDA in this demo). % Wrapper methods use the performance of the chosen learning algorithm to % evaluate each candidate feature subset. Wrapper methods search for % features better fit for the chosen learning algorithm, but they can be % significantly slower than filter methods if the learning algorithm takes % a long time to run. The concepts of "filters" and "wrappers" are % described in John G. Kohavi R. (1997) "Wrappers for feature subset % selection", Artificial Intelligence, Vol.97, No.1-2, pp.272-324. This % demo shows one example of a filter method and one example of a wrapper % method. % % Filters are usually used as a pre-processing step since they are simple % and fast. A widely-used filter method for bioinformatics data is to apply % a univariate criterion separately on each feature, assuming that there is % no interaction between features.  % % For example, we might apply the _t_-test on each feature and compare % _p_-value (or the absolute values of _t_-statistics) for each % feature as a measure of how effective it is at separating groups. dataTrainG1 = dataTrain(grp2idx(grpTrain)==1,:); dataTrainG2 = dataTrain(grp2idx(grpTrain)==2,:); [h,p,ci,stat] = ttest2(dataTrainG1,dataTrainG2,[],[],'unequal'); %% % In order to get a general idea of how well-separated the two groups are % by each feature, we plot the empirical cumulative distribution function % (CDF) of the _p_-values: ecdf(p); xlabel('P value');  ylabel('CDF value')    %% % There are about 35% of features having _p_-values close to zero and 50% % of features having _p_-values smaller than 0.05, meaning there about 2000 % features among the original 4000 features that have strong discrimination % power. One can sort these features according to their _p_-values (or the % absolute values of the _t_-statistic) and select some features from the % sorted list. However, it is usually difficult to decide how many features % are needed unless one has some domain knowledge or the maximum number of % features that can be considered has been dictated in advance based on % outside constraints.  % % One quick way to decide the number of needed features is to plot the MCE % (misclassification error, i.e., the number of misclassified observations % divided by the number of observations) on the test set as a function of % the number of features. Since there are only 160 observations in the % training set, the largest number of features for applying QDA is limited, % otherwise, there may not be enough samples in each group to estimate a % covariance matrix. Actually, for the data used in this demo, the holdout % partition and the sizes of two groups dictate that the largest allowable % number of features for applying QDA is about 70.  % Now we compute MCE for various numbers of features between 5 and 70 and % show the plot of MCE as a function of the number of features. In order to % reasonably estimate the performance of the selected model, it is % important to use the 160 training samples to fit the QDA model and % compute the MCE on the 56 test observations (blue circular marks in the % following plot). To illustrate why resubstitution error is not a good % error estimate of the test error, we also show the resubstitution MCE % using red triangular marks. % [ignore,featureIdxSortbyP]= sort(p,2); %sort the features testMCE =zeros(1,14); resubMCE = zeros(1,14); nfs = 5:5:70; classf = @(xtrain,ytrain,xtest,ytest) ...              sum(~strcmp(ytest,classify(xtest,xtrain,ytrain,'quadratic'))); resubCVP = cvpartition(length(grp),'resubstitution')          for i=1:14    fs = featureIdxSortbyP(1:nfs(i));    testMCE(i) = crossval(classf,obs(:,fs),grp,'partition',holdoutCVP)...        /holdoutCVP.TestSize;    resubMCE(i) = crossval(classf,obs(:,fs),grp,'partition',resubCVP)/...        resubCVP.TestSize; end  plot(nfs, testMCE,'o',nfs,resubMCE,'r^');  xlabel('Number of Features');  ylabel('MCE');  legend({'MCE on the test set' 'Resubstitution MCE'},'location','NW');  title('Simple Filter Feature Selection Method');  %%  % For convenience, |classf| is defined as an anonymous function. It fits % QDA on the given training set and returns the number of misclassified % samples for the given test set. If you were developing your own % classification algorithm, you might want to put it in a separate file, as % follows:  %  function err = classf(xtrain,ytrain,xtest,ytest) %       yfit = classify(xtest,xtrain,ytrain,'quadratic'); %        err = sum(~strcmp(ytest,yfit));  %% % The resubstitution MCE is over-optimistic. It consistently decrease when % more features are used and drops to zero when more than 60 features are % used. However, if the test error increases while the resubstitution error % still decreases, then overfitting may have occurred. This simple filter % feature selection method gets the smallest MCE on the test set when 20 % features are used. The plot shows overfitting occurs when more than 20 % features are used. The smallest MCE on the test set is about 10%: testMCE(4) %% % The features that achieve 10% MCE are the first 20 features in the sorted % list: featureIdxSortbyP(1:20)  %% Applying Sequential Feature Selection % The above feature selection algorithm does not consider interaction % between features; besides, features selected from the list based on their % individual ranking may also contain redundant information, so that not % all the features are needed. For example, the linear correlation % coefficient between the first selected feature (column 301) and the % second selected feature (column 302) is 0.965. corrcoef(dataTrain(:,301),dataTrain(:,302)) %% % This kind of simple feature selection procedure is usually used as a % pre-processing step since it is fast. More advanced feature selection % algorithms improve the performance. Sequential feature selection is one % of the most widely used techniques. It selects a subset of features by % sequentially adding (forward search) or removing (backward search) until % certain stopping conditions are satisfied.  % % In this demo, we use forward sequential feature selection in a wrapper % fashion to find important features. More specifically, since the typical % goal of classification is to minimize the MCE, the feature selection % procedure performs a sequential search using the MCE of the learning % algorithm QDA on each candidate feature subset as the performance % indicator for that subset. The training set is used to select the % features and to fit the QDA model, and the test set is used to evaluate % the performance of the finally selected feature. During the feature % selection procedure, to evaluate and to compare the performance of the % each candidate feature subset, we apply stratified 10-fold % cross-validation to the training set. We will illustrate later why % applying cross-validation to the training set is important. % % First we generate a stratified 10-fold partition for the training set: tenfoldCVP = cvpartition(grpTrain,'kfold',10)  %% % Then we use the filter results from the previous section as a % pre-processing step to select features. For example, we select 150 % features here: fs1 = featureIdxSortbyP(1:150); %% % We apply forward sequential feature selection on these 150 features. % The function |sequentialfs| provides a simple way (the default option) to % decide how many features are needed. It stops when the first local % minimum of the cross-validation MCE is found.  fsLocal = sequentialfs(classf,dataTrain(:,fs1),grpTrain,'cv',tenfoldCVP); %% % The selected features are the following: fs1(fsLocal)  %% % To evaluate the performance of the selected model with three features, % we compute the MCE on the 56 test samples. testMCELocal = crossval(classf,obs(:,fs1(fsLocal)),grp,'partition',...     holdoutCVP)/holdoutCVP.TestSize %%  % With only three features being selected, the MCE is comparable to the % smallest MCE using the simple filter feature selection method.  %% % The algorithm may have stopped prematurely. Sometimes a smaller MCE is % achievable by looking for the minimum of the cross-validation MCE over a % reasonable range of number of features. For example, we draw the plot of % the cross-validation MCE as a function of the number of features for up % to 30 features. [fsCVfor30,historyCV] = sequentialfs(classf,dataTrain(:,fs1),grpTrain,...     'cv',tenfoldCVP,'Nf',30); plot(historyCV.Crit,'o'); xlabel('Number of Features'); ylabel('CV MCE'); title('Forward Sequential Feature Selection with cross-validation'); %% % The cross-validation MCE reaches the minimum value when 9 features are % used and this curve stays flat over the range from 9 features to 27 % features (except for a slight increase when 22 features are used). Also % the curve goes up when more than 28 features are used, which means % overfitting occurs there. % % It is usually preferable to have fewer features, so here we pick 9 % features: fsCVfor9 = fs1(historyCV.In(9,:)) %%  % To show these 9 features in the order in which they are selected in the % sequential forward procedure, we found the row in which they first become % true in the |historyCV| output: [orderlist,ignore] = find( [historyCV.In(1,:); diff(historyCV.In(1:9,:) )]'); fs1(orderlist) %% % To evaluate these 9 features, we compute their MCE for QDA on the test % set. We get the smallest MCE value so far: testMCECVfor9 = crossval(classf,obs(:,fsCVfor9),grp,'partition',...     holdoutCVP)/holdoutCVP.TestSize   %% % It is interesting to look at the plot of resubstitution MCE values on the % training set (i.e., without performing cross-validation during the % feature selection procedure) as a function of the number of features: [fsResubfor30,historyResub] = sequentialfs(classf,dataTrain(:,fs1),...      grpTrain,'cv','resubstitution','Nf',30); plot(1:30, historyCV.Crit,'bo',1:30, historyResub.Crit,'r^'); xlabel('Number of Features'); ylabel('MCE'); legend({'10-fold CV MCE' 'Resubstitution MCE'},'location','NE'); %% % Again, the resubstitution MCE values are over-optimistic here. They % are smaller than the cross-validation MCE values, and the MCE goes to % zero when 22 features are used. We can compute the MCE value of these 22 % features on the test set to see the performance of these 22 features: fsResubfor22 = fs1(historyResub.In(22,:)); testMCEResubfor22 = crossval(classf,obs(:,fsResubfor22),grp,'partition',...     holdoutCVP)/holdoutCVP.TestSize  %% % |testMCEResubfor22|, the performance of these 22 features (chosen by % resubstitution during the feature selection procedure) on the test set, % is larger than |testMCECVfor9|, the performance of the 9 features (chosen % by 10-fold cross-validation during the feature selection procedure) on % the test set. It again indicates that the resubstitution error generally % is not a good performance estimate for evaluating and selecting features. % We may want to avoid using resubstitution error, not only during the % final evaluation step, but also during the feature selection procedure.   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

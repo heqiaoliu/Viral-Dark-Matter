@@ -1,0 +1,419 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Spatial Multiplexing</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="spatialMultiplexing.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit spatialMultiplexing">Open spatialMultiplexing.m in the Editor</a></div><div class="right"><a href="matlab:echodemo spatialMultiplexing">Run in the Command Window</a></div></div><div class="content"><h1>Spatial Multiplexing</h1><!--introduction--><p>This demo introduces Spatial Multiplexing schemes wherein the data stream is subdivided into independent sub-streams, one for each transmit antenna employed.  As a consequence, they provide a multiplexing gain and do not require explicit orthogonalization as needed for space-time block coding.</p><p>Spatial multiplexing requires powerful decoding techniques at the receiver though. Of the many proposed [1], this demo highlights two ordered Successive Interference Cancellation (SIC) detection schemes. These schemes are similar to the original Bell Labs Layered Space-Time (BLAST) techniques as per [2], [3].</p><p>For expositional benefits the demo uses the basic 2x2 MIMO system employing two transmit and two receive antennas. For an uncoded QPSK modulated system it employs flat Rayleigh fading over independent transmit-receive links. At the receiver end, we assume perfect channel knowledge with no feedback to the transmitter, i.e. an open-loop spatial multiplexing system.</p><p>The demo shows two nonlinear interference cancellation methods - Zero-Forcing and Minimum-Mean-Square-Error - with symbol cancellation and compares their performance with the Maximum-Likelihood optimum receiver.</p><!--/introduction--><p>We start by defining some common simulation parameters</p><pre class="codeinput">N = 2;                  <span class="comment">% Number of Transmit antennas</span>
+M = 2;                  <span class="comment">% Number of Receive antennas</span>
+EbNoVec = 2:3:8;       <span class="comment">% Eb/No in dB</span>
+modOrd = 2;             <span class="comment">% constellation size = 2^modOrd</span>
+numSym = N;             <span class="comment">% number of symbols</span>
+</pre><p>and set up the simulation.</p><pre class="codeinput"><span class="comment">% Create a local random stream to be used by random number generators for</span>
+<span class="comment">% repeatability.</span>
+hStr = RandStream(<span class="string">'mt19937ar'</span>);
+
+<span class="comment">% Get all bit combinations for ML receiver</span>
+bits = de2bi(0:2^(modOrd*N)-1, <span class="string">'left-msb'</span>)';
+<span class="comment">% Split them per Transmit antenna</span>
+b = zeros(N, modOrd, length(bits));
+<span class="keyword">for</span> i = 1:length(bits)
+    b(:, :, i) = reshape(bits(:,i), modOrd, N)';
+<span class="keyword">end</span>
+
+<span class="comment">% Preallocate variables for speed</span>
+dist = zeros(length(bits), 1);
+[BER_ZF, BER_MMSE, BER_ML] = deal(zeros(1, length(EbNoVec)));
+
+<span class="comment">% Create QPSK mod-demod objects</span>
+hMod = modem.pskmod(<span class="string">'M'</span>, 2^modOrd, <span class="string">'SymbolOrder'</span>, <span class="string">'gray'</span>, <span class="string">'InputType'</span>, <span class="string">'bit'</span>);
+hDemod = modem.pskdemod(hMod);
+</pre><p>The simulation loop below simultaneously evaluates the BER performance of the three receiver schemes for each Eb/No value using the same data and channel realization. A short range of Eb/No values are used for simulation purposes. Results for a larger range, using the same code, are presented later.</p><pre class="codeinput"><span class="comment">% Set up a figure for visualizing BER results</span>
+h = gcf; grid <span class="string">on</span>; hold <span class="string">on</span>;
+set(gca,<span class="string">'yscale'</span>,<span class="string">'log'</span>,<span class="string">'xlim'</span>,[EbNoVec(1)-0.01, EbNoVec(end)],<span class="string">'ylim'</span>,[1e-3 1]);
+xlabel(<span class="string">'Eb/No (dB)'</span>); ylabel(<span class="string">'BER'</span>); set(h,<span class="string">'NumberTitle'</span>,<span class="string">'off'</span>);
+set(h, <span class="string">'renderer'</span>, <span class="string">'zbuffer'</span>); set(h,<span class="string">'Name'</span>,<span class="string">'Spatial Multiplexing'</span>);
+title(<span class="string">'2x2 Uncoded QPSK System'</span>);
+
+<span class="comment">% Loop over selected EbNo points</span>
+<span class="keyword">for</span> idx = 1:length(EbNoVec)
+    nErrs_zf = 0; nErrs_mmse = 0; nErrs_ml = 0;
+    nBits = 0;
+    <span class="keyword">while</span> ( ((nErrs_zf &lt; 100) || (nErrs_mmse &lt; 100) || (nErrs_ml &lt; 100)) <span class="keyword">...</span>
+            &amp;&amp; (nBits &lt; 1e4))
+        <span class="comment">% Create array of bits to modulate</span>
+        msg = randi(hStr, [0 1], modOrd, numSym);
+
+        <span class="comment">% Modulate data</span>
+        source = modulate(hMod, msg);
+
+        <span class="comment">% Split source among N transmitters (symbol-wise)</span>
+        Tx = reshape(source, N, numel(source)/N); clear <span class="string">source</span>;
+
+        <span class="comment">% Flat Rayleigh Fading  - independent links</span>
+        RayleighMat = (randn(hStr, M, N) +  1i*randn(hStr, M, N))/sqrt(2);
+
+        <span class="comment">% Calculate SNR from EbNo</span>
+        snr = EbNoVec(idx) + 10*log10(modOrd);
+
+        <span class="comment">% Add channel noise power to faded data</span>
+        r = awgn(RayleighMat*Tx, snr, 0, hStr); clear <span class="string">Tx</span>;
+        r_store = r;
+
+        <span class="comment">% Assume perfect channel estimation</span>
+        H = RayleighMat;
+
+        <span class="comment">% Zero-Forcing SIC receiver</span>
+        E_zf = zeros(modOrd, numSym); k = zeros(N, 1);
+        <span class="comment">%   Initialization</span>
+        G = pinv(H);
+        [val, k0] = min(sum(abs(G).^2,2));
+        <span class="comment">%   Start Zero-Forcing Nulling Loop</span>
+        <span class="keyword">for</span> n = 1:N
+            <span class="comment">% Find best transmitter signal using minimum norm</span>
+            k(n) = k0;
+
+            <span class="comment">% Select Weight vector for best transmitter signal</span>
+            w = G(k(n),:);
+
+            <span class="comment">% Calculate output for transmitter n and demodulate bitstream</span>
+            y = w * r;
+            E_zf(:, k(n):N:end) = reshape(demodulate(hDemod, y), modOrd, numSym/N);
+
+            <span class="comment">% Subtract effect of the transmitter n from received signal</span>
+            z = modulate(hMod, demodulate(hDemod, y));
+            r = r - H(:, k(n))*z;
+
+            <span class="comment">% Adjust channel estimate matrix for next minimum norm search</span>
+            H(:, k(n)) = zeros(M, 1);
+            G = pinv(H);
+            <span class="keyword">for</span> aa = 1:n
+                G(k(aa), :) = inf;
+            <span class="keyword">end</span>
+            [val, k0] = min(sum(abs(G).^2,2));
+        <span class="keyword">end</span>
+
+        <span class="comment">% Restore variables for next receiver</span>
+        H = RayleighMat; r = r_store;
+
+        <span class="comment">% MMSE SIC receiver</span>
+        E_mmse = zeros(modOrd, numSym); k = zeros(N, 1);
+        <span class="comment">%   Initialization</span>
+        G = (H'*H + N/(10^(0.1*snr))*eye(N)) \ H';
+        [val, k0] = min(sum(abs(G).^2,2));
+        <span class="comment">%   Start MMSE Nulling Loop</span>
+        <span class="keyword">for</span> n = 1:N
+            <span class="comment">% Find best transmitter signal using Min Norm</span>
+            k(n) = k0;
+
+            <span class="comment">% Select Weight vector for best transmitter signal</span>
+            w = G(k(n),:);
+
+            <span class="comment">% Calculate output for transmitter n and demodulate bitstream</span>
+            y = w * r;
+            E_mmse(:, k(n):N:end) = reshape(demodulate(hDemod, y), modOrd, numSym/N);
+
+            <span class="comment">% Subtract effect of the transmitter n from received signal</span>
+            z = modulate(hMod, demodulate(hDemod, y));
+            r = r - H(:, k(n))*z;
+
+            <span class="comment">% Adjust channel estimate matrix for next min Norm search</span>
+            H(:, k(n)) = zeros(M, 1);
+            G = (H'*H + N/(10^(0.1*snr))*eye(N)) \ H';
+            <span class="keyword">for</span> aa = 1:n
+                G(k(aa), :) = inf;
+            <span class="keyword">end</span>
+            [val, k0] = min(sum(abs(G).^2,2));
+        <span class="keyword">end</span>
+
+        <span class="comment">% Restore variables for next receiver</span>
+        H = RayleighMat; r = r_store;
+
+        <span class="comment">% ML receiver</span>
+        <span class="keyword">for</span> i = 1:2^(modOrd*N)
+            <span class="comment">% Signal constellation for each bit combination</span>
+            sig = modulate(hMod, b(:, :, i)').';
+
+            <span class="comment">% Distance metric for each constellation</span>
+            dist(i) = sum(abs(r - H*sig).^2);
+        <span class="keyword">end</span>
+        <span class="comment">% Get the minimum</span>
+        [notUsed, val] = min(dist);
+        E_ml = b(:,:,val)'; <span class="comment">% detected bits</span>
+
+        <span class="comment">% Collect errors</span>
+        nErrs_zf = nErrs_zf + biterr(msg, E_zf);
+        nErrs_mmse = nErrs_mmse + biterr(msg, E_mmse);
+        nErrs_ml = nErrs_ml + biterr(msg, E_ml);
+
+        nBits = nBits + length(msg(:));
+    <span class="keyword">end</span>
+
+    <span class="comment">% Calculate BER for current point</span>
+    BER_ZF(idx) = nErrs_zf./nBits;
+    BER_MMSE(idx) = nErrs_mmse./nBits;
+    BER_ML(idx) = nErrs_ml./nBits;
+
+    <span class="comment">% Plot results</span>
+    semilogy(EbNoVec(1:idx), BER_ZF(1:idx), <span class="string">'r*'</span>, <span class="keyword">...</span>
+             EbNoVec(1:idx), BER_MMSE(1:idx), <span class="string">'bo'</span>, <span class="keyword">...</span>
+             EbNoVec(1:idx), BER_ML(1:idx), <span class="string">'gs'</span>);
+    legend(<span class="string">'ZF-SIC'</span>, <span class="string">'MMSE-SIC'</span>, <span class="string">'ML'</span>);
+    drawnow;
+<span class="keyword">end</span>
+
+<span class="comment">% Draw the lines</span>
+semilogy(EbNoVec, BER_ZF, <span class="string">'r-'</span>, EbNoVec, BER_MMSE, <span class="string">'b-'</span>, <span class="keyword">...</span>
+         EbNoVec, BER_ML, <span class="string">'g-'</span>);
+hold <span class="string">off</span>;
+</pre><img vspace="5" hspace="5" src="spatialMultiplexing_01.png" alt=""> <p>As per [4], we realize that the ML receiver is the best in performance followed by the MMSE-SIC and ZF-SIC receivers. In terms of receiver complexity, ML grows exponentially with the number of transmit antennas while the ZF-SIC and MMSE-SIC are linear receivers combined with successive interference cancellation.</p><p>Simulation results comparing the three schemes for a larger range of Eb/No values are displayed next.  These curves allow you to gauge the diversity order attained from the slope of the BER curve.</p><pre class="codeinput">openfig(<span class="string">'spatMuxResults.fig'</span>);
+</pre><img vspace="5" hspace="5" src="spatialMultiplexing_02.png" alt=""> <p>Some areas of further exploration would be to try these methods for a larger number of antennas, with and without channel estimation.</p><p>References:</p><p>[1] George Tsoulos, Ed., "MIMO System Technology for Wireless     Communications", CRC Press, Boca Raton, FL, 2006.</p><p>[2] G. J. Foschini, "Layered space-time architecture for wireless     communication in a fading environment when using multiple antennas,"     The Bell Sys. Tech. Journal, 1996, No. 1, pp. 41-59.</p><p>[3] P. W. Wolniansky, G. J. Foschini, G. D. Golden, R. A. Valenzuela,     "V-BLAST: An Architecture for realizing very high data rates over     the rich scattering wireless channel," 1998 URSI International     Symposium on Signals, Systems, and Electronics, 29 Sep.-2 Oct. 1998,     pp. 295-300.</p><p>[4] X. Li, H. C. Huang, A. Lozano, G. J. Foschini, "Reduced-complexity     detection algorithms for systems using multi-element arrays", IEEE&reg;     Global Telecommunications Conference, 2000. Volume 2, 27 Nov.-1 Dec.     2000, pp. 1072-76.</p><p class="footer">Copyright 2007-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Spatial Multiplexing
+% This demo introduces Spatial Multiplexing schemes wherein the data stream
+% is subdivided into independent sub-streams, one for each transmit antenna 
+% employed.  As a consequence, they provide a multiplexing gain and do not
+% require explicit orthogonalization as needed for space-time block coding.
+%
+% Spatial multiplexing requires powerful decoding techniques at the
+% receiver though. Of the many proposed [1], this demo highlights two ordered 
+% Successive Interference Cancellation (SIC) detection schemes. These 
+% schemes are similar to the original Bell Labs Layered Space-Time (BLAST) 
+% techniques as per [2], [3].
+%
+% For expositional benefits the demo uses the basic 2x2 MIMO system employing 
+% two transmit and two receive antennas. For an uncoded QPSK modulated system
+% it employs flat Rayleigh fading over independent transmit-receive links.
+% At the receiver end, we assume perfect channel knowledge with no feedback 
+% to the transmitter, i.e. an open-loop spatial multiplexing system.
+%
+% The demo shows two nonlinear interference cancellation methods - 
+% Zero-Forcing and Minimum-Mean-Square-Error - with symbol cancellation
+% and compares their performance with the Maximum-Likelihood optimum
+% receiver.
+
+%   Copyright 2007-2008 The MathWorks, Inc.
+%   $Revision: 1.1.6.3 $ $Date: 2009/01/05 17:46:09 $
+
+%% 
+% We start by defining some common simulation parameters
+N = 2;                  % Number of Transmit antennas
+M = 2;                  % Number of Receive antennas
+EbNoVec = 2:3:8;       % Eb/No in dB
+modOrd = 2;             % constellation size = 2^modOrd
+numSym = N;             % number of symbols 
+
+%%
+% and set up the simulation.
+
+% Create a local random stream to be used by random number generators for
+% repeatability.
+hStr = RandStream('mt19937ar');
+
+% Get all bit combinations for ML receiver
+bits = de2bi(0:2^(modOrd*N)-1, 'left-msb')';
+% Split them per Transmit antenna
+b = zeros(N, modOrd, length(bits));
+for i = 1:length(bits)
+    b(:, :, i) = reshape(bits(:,i), modOrd, N)';
+end
+
+% Preallocate variables for speed
+dist = zeros(length(bits), 1);
+[BER_ZF, BER_MMSE, BER_ML] = deal(zeros(1, length(EbNoVec)));
+
+% Create QPSK mod-demod objects
+hMod = modem.pskmod('M', 2^modOrd, 'SymbolOrder', 'gray', 'InputType', 'bit');
+hDemod = modem.pskdemod(hMod);
+
+%%
+% The simulation loop below simultaneously evaluates the BER performance of
+% the three receiver schemes for each Eb/No value using the same data
+% and channel realization. A short range of Eb/No values are used for 
+% simulation purposes. Results for a larger range, using the same code, are 
+% presented later.
+
+% Set up a figure for visualizing BER results
+h = gcf; grid on; hold on;
+set(gca,'yscale','log','xlim',[EbNoVec(1)-0.01, EbNoVec(end)],'ylim',[1e-3 1]);
+xlabel('Eb/No (dB)'); ylabel('BER'); set(h,'NumberTitle','off');
+set(h, 'renderer', 'zbuffer'); set(h,'Name','Spatial Multiplexing');
+title('2x2 Uncoded QPSK System');
+
+% Loop over selected EbNo points
+for idx = 1:length(EbNoVec)
+    nErrs_zf = 0; nErrs_mmse = 0; nErrs_ml = 0; 
+    nBits = 0;
+    while ( ((nErrs_zf < 100) || (nErrs_mmse < 100) || (nErrs_ml < 100)) ...
+            && (nBits < 1e4))
+        % Create array of bits to modulate
+        msg = randi(hStr, [0 1], modOrd, numSym);
+
+        % Modulate data 
+        source = modulate(hMod, msg);
+
+        % Split source among N transmitters (symbol-wise)
+        Tx = reshape(source, N, numel(source)/N); clear source;
+
+        % Flat Rayleigh Fading  - independent links
+        RayleighMat = (randn(hStr, M, N) +  1i*randn(hStr, M, N))/sqrt(2);
+
+        % Calculate SNR from EbNo
+        snr = EbNoVec(idx) + 10*log10(modOrd); 
+                   
+        % Add channel noise power to faded data
+        r = awgn(RayleighMat*Tx, snr, 0, hStr); clear Tx;
+        r_store = r;
+        
+        % Assume perfect channel estimation
+        H = RayleighMat;
+
+        % Zero-Forcing SIC receiver
+        E_zf = zeros(modOrd, numSym); k = zeros(N, 1);
+        %   Initialization
+        G = pinv(H);
+        [val, k0] = min(sum(abs(G).^2,2));
+        %   Start Zero-Forcing Nulling Loop
+        for n = 1:N
+            % Find best transmitter signal using minimum norm 
+            k(n) = k0;
+
+            % Select Weight vector for best transmitter signal
+            w = G(k(n),:);
+
+            % Calculate output for transmitter n and demodulate bitstream
+            y = w * r;
+            E_zf(:, k(n):N:end) = reshape(demodulate(hDemod, y), modOrd, numSym/N);
+
+            % Subtract effect of the transmitter n from received signal
+            z = modulate(hMod, demodulate(hDemod, y));
+            r = r - H(:, k(n))*z; 
+
+            % Adjust channel estimate matrix for next minimum norm search
+            H(:, k(n)) = zeros(M, 1);
+            G = pinv(H);
+            for aa = 1:n
+                G(k(aa), :) = inf;
+            end
+            [val, k0] = min(sum(abs(G).^2,2));
+        end
+        
+        % Restore variables for next receiver
+        H = RayleighMat; r = r_store; 
+
+        % MMSE SIC receiver
+        E_mmse = zeros(modOrd, numSym); k = zeros(N, 1);
+        %   Initialization
+        G = (H'*H + N/(10^(0.1*snr))*eye(N)) \ H';
+        [val, k0] = min(sum(abs(G).^2,2));
+        %   Start MMSE Nulling Loop
+        for n = 1:N
+            % Find best transmitter signal using Min Norm 
+            k(n) = k0;
+
+            % Select Weight vector for best transmitter signal
+            w = G(k(n),:);
+
+            % Calculate output for transmitter n and demodulate bitstream
+            y = w * r;
+            E_mmse(:, k(n):N:end) = reshape(demodulate(hDemod, y), modOrd, numSym/N);
+
+            % Subtract effect of the transmitter n from received signal
+            z = modulate(hMod, demodulate(hDemod, y));
+            r = r - H(:, k(n))*z; 
+
+            % Adjust channel estimate matrix for next min Norm search
+            H(:, k(n)) = zeros(M, 1);
+            G = (H'*H + N/(10^(0.1*snr))*eye(N)) \ H';
+            for aa = 1:n
+                G(k(aa), :) = inf;
+            end
+            [val, k0] = min(sum(abs(G).^2,2));
+        end
+
+        % Restore variables for next receiver
+        H = RayleighMat; r = r_store; 
+
+        % ML receiver
+        for i = 1:2^(modOrd*N) 
+            % Signal constellation for each bit combination
+            sig = modulate(hMod, b(:, :, i)').';
+            
+            % Distance metric for each constellation
+            dist(i) = sum(abs(r - H*sig).^2);
+        end
+        % Get the minimum
+        [notUsed, val] = min(dist);
+        E_ml = b(:,:,val)'; % detected bits
+                
+        % Collect errors
+        nErrs_zf = nErrs_zf + biterr(msg, E_zf);
+        nErrs_mmse = nErrs_mmse + biterr(msg, E_mmse);
+        nErrs_ml = nErrs_ml + biterr(msg, E_ml);
+
+        nBits = nBits + length(msg(:));
+    end
+
+    % Calculate BER for current point
+    BER_ZF(idx) = nErrs_zf./nBits;
+    BER_MMSE(idx) = nErrs_mmse./nBits;
+    BER_ML(idx) = nErrs_ml./nBits;
+
+    % Plot results
+    semilogy(EbNoVec(1:idx), BER_ZF(1:idx), 'r*', ...
+             EbNoVec(1:idx), BER_MMSE(1:idx), 'bo', ...
+             EbNoVec(1:idx), BER_ML(1:idx), 'gs');
+    legend('ZF-SIC', 'MMSE-SIC', 'ML');
+    drawnow;
+end
+
+% Draw the lines 
+semilogy(EbNoVec, BER_ZF, 'r-', EbNoVec, BER_MMSE, 'b-', ...
+         EbNoVec, BER_ML, 'g-'); 
+hold off;
+
+%%
+% As per [4], we realize that the ML receiver is the best in performance 
+% followed by the MMSE-SIC and ZF-SIC receivers. In terms of receiver
+% complexity, ML grows exponentially with the number of transmit
+% antennas while the ZF-SIC and MMSE-SIC are linear receivers combined with
+% successive interference cancellation.
+%
+% Simulation results comparing the three schemes for a larger range of 
+% Eb/No values are displayed next.  These curves allow you to gauge the
+% diversity order attained from the slope of the BER curve.
+
+openfig('spatMuxResults.fig');
+
+%%
+% Some areas of further exploration would be to try these methods for a larger
+% number of antennas, with and without channel estimation. 
+
+%% 
+% References:
+%
+% [1] George Tsoulos, Ed., "MIMO System Technology for Wireless 
+%     Communications", CRC Press, Boca Raton, FL, 2006.
+%
+% [2] G. J. Foschini, "Layered space-time architecture for wireless 
+%     communication in a fading environment when using multiple antennas," 
+%     The Bell Sys. Tech. Journal, 1996, No. 1, pp. 41-59.
+%
+% [3] P. W. Wolniansky, G. J. Foschini, G. D. Golden, R. A. Valenzuela, 
+%     "V-BLAST: An Architecture for realizing very high data rates over 
+%     the rich scattering wireless channel," 1998 URSI International 
+%     Symposium on Signals, Systems, and Electronics, 29 Sep.-2 Oct. 1998,
+%     pp. 295-300. 
+%
+% [4] X. Li, H. C. Huang, A. Lozano, G. J. Foschini, "Reduced-complexity 
+%     detection algorithms for systems using multi-element arrays", IEEE(R)
+%     Global Telecommunications Conference, 2000. Volume 2, 27 Nov.-1 Dec. 
+%     2000, pp. 1072-76.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

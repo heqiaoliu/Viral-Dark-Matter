@@ -1,0 +1,2 @@
+-- quick fix for upgrade to 1.5.1, dont remove services table after upgrade
+-- DROP TABLE `#__jaem_services` ;

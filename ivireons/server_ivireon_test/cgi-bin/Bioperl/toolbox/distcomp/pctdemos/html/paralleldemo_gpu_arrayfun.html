@@ -1,0 +1,117 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Running MATLAB&reg; Functions on the GPU</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-10"><meta name="DC.source" content="paralleldemo_gpu_arrayfun.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_gpu_arrayfun">Open paralleldemo_gpu_arrayfun.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_gpu_arrayfun">Run in the Command Window</a></div></div><div class="content"><h1>Running MATLAB&reg; Functions on the GPU</h1><!--introduction--><p>The method <tt>arrayfun</tt> allows you to run a MATLAB&reg; function file natively on the GPU. The MATLAB file must contain a single function and must contain only scalar operations and arithmetic.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Using Horner's Rule to Calculate Exponentials</a></li><li><a href="#2">Preparing <tt>gpuhorner</tt> for the GPU</a></li><li><a href="#3">Create the Input Data</a></li><li><a href="#4">Evaluate <tt>gpuhorner</tt> on the GPU</a></li><li><a href="#5">Comparing Performance between GPU and CPU</a></li></ul></div><h2>Using Horner's Rule to Calculate Exponentials<a name="1"></a></h2><p>Horner's rule allows the efficient evaluation of power series expansions. We will use it to calculate the first 10 terms of the power series expansion for the exponential function <tt>exp</tt>. We can implement this as a MATLAB function.</p><pre class="codeinput">type <span class="string">pctdemo_aux_gpuhorner</span>
+</pre><pre class="codeoutput">
+function y = pctdemo_aux_gpuhorner(x)
+%PCTDEMO_AUX_GPUHORNER - series expansion for exp(x) using Horner's rule
+
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.8.1 $   $Date: 2010/05/03 16:06:24 $
+
+y = 1 + x.*(1 + x.*((1 + x.*((1 + ...
+        x.*((1 + x.*((1 + x.*((1 + x.*((1 + ...
+        x.*((1 + x./9)./8))./7))./6))./5))./4))./3))./2));
+end
+
+</pre><h2>Preparing <tt>gpuhorner</tt> for the GPU<a name="2"></a></h2><p>To run this function on the GPU, we use a handle to the <tt>pctdemo_aux_gpuhorner</tt> function, which we can evaluate using <tt>arrayfun</tt>. We can pass in <tt>GPUArray</tt> objects or standard MATLAB arrays. <tt>gpuhorner</tt> automatically adapts to different size and type inputs. We can compare the results computed on the GPU with standard MATLAB execution simply by evaluating the function directly.</p><pre class="codeinput">gpuhorner = @pctdemo_aux_gpuhorner;
+</pre><h2>Create the Input Data<a name="3"></a></h2><p>We create some inputs of different types and sizes, and use <tt>gpuArray</tt> to send them to the GPU.</p><pre class="codeinput">data1  = rand( 2000, <span class="string">'single'</span> );
+data2  = rand( 1000, <span class="string">'double'</span> );
+gdata1 = gpuArray( data1 );
+gdata2 = gpuArray( data2 );
+</pre><h2>Evaluate <tt>gpuhorner</tt> on the GPU<a name="4"></a></h2><p>To evaluate the <tt>gpuhorner</tt>, we simply call <tt>arrayfun</tt>, using the same calling convention as the original MATLAB function. We can compare the results by evaluating the original function directly in MATLAB. We expect some slight numerical differences because the floating-point arithmetic on the GPU does not precisely match the arithmetic performed on the CPU.</p><pre class="codeinput">gresult1 = arrayfun( gpuhorner, gdata1 );
+gresult2 = arrayfun( gpuhorner, gdata2 );
+
+comparesingle = max( max( abs( gather( gresult1 ) - <span class="keyword">...</span>
+                               pctdemo_aux_gpuhorner( data1 ) ) ) )
+comparedouble = max( max( abs( gather( gresult2 ) - <span class="keyword">...</span>
+                               pctdemo_aux_gpuhorner( data2 ) ) ) )
+</pre><pre class="codeoutput">
+comparesingle =
+
+  2.3842e-07
+
+
+comparedouble =
+
+     0
+
+</pre><h2>Comparing Performance between GPU and CPU<a name="5"></a></h2><p>We can compare the performance of the GPU version to the native MATLAB version. Current generation GPUs have much better performance in single precision, so we will compare that.</p><pre class="codeinput">tic, gresult1 = arrayfun( gpuhorner, gdata1 ); tgpu = toc;
+tic, result1  = gpuhorner( data1 );            tcpu = toc;
+speedup = tcpu / tgpu
+</pre><pre class="codeoutput">
+speedup =
+
+   29.9998
+
+</pre><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Running MATLAB(R) Functions on the GPU
+% The method |arrayfun| allows you to run a MATLAB(R) function file
+% natively on the GPU. The MATLAB file must contain a single function and
+% must contain only scalar operations and arithmetic.
+
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.2.2 $   $Date: 2010/06/09 17:57:35 $
+
+%% Using Horner's Rule to Calculate Exponentials
+% Horner's rule allows the efficient evaluation of power series expansions.
+% We will use it to calculate the first 10 terms of the power series
+% expansion for the exponential function |exp|. We can implement this as a
+% MATLAB function.
+
+type pctdemo_aux_gpuhorner
+
+%% Preparing |gpuhorner| for the GPU
+% To run this function on the GPU, we use a handle to the
+% |pctdemo_aux_gpuhorner| function, which we can evaluate using |arrayfun|.
+% We can pass in |GPUArray| objects or standard MATLAB arrays. |gpuhorner|
+% automatically adapts to different size and type inputs. We can compare
+% the results computed on the GPU with standard MATLAB execution simply by
+% evaluating the function directly.
+
+gpuhorner = @pctdemo_aux_gpuhorner;
+
+%% Create the Input Data
+% We create some inputs of different types and sizes, and use |gpuArray| to
+% send them to the GPU.
+
+data1  = rand( 2000, 'single' );
+data2  = rand( 1000, 'double' );
+gdata1 = gpuArray( data1 );
+gdata2 = gpuArray( data2 );
+
+%% Evaluate |gpuhorner| on the GPU
+% To evaluate the |gpuhorner|, we simply call |arrayfun|, using the same
+% calling convention as the original MATLAB function. We can compare the
+% results by evaluating the original function directly in MATLAB. We expect
+% some slight numerical differences because the floating-point arithmetic
+% on the GPU does not precisely match the arithmetic performed on the CPU.
+
+gresult1 = arrayfun( gpuhorner, gdata1 );
+gresult2 = arrayfun( gpuhorner, gdata2 );
+
+comparesingle = max( max( abs( gather( gresult1 ) - ...
+                               pctdemo_aux_gpuhorner( data1 ) ) ) )
+comparedouble = max( max( abs( gather( gresult2 ) - ...
+                               pctdemo_aux_gpuhorner( data2 ) ) ) )
+
+%% Comparing Performance between GPU and CPU
+% We can compare the performance of the GPU version to the native MATLAB
+% version. Current generation GPUs have much better performance in single
+% precision, so we will compare that.
+
+tic, gresult1 = arrayfun( gpuhorner, gdata1 ); tgpu = toc;
+tic, result1  = gpuhorner( data1 );            tcpu = toc;
+speedup = tcpu / tgpu
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

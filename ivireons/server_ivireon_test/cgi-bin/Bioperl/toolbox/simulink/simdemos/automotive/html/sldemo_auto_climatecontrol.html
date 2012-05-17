@@ -1,0 +1,139 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Simulating Automatic Climate Control Systems</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_auto_climatecontrol.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_auto_climatecontrol.mdl</div><div class="right"><a href="matlab:sldemo_auto_climatecontrol">Open this model</a></div></div><div class="content"><h1>Simulating Automatic Climate Control Systems</h1><!--introduction--><p>In this demo we use Simulink&reg; and Stateflow&reg; to simulate the working of an automatic climate control system in a car. You can enter a temperature value you would like the air in the car to reach by double clicking the User Setpoint in Celsius Block and entering the temperature value. You can also set the External Temperature in Celsius in a similar way. The numerical display on the right-hand side of the model shows the reading of a temperature sensor placed behind the driver's head. This is the temperature that the driver should be feeling. When the model is run and the climate control is active, it is this display box whose value changes to show the change of temperature in the car.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#3">The Stateflow&reg; Controller</a></li><li><a href="#5">Heater and Air Conditioner Models</a></li><li><a href="#8">Heat Transfer in the Cabin</a></li></ul></div><img vspace="5" hspace="5" src="sldemo_auto_climatecontrol_01.png" alt=""> <p><b>Figure 1:</b> The automatic climate control system.</p><h2>The Stateflow&reg; Controller<a name="3"></a></h2><p>The supervisory controller is implemented in Stateflow. Double clicking the Stateflow chart shows how this supervisory control logic has been formulated.</p><p>The <b>Heater_AC</b> state shows that when you enter a setpoint temperature that is greater than the current temperature in the car by at least 0.5 deg C, the heater system will be switched on. The heater will remain active until the current temperature in the car is within 0.5 deg of the setpoint temperature. Similarly, when the user enters a setpoint that is 0.5 deg C (or more) lower than the current car temperature, the air conditioner is turned on and stays active until the air temperature in the car is within 0.5 deg C of the setpoint temperature, after which, the system will switch off. A dead band of 0.5 deg has been implemented to avoid the problem of continuous switching.</p><p>In the <b>Blower</b> State, the larger the difference between the setpoint temperature and the current temperature, the harder the fan blows. This ensures that the temperature will reach the required value in a reasonable amount of time, despite the temperature difference. Once again, when the air temperature in the car is within 0.5 deg C of the setpoint temperature, the system will switch off.</p><p>The Air Distribution(<b>AirDist</b>) and Recycling Air States(<b>Recyc_Air</b>) are controlled by the two switches that trigger the Stateflow chart. An internal transition has been implemented within these two states to facilitate effective defrosting of the windows when required. When the defrost state is activated, the recycling air is turned off.</p><img vspace="5" hspace="5" src="sldemo_auto_climatecontrol_02.png" alt=""> <p><b>Figure 2:</b> The supervisory control logic in Stateflow.</p><h2>Heater and Air Conditioner Models<a name="5"></a></h2><p>The heater model was built from the equation for a heater exchanger shown below:</p><pre>Tout = Ts - (Ts-Tin)e^[(-pi*D*L*hc)/(m_dot*Cp)]</pre><p>Where:</p><div><ul><li>Ts = constant (radiator wall temperature)</li><li>D  = 0.004m (channel diameter)</li><li>L  = 0.05m (radiator thickness)</li><li>N  = 30000 (Number of channels)</li><li>k  = 0.026 W/mK = constant (thermal conductivity of air)</li><li>Cp = 1007 J/kgK = constant (specific heat of air)</li><li>Laminar flow (hc = 3.66(k/D) = 23.8 W/m2K )</li></ul></div><p>In addition, the effect of the heater flap is taken into account. Similar to the operation of the blower, the greater the temperature difference between the required setpoint temperature and the current temperature in the car, the more the heater flap is opened and the greater the heating effect.</p><p>The air conditioner model was built from the equation below:</p><p>y*(w*Tcomp) = m_dot*(h4-h1)</p><p>Where:</p><div><ul><li>y = efficiency</li><li>m_dot = mass flow rate</li><li>w = speed of the engine</li><li>Tcomp = compressor torque</li><li>h4, h1 = enthalpy</li></ul></div><p>Here we have bang-bang control of the A/C system where the temperature of the air that exits the A/C is determined by the engine speed and compressor torque.</p><img vspace="5" hspace="5" src="sldemo_auto_climatecontrol_03.png" alt=""> <p><b>Figure 3:</b> Heater control subsystem.</p><img vspace="5" hspace="5" src="sldemo_auto_climatecontrol_04.png" alt=""> <p><b>Figure 4:</b> A/C control subsystem.</p><h2>Heat Transfer in the Cabin<a name="8"></a></h2><p>The temperature of the air felt by the driver is affected by all of these factors:</p><div><ul><li>The temperature of the air exiting the vents</li><li>The temperature of the outside air</li><li>The number of people in the car</li></ul></div><p>These factors are inputs into the thermodynamic model of the interior of the cabin. We take into account the temperature of the air exiting the vents by calculating the difference between the vent air temperature and the current temperature inside the car and multiplying it by the fan speed proportion (mass flow rate). Then 100W of energy is added per person in the car. Lastly, the difference between the temperature of the outside air and the interior air temperature is multiplied by a lesser mass flow rate to account for the air radiating into the car from the outside.</p><p>The output of the interior dynamics model is fed to the display block as a measure of the temperature read by a sensor placed behind the driver's head.</p><p class="footer">Copyright 1990-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Simulating Automatic Climate Control Systems
+%
+% In this demo we use Simulink(R) and Stateflow(R) to simulate the working of 
+% an automatic climate control system in a car. You can enter a temperature 
+% value you would like the air in the car to reach by double clicking the 
+% User Setpoint in Celsius Block and entering the temperature value. You can
+% also set the External Temperature in Celsius in a similar way. The
+% numerical display on the right-hand side of the model shows the reading
+% of a temperature sensor placed behind the driver's head. This is the
+% temperature that the driver should be feeling. When the model is run and
+% the climate control is active, it is this display box whose value changes
+% to show the change of temperature in the car.   
+
+% Copyright 1990-2007 The MathWorks, Inc. 
+% $Revision: 1.1.6.3 $  $Date: 2007/12/10 22:40:44 $
+
+%% 
+%
+open_system('sldemo_auto_climatecontrol.mdl')
+%%
+% *Figure 1:* The automatic climate control system.
+
+%% The Stateflow(R) Controller
+%
+% The supervisory controller is implemented in Stateflow. Double clicking
+% the Stateflow chart shows how this supervisory control logic has
+% been formulated.  
+%
+% The *Heater_AC* state shows that when you enter a setpoint temperature 
+% that is greater than the current temperature in the car by at
+% least 0.5 deg C, the heater system will be switched on. The heater will
+% remain active until the current temperature in the car is within
+% 0.5 deg of the setpoint temperature. Similarly, when the user enters a
+% setpoint that is 0.5 deg C (or more) lower than the current car
+% temperature, the air conditioner is turned on and stays active until the
+% air temperature in the car is within 0.5 deg C of the
+% setpoint temperature, after which, the system will switch off. A dead
+% band of 0.5 deg has been implemented to avoid the problem of continuous
+% switching.          
+%
+% In the *Blower* State, the larger the difference between the setpoint
+% temperature and the current temperature, the harder the fan blows. This
+% ensures that the temperature will reach the required value in a
+% reasonable amount of time, despite the temperature difference. Once
+% again, when the air temperature in the car is within 0.5
+% deg C of the setpoint temperature, the system will switch off.      
+%
+% The Air Distribution(*AirDist*) and Recycling Air States(*Recyc_Air*) are
+% controlled by the two switches that trigger the Stateflow chart. An
+% internal transition has been implemented within these two states to
+% facilitate effective defrosting of the windows when required. When the
+% defrost state is activated, the recycling air is turned off.      
+
+open_system('sldemo_auto_climatecontrol/Temperature Control Chart')
+
+%%
+% *Figure 2:* The supervisory control logic in Stateflow.
+
+%% Heater and Air Conditioner Models
+%
+% The heater model was built from the equation for a heater exchanger shown below:
+%
+%  Tout = Ts - (Ts-Tin)e^[(-pi*D*L*hc)/(m_dot*Cp)]
+%
+% Where:
+%
+% * Ts = constant (radiator wall temperature)
+% * D  = 0.004m (channel diameter)
+% * L  = 0.05m (radiator thickness)
+% * N  = 30000 (Number of channels)
+% * k  = 0.026 W/mK = constant (thermal conductivity of air)
+% * Cp = 1007 J/kgK = constant (specific heat of air)
+% * Laminar flow (hc = 3.66(k/D) = 23.8 W/m2K ) 
+%
+% In addition, the effect of the heater flap is taken into account. Similar
+% to the operation of the blower, the greater the temperature difference
+% between the required setpoint temperature and the current temperature in
+% the car, the more the heater flap is opened and the greater the heating effect.   
+%
+% The air conditioner model was built from the equation below:
+%
+% y*(w*Tcomp) = m_dot*(h4-h1)
+%
+% Where:
+%
+% * y = efficiency
+% * m_dot = mass flow rate
+% * w = speed of the engine
+% * Tcomp = compressor torque
+% * h4, h1 = enthalpy 
+%
+% Here we have bang-bang control of the A/C system where the temperature of
+% the air that exits the A/C is determined by the engine speed and
+% compressor torque.   
+
+open_system('sldemo_auto_climatecontrol/Heater Control')
+%%
+% *Figure 3:* Heater control subsystem.
+
+open_system('sldemo_auto_climatecontrol/AC Control')
+%%
+% *Figure 4:* A/C control subsystem.
+
+%% Heat Transfer in the Cabin
+%
+% The temperature of the air felt by the driver is affected by all of 
+% these factors:
+%
+% * The temperature of the air exiting the vents
+% * The temperature of the outside air
+% * The number of people in the car 
+%
+% These factors are inputs into the thermodynamic model of the interior
+% of the cabin. We take into account the temperature of the air exiting 
+% the vents by calculating the difference between the vent air temperature
+% and the current temperature inside the car and multiplying it by the fan
+% speed proportion (mass flow rate). Then 100W of energy is added per person in
+% the car. Lastly, the difference between the temperature of the outside
+% air and the interior air temperature is multiplied by a lesser mass flow
+% rate to account for the air radiating into the car from the outside.        
+%
+% The output of the interior dynamics model is fed to the display block as
+% a measure of the temperature read by a sensor placed behind the driver's head.   
+
+bdclose all
+
+##### SOURCE END #####
+--></body></html>

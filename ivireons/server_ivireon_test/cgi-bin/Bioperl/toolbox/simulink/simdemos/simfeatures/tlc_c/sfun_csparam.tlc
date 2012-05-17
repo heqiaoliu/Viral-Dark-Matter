@@ -1,0 +1,55 @@
+%% File : sfun_csparam.tlc
+%%
+%% Copyright 1990-2009 The MathWorks, Inc.
+%%
+%% Description: 
+%%   Real-Time Workshop code generation for S-Function "sfun_csparam.c".
+%%
+%implements  sfun_csparam "C"
+
+%function BlockTypeSetup(block, system) Output
+  %% No action required.
+%endfunction
+
+%function BlockInstanceSetup(block, system) void
+  %<LibBlockSetIsExpressionCompliant(block)>
+%endfunction
+
+%% Function: Outputs ==========================================================
+%%
+%% Purpose:
+%%      Code generation rules for mdlOutputs function.
+%%
+%function Outputs(block, system) Output
+
+  %assign param   = LibBlockParameter(Gain, "", "", 0)
+
+  /* %<Type> Block: %<Name> */
+  {
+    %assign rollVars = ["U", "Y"]
+    %roll sigIdx = RollRegions, lcv = 5, block, "Roller", rollVars
+      %assign input   = LibBlockInputSignal(0, "", lcv, sigIdx)
+      %assign output  = LibBlockOutputSignal(0, "", lcv, sigIdx)
+      %%
+      %<output> = %<input> * %<param>;
+    %endroll
+  }
+
+%endfunction
+
+%% Function: BlockOutputSignal =================================================
+%% Abstract:
+%%      Return an output expression.  This function *may*
+%%      be used by Simulink when optimizing the Block IO data structure.
+%%
+%function BlockOutputSignal(block,system,portIdx,ucv,lcv,idx,retType) void
+
+  %assign param   = LibBlockParameter(Gain, "", "", 0)
+  %assign input   = LibBlockInputSignal(0,  ucv, lcv, idx)
+  %assign output  = LibBlockOutputSignal(0, ucv, lcv, idx)
+
+  %return "(%<input> * %<param>)"
+
+%endfunction
+
+%% [EOF] sfun_csparam.tlc

@@ -1,0 +1,110 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Double Bouncing Ball: Use of Adaptive Zero-Crossing Location</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_doublebounce.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_doublebounce.mdl</div><div class="right"><a href="matlab:sldemo_doublebounce">Open this model</a></div></div><div class="content"><h1>Double Bouncing Ball: Use of Adaptive Zero-Crossing Location</h1><!--introduction--><p>This demo shows an example of how to choose the correct zero-crossing location algorithm, based on the system dynamics. For Zeno dynamic systems, or systems with strong chattering, you can select the adaptive zero-crossing detection algorithm through the Configure pane:</p><pre>   --&gt; Solver
+       --&gt; Zero-crossing options
+           --&gt; Algorithm: [Non-adaptive, Adaptive]</pre><p>You can run this model by typing 'sldemo_doublebounce' at the MATLAB&reg; command-line</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">The Double Bouncing Ball System</a></li><li><a href="#3">Double Bouncing Balls With Non-adaptive Zero-Crossing Location Algorithm</a></li><li><a href="#6">Double Bouncing Balls With Adaptive Zero-Crossing Location Algorithm</a></li></ul></div><h2>The Double Bouncing Ball System<a name="1"></a></h2><p>The Simulink&reg; model in this demo is used to simulate two bouncing balls. They start from the ground with different initial speeds, and their ground levels will change at different times.</p><p><a href="matlab:open_system('sldemo_doublebounce')">Open the model</a></p><img vspace="5" hspace="5" src="sldemo_doublebounce_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_doublebounce_02.png" alt=""> <p><b>Figure 1:</b> The double bouncing ball model and animation</p><h2>Double Bouncing Balls With Non-adaptive Zero-Crossing Location Algorithm<a name="3"></a></h2><p>If the Non-adaptive zero-crossing location algorithm is used, the consecutive zero-crossing error causes the simulation to stop. This system is actually a so-called 'Zeno dynamic system'. When either ball is very close to the ground, Simulink will hang because too many zero crossings are detected in a very short period.</p><img vspace="5" hspace="5" src="sldemo_doublebounce_03.png" alt=""> <img vspace="5" hspace="5" src="sldemo_doublebounce_04.png" alt=""> <img vspace="5" hspace="5" src="sldemo_doublebounce_05.png" alt=""> <p><b>Figure 2:</b> Vertical displacement of both balls with Non-adaptive zero- crossing location algorithm.</p><p>The simulation does not complete and an error message is shown. The ground level changing events cannot be observed.</p><h2>Double Bouncing Balls With Adaptive Zero-Crossing Location Algorithm<a name="6"></a></h2><p>If the adaptive algorithm is selected, Simulink will adaptively turn on/off the process to precisely locate the zero-crossing time. The conditions to turn on/off the location are:</p><p>1) Zero-crossing signal value is below a threshold value. You can control the threshold value through the Configure pane:</p><pre>   --&gt; Solver
+       --&gt; Zero-crossing options
+           --&gt; Algorithm: [Adaptive]
+           --&gt; Signal threshold</pre><p>2) Consecutive zero-crossing diagnostic is hit. You can define consecutive zero crossing through the Configure pane:</p><pre>   --&gt; Solver
+       --&gt; Solver diagnostic controls
+           --&gt; Time tolerance and
+           --&gt; Number of consecutive zero crossings.</pre><img vspace="5" hspace="5" src="sldemo_doublebounce_06.png" alt=""> <img vspace="5" hspace="5" src="sldemo_doublebounce_07.png" alt=""> <p><b>Figure 3:</b> Vertical displacement of both balls with adaptive zero crossing location algorithm.</p><p>The simulation has completed. The ground level changing events can be observed. A warning is shown to inform you when searching for events is turned off.</p><p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Double Bouncing Ball: Use of Adaptive Zero-Crossing Location
+%
+% This demo shows an example of how to choose the correct zero-crossing
+% location algorithm, based on the system dynamics. For Zeno dynamic
+% systems, or systems with strong chattering, you can select the adaptive
+% zero-crossing detection algorithm through the Configure pane: 
+%
+%     REPLACE_WITH_DASH_DASH> Solver 
+%         REPLACE_WITH_DASH_DASH> Zero-crossing options 
+%             REPLACE_WITH_DASH_DASH> Algorithm: [Non-adaptive, Adaptive]
+%
+% You can run this model by typing 'sldemo_doublebounce' at the MATLAB(R)
+% command-line
+% Copyright 2007-2009 The MathWorks, Inc.
+
+%% The Double Bouncing Ball System
+% The Simulink(R) model in this demo is used to simulate two bouncing balls. 
+% They start from the ground with different initial speeds, and their ground 
+% levels will change at different times. 
+%
+% <matlab:open_system('sldemo_doublebounce') Open the model>
+open_system('sldemo_doublebounce');
+
+%%
+% *Figure 1:* The double bouncing ball model and animation
+
+%% Double Bouncing Balls With Non-adaptive Zero-Crossing Location Algorithm
+%
+% If the Non-adaptive zero-crossing location algorithm is used, the
+% consecutive zero-crossing error causes the simulation to stop. This
+% system is actually a so-called 'Zeno dynamic system'. When either ball is
+% very close to the ground, Simulink will hang because too many zero
+% crossings are detected in a very short period. 
+
+% Select Non-adaptive location algorithm
+herror = simdblBall('Nonadaptive');
+open_system('sldemo_doublebounce/Scope');
+%%
+% *Figure 2:* Vertical displacement of both balls with Non-adaptive zero-
+% crossing location algorithm.  
+%%
+% The simulation does not complete and an error message is shown. The ground
+% level changing events cannot be observed.
+
+%% Double Bouncing Balls With Adaptive Zero-Crossing Location Algorithm
+% If the adaptive algorithm is selected, Simulink will adaptively turn 
+% on/off the process to precisely locate the zero-crossing time. The 
+% conditions to turn on/off the location are:
+%
+% 1) Zero-crossing signal value is below a threshold value. You can
+% control the threshold value through the Configure pane:
+%
+%     REPLACE_WITH_DASH_DASH> Solver 
+%         REPLACE_WITH_DASH_DASH> Zero-crossing options 
+%             REPLACE_WITH_DASH_DASH> Algorithm: [Adaptive] 
+%             REPLACE_WITH_DASH_DASH> Signal threshold
+%
+% 2) Consecutive zero-crossing diagnostic is hit. 
+% You can define consecutive zero crossing through 
+% the Configure pane:
+%
+%     REPLACE_WITH_DASH_DASH> Solver 
+%         REPLACE_WITH_DASH_DASH> Solver diagnostic controls 
+%             REPLACE_WITH_DASH_DASH> Time tolerance and 
+%             REPLACE_WITH_DASH_DASH> Number of consecutive zero crossings.     
+
+% Select adaptive algorithm
+hwarn = simdblBall('Adaptive');
+open_system('sldemo_doublebounce/Scope');
+%%
+% *Figure 3:* Vertical displacement of both balls with adaptive zero
+% crossing location algorithm.
+%%
+% The simulation has completed. The ground level changing events can be
+% observed. A warning is shown to inform you when searching for events is
+% turned off.
+
+if (ishghandle(hwarn, 'figure'))
+    close(hwarn);
+end
+
+if(ishghandle(herror, 'figure'))
+    close(herror);
+end
+bdclose('sldemo_doublebounce');
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

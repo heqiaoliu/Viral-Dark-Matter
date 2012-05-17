@@ -1,0 +1,612 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling a Fault-Tolerant Fuel Control System</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_fuelsys.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_fuelsys.mdl</div><div class="right"><a href="matlab:sldemo_fuelsys">Open this model</a></div></div><div class="content"><h1>Modeling a Fault-Tolerant Fuel Control System</h1><!--introduction--><p>The following example illustrates how to combine Stateflow&reg; with Simulink&reg; to efficiently model hybrid systems. This type of modeling is particularly useful for systems that have numerous possible operational modes based on discrete events. Traditional signal flow is handled in Simulink while changes in control configuration are implemented in Stateflow. The model described below represents a fuel control system for a gasoline engine. The system is highly robust in that individual sensor failures are detected and the control system is dynamically reconfigured for uninterrupted operation.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analysis and Physics</a></li><li><a href="#2">Modeling</a></li><li><a href="#6">Control Logic</a></li><li><a href="#9">Sensor Correction</a></li><li><a href="#11">Airflow Calculation</a></li><li><a href="#19">Fuel Calculation</a></li><li><a href="#23">Results and Conclusions</a></li><li><a href="#31">Remarks</a></li><li><a href="#32">Related Demos</a></li></ul></div><h2>Analysis and Physics<a name="1"></a></h2><p>Physical and empirical relationships form the basis for the throttle and intake manifold dynamics of this model. The air-fuel ratio is computed by dividing the air mass flow rate (pumped from the intake manifold) by the fuel mass flow rate (injected at the valves). The ideal (i.e. stoichiometric) mixture ratio provides a good compromise between power, fuel economy, and emissions. The target air-fuel ratio for this system is 14.6. Typically, a sensor determines the amount of residual oxygen present in the exhaust gas (EGO). This gives a good indication of the mixture ratio and provides a feedback measurement for closed-loop control. If the sensor indicates a high oxygen level, the control law increases the fuel rate. When the sensor detects a fuel-rich mixture, corresponding to a very low level of residual oxygen, the controller decreases the fuel rate.</p><h2>Modeling<a name="2"></a></h2><p>Figure 1 shows the top level of the Simulink model. To <a href="matlab:open_system('sldemo_fuelsys')">open</a> the model, type <tt>sldemo_fuelsys</tt> in MATLAB&reg; Command Window. Press the Play button in the model window toolbar to run the simulation. The model loads necessary data into the model workspace from <tt>sldemo_fuelsys_data.m</tt>. The model logs relevant data to MATLAB workspace in a data structure called <tt>sldemo_fuelsys_output</tt>. Logged signals have a blue indicator (see Figure 1).</p><p>Note that loading initial conditions into the model workspace keeps simulation data isolated from data in other open models that you may have open. This also helps avoid MATLAB workspace cluttering. To view the contents of the model workspace select View &gt; Model Explorer, and click on Model Workspace from the Model Hierarchy list.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_01.png" alt=""> <p><b>Figure 1:</b> Top-level diagram for the fuel control system model</p><p>The fuel_rate_control uses signals from the system's sensors to determine the fuel rate which gives a stoichiometric mixture. The fuel rate combines with the actual air flow in the engine gas dynamics model to determine the resulting mixture ratio as sensed at the exhaust.</p><p>The user can selectively disable each of the four sensors (throttle angle, speed, EGO and manifold absolute pressure [MAP]), to simulate failures. Simulink accomplishes this with Manual Switch blocks. Double-click on the block to change the position of the switch. Similarly, the user can induce the failure condition of a high engine speed by toggling the switch on the far left. A Repeating Table block provides the throttle angle input and periodically repeats the sequence of data specified in the mask.</p><p>The fuel_rate_control block, shown in Figure 2, uses the sensor input and feedback signals to adjust the fuel rate to give a stoichiometric ratio. The model uses three subsystems to implement this strategy: control logic, airflow calculation, and fuel calculation. Under normal operation, the model estimates the airflow rate and multiplies the estimate by the reciprocal of the desired ratio to give the fuel rate. Feedback from the oxygen sensor provides a closed-loop adjustment of the rate estimation in order to maintain the ideal mixture ratio.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_02.png" alt=""> <p><b>Figure 2:</b> Fuel rate controller subsystem</p><h2>Control Logic<a name="6"></a></h2><p>A single Stateflow chart, consisting of a set of six parallel states, implements the control logic in its entirety. The four parallel states shown at the top of Figure 3 correspond to the four individual sensors. The remaining two parallel states at the bottom consider the status of the four sensors simultaneously and determine the overall system operating mode. The model synchronously calls the entire Stateflow diagram at a regular sample time interval of 0.01 sec. This permits the conditions for transitions to the correct mode to be tested on a timely basis.</p><p>To <a href="matlab:open_system(['sldemo_fuelsys/fuel_rate_control/control_logic'])">open</a> the control_logic Stateflow chart, double click on it in the fuel_rate_control subsystem.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_03.png" alt=""> <p><b>Figure 3:</b>  The control logic chart</p><p>When execution begins, all of the states start in their <tt>normal</tt> mode with the exception of the oxygen sensor (EGO). The <tt>O2_warmup</tt> state is entered initially until the warmup period is complete. The system detects throttle and pressure sensor failures when their measured values fall outside their nominal ranges. A manifold vacuum in the absence of a speed signal indicates a speed sensor failure. The oxygen sensor also has a nominal range for failure conditions but, because zero is both the minimum signal level and the bottom of the range, failure can be detected only when it exceeds the upper limit.</p><p>Regardless of which sensor fails, the model always generates the directed event broadcast <tt>Fail.INC</tt>. In this way the triggering of the universal sensor failure logic is independent of the sensor. The model also uses a corresponding sensor recovery event, <tt>Fail.DEC</tt>. The <tt>Fail</tt> state keeps track of the number of failed sensors. The counter increments on each <tt>Fail.INC</tt> event and decrements on each Fail.DEC event. The model uses a superstate, <tt>Multi</tt>, to group all cases where more than one sensor has failed.</p><p>The bottom parallel state represents the fueling mode of the engine. If a single sensor fails, operation continues but the air/fuel mixture is richer to allow smoother running at the cost of higher emissions. If more than one sensor has failed, the engine shuts down as a safety measure, since the air/fuel ratio cannot be controlled reliably.</p><p>During the oxygen sensor warm-up, the model maintains the mixture at normal levels. If this is unsatisfactory, the user can change the design by moving the warm-up state to within the <tt>Rich_Mixture</tt> superstate. If a sensor failure occurs during the warm-up period, the <tt>Single_Failure</tt> state is entered after the warm-up time elapses. Otherwise, the <tt>Normal</tt> state is activated at this time.</p><p>A protective overspeed feature has been added to the model by creating a new state in the <tt>Fuel_Disabled</tt> superstate. Through the use of history junctions, we assured that the chart returns to the appropriate state when the model exits the overspeed state. As the safety requirements for the engine become better specified, we can add additional shutdown states to the <tt>Fuel_Disabled</tt> superstate.</p><h2>Sensor Correction<a name="9"></a></h2><p>When a sensor fails, an estimate of the sensor is computed.  For example, <a href="matlab:Handle.rt=sfroot;Handle.m=Handle.rt.find('-isa','Simulink.BlockDiagram');Handle.p=Handle.m.find('-isa','Stateflow.State','-and','Name','Pressure');Handle.p.view;">open</a> the pressure sensor calculation.  Under normal sensor operation the value of the pressure sensor is used.  Otherwise, the value is estimated.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_04.png" alt=""> <p>The estimate of manifold pressure is computed as a function of engine speed and throttle position.  The value is computed conveniently using a Simulink function inside Stateflow.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_05.png" alt=""> <h2>Airflow Calculation<a name="11"></a></h2><p>The Airflow Calculation block (shown in Figure 5) is the location for the central control laws. This block is found inside the fuel_rate_control subsystem (<a href="matlab:open_system(['sldemo_fuelsys/fuel_rate_control/airflow_calc'])">open this block</a>). The block estimates the intake air flow to determine the fuel rate which gives the appropriate air/fuel ratio. Closed-loop control adjusts the estimation according to the residual oxygen feedback in order to maintain the mixture ratio precisely. Even when a sensor failure mandates open-loop operation, the most recent closed-loop adjustment is retained to best meet the control objectives.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_06.png" alt=""> <p><b>Figure 5:</b> Airflow estimation and correction</p><p><b>Equation 1</b></p><p>The engine's intake air flow can be formulated as the product of the engine speed, the manifold pressure and a time-varying scale factor.</p><p><img src="sldemo_fuelsys_eq09784.png" alt="$$q=\frac{N}{4\pi}V_{cd}\nu \frac{P_m}{RT} = C_{pump}(N,P_m) N P_m = \mbox{ intake mass flow}$$"></p><p><img src="sldemo_fuelsys_eq47760.png" alt="$$N = \mbox{ engine angular speed (Rad/sec)}$$"></p><p><img src="sldemo_fuelsys_eq37333.png" alt="$$V_{cd} = \mbox{ engine cylinder displacement volume}$$"></p><p><img src="sldemo_fuelsys_eq84004.png" alt="$$\nu = \mbox{ volumetric efficiency}$$"></p><p><img src="sldemo_fuelsys_eq45517.png" alt="$$P_m = \mbox{ manifold pressure}$$"></p><p><img src="sldemo_fuelsys_eq87064.png" alt="$$R, T =\mbox{ specific gas constant, gas temperature}$$"></p><p><tt>Cpump</tt> is computed by a lookup table and multiplied by the speed and pressure to form the initial flow estimate. During transients, the throttle rate, with the derivative approximated by a high-pass filter, corrects the air flow for filling dynamics. The control algorithm provides additional correction according to Equation 2.</p><p><b>Equation 2</b></p><p><img src="sldemo_fuelsys_eq83703.png" alt="$$e_0 = 0.5 \mbox{ for } EGO\le 0.5$$"></p><p><img src="sldemo_fuelsys_eq21880.png" alt="$$e_0 = -0.5 \mbox{ for } EGO &gt; 0.5$$"></p><p><img src="sldemo_fuelsys_eq75445.png" alt="$$e_1 = K_i (N,P_m) e_0 \mbox{ for } EGO\le 0.5$$"></p><p><img src="sldemo_fuelsys_eq10294.png" alt="$$\dot{e_2} = e_1 \mbox{ for LOW mode with valid EGO signal} $$"></p><p><img src="sldemo_fuelsys_eq73841.png" alt="$$\dot{e_2} = 0 \mbox{ for RICH, DISABLE or EGO warmup} $$"></p><p><img src="sldemo_fuelsys_eq78658.png" alt="$$ e_0, e_1, e_2 = \mbox{ intermediate error signals}$$"></p><img vspace="5" hspace="5" src="sldemo_fuelsys_07.png" alt=""> <p><b>Figure 6:</b> Engine Gas Dynamics subsystem</p><img vspace="5" hspace="5" src="sldemo_fuelsys_08.png" alt=""> <p><b>Figure 7:</b> Mixing &amp; Combustion block within the Engine Gas Dynamics subsystem</p><p>The nonlinear oxygen sensor (EGO Sensor block) is found inside the Mixing &amp; Combustion block (see Figure 7) within the Engine Gas Dynamics subsystem (see Figure 6). EGO Sensor is modeled as a hyperbolic tangent function, and it provides a meaningful signal when in the vicinity of 0.5 volt. The raw error in the feedback loop is thus detected with a switching threshold, as indicated in Equation 2. If the air-fuel ratio is low (the mixture is lean), the original air estimate is too small and needs to be increased. Conversely, when the oxygen sensor output is high, the air estimate is too large and needs to be decreased. Integral control is utilized so that the correction term achieves a level that brings about zero steady-state error in the mixture ratio.</p><p>The normal closed-loop operation mode, LOW, adjusts the integrator dynamically to minimize the error. The integration is performed in discrete time, with updates every 10 milliseconds. When operating open-loop however, in the RICH or O2 failure modes, the feedback error is ignored and the integrator is held. This gives the best correction based on the most recent valid feedback.</p><h2>Fuel Calculation<a name="19"></a></h2><p>The fuel_calc subsystem (within the fuel_rate_control subsystem, see Figure 8) sets the injector signal to match the given airflow calculation and fault status. The first input is the computed airflow estimation. This is multiplied with the target fuel/air ratio to get the commanded fuel rate. Normally the target is stoichiometric, i.e. equals the optimal air to fuel ratio of 14.6. When a sensor fault occurs, the Stateflow control logic sets the mode input to a value of 2 or 3 (RICH or DISABLED) so that the mixture is either slightly rich of stoichiometric or is shut down completely.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_09.png" alt=""> <p><b>Figure 8:</b> fuel_calc subsystem</p><p>The fuel_calc subsystem (Figure 8) employs adjustable compensation (Figure 9) in order to achieve different purposes in different modes. In normal operation, phase lead compensation of the feedback correction signal adds to the closed-loop stability margin. In RICH mode and during EGO sensor failure (open loop), however, the composite fuel signal is low-pass filtered to attenuate noise introduced in the estimation process. The end result is a signal representing the fuel flow rate which, in an actual system, would be translated to injector pulse times.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_10.png" alt=""> <p><b>Figure 9:</b> Switchable compensation subsystem</p><h2>Results and Conclusions<a name="23"></a></h2><p>Simulation results are shown in Figure 10 and Figure 11. The simulation is run with a throttle input that ramps from 10 to 20 degrees over a period of two seconds, then goes back to 10 degrees over the next two seconds. This cycle repeats continuously while the engine is held at a constant speed so that the user can experiment with different fault conditions and failure modes. Double-click on a sensor switch in the model to simulate the failure of the associated sensor. Repeat this operation to toggle the switch back for normal operation.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_11.png" alt=""> <p><b>Figure 10:</b> Comparing the fuel flow rate for different sensor failures</p><p>Figure 10 compares the fuel flow rate under fault-free conditions (baseline) with the rate applied in the presence of a single failure in each sensor individually. In each case note the nonlinear relationship between fuel flow and the triangular throttle command (shown in Figure 12). In the baseline case, the fuel rate is regulated tightly, exhibiting a small ripple due to the switching nature of the EGO sensor's input circuitry. In the other four cases the system operates open loop. The control strategy is proven effective in maintaining the correct fuel profile in the single-failure mode. In each of the fault conditions, the fuel rate is essentially 125% of the baseline flow, fulfilling the design objective of 80% rich.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_12.png" alt=""> <p><b>Figure 11:</b> Comparing the air-fuel ratio for different sensor failures</p><p>Figure 11 plots the corresponding air/fuel ratio for each case. The baseline plot shows the effects of closed-loop operation. The mixture ratio is regulated very tightly to the stoichiometric objective of 14.6. The rich mixture ratio is shown in the bottom four plots of Figure 11. Although they are not tightly regulated, as in the closed-loop case, they approximate the objective of air/fuel (0.8*14.6=11.7).</p><img vspace="5" hspace="5" src="sldemo_fuelsys_13.png" alt=""> <p><b>Figure 12:</b> Throttle command</p><p>The transient behavior of the system is shown in Figure 13. With a constant 12 degree throttle angle and the system in steady-state, a throttle failure is introduced at t = 2 and corrected at t = 5. At the onset of the failure, the fuel rate increases immediately. The effects are seen at the exhaust as the rich ratio propagates through the system. The steady-state condition is then quickly recovered when closed-loop operation is restored.</p><img vspace="5" hspace="5" src="sldemo_fuelsys_14.png" alt=""> <p><b>Figure 13:</b> Transient response to fault detection</p><h2>Remarks<a name="31"></a></h2><p>With animation enabled in the Stateflow debugger, the state transitions are highlighted in the Stateflow diagram (see Figure 3) as the various states are activated. The sequence of activation is indicated by changing colors. This closely coupled synergy between Stateflow and Simulink fosters the modeling and development of complete control systems. An engineer's concepts can develop in a natural and structured fashion with immediate visual feedback reinforcing each step.</p><h2>Related Demos<a name="32"></a></h2><p>Refer to Table 1 for demos related to sldemo_fuelsys.</p><p>
+<TABLE>
+<table border=2 CELLPADDING=10>
+<TR>
+<TD>Fixed-point design</TD>
+<TD>
+<a
+href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','fxpdemo_fuelsys_publish','Simulink&nbsp;Fixed&nbsp;Point')">
+fxpdemo_fuelsys</a>
+</TD>
+</TR>
+<TR>
+<TD>Production C/C++ code generation</TD>
+<TD>
+<a
+href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','rtwdemo_fuelsys_publish','Real-Time&nbsp;Workshop')">
+rtwdemo_fuelsys</a>
+</TD>
+</TR>
+</TD>
+</TR>
+<TR>
+<TD>Fixed-point production C/C++ code generation</TD>
+<TD>
+<a
+href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','rtwdemo_fuelsys_fxp_publish','Real-Time&nbsp;Workshop')">
+rtwdemo_fuelsys_fxp</a>
+</TD>
+</TR>
+</TABLE>
+</p><p><b>Table 1:</b>  Related product demos using sldemo_fuelsys</p><p class="footer">Copyright 1990-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling a Fault-Tolerant Fuel Control System
+%
+% The following example illustrates how to combine Stateflow(R) with Simulink(R) to
+% efficiently model hybrid systems. This type of modeling is particularly useful
+% for systems that have numerous possible operational modes based on discrete
+% events. Traditional signal flow is handled in Simulink while changes in
+% control configuration are implemented in Stateflow. The model described below
+% represents a fuel control system for a gasoline engine. The system is highly
+% robust in that individual sensor failures are detected and the control system
+% is dynamically reconfigured for uninterrupted operation.
+
+% Copyright 1990-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.7 $  $Date: 2009/07/27 20:33:15 $
+
+%% Analysis and Physics
+%
+% Physical and empirical relationships form the basis for the throttle and
+% intake manifold dynamics of this model. The air-fuel ratio is computed by
+% dividing the air mass flow rate (pumped from the intake manifold) by the fuel
+% mass flow rate (injected at the valves). The ideal (i.e. stoichiometric)
+% mixture ratio provides a good compromise between power, fuel economy, and
+% emissions. The target air-fuel ratio for this system is 14.6. Typically, a
+% sensor determines the amount of residual oxygen present in the exhaust gas
+% (EGO). This gives a good indication of the mixture ratio and provides a
+% feedback measurement for closed-loop control. If the sensor indicates a high
+% oxygen level, the control law increases the fuel rate. When the sensor detects
+% a fuel-rich mixture, corresponding to a very low level of residual oxygen, the
+% controller decreases the fuel rate.
+
+%% Modeling
+%
+% Figure 1 shows the top level of the Simulink model. To
+% <matlab:open_system('sldemo_fuelsys') open> the model, type |sldemo_fuelsys|
+% in MATLAB(R) Command Window. Press the Play button in the model window toolbar to
+% run the simulation. The model loads necessary data into the model workspace
+% from |sldemo_fuelsys_data.m|. The model logs relevant data to MATLAB workspace
+% in a data structure called |sldemo_fuelsys_output|. Logged signals have a blue
+% indicator (see Figure 1).
+%
+% Note that loading initial conditions into the model workspace keeps simulation
+% data isolated from data in other open models that you may have open. This also
+% helps avoid MATLAB workspace cluttering. To view the contents of the model
+% workspace select View > Model Explorer, and click on Model Workspace from the
+% Model Hierarchy list.
+
+open_system('sldemo_fuelsys');
+
+%%
+%
+% *Figure 1:* Top-level diagram for the fuel control system model
+
+%%
+%
+% The fuel_rate_control uses signals from the system's sensors to determine
+% the fuel rate which gives a stoichiometric mixture. The fuel rate
+% combines with the actual air flow in the engine gas dynamics model to
+% determine the resulting mixture ratio as sensed at the exhaust.
+%
+% The user can selectively disable each of the four sensors (throttle
+% angle, speed, EGO and manifold absolute pressure [MAP]), to simulate
+% failures. Simulink accomplishes this with Manual Switch blocks.
+% Double-click on the block to change the position of the switch.
+% Similarly, the user can induce the failure condition of a high engine
+% speed by toggling the switch on the far left. A Repeating Table block
+% provides the throttle angle input and periodically repeats the sequence
+% of data specified in the mask.
+%
+% The fuel_rate_control block, shown in Figure 2, uses the sensor input and
+% feedback signals to adjust the fuel rate to give a stoichiometric ratio.
+% The model uses three subsystems to implement this strategy: control
+% logic, airflow calculation, and fuel calculation. Under normal operation,
+% the model estimates the airflow rate and multiplies the estimate by the
+% reciprocal of the desired ratio to give the fuel rate. Feedback from the
+% oxygen sensor provides a closed-loop adjustment of the rate estimation in
+% order to maintain the ideal mixture ratio.
+
+open_system('sldemo_fuelsys/fuel_rate_control');
+
+%%
+%
+% *Figure 2:* Fuel rate controller subsystem
+
+%% Control Logic
+%
+% A single Stateflow chart, consisting of a set of six parallel states,
+% implements the control logic in its entirety. The four parallel states shown
+% at the top of Figure 3 correspond to the four individual sensors. The
+% remaining two parallel states at the bottom consider the status of the four
+% sensors simultaneously and determine the overall system operating mode. The
+% model synchronously calls the entire Stateflow diagram at a regular sample
+% time interval of 0.01 sec. This permits the conditions for transitions to the
+% correct mode to be tested on a timely basis.
+%
+% To <matlab:open_system(['sldemo_fuelsys/fuel_rate_control/control_logic']) open> the
+% control_logic Stateflow chart, double click on it in the fuel_rate_control
+% subsystem.
+
+open_system('sldemo_fuelsys/fuel_rate_control/control_logic'); %open the Stateflow chart
+
+%%
+%
+% *Figure 3:*  The control logic chart
+
+%%
+%
+% When execution begins, all of the states start in their |normal| mode
+% with the exception of the oxygen sensor (EGO). The |O2_warmup| state is entered
+% initially until the warmup period is complete. The system detects throttle
+% and pressure sensor failures when their measured values fall outside their
+% nominal ranges. A manifold vacuum in the absence of a speed signal indicates a
+% speed sensor failure. The oxygen sensor also has a nominal range for failure
+% conditions but, because zero is both the minimum signal level and the bottom
+% of the range, failure can be detected only when it exceeds the upper limit.
+%
+% Regardless of which sensor fails, the model always generates the directed
+% event broadcast |Fail.INC|. In this way the triggering of the universal
+% sensor failure logic is independent of the sensor. The model also uses a
+% corresponding sensor recovery event, |Fail.DEC|. The |Fail| state keeps
+% track of the number of failed sensors. The counter increments on each
+% |Fail.INC| event and decrements on each Fail.DEC event. The model uses a
+% superstate, |Multi|, to group all cases where more than one sensor
+% has failed.
+%
+% The bottom parallel state represents the fueling mode of the engine. If a
+% single sensor fails, operation continues but the air/fuel mixture is richer to
+% allow smoother running at the cost of higher emissions. If more than one
+% sensor has failed, the engine shuts down as a safety measure, since the
+% air/fuel ratio cannot be controlled reliably.
+%
+% During the oxygen sensor warm-up, the model maintains the mixture at normal
+% levels. If this is unsatisfactory, the user can change the design by moving
+% the warm-up state to within the |Rich_Mixture| superstate. If a sensor failure
+% occurs during the warm-up period, the |Single_Failure| state is entered after
+% the warm-up time elapses. Otherwise, the |Normal| state is activated at this
+% time.
+%
+% A protective overspeed feature has been added to the model by creating a new
+% state in the |Fuel_Disabled| superstate. Through the use of history junctions,
+% we assured that the chart returns to the appropriate state when the model
+% exits the overspeed state. As the safety requirements for the engine become
+% better specified, we can add additional shutdown states to the |Fuel_Disabled|
+% superstate.
+
+%% Sensor Correction
+%
+% When a sensor fails, an estimate of the sensor is computed.  For example, 
+% <matlab:Handle.rt=sfroot;Handle.m=Handle.rt.find('-isa','Simulink.BlockDiagram');Handle.p=Handle.m.find('-isa','Stateflow.State','-and','Name','Pressure');Handle.p.view; open>
+% the pressure sensor calculation.  Under normal sensor operation the value of the
+% pressure sensor is used.  Otherwise, the value is estimated.
+
+Handle.rt=sfroot;Handle.m=Handle.rt.find('-isa','Simulink.BlockDiagram');...
+    Handle.p=Handle.m.find('-isa','Stateflow.State','-and','Name','Pressure');...
+    Handle.p.view;
+
+%%
+% The estimate of manifold pressure is computed as a function of engine speed
+% and throttle position.  The value is computed conveniently using a Simulink
+% function inside Stateflow.
+
+Handle.pest=Handle.m.find('-isa','Stateflow.SLFunction','-and','Name','map_estimate');
+Handle.pest.view;
+Handle.pest.Chart.visible = 0;
+
+%% Airflow Calculation
+%
+% The Airflow Calculation block (shown in Figure 5) is the location for the
+% central control laws. This block is found inside the fuel_rate_control
+% subsystem (<matlab:open_system(['sldemo_fuelsys/fuel_rate_control/airflow_calc'])
+% open this block>). The block estimates the intake air flow to determine the
+% fuel rate which gives the appropriate air/fuel ratio. Closed-loop control
+% adjusts the estimation according to the residual oxygen feedback in order to
+% maintain the mixture ratio precisely. Even when a sensor failure mandates
+% open-loop operation, the most recent closed-loop adjustment is retained to
+% best meet the control objectives.
+
+open_system('sldemo_fuelsys/fuel_rate_control/airflow_calc');
+
+%%
+%
+% *Figure 5:* Airflow estimation and correction
+
+%%
+%
+% *Equation 1*
+%
+% The engine's intake air flow can be formulated as the product of the engine
+% speed, the manifold pressure and a time-varying scale factor.
+%
+% $$q=\frac{N}{4\pi}V_{cd}\nu \frac{P_m}{RT} = C_{pump}(N,P_m) N P_m = \mbox{ intake mass flow}$$
+%
+% $$N = \mbox{ engine angular speed (Rad/sec)}$$
+%
+% $$V_{cd} = \mbox{ engine cylinder displacement volume}$$
+%
+% $$\nu = \mbox{ volumetric efficiency}$$
+%
+% $$P_m = \mbox{ manifold pressure}$$
+%
+% $$R, T =\mbox{ specific gas constant, gas temperature}$$ 
+
+%%
+%
+% |Cpump| is computed by a lookup table and multiplied by the speed and pressure
+% to form the initial flow estimate. During transients, the throttle rate, with
+% the derivative approximated by a high-pass filter, corrects the air flow for
+% filling dynamics. The control algorithm provides additional correction
+% according to Equation 2.
+
+%%
+%
+% *Equation 2*
+%
+% $$e_0 = 0.5 \mbox{ for } EGO\le 0.5$$
+%
+% $$e_0 = -0.5 \mbox{ for } EGO > 0.5$$
+%
+% $$e_1 = K_i (N,P_m) e_0 \mbox{ for } EGO\le 0.5$$
+%
+% $$\dot{e_2} = e_1 \mbox{ for LOW mode with valid EGO signal} $$
+%
+% $$\dot{e_2} = 0 \mbox{ for RICH, DISABLE or EGO warmup} $$
+%
+% $$ e_0, e_1, e_2 = \mbox{ intermediate error signals}$$
+
+
+open_system('sldemo_fuelsys/Engine Gas Dynamics');
+%%
+%
+% *Figure 6:* Engine Gas Dynamics subsystem
+
+open_system('sldemo_fuelsys/Engine Gas Dynamics/Mixing & Combustion');
+
+%%
+%
+% *Figure 7:* Mixing & Combustion block within the Engine Gas Dynamics subsystem
+
+%%
+%
+% The nonlinear oxygen sensor (EGO Sensor block) is found inside the
+% Mixing & Combustion block (see Figure 7) within the Engine Gas Dynamics
+% subsystem (see Figure 6). EGO Sensor is modeled as a hyperbolic tangent
+% function, and it provides a meaningful signal when in the vicinity of 0.5
+% volt. The raw error in the feedback loop is thus detected with a switching
+% threshold, as indicated in Equation 2. If the air-fuel ratio is low (the mixture is
+% lean), the original air estimate is too small and needs to be
+% increased. Conversely, when the oxygen sensor output is high, the air estimate
+% is too large and needs to be decreased. Integral control is utilized so that
+% the correction term achieves a level that brings about zero steady-state error
+% in the mixture ratio.
+%
+% The normal closed-loop operation mode, LOW, adjusts the integrator dynamically
+% to minimize the error. The integration is performed in discrete time, with
+% updates every 10 milliseconds. When operating open-loop however, in the RICH or
+% O2 failure modes, the feedback error is ignored and the integrator is
+% held. This gives the best correction based on the most recent valid feedback.
+
+%% Fuel Calculation
+%
+% The fuel_calc subsystem (within the fuel_rate_control subsystem, see
+% Figure 8) sets the injector signal to match the given airflow calculation and
+% fault status. The first input is the computed airflow estimation. This is
+% multiplied with the target fuel/air ratio to get the commanded fuel
+% rate. Normally the target is stoichiometric, i.e. equals the optimal air to
+% fuel ratio of 14.6. When a sensor fault occurs, the Stateflow control
+% logic sets the mode input to a value of 2 or 3 (RICH or DISABLED) so that the
+% mixture is either slightly rich of stoichiometric or is shut down completely.
+%
+%
+
+open_system('sldemo_fuelsys/fuel_rate_control/fuel_calc');
+
+%%
+%
+% *Figure 8:* fuel_calc subsystem
+
+%%
+%
+% The fuel_calc subsystem (Figure 8) employs adjustable compensation
+% (Figure 9) in order to achieve different purposes in different modes. In
+% normal operation, phase lead compensation of the feedback correction signal
+% adds to the closed-loop stability margin. In RICH mode and during EGO sensor
+% failure (open loop), however, the composite fuel signal is low-pass filtered
+% to attenuate noise introduced in the estimation process. The end result is a
+% signal representing the fuel flow rate which, in an actual system, would be
+% translated to injector pulse times.
+
+open_system('sldemo_fuelsys/fuel_rate_control/fuel_calc/switchable_compensation');
+
+%%
+%
+% *Figure 9:* Switchable compensation subsystem
+
+% Remove window clutter
+close_system(Handle.pest.getDialogProxy.getFullName)
+close_system('sldemo_fuelsys/fuel_rate_control/fuel_calc/switchable_compensation');
+close_system('sldemo_fuelsys/fuel_rate_control/fuel_calc');
+close_system('sldemo_fuelsys/fuel_rate_control/control_logic');
+close_system('sldemo_fuelsys/fuel_rate_control/airflow_calc');
+close_system('sldemo_fuelsys/fuel_rate_control');
+close_system('sldemo_fuelsys/Engine Gas Dynamics/Mixing & Combustion');
+close_system('sldemo_fuelsys/Engine Gas Dynamics');
+
+%% Results and Conclusions
+%
+% Simulation results are shown in Figure 10 and Figure 11. The simulation is run
+% with a throttle input that ramps from 10 to 20 degrees over a period of two
+% seconds, then goes back to 10 degrees over the next two seconds. This cycle
+% repeats continuously while the engine is held at a constant speed so that the
+% user can experiment with different fault conditions and failure
+% modes. Double-click on a sensor switch in the model to simulate the failure of
+% the associated sensor. Repeat this operation to toggle the switch back for
+% normal operation.
+
+
+% Now run the simulation with different sensors turned off and plot results
+Handle.Model = get_param('sldemo_fuelsys', 'Handle');
+set(Handle.Model, 'StartTime','0','StopTime','8','RelTol','1e-5','AbsTol','1e-6','SolverName','ode45');
+
+Handle.Speed_Selector  = get_param('sldemo_fuelsys/Engine Speed Selector', 'Handle');
+Handle.Throttle_Sensor = get_param('sldemo_fuelsys/Throttle Sensor', 'Handle');
+Handle.Speed_Sensor    = get_param('sldemo_fuelsys/Speed Sensor', 'Handle');
+Handle.EGO_Sensor      = get_param('sldemo_fuelsys/EGO Sensor', 'Handle');
+Handle.MAP_Sensor      = get_param('sldemo_fuelsys/MAP Sensor', 'Handle');
+
+% run simulation at nominal speed with all sensors working
+set(Handle.Speed_Selector, 'sw','1');
+set(Handle.Throttle_Sensor,'sw','1');
+set(Handle.Speed_Sensor,   'sw','1');
+set(Handle.EGO_Sensor,     'sw','1');
+set(Handle.MAP_Sensor,     'sw','1');
+evalc('sim(''sldemo_fuelsys'')'); %run simulation
+FuelFlowRate.All = sldemo_fuelsys_output.fuel; %save results
+AirFuelRatio.All = sldemo_fuelsys_output.air_fuel_ratio;
+
+% run simulation when throttle sensor failed
+set(Handle.Speed_Selector, 'sw','1');
+set(Handle.Throttle_Sensor,'sw','0');
+set(Handle.Speed_Sensor,   'sw','1');
+set(Handle.EGO_Sensor,     'sw','1');
+set(Handle.MAP_Sensor,     'sw','1');
+evalc('sim(''sldemo_fuelsys'')'); %run simulation
+FuelFlowRate.Thr = sldemo_fuelsys_output.fuel; %save results
+AirFuelRatio.Thr = sldemo_fuelsys_output.air_fuel_ratio;
+
+% run simulation at nominal speed with all sensors working
+set(Handle.Speed_Selector, 'sw','1');
+set(Handle.Throttle_Sensor,'sw','1');
+set(Handle.Speed_Sensor,   'sw','0');
+set(Handle.EGO_Sensor,     'sw','1');
+set(Handle.MAP_Sensor,     'sw','1');
+evalc('sim(''sldemo_fuelsys'')'); %run simulation
+FuelFlowRate.Spe = sldemo_fuelsys_output.fuel; %save results
+AirFuelRatio.Spe = sldemo_fuelsys_output.air_fuel_ratio;
+
+% run simulation at nominal speed with all sensors working
+set(Handle.Speed_Selector, 'sw','1');
+set(Handle.Throttle_Sensor,'sw','1');
+set(Handle.Speed_Sensor,   'sw','1');
+set(Handle.EGO_Sensor,     'sw','0');
+set(Handle.MAP_Sensor,     'sw','1');
+evalc('sim(''sldemo_fuelsys'')'); %run simulation
+FuelFlowRate.Ego = sldemo_fuelsys_output.fuel; %save results
+AirFuelRatio.Ego = sldemo_fuelsys_output.air_fuel_ratio;
+
+% run simulation at nominal speed with all sensors working
+set(Handle.Speed_Selector, 'sw','1');
+set(Handle.Throttle_Sensor,'sw','1');
+set(Handle.Speed_Sensor,   'sw','1');
+set(Handle.EGO_Sensor,     'sw','1');
+set(Handle.MAP_Sensor,     'sw','0');
+evalc('sim(''sldemo_fuelsys'')'); %run simulation
+FuelFlowRate.Map = sldemo_fuelsys_output.fuel; %save results
+AirFuelRatio.Map = sldemo_fuelsys_output.air_fuel_ratio;
+
+% Plot the results
+figure('Units','pixels','Position',[100 100 600 750],'Tag','CloseMe');
+subplot(5,1,1);
+plot(FuelFlowRate.All.Time, FuelFlowRate.All.Data);
+ylabel('(g/sec)');
+title('Fault Tolerant Fuel Control System: Fuel Flow Rate');
+text(0.5,0.5,'Baseline: All Sensors Functioning Properly');
+axis([0 8 0 2.5]);
+subplot(5,1,2);
+plot(FuelFlowRate.Thr.Time, FuelFlowRate.Thr.Data);
+ylabel('(g/sec)');
+text(0.5,0.5,'Throttle Sensor Failed');
+axis([0 8 0 2.5]);
+subplot(5,1,3);
+plot(FuelFlowRate.Spe.Time, FuelFlowRate.Spe.Data);
+ylabel('(g/sec)');
+text(0.5,0.5,'Speed Sensor Failed');
+axis([0 8 0 2.5]);
+subplot(5,1,4);
+plot(FuelFlowRate.Ego.Time, FuelFlowRate.Ego.Data);
+ylabel('(g/sec)');
+text(0.5,0.5,'EGO Sensor Failed');
+axis([0 8 0 2.5]);
+subplot(5,1,5);
+plot(FuelFlowRate.Map.Time, FuelFlowRate.Map.Data);
+ylabel('(g/sec)');
+text(0.5,0.5,'MAP Sensor Failed');
+axis([0 8 0 2.5]);
+xlabel('Time (sec)');
+
+%%
+%
+% *Figure 10:* Comparing the fuel flow rate for different sensor failures
+
+%%
+%
+% Figure 10 compares the fuel flow rate under fault-free conditions (baseline)
+% with the rate applied in the presence of a single failure in each sensor
+% individually. In each case note the nonlinear relationship between fuel flow
+% and the triangular throttle command (shown in Figure 12). In the baseline
+% case, the fuel rate is regulated tightly, exhibiting a small ripple due to the
+% switching nature of the EGO sensor's input circuitry. In the other four cases
+% the system operates open loop. The control strategy is proven effective in
+% maintaining the correct fuel profile in the single-failure mode. In each of
+% the fault conditions, the fuel rate is essentially 125% of the baseline flow,
+% fulfilling the design objective of 80% rich.
+%
+
+
+% Plot the results
+figure('Units','pixels','Position',[100 100 600 750],'Tag','CloseMe');
+subplot(5,1,1);
+plot(AirFuelRatio.All.Time, AirFuelRatio.All.Data);
+title('Fault Tolerant Fuel Control System: Air Fuel Ratio');
+text(1,3,'Baseline: All Sensors Functioning Properly');
+axis([0 8 0 16]);
+subplot(5,1,2);
+plot(AirFuelRatio.Thr.Time, AirFuelRatio.Thr.Data);
+text(1,3,'Throttle Sensor Failed');
+axis([0 8 0 16]);
+subplot(5,1,3);
+plot(AirFuelRatio.Spe.Time, AirFuelRatio.Spe.Data);
+text(1,3,'Speed Sensor Failed');
+axis([0 8 0 16]);
+subplot(5,1,4);
+plot(AirFuelRatio.Ego.Time, AirFuelRatio.Ego.Data);
+text(1,3,'EGO Sensor Failed');
+axis([0 8 0 16]);
+subplot(5,1,5);
+plot(AirFuelRatio.Map.Time, AirFuelRatio.Map.Data);
+text(1,3,'MAP Sensor Failed');
+axis([0 8 0 16]);
+xlabel('Time (sec)');
+
+%%
+%
+% *Figure 11:* Comparing the air-fuel ratio for different sensor failures
+
+%%
+%
+% Figure 11 plots the corresponding air/fuel ratio for each case. The baseline
+% plot shows the effects of closed-loop operation. The mixture ratio is
+% regulated very tightly to the stoichiometric objective of 14.6. The rich
+% mixture ratio is shown in the bottom four plots of Figure 11. Although they
+% are not tightly regulated, as in the closed-loop case, they approximate the
+% objective of air/fuel (0.8*14.6=11.7).
+%
+
+figure('Units','pixels','Position',[100 100 500 300],'Tag','CloseMe');
+plot(sldemo_fuelsys_output.throttle.Time, sldemo_fuelsys_output.throttle.Data);
+title('Throttle Command');
+xlabel('Time (sec)');
+ylabel('Throttle Opening (%)')
+axis([0 8 8 22]);
+
+%%
+%
+% *Figure 12:* Throttle command
+
+%% 
+%
+% The transient behavior of the system is shown in Figure 13. With a constant
+% 12 degree throttle angle and the system in steady-state, a throttle failure is
+% introduced at t = 2 and corrected at t = 5. At the onset of the failure, the
+% fuel rate increases immediately. The effects are seen at the exhaust as the
+% rich ratio propagates through the system. The steady-state condition is then
+% quickly recovered when closed-loop operation is restored.
+%
+
+% investigating transient responses
+% Set the start time negative to achieve steady state solution at t=0 sec
+% Keep every other setting unchanged
+set(Handle.Model, 'StartTime','-10','StopTime','8');
+Handle.Throttle = get_param('sldemo_fuelsys/Throttle Command','Handle');
+set(Handle.Throttle,'rep_seq_t','[-10 0 2 2 5 5 8]', 'rep_seq_y', '[12 12 12 0 0 12 12]');
+set(Handle.Speed_Selector, 'sw','1');
+set(Handle.Throttle_Sensor,'sw','1');
+set(Handle.Speed_Sensor,   'sw','1');
+set(Handle.EGO_Sensor,     'sw','1');
+set(Handle.MAP_Sensor,     'sw','1');
+evalc('sim(''sldemo_fuelsys'')'); %run simulation
+FuelFlowRate.Transient = sldemo_fuelsys_output.fuel; %save results
+AirFuelRatio.Transient = sldemo_fuelsys_output.air_fuel_ratio;
+
+figure('Units','pixels','Position',[100 100 500 300],'Tag','CloseMe');
+subplot(2,1,1);
+plot(FuelFlowRate.Transient.Time, FuelFlowRate.Transient.Data);
+ylabel('FuelFlowRate (g/sec)');
+title('Transient Response to Throttle Failure');
+axis([0 8 0 1.5]);
+subplot(2,1,2);
+plot(AirFuelRatio.Transient.Time, AirFuelRatio.Transient.Data);
+ylabel('Air/Fuel Ratio');
+xlabel('Time (sec)')
+axis([0 8 12 16]);
+
+%%
+%
+% *Figure 13:* Transient response to fault detection
+
+% Close the model, clear generated variables.
+close_system('sldemo_fuelsys',0);
+close(findobj(0,'Tag','CloseMe')); %close the figures, they all have 'Tag'=='CloseMe'
+clear ans Handle AirFuelRatio FuelFlowRate; %clear generated variables
+
+%% Remarks
+%
+% With animation enabled in the Stateflow debugger, the state transitions are
+% highlighted in the Stateflow diagram (see Figure 3) as the various states
+% are activated. The sequence of activation is indicated by changing
+% colors. This closely coupled synergy between Stateflow and Simulink fosters
+% the modeling and development of complete control systems. An engineer's
+% concepts can develop in a natural and structured fashion with immediate visual
+% feedback reinforcing each step.
+
+%% Related Demos
+% Refer to Table 1 for demos related to sldemo_fuelsys.
+%
+% <html>
+% <TABLE>
+% <table border=2 CELLPADDING=10>
+% <TR>
+% <TD>Fixed-point design</TD>
+% <TD>
+% <a
+% href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','fxpdemo_fuelsys_publish','Simulink&nbsp;Fixed&nbsp;Point')">
+% fxpdemo_fuelsys</a>
+% </TD>
+% </TR>
+% <TR>
+% <TD>Production C/C++ code generation</TD>
+% <TD>
+% <a
+% href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','rtwdemo_fuelsys_publish','Real-Time&nbsp;Workshop')">
+% rtwdemo_fuelsys</a>
+% </TD>
+% </TR>
+% </TD>
+% </TR>
+% <TR>
+% <TD>Fixed-point production C/C++ code generation</TD>
+% <TD>
+% <a
+% href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','rtwdemo_fuelsys_fxp_publish','Real-Time&nbsp;Workshop')">
+% rtwdemo_fuelsys_fxp</a>
+% </TD>
+% </TR>
+% </TABLE>
+% </html>
+% 
+% *Table 1:*  Related product demos using sldemo_fuelsys 
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

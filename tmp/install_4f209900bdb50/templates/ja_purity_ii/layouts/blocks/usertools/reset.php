@@ -1,0 +1,1 @@
+<a href="<?php echo JURI::base()?>?do=reset_usersetting" title="<?php echo JText::_('Reset user setting')?>"><?php echo JText::_('Reset user setting')?></a>

@@ -1,0 +1,358 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>GPU Bandwidth Test</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-07"><meta name="DC.source" content="gpudemo_bandwidth.m"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h1>GPU Bandwidth Test</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#3">Moving data from the host to the device</a></li><li><a href="#4">Moving data from the device to the host</a></li><li><a href="#5">Device Write-only Test</a></li><li><a href="#6">Device Read \ Write Test</a></li><li><a href="#8">Helper functions</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>This demo will measure several different bandwidths applicable to the performance of code on a GPU. Particularly the bandwidths for</p><div><ul><li>Moving data from the host to the device</li><li>Retrieving data from the device to the host</li><li>Writing (only) data on the device</li><li>Reading and writing data on the device</li></ul></div><p>These bandwidths affect the performance characteristics of code on the GPU, since almost all data destined for use in GPU computations will start on the host, and whilst running a kernel the data will need to be read from the GPU device memory and the results written back.</p><p>We need to define some numbers that govern the overall size of tests. You may find the you want to change these numbers for your particular system as the results may change based on these numbers.</p><pre class="codeinput"><span class="keyword">function</span> gpudemo_bandwidth
+</pre><pre class="codeinput"><span class="comment">% How many threads should each thread block run with - 512 is the max for</span>
+<span class="comment">% most GPU's in 2010</span>
+T = 512;
+<span class="comment">% How many thread blocks should we ask the GPU to start up. Increasing this</span>
+<span class="comment">% number should linearly increase the time taken to run the kernels.</span>
+G = 1024;
+
+<span class="comment">% Define the size in 'single' of the vector to test host to GPU bandwidth</span>
+<span class="comment">% with.</span>
+device = gpuDevice();
+<span class="keyword">if</span> log2( device.FreeMemory ) &gt; 28
+    <span class="comment">% Device has enough free memory for a single vector of this length</span>
+    N = 5e7;
+<span class="keyword">else</span>
+    <span class="comment">% Device only has a small amount of free memory</span>
+    N = 1e7;
+<span class="keyword">end</span>
+
+
+<span class="comment">% We need to load up the 2 kernels that we are going to use to measure the</span>
+<span class="comment">% device memory bandwidth. Note that PTX code is slightly different on 32</span>
+<span class="comment">% and 64 bit platforms (owing to the way pointers are passed) so there are</span>
+<span class="comment">% 2 different PTX files with the correct code in them.</span>
+cuFile  = <span class="string">'bandwidth.cu'</span>;
+ptxFile = [<span class="string">'bandwidth.'</span> parallel.gpu.ptxext];
+b1 = parallel.gpu.CUDAKernel(ptxFile, cuFile, <span class="string">'bandwidth1'</span>);
+b2 = parallel.gpu.CUDAKernel(ptxFile, cuFile, <span class="string">'bandwidth2'</span>);
+<span class="comment">% How many bytes in a single</span>
+sizeofSingle = 4;
+</pre><h2>Moving data from the host to the device<a name="3"></a></h2><p>To test the bandwidth between the host and the device all we need to do is allocate an array in MATLAB&reg; and time how long it takes to create a <tt>GPUArray</tt> object that represents data on the card.</p><pre class="codeinput"><span class="comment">% Allocate the data on the host that we will copy to the device</span>
+data = ones(N, 1, <span class="string">'single'</span>);
+<span class="comment">% Time moving it to the device</span>
+tic
+d = parallel.gpu.GPUArray(data);
+allocT = toc;
+
+fprintf(<span class="string">'Time to allocate on GPU and copy memory:  %.2f milliS\n'</span>, allocT*1e3);
+bandwidth =  sizeofSingle*N /allocT;
+fprintf(<span class="string">'Measured bandwidth is:                    %.3f GB/s\n\n'</span>, bandwidth*1e-9);
+</pre><pre class="codeoutput">Time to allocate on GPU and copy memory:  109.53 milliS
+Measured bandwidth is:                    1.826 GB/s
+
+</pre><h2>Moving data from the device to the host<a name="4"></a></h2><p>To test the bandwidth between device and host we time how long it takes to get that same data back from the card onto the host. We use the <tt>gather</tt> method of a <tt>GPUArray</tt> object to do this.</p><pre class="codeinput"><span class="comment">% Time retrieving the data from the device</span>
+tic
+gather(d);
+readT = toc;
+
+fprintf(<span class="string">'Time to allocate on host and copy memory: %.2f milliS\n'</span>, readT*1e3);
+bandwidth =  sizeofSingle*N /readT;
+fprintf(<span class="string">'Measured bandwidth is:                    %.3f GB/s\n\n'</span>, bandwidth*1e-9);
+</pre><pre class="codeoutput">Time to allocate on host and copy memory: 144.93 milliS
+Measured bandwidth is:                    1.380 GB/s
+
+</pre><h2>Device Write-only Test<a name="5"></a></h2><p>This test is going to invoke one of the 2 kernels defined in the bandwidth.cu file (the one called <tt>bandwidth1</tt>). Provided that the second input to this kernel is greater than zero, each thread of the kernel will write that value (in a coalesced way) to global memory. Since we know that there is an overhead to launching kernels we will also measure that overhead and subtract from the final run time so that we are carefully measuring just the memory access times. Note that in the <tt>iTimeKernelRun</tt> function we reuse the input array as an output array to ensure that no memory is copied before calling the kernel on the device. The C code for the kernel we are calling is</p><pre>__global__ void bandwidth1(float * pOutput, float val ) {
+    // Calculate (for each thread) which element of the array to write
+    int idx = blockDim.x*blockIdx.x + threadIdx.x;
+    if ( val &gt; 0 ) {
+        pOutput[idx] = val;
+    }
+}</pre><pre class="codeinput"><span class="comment">% Make sure that the kernel is using the correct number of threads and</span>
+<span class="comment">% thread blocks</span>
+b1.ThreadBlockSize = T;
+b1.GridSize = G;
+<span class="comment">% Make correctly sized data on the device</span>
+d = parallel.gpu.GPUArray(zeros(T, G, <span class="string">'single'</span>));
+
+<span class="comment">% Measure overhead - zero input to kernel - no memory write</span>
+overheadT = iTimeKernelRun(b1, d, 0);
+fprintf(<span class="string">'Run time with no memory access:    %.2f microS\n'</span>, overheadT*1e6);
+
+<span class="comment">% Measure runtime - one input to kernel - force memory write</span>
+runT = iTimeKernelRun(b1, d, 1);
+fprintf(<span class="string">'Run time with one memory access:   %.2f microS\n'</span>, runT*1e6);
+
+<span class="comment">% Compute memory bandwidth in B/s - float has 4 bytes</span>
+bandwidth =  sizeofSingle*T*G / (runT - overheadT);
+fprintf(<span class="string">'Measured bandwidth is: %.3f GB/s\n\n'</span>, bandwidth*1e-9);
+</pre><pre class="codeoutput">Run time with no memory access:    59.93 microS
+Run time with one memory access:   79.88 microS
+Measured bandwidth is: 105.120 GB/s
+
+</pre><h2>Device Read \ Write Test<a name="6"></a></h2><p>This test is very similar to that above. The only difference is in the kernel being called. This time the kernel will read from device memory first and then write to the same element of device memory. All access is coalesced. The C code for kernel we are calling is</p><pre>__global__ void bandwidth1(float * pData, float val ) {
+    // Calculate (for each thread) which element of the array to read/write
+    int idx = blockDim.x*blockIdx.x + threadIdx.x;
+    if ( val &gt; 0 ) {
+        pData[idx] = pData[idx] + val;
+    }
+}</pre><pre class="codeinput">b2.ThreadBlockSize = T;
+b2.GridSize = G;
+<span class="comment">% Make correctly sized data</span>
+d = parallel.gpu.GPUArray(zeros(T, G, <span class="string">'single'</span>));
+
+<span class="comment">% Measure overhead - zero input</span>
+overheadT = iTimeKernelRun(b2, d, 0);
+fprintf(<span class="string">'Run time with no memory access:    %.2f microS\n'</span>, overheadT*1e6);
+
+<span class="comment">% Measure runtime - one input</span>
+runT = iTimeKernelRun(b2, d, 1);
+fprintf(<span class="string">'Run time with two memory accesses: %.2f microS\n'</span>, runT*1e6);
+
+<span class="comment">% Compute memory bandwidth in B/s - float has 4 bytes, read once, written</span>
+<span class="comment">% once.</span>
+bandwidth =  2*sizeofSingle*T*G / (runT - overheadT);
+fprintf(<span class="string">'Measured bandwidth is: %.3f GB/s\n\n'</span>, bandwidth*1e-9);
+</pre><pre class="codeoutput">Run time with no memory access:    60.48 microS
+Run time with two memory accesses: 106.30 microS
+Measured bandwidth is: 91.546 GB/s
+
+</pre><pre class="codeinput">snapnow;
+</pre><h2>Helper functions<a name="8"></a></h2><p>Function to loop on a kernel <tt>run</tt> method many times to get better timing information on how long the kernel takes to run.</p><pre class="codeinput"><span class="keyword">function</span> t = iTimeKernelRun(k, x, s)
+N = 1000;
+tic
+<span class="keyword">for</span> i = 1:N
+    x = feval(k, x, s);
+<span class="keyword">end</span>
+t = toc/N;
+</pre><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+      Published with MATLAB&reg; 7.11<br></p></div><!--
+##### SOURCE BEGIN #####
+%% GPU Bandwidth Test
+%% Introduction
+% This demo will measure several different bandwidths applicable to the
+% performance of code on a GPU. Particularly the bandwidths for 
+% 
+% * Moving data from the host to the device
+% * Retrieving data from the device to the host
+% * Writing (only) data on the device
+% * Reading and writing data on the device
+% 
+% These bandwidths affect the performance characteristics of code on the
+% GPU, since almost all data destined for use in GPU computations will
+% start on the host, and whilst running a kernel the data will need to be
+% read from the GPU device memory and the results written back.
+%
+% We need to define some numbers that govern the overall size of tests. You
+% may find the you want to change these numbers for your particular system
+% as the results may change based on these numbers.
+
+function gpudemo_bandwidth
+%   Copyright 2010 The MathWorks, Inc.
+%   $Revision: 1.1.8.2.4.2 $  $Date: 2010/06/21 17:55:25 $
+
+
+% How many threads should each thread block run with - 512 is the max for
+% most GPU's in 2010
+T = 512;
+% How many thread blocks should we ask the GPU to start up. Increasing this
+% number should linearly increase the time taken to run the kernels.
+G = 1024;
+
+% Define the size in 'single' of the vector to test host to GPU bandwidth
+% with. 
+device = gpuDevice();
+if log2( device.FreeMemory ) > 28
+    % Device has enough free memory for a single vector of this length
+    N = 5e7;
+else
+    % Device only has a small amount of free memory
+    N = 1e7;
+end
+
+
+% We need to load up the 2 kernels that we are going to use to measure the
+% device memory bandwidth. Note that PTX code is slightly different on 32
+% and 64 bit platforms (owing to the way pointers are passed) so there are
+% 2 different PTX files with the correct code in them.
+cuFile  = 'bandwidth.cu';
+ptxFile = ['bandwidth.' parallel.gpu.ptxext];
+b1 = parallel.gpu.CUDAKernel(ptxFile, cuFile, 'bandwidth1');
+b2 = parallel.gpu.CUDAKernel(ptxFile, cuFile, 'bandwidth2');
+% How many bytes in a single
+sizeofSingle = 4;
+
+
+%% Moving data from the host to the device
+% To test the bandwidth between the host and the device all we need to do
+% is allocate an array in MATLAB(R) and time how long it takes to create a
+% |GPUArray| object that represents data on the card.
+
+% Allocate the data on the host that we will copy to the device
+data = ones(N, 1, 'single');
+% Time moving it to the device
+tic
+d = parallel.gpu.GPUArray(data);
+allocT = toc;
+
+fprintf('Time to allocate on GPU and copy memory:  %.2f milliS\n', allocT*1e3);
+bandwidth =  sizeofSingle*N /allocT;
+fprintf('Measured bandwidth is:                    %.3f GB/s\n\n', bandwidth*1e-9);
+
+%% Moving data from the device to the host
+% To test the bandwidth between device and host we time how long it takes
+% to get that same data back from the card onto the host. We use the
+% |gather| method of a |GPUArray| object to do this.
+
+% Time retrieving the data from the device
+tic
+gather(d);
+readT = toc;
+
+fprintf('Time to allocate on host and copy memory: %.2f milliS\n', readT*1e3);
+bandwidth =  sizeofSingle*N /readT;
+fprintf('Measured bandwidth is:                    %.3f GB/s\n\n', bandwidth*1e-9);
+
+%% Device Write-only Test
+% This test is going to invoke one of the 2 kernels defined in the
+% bandwidth.cu file (the one called |bandwidth1|). Provided that the second
+% input to this kernel is greater than zero, each thread of the kernel will
+% write that value (in a coalesced way) to global memory. Since we know that
+% there is an overhead to launching kernels we will also measure that
+% overhead and subtract from the final run time so that we are carefully
+% measuring just the memory access times. Note that in the |iTimeKernelRun|
+% function we reuse the input array as an output array to ensure that no
+% memory is copied before calling the kernel on the device. The C code for
+% the kernel we are calling is 
+%
+%  __global__ void bandwidth1(float * pOutput, float val ) {
+%      // Calculate (for each thread) which element of the array to write
+%      int idx = blockDim.x*blockIdx.x + threadIdx.x;
+%      if ( val > 0 ) {
+%          pOutput[idx] = val;
+%      }
+%  }
+
+
+% Make sure that the kernel is using the correct number of threads and
+% thread blocks
+b1.ThreadBlockSize = T;
+b1.GridSize = G;
+% Make correctly sized data on the device
+d = parallel.gpu.GPUArray(zeros(T, G, 'single'));
+
+% Measure overhead - zero input to kernel - no memory write
+overheadT = iTimeKernelRun(b1, d, 0);
+fprintf('Run time with no memory access:    %.2f microS\n', overheadT*1e6);
+
+% Measure runtime - one input to kernel - force memory write
+runT = iTimeKernelRun(b1, d, 1);
+fprintf('Run time with one memory access:   %.2f microS\n', runT*1e6);
+
+% Compute memory bandwidth in B/s - float has 4 bytes
+bandwidth =  sizeofSingle*T*G / (runT - overheadT);
+fprintf('Measured bandwidth is: %.3f GB/s\n\n', bandwidth*1e-9);
+
+
+%% Device Read \ Write Test
+% This test is very similar to that above. The only difference is in the 
+% kernel being called. This time the kernel will read from device memory
+% first and then write to the same element of device memory. All access is
+% coalesced. The C code for kernel we are calling is 
+%
+%  __global__ void bandwidth1(float * pData, float val ) {
+%      // Calculate (for each thread) which element of the array to read/write
+%      int idx = blockDim.x*blockIdx.x + threadIdx.x;
+%      if ( val > 0 ) {
+%          pData[idx] = pData[idx] + val;
+%      }
+%  }
+
+b2.ThreadBlockSize = T;
+b2.GridSize = G;
+% Make correctly sized data
+d = parallel.gpu.GPUArray(zeros(T, G, 'single'));
+
+% Measure overhead - zero input
+overheadT = iTimeKernelRun(b2, d, 0);
+fprintf('Run time with no memory access:    %.2f microS\n', overheadT*1e6);
+
+% Measure runtime - one input
+runT = iTimeKernelRun(b2, d, 1);
+fprintf('Run time with two memory accesses: %.2f microS\n', runT*1e6);
+
+% Compute memory bandwidth in B/s - float has 4 bytes, read once, written
+% once.
+bandwidth =  2*sizeofSingle*T*G / (runT - overheadT);
+fprintf('Measured bandwidth is: %.3f GB/s\n\n', bandwidth*1e-9);
+
+%%
+snapnow;
+
+%% Helper functions
+% Function to loop on a kernel |run| method many times to get better timing
+% information on how long the kernel takes to run. 
+function t = iTimeKernelRun(k, x, s)
+N = 1000;
+tic
+for i = 1:N
+    x = feval(k, x, s);
+end
+t = toc/N;
+
+##### SOURCE END #####
+--></body></html>

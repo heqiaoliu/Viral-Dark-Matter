@@ -1,0 +1,23 @@
+function disp(h)
+%DISP Display object H
+
+%   @modem/@dpskmod
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.1 $  $Date: 2007/05/06 15:47:15 $
+
+% Object properties to show up in this order
+fn = {'Type', ...
+      'M', ...
+      'PhaseRotation', ...
+      'Constellation', ...
+      'SymbolOrder', ...
+      'SymbolMapping', ...
+      'InputType', ...
+      'InitialPhase'};
+
+abstractModDisp(h, fn);
+  
+%--------------------------------------------------------------------
+
+% [EOF]

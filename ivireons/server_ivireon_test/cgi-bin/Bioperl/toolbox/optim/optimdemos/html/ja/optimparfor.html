@@ -1,0 +1,204 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>Parallel Computing Toolbox™ を使用した、時間のかかる最適化問題の最小化</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-04-28"><meta name="DC.source" content="optimparfor.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit optimparfor">エディターで optimparfor.m を開く</a></div><div class="right"><a href="matlab:echodemo optimparfor">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>Parallel Computing Toolbox™ を使用した、時間のかかる最適化問題の最小化</h1><!--introduction--><p>このデモでは、Optimization Toolbox™ と Global Optimization Toolbox の関数を使用して、時間のかかる最適化問題の最小化を高速化する方法を示します。デモの最初の部分では、関数を連続的に評価することで、最適化問題を解きます。デモの 2 番目の部分では、関数を並列で評価することで、パラレル for ループ (PARFOR) 機能を使用して、同じ問題を解きます。両方のケースで、最適化関数の処理にかかる時間を比較します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">時間のかかる最適化問題</a></li><li><a href="#3">FMINCON を使用した最小化</a></li><li><a href="#4">遺伝的アルゴリズムを使用した最小化</a></li><li><a href="#5">Parallel Computing Toolbox の設定</a></li><li><a href="#6">パラレル FMINCON を使用した最小化</a></li><li><a href="#7">並列遺伝的アルゴリズムを使用した最小化</a></li></ul></div><h2>時間のかかる最適化問題<a name="1"></a></h2><p>このデモの目的として、4 つの変数における問題を解きます。この問題では、大きい行列の固有値を計算させることで、人為的に目的関数と制約関数の処理に時間がかかるようにします。</p><pre class="codeinput">type <span class="string">expensive_objfun.m</span>
+type <span class="string">expensive_confun.m</span>
+</pre><pre class="codeoutput">
+function f = expensive_objfun(x)
+%EXPENSIVE_OBJFUN An expensive objective function used in optimparfor demo.
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.4.12.2.1 $  $Date: 2010/07/29 21:28:56 $
+
+% Simulate an expensive function by performing an expensive computation
+eig(magic(300));
+% Evaluate objective function
+f = exp(x(1)) * (4*x(3)^2 + 2*x(4)^2 + 4*x(1)*x(2) + 2*x(2) + 1);
+
+
+function [c,ceq] = expensive_confun(x)
+%EXPENSIVE_CONFUN An expensive constraint function used in optimparfor demo.
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.4.12.2.1 $  $Date: 2010/07/29 21:28:56 $
+
+% Simulate an expensive function by performing an expensive computation
+eig(magic(450));
+% Evaluate constraints
+c = [1.5 + x(1)*x(2)*x(3) - x(1) - x(2) - x(4); 
+     -x(1)*x(2) + x(4) - 10];
+% No nonlinear equality constraints:
+ceq = [];
+
+</pre><p>1 つのポイントを評価するための目的関数と制約関数の処理にかかる、おおよその時間を測定できます。これにより、問題を最小化するのにかかる合計時間の推定値が得られます。</p><pre class="codeinput">startTime = tic;
+<span class="keyword">for</span> i = 1:10
+    expensive_objfun(rand(1,4));
+<span class="keyword">end</span>
+stopTime = toc(startTime);
+averageTime = stopTime/10;
+fprintf(<span class="string">'Objective function evaluation:%g seconds.\n'</span>, averageTime);
+
+startTime = tic;
+<span class="keyword">for</span> i = 1:10
+    expensive_confun(rand(1,4));
+<span class="keyword">end</span>
+stopTime = toc(startTime);
+averageTime = stopTime/10;
+fprintf(<span class="string">'Constraint function evaluation:%g seconds.\n'</span>, averageTime);
+</pre><pre class="codeoutput">Objective function evaluation:0.199702 seconds.
+Constraint function evaluation:0.190456 seconds.
+</pre><h2>FMINCON を使用した最小化<a name="3"></a></h2><p>パラレル FMINCON 評価と比較できるように、FMINCON の処理にかかる時間を測定したいと思います。</p><pre class="codeinput">startPoint = [1 -2 0 5];
+options = optimset(<span class="string">'Display'</span>,<span class="string">'iter'</span>,<span class="string">'Algorithm'</span>,<span class="string">'active-set'</span>);
+startTime = tic;
+fmincon(@expensive_objfun,startPoint,[],[],[],[],[],[],@expensive_confun,options);
+time_fmincon_sequential = toc(startTime);
+fprintf(<span class="string">'Serial FMINCON optimization takes %g seconds.\n'</span>,time_fmincon_sequential);
+</pre><pre class="codeoutput">
+                                Max     Line search  Directional  First-order 
+ Iter F-count        f(x)   constraint   steplength   derivative   optimality Procedure 
+    0      5      106.013         -2.5                                         
+    1     16      40.1132       -1.131       0.0156        -83.7         24.6   
+    2     23      23.3775       -2.136         0.25        -12.3         20.5   
+    3     31      14.3993       -1.307        0.125        -9.59         25.8   
+    4     36       6.2782      -0.9803            1        -6.95         5.87   
+    5     41     0.412294      -0.4266            1        -2.56          3.7   
+    6     46     -1.71467     -0.06477            1        -1.92         2.62   
+    7     52      -3.0813       -2.682          0.5        -1.83         9.34   
+    8     57     -5.97905       0.1211            1        -2.82         5.75   
+    9     62     -6.95348      0.01616            1        -1.77        0.639   
+   10     67     -7.05833     -0.02524            1       -0.375        0.852   
+   11     72     -7.08266   -0.0003593            1       -0.267        0.426   
+   12     77      -7.0948    6.967e-05            1       -0.235        0.509   
+   13     82     -7.12753    -0.002446            1       -0.296        0.344   
+   14     87     -7.15265    -0.009521            1       -0.161       0.0809   
+   15     92     -7.16982     -0.01013            1       -0.107        0.293   
+   16     97     -7.17988   -0.0005696            1       -0.107        0.154   
+   17    102     -7.18041   -2.953e-06            1      -0.0535      0.00981   
+   18    107     -7.18041     -3.2e-08            1     -0.00416     0.000112  Hessian modified  
+
+Local minimum possible. Constraints satisfied.
+
+fmincon stopped because the predicted change in the objective function
+is less than the default value of the function tolerance and constraints 
+were satisfied to within the default value of the constraint tolerance.
+
+
+
+Active inequalities (to within options.TolCon = 1e-06):
+  lower      upper     ineqlin   ineqnonlin
+                                     2
+Serial FMINCON optimization takes 34.1886 seconds.
+</pre><h2>遺伝的アルゴリズムを使用した最小化<a name="4"></a></h2><p>遺伝的アルゴリズム (GA) では FMINCON よりも多くの関数評価を行うため、時間のかかる制約をこの問題から取り除き、代わりに制約なしの最適化を実行します。そのために、制約として空 ([]) を渡します。 また、適正な時間内に GA が終了できるように、GA の最大世代数を 15 に制限します。 パラレル GA 評価と比較できるように、GA の処理にかかる時間を測定したいと思います。 GA の実行には、Global Optimization Toolbox が必要なことに注意してください。</p><pre class="codeinput"><span class="keyword">try</span>
+    gaAvailable = false;
+    nvar = 4;
+    gaoptions = gaoptimset(<span class="string">'Generations'</span>,15,<span class="string">'Display'</span>,<span class="string">'iter'</span>);
+    startTime = tic;
+    ga(@expensive_objfun,nvar,[],[],[],[],[],[],[],gaoptions);
+    time_ga_sequential = toc(startTime);
+    fprintf(<span class="string">'Serial GA optimization takes %g seconds.\n'</span>,time_ga_sequential);
+    gaAvailable = true;
+<span class="keyword">catch</span> ME
+    warning(<span class="string">'optimdemos:optimparfor:gaNotFound'</span>, <span class="keyword">...</span>
+        [<span class="string">'GA function requires a license for Global Optimization Toolbox; '</span>, <span class="keyword">...</span>
+        <span class="string">'skipping a call to the GA in this demo.'</span>]);
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">
+                               Best           Mean      Stall
+Generation      f-count        f(x)           f(x)    Generations
+    1            40           1.469           23.18        0
+    2            60           1.236           20.34        0
+    3            80           0.655           7.149        0
+    4           100         -0.9582           5.889        0
+    5           120          -1.876           4.473        0
+    6           140          -1.876           2.757        1
+    7           160          -1.958          0.2561        0
+    8           180          -2.387           2.363        0
+    9           200          -5.238           3.562        0
+   10           220          -23.18           2.033        0
+   11           240          -44.76          -1.239        0
+   12           260          -44.76          -12.72        1
+   13           280          -44.76           -23.8        2
+   14           300          -64.49          -34.12        0
+   15           320          -64.49          -42.11        1
+Optimization terminated:maximum number of generations exceeded.
+Serial GA optimization takes 38.815 seconds.
+</pre><h2>Parallel Computing Toolbox の設定<a name="5"></a></h2><p>Parallel Computing Toolbox が使用可能であり、しかも MATLABPOOL が実行されている場合、PARFOR 機能を使用して、Optimization Toolbox の関数で使用される有限差分が近似された導関数に対して並列で実行されます。同様に、Global Optimization Toolbox の GA、GAMULTIOBJ、および PATTERNSEARCH の各ソルバーが関数を並列で評価します。PARFOR 機能を使用するために、MATLABPOOL 関数を使用して並列環境を設定できます。MATLABPOOL は、ローカル マシン上で既定で指定された数のワーカーを起動します。このデモが実行されるコンピューターには 4 つのコアがあるため、4 つのワーカーのみを起動します。このデモを実行する際に MATLABPOOL がすでに開いている場合、利用可能な数のワーカーを使用します。 詳細は、MATLABPOOL のドキュメンテーションを参照してください。</p><pre class="codeinput">needNewWorkers = (matlabpool(<span class="string">'size'</span>) == 0);
+<span class="keyword">if</span> needNewWorkers
+    <span class="comment">% Open a new MATLAB pool with 4 workers.</span>
+    matlabpool <span class="string">open</span> <span class="string">4</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Starting matlabpool using the 'local' configuration ... connected to 4 labs.
+</pre><h2>パラレル FMINCON を使用した最小化<a name="6"></a></h2><p>パラレル FMINCON 関数を使用して、時間のかかる最適化問題を最小化するには、目的関数と制約関数を並列で評価できることと、FMINCON で並列実行機能を使用するようにしたいことを明示的に示さなければなりません。現在、有限差分を並列で実行できます。シリアルでの FMINCON 実行と比較できるように、FMINCON の処理にかかる時間を測定したいと思います。</p><pre class="codeinput">options = optimset(options,<span class="string">'UseParallel'</span>,<span class="string">'always'</span>);
+startTime = tic;
+fmincon(@expensive_objfun,startPoint,[],[],[],[],[],[],@expensive_confun,options);
+time_fmincon_parallel = toc(startTime);
+fprintf(<span class="string">'Parallel FMINCON optimization takes %g seconds.\n'</span>,time_fmincon_parallel);
+</pre><pre class="codeoutput">
+                                Max     Line search  Directional  First-order 
+ Iter F-count        f(x)   constraint   steplength   derivative   optimality Procedure 
+    0      5      106.013         -2.5                                         
+    1     16      40.1132       -1.131       0.0156        -83.7         24.6   
+    2     23      23.3775       -2.136         0.25        -12.3         20.5   
+    3     31      14.3993       -1.307        0.125        -9.59         25.8   
+    4     36       6.2782      -0.9803            1        -6.95         5.87   
+    5     41     0.412294      -0.4266            1        -2.56          3.7   
+    6     46     -1.71467     -0.06477            1        -1.92         2.62   
+    7     52      -3.0813       -2.682          0.5        -1.83         9.34   
+    8     57     -5.97905       0.1211            1        -2.82         5.75   
+    9     62     -6.95348      0.01616            1        -1.77        0.639   
+   10     67     -7.05833     -0.02524            1       -0.375        0.852   
+   11     72     -7.08266   -0.0003593            1       -0.267        0.426   
+   12     77      -7.0948    6.967e-05            1       -0.235        0.509   
+   13     82     -7.12753    -0.002446            1       -0.296        0.344   
+   14     87     -7.15265    -0.009521            1       -0.161       0.0809   
+   15     92     -7.16982     -0.01013            1       -0.107        0.293   
+   16     97     -7.17988   -0.0005696            1       -0.107        0.154   
+   17    102     -7.18041   -2.953e-06            1      -0.0535      0.00981   
+   18    107     -7.18041     -3.2e-08            1     -0.00416     0.000112  Hessian modified  
+
+Local minimum possible.Constraints satisfied.
+
+fmincon stopped because the predicted change in the objective function
+is less than the default value of the function tolerance and constraints 
+were satisfied to within the default value of the constraint tolerance.
+
+
+
+Active inequalities (to within options.TolCon = 1e-06):
+  lower      upper     ineqlin   ineqnonlin
+                                     2
+Parallel FMINCON optimization takes 26.1447 seconds.
+</pre><h2>並列遺伝的アルゴリズムを使用した最小化<a name="7"></a></h2><p>GA 関数を使用して、時間のかかる最適化問題を最小化するには、目的関数を並列で評価できることと、GA で並列実行機能を使用するようにしたいことを明示的に示さなければなりません。 並列 GA を使用するには、さらに、[Vectorized] オプションを既定 (つまり [off]) に設定しなければなりません。 シリアルでの GA 実行と比較できるように、GA の処理にかかる時間を測定したいと思います。 GA では乱数発生器が使用されるため、この実行はシリアルでの実行とは異なることがありますが、時間のかかる関数評価の回数は両方の実行で同じです。 GA の実行には、Global Optimization Toolbox が必要なことに注意してください。</p><pre class="codeinput"><span class="keyword">if</span> gaAvailable
+    gaoptions = gaoptimset(gaoptions,<span class="string">'UseParallel'</span>,<span class="string">'always'</span>);
+    startTime = tic;
+    ga(@expensive_objfun,nvar,[],[],[],[],[],[],[],gaoptions);
+    time_ga_parallel = toc(startTime);
+    fprintf(<span class="string">'Parallel GA optimization takes %g seconds.\n'</span>,time_ga_parallel);
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">
+                               Best           Mean      Stall
+Generation      f-count        f(x)           f(x)    Generations
+    1            40           2.084           59.95        0
+    2            60           1.636           21.14        0
+    3            80         -0.1087           17.08        0
+    4           100         -0.4921           15.78        0
+    5           120         -0.4921            19.7        1
+    6           140          -192.4          -7.161        0
+    7           160          -416.4          -66.16        0
+    8           180          -416.4          -98.58        1
+    9           200          -416.4            -157        2
+   10           220          -680.2          -287.2        0
+   11           240           -1250            -406        0
+   12           260           -1250          -586.4        1
+   13           280           -1250          -725.5        2
+   14           300           -1298          -923.3        0
+   15           320           -1298           -1099        1
+Optimization terminated:maximum number of generations exceeded.
+Parallel GA optimization takes 22.9062 seconds.
+</pre><p>PARFOR を介した並列での関数評価を利用することで、FMINCON と GA の両方の効率が改善されました。このことは、時間のかかる目的関数と制約関数にとって良い影響をもたらします。また、2 つ以上のワーカーを使用したり、MATLABPOOL と一緒に専用クラスターを使用すると、パフォーマンスが向上します。最後に、MATLABPOOL を呼び出して、並列実行環境を閉じます。</p><pre class="codeinput"><span class="keyword">if</span> needNewWorkers
+    matlabpool <span class="string">close</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Sending a stop signal to all the labs ... stopped.
+</pre><p class="footer">Copyright 2007-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Minimizing an Expensive Optimization Problem Using Parallel Computing Toolbox(TM) % This is a demonstration of how to speedup the minimization of an expensive  % optimization problem using functions in Optimization Toolbox(TM) and  % Global Optimization Toolbox. In the first part of the demo we will solve  % the optimization problem by evaluating functions in a serial fashion and  % in the second part of the demo we will solve the same problem using the  % parallel for loop (PARFOR) feature by evaluating functions in parallel.  % We will compare the time taken by the optimization function in both cases.  %   Copyright 2007-2010 The MathWorks, Inc. %   $Revision: 1.1.4.12.2.1 $   $Date: 2010/07/29 21:28:56 $  %% Expensive Optimization Problem % For the purpose of this demo, we solve a problem in four variables, where % the objective and constraint functions are made artificially expensive by % having them compute the eigenvalues of a large matrix. type expensive_objfun.m type expensive_confun.m  %% % We can measure the approximate time taken by the objective function and % the constraint function to evaluate a point. This can give us an % estimate of total time taken to minimize the problem.  startTime = tic; for i = 1:10     expensive_objfun(rand(1,4)); end stopTime = toc(startTime); averageTime = stopTime/10; fprintf('Objective function evaluation: %g seconds.\n', averageTime);  startTime = tic; for i = 1:10     expensive_confun(rand(1,4)); end stopTime = toc(startTime); averageTime = stopTime/10; fprintf('Constraint function evaluation: %g seconds.\n',averageTime);  %% Minimizing Using FMINCON % We are interested in measuring the time taken by FMINCON so that we can % compare it to the parallel FMINCON evaluation. startPoint = [1 -2 0 5]; options = optimset('Display','iter','Algorithm','active-set'); startTime = tic; fmincon(@expensive_objfun,startPoint,[],[],[],[],[],[],@expensive_confun,options); time_fmincon_sequential = toc(startTime); fprintf('Serial FMINCON optimization takes %g seconds.\n',time_fmincon_sequential);  %% Minimizing Using Genetic Algorithm % Since GA usually takes more function evaluations than FMINCON we will % remove the expensive constraint from this problem and perform % unconstrained optimization instead; we pass empty ([]) for constraints. % In addition, we limit the maximum generations to 15 for GA so that GA can % terminate in a reasonable amount of time. We are interested in measuring % the time taken by GA so that we can compare it to the parallel GA % evaluation. Note that running GA requires Global Optimization Toolbox. try     gaAvailable = false;     nvar = 4;     gaoptions = gaoptimset('Generations',15,'Display','iter');     startTime = tic;     ga(@expensive_objfun,nvar,[],[],[],[],[],[],[],gaoptions);     time_ga_sequential = toc(startTime);     fprintf('Serial GA optimization takes %g seconds.\n',time_ga_sequential);     gaAvailable = true; catch ME     warning('optimdemos:optimparfor:gaNotFound', ...          ['GA function requires a license for Global Optimization Toolbox; ', ...         'skipping a call to the GA in this demo.']); end  %% Setting Parallel Computing Toolbox % The finite differencing used by the functions in Optimization Toolbox to % approximate derivatives is done in parallel using the PARFOR feature if % Parallel Computing Toolbox is available and MATLABPOOL is running. % Similarly, GA, GAMULTIOBJ, and PATTERNSEARCH solvers in Global Optimization  % Toolbox evaluate functions in parallel. To use the PARFOR feature, we can  % use the MATLABPOOL function to setup the parallel environment. MATLABPOOL  % will start four MATLAB(R) workers on the local machine by default. The  % computer on which this demo is published has four cores so we will start  % only four workers. When you run this demo, if MATLABPOOL is already open % we will use the available number of workers; see documentation for % MATLABPOOL for more information. needNewWorkers = (matlabpool('size') == 0); if needNewWorkers     % Open a new MATLAB pool with 4 workers.     matlabpool open 4 end  %% Minimizing Using Parallel FMINCON % To minimize our expensive optimization problem using the parallel FMINCON % function, we need to explicitly indicate that our objective and % constraint functions can be evaluated in parallel and that we want % FMINCON to use its parallel functionality wherever possible. Currently, % finite differencing can be done in parallel. We are interested in % measuring the time taken by FMINCON so that we can compare it to the % serial FMINCON run. options = optimset(options,'UseParallel','always'); startTime = tic; fmincon(@expensive_objfun,startPoint,[],[],[],[],[],[],@expensive_confun,options); time_fmincon_parallel = toc(startTime); fprintf('Parallel FMINCON optimization takes %g seconds.\n',time_fmincon_parallel);  %% Minimizing Using Parallel Genetic Algorithm % To minimize our expensive optimization problem using the GA function, we % need to explicitly indicate that our objective function can be evaluated % in parallel and that we want GA to use its parallel functionality % wherever possible. To use the parallel GA we also require that the % 'Vectorized' option be set to the default (i.e., 'off'). We are again % interested in measuring the time taken by GA so that we can compare it to % the serial GA run. Though this run may be different from the serial one % because GA uses a random number generator, the number of expensive % function evaluations is the same in both runs. Note that running GA % requires Global Optimization Toolbox.  if gaAvailable     gaoptions = gaoptimset(gaoptions,'UseParallel','always');     startTime = tic;     ga(@expensive_objfun,nvar,[],[],[],[],[],[],[],gaoptions);     time_ga_parallel = toc(startTime);     fprintf('Parallel GA optimization takes %g seconds.\n',time_ga_parallel); end  %% % Utilizing parallel function evaluation via PARFOR improved the efficiency % of both FMINCON and GA. The improvement is typically better for expensive % objective and constraint functions. Also, using more than two workers % and/or using dedicated clusters with MATLABPOOL gives better performance. % At last we close the parallel environment by calling MATLABPOOL. if needNewWorkers     matlabpool close end  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

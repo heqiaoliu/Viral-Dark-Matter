@@ -1,0 +1,406 @@
+%% $RCSfile: CalPrm.tlc,v $
+%% $Revision: 1.1.6.7.2.3 $
+%% $Date: 2010/07/23 15:41:36 $
+%%
+%% Copyright 2008-2010 The MathWorks, Inc.
+
+%% File Abstract ================================================================
+%%
+%% AUTOSAR CalPrm custom storage class
+
+%% Disclaimer ===================================================================
+%%
+%% Custom storage classes are an advanced feature of Real-Time Workshop Embedded
+%% Coder, and provide tremendous customization capability of data symbols in the
+%% generated code.  This file contains a brief description of the recommended TLC
+%% function API to implement a custom storage class.  Programming to this API
+%% isolates you from future changes to Real-Time Workshop Embedded Coder.
+%% Functionality programmed outside of the recommended API is at risk of not
+%% working in a future release.
+
+%% Target language is C
+%implements * "C"
+
+%% Function: DataAccess =========================================================
+%% Abstract:
+%%   DataAccess provides an API for requesting code fragments or other
+%%   information corresponding to data of a custom storage class.
+%%
+
+%function DataAccess(record, request, idx, reim, newValue) void
+
+  %% Generic assigns
+  %assign dt       = LibGetRecordCompositeDataTypeName(record)
+  %assign width    = LibGetDataWidth(record)
+  %assign props    = LibGetCustomStorageAttributes(record)
+  %assign name     = props.ElementName
+  %assign portName = props.PortName
+  %if width > 1
+    %assign dt = FcnAutosarArrayType("Rte_", LibGetRecordDataTypeId(record), width)
+  %endif
+
+  %<FcnErrorOutForSubModel(LibGetRecordIdentifier(record))>
+  
+  %assign Rte_api  = "Rte_Calprm_%<portName>_%<name>"
+  %assign Rte_data = "%<Rte_api>_data"
+  
+  %switch request
+
+    %case "declare"
+
+      %if SLibAutosarActive() && SLibAutosarGenRTEHeader()
+        %% RTE is responsible for declaring calibration data
+        %% RTE layer is emulated for SIL/PIL functionality
+
+        %openfile buffer
+        extern %<dt> %<Rte_data>;
+        %closefile buffer
+        %<LibSetSourceFileSection(autosarRteHFile,"Declarations",buffer)>
+      
+      %endif %% SLibAutosarActive && GenerateERTSFunctions
+
+      %return ""
+      %break
+
+    %case "define"
+
+      %if SLibAutosarActive() && SLibAutosarGenRTEHeader()
+        %% RTE is responsible for defining calibration data
+        %% RTE layer is emulated for SIL/PIL functionality
+
+        %openfile buffer
+        %<dt> %<Rte_data>;
+        %closefile buffer
+        %<LibSetSourceFileSection(autosarRteCFile,"Declarations",buffer)>
+
+      
+        %if !FcnCustomStorageIsPassByRef(record)
+          %% function prototype
+          %openfile buffer
+          %<SLibAutosarGenerateRteContractPhaseAPIMapping( Rte_api )>
+          %<dt> %<Rte_api>(void);
+          %closefile buffer
+          %<LibSetSourceFileSection(autosarRteHFile,"Declarations",buffer)>
+          
+          %openfile buffer
+          %<dt> %<Rte_api>(void) {
+            return %<Rte_data>;
+          }
+          %closefile buffer
+          %<LibSetSourceFileSection(autosarRteCFile,"Functions",buffer)>
+      %else
+        %% array or struct
+
+        %% function prototype
+        %openfile buffer
+        %<SLibAutosarGenerateRteContractPhaseAPIMapping( Rte_api )>
+        %<dt>* %<Rte_api>(void);
+        %closefile buffer
+        %<LibSetSourceFileSection(autosarRteHFile,"Declarations",buffer)>        
+
+        %% function definition
+        %openfile buffer
+        %<dt>* %<Rte_api>(void) {
+          return &%<Rte_data>;
+        }
+        %closefile buffer
+        %<LibSetSourceFileSection(autosarRteCFile,"Functions",buffer)>
+      %endif
+    %endif %% SLibAutosarActive && GenerateERTSFunctions
+      
+      %return ""
+      %break
+
+    %case "contents"
+      %% As we access this calibration parameter, update access info
+      %if SLibAutosarActive()
+        %<FcnAddAccessInfoForAutosarCalibration(record, TLC_FALSE)>
+      %elseif IsModelReferenceRTWTarget()
+        %<FcnAddAccessInfoForAutosarCalibration(record, TLC_TRUE)>
+      %endif
+        
+      %if FcnCustomStorageIsPassByRef(record)
+        %% Array access
+        %return "(*%<Rte_api>())%<idx>"
+      %else
+        %return "%<Rte_api>()"
+      %endif
+      %break
+
+    %case "set"
+      %% RTE is responsible for setting calibration data
+      %% RTE layer is emulated for SIL/PIL functionality
+      %return "%<Rte_data>%<idx> = %<newValue>;"
+      %break
+
+    %case "address"
+      %% As we access this calibration parameter, update access info
+      %if SLibAutosarActive()
+        %<FcnAddAccessInfoForAutosarCalibration(record, TLC_FALSE)>
+      %elseif IsModelReferenceRTWTarget()
+        %<FcnAddAccessInfoForAutosarCalibration(record, TLC_TRUE)>
+      %endif
+        
+      %if !FcnCustomStorageIsPassByRef(record)
+        %return "Warning: address access for scalar's is not supported"
+      %else
+        %return "(*%<Rte_api>())"
+      %endif
+      %break
+
+    %case "initialize"
+      %return ""
+      %break
+
+    %case "layout"
+      %% LibDefaultCustomStorageLayout is the default layout function, and may
+      %% be used when the data is laid out in memory like built-in Simulink
+      %% data.  If the data is not laid out in memory like Simulink data,
+      %% return the vector ["other"].
+      %if !FcnCustomStorageIsPassByRef(record) %% Scalar
+        %% Scalar is not addressable
+        %return ["other"]
+      %else
+        %% AUTOSAR vectors can be accessed like Simulink vectors
+        %% Matrices have been excluded by Setup function
+        %return LibDefaultCustomStorageLayout(record)        
+      %endif
+      %break
+
+    %case "qualifier"
+      %% RTE is responsible for storing the calibration data
+      %return ""
+      %break
+
+    %% ==========================================================================
+    %% Handle unrecognized requests
+    %%
+    %default
+      %return LibDefaultCustomStorageUnknownDataAccessType ...
+	(record, request, idx, reim)
+      %break
+
+  %endswitch
+
+%endfunction
+
+
+%% Function: ClassAccess ========================================================
+%% Abstract:
+%%   ClassAccess provides an API for requesting information or actions
+%%   corresponding to a custom storage class.
+%%
+%function ClassAccess(record, request) void
+
+  %switch request
+
+    %case "setup"
+      %assign numData = LibCustomStorageClassRecordNumData(record)
+      %foreach idx = numData
+        %assign data = LibGetDataRecord(record, idx)
+        %<FcnErrorOutForSubModel(LibGetRecordIdentifier(data))>
+        
+        %% error if data is not a Simulink parameter
+        %<LibCustomStorageVerifyRecordIsModelParameter(data)>
+        
+        %% error if data is complex
+        %<LibCustomStorageVerifyRecordIsNonComplex(data)>
+
+        %% error out if data is a matrix
+        %<FcnCustomStorageVerifyRecordIsScalarOrVector(data)>
+
+        %% Mark data type as exported
+        %assign dtypeId = SLibGetRecordDataTypeId( data )
+        %<SLibAutosarMarkDataTypeAsExported(dtypeId)>
+        %<SLibAutosarMarkChildrenDataTypeAsExported(dtypeId)>     
+        
+        %% DeclareAsPointer for array type access
+        %if FcnCustomStorageIsPassByRef(data)
+          %addtorecord data DeclareAsPointer 1
+        %endif
+      %endforeach
+
+      %if SLibAutosarActive() && SLibAutosarGenRTEHeader()
+        %assign mainAutosarInterface = MainAutosarInterfaceName()
+        %assign SILFileName = mainAutosarInterface + "_calib"
+      
+        %% create RTE source and header (*.h) file for SIL data marshalling for calibration
+        %assign ::autosarRteHFile = LibCreateSourceFile("Header","Custom",SILFileName) 
+        %<SLibSetModelFileAttribute(autosarRteHFile, "Group", "other")>
+        %assign ::autosarRteCFile = LibCreateSourceFile("Source","Custom",SILFileName)
+        %<SLibSetModelFileAttribute(autosarRteCFile, "Group", "other")>
+        
+        %% RTE files should be placed in stub directory
+        %<SLibAutosarLocateFileInStubDir(autosarRteHFile)>
+        %<SLibAutosarLocateFileInStubDir(autosarRteCFile)>
+        
+        %% Include a comment indicating the file's contents and description
+        %<LibSetSourceFileSection(autosarRteHFile,"Includes",SLibAutosarWarnUserToDiscardFileForProduction())>
+
+        %% Include a comment indicating the file's contents and decription
+        %openfile SILBanner
+        %<SLibAutosarWarnUserToDiscardFileForProduction()>
+        #include "%<CompiledModel.Name>.h"
+        #include "%<mainAutosarInterface>.h"
+        %closefile SILBanner
+        %<LibSetSourceFileSection(autosarRteCFile,"Includes",SILBanner)>
+
+        %% Request that autosarsup.tlc includes special Rte calibration header
+        %assign ::AUTOSARCalibNeeded = 1
+      %endif %% SLibAutosarActive && GenerateERTSFunctions
+      
+      %return
+      %break
+
+    %case "comment"
+      %% General commend that code uses AUTOSAR calibration APIs
+      %return "/* Uses AUTOSAR Calibration data */"
+      %break
+
+    %% ==========================================================================
+    %% Handle unrecognized requests
+    %%
+    %default
+      %% Unknown access
+      %return LibDefaultCustomStorageUnknownClassAccessType(record, request)
+      %break
+
+  %endswitch
+
+%endfunction
+
+%% Function: Version ============================================
+%% Abstract:
+%%   The Version function returns the number corresponding to the 
+%%   version used by this custom storage class.  When using this template, 
+%%   return 2.  If this function is not defined, version 1 is assumed.
+%%
+%% Function argurments:
+%%   record
+%%     An entry in the global memory map corresponding to a custom storage
+%%     class. 
+%%
+%function Version(record) void
+  %return 2
+%endfunction
+
+
+
+
+%% Function: FcnCustomStorageVerifyRecordIsScalarOrVector(record) ==
+%% Abstract: 
+%%   Report an error if record is not a scalar or vector
+%%
+%function FcnCustomStorageVerifyRecordIsScalarOrVector(record) void
+
+  %assign layout = LibGetDataLayout(record)
+  %if layout[0] == "col-mat-nd" || layout[0] == "col-mat"
+    %assign id = LibGetRecordIdentifier(record)
+    %assign sc = LibGetCustomStorageClassName(record)
+    %assign errTxt = "Custom storage class '%<sc>' " + ...
+      "is not legal for '%<id>' because it is not a scalar or vector"
+    %<LibReportError(errTxt)>
+  %endif
+  %return
+
+%endfunction
+
+%% Function: FcnCustomStorageIsStructDataType ===============
+%% Abstract: 
+%%   Checks whether record is a struct
+%%
+%function FcnCustomStorageIsStructDataType(record) void
+  %assign dataTypeId = ...
+    LibGetDataTypeIdAliasedThruToFromId(LibGetRecordDataTypeId(record))
+  %return LibIsStructDataType(dataTypeId)
+
+%endfunction
+
+%% Function: FcnCustomStorageIsPassByRef ===============
+%% Abstract: 
+%%   does it require pass by reference semantics?
+%%
+%function FcnCustomStorageIsPassByRef(record) void
+  %return (LibGetRecordWidth(record) > 1) || FcnCustomStorageIsStructDataType(record)
+%endfunction
+
+
+%% Function: FcnAddAccessInfoForAutosarCalibration ===============
+%% Abstract: 
+%%   Records accessing runnable name - needed for xml export
+%%
+%function FcnAddAccessInfoForAutosarCalibration(record, isMdlRef) void
+ 
+  %if !ISFIELD(record, "RunnableAccessInfo")
+    %addtorecord record RunnableAccessInfo {}
+  %endif
+
+  %with record.RunnableAccessInfo
+    %if EXISTS("BlockFcn")
+      %if ::BlockFcn == "Initialize" || ::BlockFcn == "Start" || ...
+        ::BlockFcn == "Registration"
+        %if isMdlRef
+          %addtorecord RunnableAccessInfo MdlRefInitializeFcn 1
+        %else
+          %assign InitRunnableName = CompiledModel.RTWAutosar.InitRunnables.Runnable[0].Name
+          %if !ISFIELD(RunnableAccessInfo, InitRunnableName)
+            %addtorecord RunnableAccessInfo %<InitRunnableName> 1
+          %endif
+        %endif
+      %elseif ::BlockFcn == "Output" || ::BlockFcn == "OutputUpdate"
+        %if isMdlRef
+          %addtorecord RunnableAccessInfo MdlRefOutputFcn 1
+        %else
+          %assign activeSys = CompiledModel.System[::activeSysIdx]
+          %<FcnAddRunnableAccessInfo(activeSys, RunnableAccessInfo)>
+        %endif
+      %elseif ::BlockFcn == "GlobalMap"
+        %% Okay
+      %else %% Unknown BlockFcn type
+        %assert TLC_FALSE
+      %endif
+    %else %% BlockFcn does not exist
+      %assert TLC_FALSE
+    %endif
+  %endwith
+%endfunction
+
+%% Function: FcnAddRunnableAccessInfo ===============
+%% Abstract: 
+%%   Recursively records parent runnable(s) name of system 
+%%
+%function FcnAddRunnableAccessInfo(system, RunnableAccessInfo) void
+  %assign runnableIdx = system.RunnableIdx 
+  %if runnableIdx >= 0
+    %assign RunnableName = ...
+      CompiledModel.RTWAutosar.PeriodicRunnables.Runnable[runnableIdx].Name
+    %if !ISFIELD(RunnableAccessInfo, RunnableName)
+      %addtorecord RunnableAccessInfo %<RunnableName> 1
+    %endif
+  %else
+    %assign numCallers = SIZE(system.CallSites, 0)
+    %foreach idx = numCallers
+      %<FcnAddRunnableAccessInfo(...
+        CompiledModel.System[system.CallSites[idx][0]], RunnableAccessInfo)>
+    %endforeach
+  %endif
+%endfunction
+
+%% Function: FcnErrorOutForSubModel ====================
+%% Abstract: 
+%%     This feature is not (yet) supported for submodels
+%function FcnErrorOutForSubModel(name) void
+  %if IsModelReferenceTarget()
+    %assign errText = "The AUTOSAR.Parameter object '" + name + ...
+      "' can not be referenced from the model '" + CompiledModel.Name + ...
+      "' because that model is being referenced as a sub-model, " + ...
+      "and the object's custom storage class 'CalPrm' " + ...
+      "is only supported for the top model in a model hierarchy. " + ...
+      "Consider passing the parameter to the submodel as a model argument."
+    %<LibReportFatalError(errText)>
+  %endif
+
+%endfunction
+
+
+%% [EOF] CalPrm.tlc

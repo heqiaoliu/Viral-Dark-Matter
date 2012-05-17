@@ -1,0 +1,172 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>TEXTSCAN を使った任意の形式のテキスト ファイルの読み込み</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="textscanDemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit textscanDemo">エディターで textscanDemo.m を開く</a></div><div class="right"><a href="matlab:echodemo textscanDemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>TEXTSCAN を使った任意の形式のテキスト ファイルの読み込み</h1><!--introduction--><p>この例では、<tt>textscan</tt> を使用して任意の形式のテキスト ファイルを読み込む方法を示します。この関数は、<tt>textread</tt> に似ていますが、一度にファイルの 1 ブロックを読み込むことが可能であり、各ブロックは異なる形式を持つことができます。テキスト ファイル test80211.txt の情報はワイヤレス ネットワーク通信の品質テストの結果です。各ブロックは、(たとえば、モバイル、室内、室外といった) 異なる環境です。数値結果は、多数の独立したテストについてノイズ レベルのある範囲にわたるデータ エラー率を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">ファイル形式</a></li><li><a href="#2">読み込みのためのテキスト ファイルを開く</a></li><li><a href="#3">イントロダクション行の読み込み</a></li><li><a href="#4">各ブロックの読み込み</a></li><li><a href="#5">テキスト ファイルを閉じる</a></li><li><a href="#6">ブロックの数</a></li><li><a href="#7">データの確認</a></li></ul></div><h2>ファイル形式<a name="1"></a></h2><p>4 行のイントロダクションの後に、このファイルはそれぞれ以下の形式の多数のデータ ブロックで構成されます。</p><div><ul><li>2 つのヘッダー行の説明</li><li>パラメーター m</li><li>p 行 m 列のデータ テーブル</li></ul></div><p>すべての情報は、異なるサイズのブロックの格納を許可するセル配列に読み込まれます。</p><h2>読み込みのためのテキスト ファイルを開く<a name="2"></a></h2><pre class="codeinput">fid = fopen(<span class="string">'test80211.txt'</span>,<span class="string">'r'</span>);             <span class="comment">% Open text file</span>
+</pre><h2>イントロダクション行の読み込み<a name="3"></a></h2><pre class="codeinput">InputText=textscan(fid,<span class="string">'%s'</span>,4,<span class="string">'delimiter'</span>,<span class="string">'\n'</span>); <span class="comment">% Read strings delimited by a carriage return</span>
+Intro=InputText{1};
+disp(Intro);
+</pre><pre class="codeoutput">    '*CCX'
+    '*CCX WiFi conformance test'
+    '*CCX BER Results'
+    '*CCX'
+
+</pre><h2>各ブロックの読み込み<a name="4"></a></h2><p>ブロックごとに、ヘッダー、テーブル名、データに対する列ヘッダーを読み込み、その後でデータ自体を読み込みます。</p><pre class="codeinput">Block = 1;   <span class="comment">% Initialize block index</span>
+<span class="keyword">while</span> (~feof(fid)) <span class="comment">% For each block...</span>
+
+    sprintf(<span class="string">'Block: %s'</span>, num2str(Block));                <span class="comment">% Display block number</span>
+    InputText=textscan(fid,<span class="string">'%s'</span>,2,<span class="string">'delimiter'</span>,<span class="string">'\n'</span>); <span class="comment">% Read header line</span>
+    HeaderLines{Block,1}=InputText{1};
+    disp(HeaderLines{Block});
+
+    InputText=textscan(fid,<span class="string">'Num SNR=%f'</span>); <span class="comment">% Read parameter value</span>
+    NumCols=InputText{1};
+
+    FormatString=repmat(<span class="string">'%f'</span>,1,NumCols);  <span class="comment">% Create format string based on parameter</span>
+    InputText=textscan(fid,FormatString,<span class="string">'delimiter'</span>,<span class="string">','</span>); <span class="comment">% Read data block</span>
+
+    Data{Block,1}=cell2mat(InputText); <span class="comment">% Convert to numerical array from cell</span>
+    [NumRows,NumCols]=size(Data{Block});  <span class="comment">% Size of table</span>
+    disp(cellstr([xlate(<span class="string">'Table data size: '</span>) num2str(NumRows) <span class="string">' x '</span> num2str(NumCols)]));
+    disp(<span class="string">' '</span>); <span class="comment">% New line</span>
+
+    eob=textscan(fid,<span class="string">'%s'</span>,1,<span class="string">'delimiter'</span>,<span class="string">'\n'</span>);  <span class="comment">% Read and discard EOB marker ('EOF' in this case)</span>
+    Block = Block+1;                            <span class="comment">% Increment block index</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">    '*       Mobile1'
+    '*       SNR Vs test No'
+
+    'Table data size: 30 x 19'
+
+ 
+    '*       Mobile2'
+    '*       SNR Vs test No'
+
+    'Table data size: 30 x 9'
+
+ 
+    '*       Mobile3'
+    '*       SNR Vs test No'
+
+    'Table data size: 31 x 15'
+
+ 
+    '*       Mobile4'
+    '*       SNR Vs test No'
+
+    'Table data size: 28 x 19'
+
+ 
+    '*       Mobile5'
+    '*       SNR Vs test No'
+
+    'Table data size: 32 x 18'
+
+ 
+    '*       Mobile6'
+    '*       SNR Vs test No'
+
+    'Table data size: 30 x 19'
+
+ 
+    '*       Mobile7'
+    '*       SNR Vs test No'
+
+    'Table data size: 30 x 11'
+
+ 
+    '*       Mobile8'
+    '*       SNR Vs test No'
+
+    'Table data size: 20 x 18'
+
+ 
+    '*       Indoor0'
+    '*       SNR Vs test No'
+
+    'Table data size: 9 x 3'
+
+ 
+    '*       Indoor1'
+    '*       SNR Vs test No'
+
+    'Table data size: 22 x 6'
+
+ 
+    '*       Indoor2'
+    '*       SNR Vs test No'
+
+    'Table data size: 25 x 3'
+
+ 
+    '*       Indoor3'
+    '*       SNR Vs test No'
+
+    'Table data size: 21 x 18'
+
+ 
+    '*       Outdoor1'
+    '*       SNR Vs test No'
+
+    'Table data size: 20 x 18'
+
+ 
+    '*       Outdoor2'
+    '*       SNR Vs test No'
+
+    'Table data size: 23 x 3'
+
+ 
+    '*       Outdoor3'
+    '*       SNR Vs test No'
+
+    'Table data size: 22 x 18'
+
+ 
+    '*       Outdoor4'
+    '*       SNR Vs test No'
+
+    'Table data size: 21 x 18'
+
+ 
+    '*       Outdoor5'
+    '*       SNR Vs test No'
+
+    'Table data size: 18 x 5'
+
+ 
+</pre><h2>テキスト ファイルを閉じる<a name="5"></a></h2><pre class="codeinput">fclose(fid);
+</pre><h2>ブロックの数<a name="6"></a></h2><p>ブロックはどのくらいありましたか。</p><pre class="codeinput">NrOfBlocks = Block-1
+</pre><pre class="codeoutput">
+NrOfBlocks =
+
+    17
+
+</pre><h2>データの確認<a name="7"></a></h2><p>1 つのブロックの数値データを見てみましょう。</p><pre class="codeinput">Block=9;
+
+<span class="comment">% Headers and Data</span>
+disp(HeaderLines{Block});
+disp([<span class="string">'SNR'</span> sprintf(<span class="string">'        %d'</span>,Data{Block,1}(1,2:end))])
+
+user_format = get(0, <span class="string">'format'</span>);
+format <span class="string">short</span> <span class="string">e</span> <span class="comment">% Use exponential format</span>
+
+disp(<span class="string">' '</span>);
+disp(Data{Block,1}(2:end,2:end));
+set(0, <span class="string">'format'</span>, user_format);
+</pre><pre class="codeoutput">    '*       Indoor0'
+    '*       SNR Vs test No'
+
+SNR        -7        -6
+ 
+  9.0600e-007  6.7100e-007
+  3.1700e-007  3.5400e-007
+  2.8600e-007  1.9600e-007
+  1.4800e-007  7.3400e-007
+  3.9500e-008  9.6600e-007
+  7.9600e-007  7.8300e-007
+  4.0000e-007  8.8100e-007
+  3.0100e-007  2.9700e-007
+
+</pre><p class="footer">Copyright 1984-2006 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Reading Arbitrary Format Text Files with TEXTSCAN % This example shows how to read an arbitrary format text file with % |textscan|. This function is similar to |textread|, however it also % allows you to read the file one block at a time, and each block can have % a different format. The information in the text file test80211.txt is % the result from a wireless network communication quality test. Each block % is a different environment (e.g., mobile, indoor, outdoor). The numerical % results show the data error rate over a range of noise levels for a % number of independent tests.  % Copyright 1984-2006 The MathWorks, Inc. % $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:28:53 $  %% File Format % After 4 lines of introduction, this particular file is made up of a % number blocks of data, each with the following format: % % * Two headerlines of description % * A parameter m % * A p x m table of data % % All the information is read into cell arrays, allowing the storage  % of different size blocks.  %% Open the Text File for Reading fid = fopen('test80211.txt','r');             % Open text file  %% Read Introduction Lines InputText=textscan(fid,'%s',4,'delimiter','\n'); % Read strings delimited by a carriage return Intro=InputText{1}; disp(Intro);  %% Read Each Block % For each block, we read a header, a table name, column headers for the % data, then the data itself.  Block = 1;   % Initialize block index while (~feof(fid)) % For each block...          sprintf('Block: %s', num2str(Block));                % Display block number     InputText=textscan(fid,'%s',2,'delimiter','\n'); % Read header line     HeaderLines{Block,1}=InputText{1};               disp(HeaderLines{Block});       InputText=textscan(fid,'Num SNR=%f'); % Read parameter value     NumCols=InputText{1};                  FormatString=repmat('%f',1,NumCols);  % Create format string based on parameter     InputText=textscan(fid,FormatString,'delimiter',','); % Read data block          Data{Block,1}=cell2mat(InputText); % Convert to numerical array from cell     [NumRows,NumCols]=size(Data{Block});  % Size of table     disp(cellstr([xlate('Table data size: ') num2str(NumRows) ' x ' num2str(NumCols)]));     disp(' '); % New line          eob=textscan(fid,'%s',1,'delimiter','\n');  % Read and discard EOB marker ('EOF' in this case)     Block = Block+1;                            % Increment block index end  %% Close the Text File fclose(fid);     %% How Many Blocks % How many blocks were there? NrOfBlocks = Block-1  %% Look at Data % Let's take a look at the numerical data in one of the blocks. Block=9;  % Headers and Data disp(HeaderLines{Block}); disp(['SNR' sprintf('        %d',Data{Block,1}(1,2:end))])  user_format = get(0, 'format'); format short e % Use exponential format  disp(' '); disp(Data{Block,1}(2:end,2:end)); set(0, 'format', user_format); displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

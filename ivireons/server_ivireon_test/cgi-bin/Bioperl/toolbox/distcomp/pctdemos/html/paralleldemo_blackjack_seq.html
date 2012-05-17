@@ -1,0 +1,101 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Sequential Blackjack</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-04-28"><meta name="DC.source" content="paralleldemo_blackjack_seq.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_blackjack_seq">Open paralleldemo_blackjack_seq.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_blackjack_seq">Run in the Command Window</a></div></div><div class="content"><h1>Sequential Blackjack</h1><!--introduction--><p>This demo plays the card game of blackjack, also known as 21.  We simulate a number of players that are independently playing thousands of hands at a time, and display payoff statistics.  Simulating the playing of blackjack is representative of Monte Carlo analysis of financial instruments.  The simulation can be done completely in parallel, except for the data collection at the end.</p><p>For details about the computations, <a href="matlab:edit('pctdemo_setup_blackjack.m')">view the code for pctdemo_setup_blackjack</a>.</p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox&#8482;</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_blackjack_dist.html">Distributed Blackjack</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Load the Demo Settings and the Data</a></li><li><a href="#3">Run the Simulation</a></li><li><a href="#4">Measure the Elapsed Time</a></li><li><a href="#5">Plot the Results</a></li></ul></div><h2>Load the Demo Settings and the Data<a name="1"></a></h2><p>We start by getting the demo difficulty level.  If you want to use a different demo difficulty level, use <tt>paralleldemoconfig</tt> and then run this demo again.  See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for full details.</p><pre class="codeinput">difficulty = pctdemo_helper_getDefaults();
+</pre><p>We get the number of players and the number of hands each player plays from <tt>pctdemo_setup_blackjack</tt>.  The <tt>difficulty</tt> parameter controls the number of players that we simulate. You can <a href="matlab:edit('pctdemo_setup_blackjack.m')">view the code for pctdemo_setup_blackjack</a> for full details.</p><pre class="codeinput">[fig, numHands, numPlayers] = pctdemo_setup_blackjack(difficulty);
+</pre><h2>Run the Simulation<a name="3"></a></h2><p>We use <tt>pctdemo_task_blackjack</tt> to simulate a single player who plays <tt>numHands</tt> hands, and we call that function <tt>numPlayers</tt> times to simulate all the players.  Because the separate invocations of the function are independent one of another, we can easily use the Parallel Computing Toolbox to perform these simulations. You can <a href="matlab:edit('pctdemo_task_blackjack.m')">view the code for pctdemo_task_blackjack</a> for full details.</p><pre class="codeinput">startTime = clock;
+S = zeros(numHands, numPlayers); <span class="comment">% Preallocate for the results.</span>
+<span class="keyword">for</span> i = 1:numPlayers
+    S(:, i) = pctdemo_task_blackjack(numHands, 1);
+<span class="keyword">end</span>
+</pre><h2>Measure the Elapsed Time<a name="4"></a></h2><p>The time used for the sequential simulations should be compared against the time it takes to perform the same set of calculations using the Parallel Computing Toolbox in the <a href="paralleldemo_blackjack_dist.html">Distributed Blackjack</a> demo. The elapsed time varies with the underlying hardware.</p><pre class="codeinput">elapsedTime = etime(clock, startTime);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 63.3 seconds
+</pre><h2>Plot the Results<a name="5"></a></h2><p>We display the expected fraction of the bet that is won or lost in each hand, along with the confidence interval.  We also show the evolution of the winnings and losses of each of the players we simulate. You can <a href="matlab:edit('pctdemo_plot_blackjack.m')">view the code for pctdemo_plot_blackjack</a> for full details.</p><pre class="codeinput">pctdemo_plot_blackjack(fig, S);
+</pre><img vspace="5" hspace="5" src="paralleldemo_blackjack_seq_01.png" alt=""> <p class="footer">Copyright 2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Sequential Blackjack
+% This demo plays the card game of blackjack, also known as 21.  We simulate 
+% a number of players that are independently playing thousands of hands at a 
+% time, and display payoff statistics.  Simulating the playing of blackjack is 
+% representative of Monte Carlo analysis of financial instruments.  The 
+% simulation can be done completely in parallel, except for the data collection 
+% at the end.
+%
+% For details about the computations, 
+% <matlab:edit('pctdemo_setup_blackjack.m') 
+% view the code for pctdemo_setup_blackjack>.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox(TM)> 
+%
+% Related demos:
+%
+% * <paralleldemo_blackjack_dist.html Distributed Blackjack> 
+%
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2010/05/10 17:07:17 $
+
+%% Load the Demo Settings and the Data
+% We start by getting the demo difficulty level.  If you want to use a
+% different demo difficulty level, use |paralleldemoconfig| and then run this
+% demo again.  See <paralleltutorial_defaults.html 
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox>
+% for full details.
+difficulty = pctdemo_helper_getDefaults();
+%%
+% We get the number of players and the number of hands each player plays from
+% |pctdemo_setup_blackjack|.  The |difficulty| parameter controls the number of
+% players that we simulate.  
+% You can 
+% <matlab:edit('pctdemo_setup_blackjack.m') view the code for pctdemo_setup_blackjack> 
+% for full details.
+[fig, numHands, numPlayers] = pctdemo_setup_blackjack(difficulty);
+
+%% Run the Simulation
+% We use |pctdemo_task_blackjack| to simulate a single player who plays
+% |numHands| hands, and we call that function |numPlayers| times to simulate all
+% the players.  Because the separate invocations of the function are
+% independent one of another, we can easily use the Parallel Computing
+% Toolbox to perform these simulations.
+% You can 
+% <matlab:edit('pctdemo_task_blackjack.m') view the code for pctdemo_task_blackjack> 
+% for full details.
+startTime = clock;
+S = zeros(numHands, numPlayers); % Preallocate for the results.
+for i = 1:numPlayers
+    S(:, i) = pctdemo_task_blackjack(numHands, 1);
+end   
+
+%% Measure the Elapsed Time
+% The time used for the sequential simulations should be compared
+% against the time it takes to perform the same set of calculations
+% using the Parallel Computing Toolbox in the
+% <paralleldemo_blackjack_dist.html Distributed Blackjack> demo.
+% The elapsed time varies with the underlying hardware.
+elapsedTime = etime(clock, startTime);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+%% Plot the Results
+% We display the expected fraction of the bet that is won or
+% lost in each hand, along with the confidence interval.  We also show 
+% the evolution of the winnings and losses of each of the players we simulate. 
+% You can 
+% <matlab:edit('pctdemo_plot_blackjack.m') view the code for pctdemo_plot_blackjack> 
+% for full details.
+pctdemo_plot_blackjack(fig, S);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

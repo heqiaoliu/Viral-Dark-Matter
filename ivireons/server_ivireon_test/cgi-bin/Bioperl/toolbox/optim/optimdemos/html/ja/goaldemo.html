@@ -1,0 +1,131 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>多目的ゴール到達の最適化</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="goaldemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit goaldemo">エディターで goaldemo.m を開く</a></div><div class="right"><a href="matlab:echodemo goaldemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>多目的ゴール到達の最適化</h1><!--introduction--><p>このデモでは、多目的ゴール到達法を使用して極配置問題を解くために、Optimization Toolbox™ ソルバー fgoalattain をどのように使用できるのかを示します。</p><!--/introduction--><p>2 入力、2 出力の不安定なプラントを考えます。システム x(t) の変化を記述する方程式は以下のとおりです。</p><p><img src="../goaldemo_eq13879.png" alt="$$\frac{dx}{dt} = Ax(t) + Bu(t),$$"></p><p>ここで、u(t) は入力 (制御) 信号です。このシステムの出力は以下のとおりです。</p><p><img src="../goaldemo_eq94241.png" alt="$$y(t) = Cx(t).$$"></p><p>行列 A、B、および C は以下のとおりです。</p><pre class="codeinput">A =  [ -0.5  0  0;  0  -2  10;  0  1  -2 ];
+
+B =  [ 1  0;  -2  2;  0  1 ];
+
+C =  [ 1  0  0;  0  0  1 ];
+</pre><p>ある行列 K が、制御信号 u(t) が出力 y(t) に比例するように</p><p><img src="../goaldemo_eq01718.png" alt="$$u(t) = Ky(t)$$"></p><p>と設定されると仮定します。</p><p>これは、システム x(t) の変化が以下のようになることを意味します。</p><p><img src="../goaldemo_eq82940.png" alt="$$\frac{dx}{dt} = Ax(t) + BKCx(t) = (A + BKC)x(t).$$"></p><p>最適化の目的は、以下の 2 つの特性を持つように K を設計することです。</p><p>1. (A + B*K*C) の固有値の実数部が [-5, -3, -1] より小さい(これは、制御分野で極配置と呼ばれています)。</p><p>2. abs(K) が 4 以下である (K の各要素が -4 ～ 4 の範囲である)。</p><p>最適化を解くために、まず多目的ゴールを設定します。</p><pre class="codeinput">goal = [-5, -3, -1];
+</pre><p>ゴールに等しい重みを設定して、ゴールの劣到達または過到達が同じ割合になるようにします。</p><pre class="codeinput">weight = abs(goal);
+</pre><p>出力フィードバック コントローラーを初期化します。</p><pre class="codeinput">K0 = [ -1 -1; -1 -1];
+</pre><p>コントローラーに上限と下限を設定します。</p><pre class="codeinput">lb = repmat(-4,size(K0))
+ub = repmat(4,size(K0))
+</pre><pre class="codeoutput">
+lb =
+
+    -4    -4
+    -4    -4
+
+
+ub =
+
+     4     4
+     4     4
+
+</pre><p>反復ごとに出力が与えられるように、最適化表示パラメーターを設定します。</p><pre class="codeinput">options = optimset(<span class="string">'Display'</span>,<span class="string">'iter'</span>);
+</pre><p>閉ループ システムの固有値を返すベクトル値関数 eigfun を作成します。この関数には、追加のパラメーター (つまり、行列 A、B、および C) が必要です。これらのパラメーターを渡す最も都合の良い方法は、無名関数を介して渡すというものです。</p><pre class="codeinput">eigfun = @(K) sort(eig(A+B*K*C));
+</pre><p>最適化を開始するために、FGOALATTAIN を呼び出します。</p><pre class="codeinput">[K,fval,attainfactor,exitflag,output,lambda] = <span class="keyword">...</span>
+        fgoalattain(eigfun,K0,goal,weight,[],[],[],[],lb,ub,[],options);
+</pre><pre class="codeoutput">
+                 Attainment        Max     Line search     Directional 
+ Iter F-count        factor    constraint   steplength      derivative   Procedure 
+    0      6              0       1.88521                                            
+    1     12          1.031       0.02998            1           0.745     
+    2     18         0.3525       0.06863            1          -0.613     
+    3     24        -0.1706        0.1071            1          -0.223    Hessian modified  
+    4     30        -0.2236       0.06654            1          -0.234    Hessian modified twice  
+    5     36        -0.3568      0.007894            1         -0.0812     
+    6     42        -0.3645      0.000145            1          -0.164    Hessian modified  
+    7     48        -0.3645             0            1        -0.00515    Hessian modified  
+    8     54        -0.3675     0.0001546            1        -0.00812    Hessian modified twice  
+    9     60        -0.3889      0.008328            1        -0.00751    Hessian modified  
+   10     66        -0.3862             0            1         0.00568     
+   11     72        -0.3863    3.752e-013            1          -0.998    Hessian modified twice  
+
+Local minimum possible.Constraints satisfied.
+
+fgoalattain stopped because the size of the current search direction is less than
+twice the default value of the step size tolerance and constraints were 
+satisfied to within the default value of the constraint tolerance.
+
+
+
+</pre><p>解における制御パラメーターの値は以下のとおりです。</p><pre class="codeinput">K
+</pre><pre class="codeoutput">
+K =
+
+   -4.0000   -0.2564
+   -4.0000   -4.0000
+
+</pre><p>閉ループ システムの固有値 eigfun(K) は、次のとおりです(出力引数 fval にも格納されています)。</p><pre class="codeinput">eigfun(K)
+</pre><pre class="codeoutput">
+ans =
+
+   -6.9313
+   -4.1588
+   -1.4099
+
+</pre><p>到達因子は、ゴール到達のレベルを示します。負の到達因子は過到達を示し、正の到達因子は劣到達を示します。この実行で得られた値 attainfactor は、目的がほぼ 40% 過到達されたことを意味します。</p><pre class="codeinput">attainfactor
+</pre><pre class="codeoutput">
+attainfactor =
+
+   -0.3863
+
+</pre><p>ここでは、計算されたフィードバック行列 K を使用して、点 x(0) = [1;1;1] から始めて、システム x(t) が時刻 0 から時刻 4 までどのように変化するかを示しています。</p><p>まず、微分方程式を解きます。</p><pre class="codeinput">[Times, xvals] = ode45(@(u,x)((A + B*K*C)*x),[0,4],[1;1;1]);
+</pre><p>次に、結果をプロットします。</p><pre class="codeinput">plot(Times,xvals)
+legend(<span class="string">'x_1(t)'</span>,<span class="string">'x_2(t)'</span>,<span class="string">'x_3(t)'</span>,<span class="string">'Location'</span>,<span class="string">'best'</span>)
+xlabel(<span class="string">'t'</span>);
+ylabel(<span class="string">'x(t)'</span>);
+</pre><img vspace="5" hspace="5" src="../goaldemo_01.png" alt=""> <p>固有値をゴール値 [-5, -3, -1] になるべく近くなるようにしなければならないと仮定します。options.GoalsExactAchieve を、ゴールになるべく近い (つまり、過到達を試みない) ことが望ましい目的の数に設定します。</p><p>3 つの目的がすべて、ゴールになるべく近いことが望ましいです。</p><pre class="codeinput">options = optimset(options,<span class="string">'GoalsExactAchieve'</span>,3);
+</pre><p>最適化ソルバーを呼び出す準備が整いました。</p><pre class="codeinput">[K,fval,attainfactor,exitflag,output,lambda] = <span class="keyword">...</span>
+    fgoalattain(eigfun,K0,goal,weight,[],[],[],[],lb,ub,[],options);
+</pre><pre class="codeoutput">
+                 Attainment        Max     Line search     Directional 
+ Iter F-count        factor    constraint   steplength      derivative   Procedure 
+    0      6              0       1.88521                                            
+    1     12          1.031       0.02998            1           0.745     
+    2     18         0.3525       0.06863            1          -0.613     
+    3     24         0.1528     -0.009105            1           -0.22    Hessian modified  
+    4     30        0.02684       0.03722            1          -0.166    Hessian modified  
+    5     36     3.469e-018      0.005702            1          -0.116    Hessian modified  
+    6     42     2.746e-019    9.674e-006            1      -2.76e-016    Hessian modified  
+    7     48      1.13e-022    4.795e-011            1      -1.44e-014    Hessian modified  
+
+Local minimum possible.Constraints satisfied.
+
+fgoalattain stopped because the size of the current search direction is less than
+twice the default value of the step size tolerance and constraints were 
+satisfied to within the default value of the constraint tolerance.
+
+
+
+</pre><p>この解における制御パラメーターの値は以下のとおりです。</p><pre class="codeinput">K
+</pre><pre class="codeoutput">
+K =
+
+   -1.5954    1.2040
+   -0.4201   -2.9046
+
+</pre><p>今回の閉ループ システムの固有値 (出力 fval でも保持されます) は、以下のようになります。</p><pre class="codeinput">eigfun(K)
+</pre><pre class="codeoutput">
+ans =
+
+   -5.0000
+   -3.0000
+   -1.0000
+
+</pre><p>到達因子は、ゴール到達のレベルを示します。負の到達因子は過到達を示し、正の到達因子は劣到達を示します。得られた到達因子が低いことは、固有値がほぼ正確にゴールを満たしていることを示しています。</p><pre class="codeinput">attainfactor
+</pre><pre class="codeoutput">
+attainfactor =
+
+1.1304e-022
+
+</pre><p>ここでは、計算された新しいフィードバック行列 K を使用して、点 x(0) = [1;1;1] から始めて、システム x(t) が時刻 0 から時刻 4 までどのように変化するかを示しています。</p><p>まず、微分方程式を解きます。</p><pre class="codeinput">[Times, xvals] = ode45(@(u,x)((A + B*K*C)*x),[0,4],[1;1;1]);
+</pre><p>次に、結果をプロットします。</p><pre class="codeinput">plot(Times,xvals)
+legend(<span class="string">'x_1(t)'</span>,<span class="string">'x_2(t)'</span>,<span class="string">'x_3(t)'</span>,<span class="string">'Location'</span>,<span class="string">'best'</span>)
+xlabel(<span class="string">'t'</span>);
+ylabel(<span class="string">'x(t)'</span>);
+</pre><img vspace="5" hspace="5" src="../goaldemo_02.png" alt=""> <p class="footer">Copyright 1990-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Multi-Objective Goal Attainment Optimization % This demo shows how the Optimization Toolbox(TM) solver fgoalattain % can be used to solve  % a pole-placement problem via the multiobjective goal attainment method.   % Copyright 1990-2008 The MathWorks, Inc. % $Revision: 1.1.4.13.2.1 $  $Date: 2010/07/29 21:28:56 $  %% % Consider a 2-input 2-output unstable plant. % The equation describing the evolution of the system x(t) is % % $$\frac{dx}{dt} = Ax(t) + Bu(t),$$ % % where u(t) is the input (control) signal. % The output of the system is % % $$y(t) = Cx(t).$$ % % The matrices A, B, and C are  A =  [ -0.5  0  0;  0  -2  10;  0  1  -2 ];  B =  [ 1  0;  -2  2;  0  1 ];  C =  [ 1  0  0;  0  0  1 ];  %% % Suppose that the control signal u(t) is set as proportional to % the output y(t): % % $$u(t) = Ky(t)$$ % % for some matrix K. % % This means that the evolution of the system x(t) is: % % $$\frac{dx}{dt} = Ax(t) + BKCx(t) = (A + BKC)x(t).$$ % % The object of the optimization is to design K to have the following % two properties: % % 1. The real parts of the eigenvalues of (A + B*K*C) are smaller than % [-5, -3, -1]. (This is called pole placement in the control literature.) % % 2. abs(K) <= 4  (each element of K is between -4 and 4)  %% % In order to solve the optimization, first set the % multiobjective goals:  goal = [-5, -3, -1];  %% % Set the weights equal to the goals to ensure same percentage  % under- or over-attainment in the goals.  weight = abs(goal);  %% % Initialize the output feedback controller  K0 = [ -1 -1; -1 -1];   %% % Set upper and lower bounds on the controller  lb = repmat(-4,size(K0))  ub = repmat(4,size(K0))  %% % Set optimization display parameter to give output at each iteration:  options = optimset('Display','iter');  %% % Create a vector-valued function eigfun that returns the eigenvalues of the  % closed loop system.  This function requires additional parameters (namely,  % the matrices A, B, and C); the most convenient way to pass these is through  % an anonymous function:  eigfun = @(K) sort(eig(A+B*K*C));  %% % To begin the optimization we call FGOALATTAIN:  [K,fval,attainfactor,exitflag,output,lambda] = ...         fgoalattain(eigfun,K0,goal,weight,[],[],[],[],lb,ub,[],options);   %% % The value of the control parameters at the solution is:  K  %% % The eigenvalues of the closed loop system are  % in eigfun(K) as follows: (they are also held in output fval)  eigfun(K)  %% % The attainment factor indicates the level of goal achievement. % A negative attainment factor indicates over-achievement, positive % indicates under-achievement. The value attainfactor we obtained in  % this run indicates that the objectives have been over-achieved by  % almost 40 percent:  attainfactor   %% % Here is how the system x(t) evolves from time 0 to time 4, % using the calculated feedback matrix K, % starting from the point x(0) = [1;1;1]. % % First solve the differential equation:  [Times, xvals] = ode45(@(u,x)((A + B*K*C)*x),[0,4],[1;1;1]); %% % Then plot the result: plot(Times,xvals) legend('x_1(t)','x_2(t)','x_3(t)','Location','best') xlabel('t'); ylabel('x(t)');  %% % Suppose we now require the eigenvalues to be as near as possible % to the goal values, [-5, -3, -1].  % Set options.GoalsExactAchieve to the number of objectives that should be  % as near as possible to the goals (i.e., do not try to over-achieve): % % All three objectives should be as near as possible to the goals. options = optimset(options,'GoalsExactAchieve',3);  %% % We are ready to call the optimization solver:  [K,fval,attainfactor,exitflag,output,lambda] = ...     fgoalattain(eigfun,K0,goal,weight,[],[],[],[],lb,ub,[],options);  %% % The value of the control parameters at this solution is:  K  %% % This time the eigenvalues of the closed loop system, % which are also held in output fval, are as follows: eigfun(K)  %% % The attainment factor is the level of goal achievement. A negative  % attainment factor indicates over-achievement, positive indicates  % under-achievement. The low attainfactor obtained indicates that the % eigenvalues have almost exactly met the goals:  attainfactor  %% % Here is how the system x(t) evolves from time 0 to time 4, % using the new calculated feedback matrix K, % starting from the point x(0) = [1;1;1]. % % First solve the differential equation:  [Times, xvals] = ode45(@(u,x)((A + B*K*C)*x),[0,4],[1;1;1]); %% % Then plot the result: plot(Times,xvals) legend('x_1(t)','x_2(t)','x_3(t)','Location','best') xlabel('t'); ylabel('x(t)');  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,369 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Thickness Control for a Steel Beam</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="milldemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit milldemo">Open milldemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo milldemo">Run in the Command Window</a></div></div><div class="content"><h1>Thickness Control for a Steel Beam</h1><!--introduction--><p>This demo shows how to design a MIMO LQG regulator to control the horizontal and vertical thickness of a steel beam in a hot steel rolling mill.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Rolling Stand Model</a></li><li><a href="#8">Building the Open-Loop Model</a></li><li><a href="#14">LQG Regulator Design for the X Axis</a></li><li><a href="#20">LQG Regulator Evaluation</a></li><li><a href="#24">Two-Axis Design</a></li><li><a href="#28">Cross-Coupling Effects</a></li><li><a href="#33">MIMO Design</a></li><li><a href="#40">Simulink&reg; Model</a></li></ul></div><h2>Rolling Stand Model<a name="1"></a></h2><p>Figures 1 and 2 depict the process of shaping a beam of hot steel by compressing it with rolling cylinders.</p><p><img vspace="5" hspace="5" src="../Figures/rollmill_01.png" alt=""> </p><p><b>Figure 1</b>: Beam Shaping by Rolling Cylinders.</p><p><img vspace="5" hspace="5" src="../Figures/rollmill_02.png" alt=""> </p><p><b>Figure 2</b>: Rolling Mill Stand.</p><p>The desired H shape is impressed by two pairs of rolling cylinders (one per axis) positioned by hydraulic actuators. The gap between the two cylinders is called the roll gap. The goal is to maintain the x and y thickness within specified tolerances.  Thickness variations arise primarily from variations in thickness and hardness of the incoming beam (input disturbance) and eccentricities of the rolling cylinders.</p><p>An open-loop model for the x or y axes is shown in Figure 3.  The eccentricity disturbance is modeled as white noise <tt>w_e</tt> driving a band-pass filter <tt>Fe</tt>. The input thickness disturbance is modeled as white noise <tt>w_i</tt> driving a low-pass filter <tt>Fi</tt>. Feedback control is necessary to counter such disturbances.  Because the roll gap <tt>delta</tt> cannot be measured close to the stand, the rolling force <tt>f</tt> is used for feedback.</p><p><img vspace="5" hspace="5" src="../Figures/rollmill_03.png" alt=""> </p><p><b>Figure 3</b>: Open-Loop Model.</p><h2>Building the Open-Loop Model<a name="8"></a></h2><p>Empirical models for the filters <tt>Fe</tt> and <tt>Fi</tt> for the x axis are</p><p><img src="milldemo_eq90883.png" alt="$$ F_{ex} = { 3 \times 10^4 s \over s^2 + 0.125 s + 6^2 } , \;\;\;&#xA;F_{ix} = { 10^4 \over s + 0.05 } $$"></p><p>and the actuator and gap-to-force gain are modeled as</p><p><img src="milldemo_eq03863.png" alt="$$ H_x = { 2.4  \times 10^8 \over s^2 + 72 s + 90^2 } , \;\;\;  g_x = 10^{-6} $$"></p><p>To construct the open-loop model in Figure 3, start by specifying each block:</p><pre class="codeinput">Hx = tf(2.4e8 , [1  72  90^2] , <span class="string">'inputname'</span> , <span class="string">'u_x'</span>);
+Fex = tf([3e4 0] , [1 0.125 6^2] , <span class="string">'inputname'</span> , <span class="string">'w_{ex}'</span>);
+Fix = tf(1e4 , [1 0.05] , <span class="string">'inputname'</span> , <span class="string">'w_{ix}'</span>);
+gx = 1e-6;
+</pre><p>Next construct the transfer function from <tt>u,we,wi</tt> to <tt>f1,f2</tt> using concatenation and <tt>append</tt> as follows. To improve numerical accuracy, switch to the state-space representation before you connect models:</p><pre class="codeinput">T = append([ss(Hx) Fex],Fix);
+</pre><p>Finally, apply the transformation mapping <tt>f1,f2</tt> to <tt>delta,f</tt>:</p><pre class="codeinput">Px = [-gx gx;1 1] * T;
+Px.OutputName = {<span class="string">'x-gap'</span> , <span class="string">'x-force'</span>};
+</pre><p>Plot the frequency response magnitude from the normalized disturbances <tt>w_e</tt> and <tt>w_i</tt> to the outputs:</p><pre class="codeinput">bodemag(Px(: , [2 3]),{1e-2,1e2}), grid
+</pre><img vspace="5" hspace="5" src="milldemo_01.png" alt=""> <p>Note the peak at 6 rad/sec corresponding to the (periodic) eccentricity disturbance.</p><h2>LQG Regulator Design for the X Axis<a name="14"></a></h2><p>First design an LQG regulator to attenuate the thickness variations due to the eccentricity and input thickness disturbances <tt>w_e</tt> and <tt>w_i</tt>. LQG regulators generate actuator commands u = -K x_e where x_e is an estimate of the plant states. This estimate is derived from available measurements of the rolling force <tt>f</tt> using an observer called "Kalman filter."</p><p><img vspace="5" hspace="5" src="../Figures/rollmill_04.png" alt=""> </p><p><b>Figure 4</b>: LQG Control Structure.</p><p>Use <tt>lqry</tt> to calculate a suitable state-feedback gain K.  The gain K is chosen to minimize a cost function of the form</p><p><img src="milldemo_eq55549.png" alt="$$ C(u) = \int_0^{\infty} \left( \delta^2 (t) + \beta u^2(t) \right) dt $$"></p><p>where the parameter <tt>beta</tt> is used  to trade off performance and control effort. For <tt>beta</tt> = 1e-4, you can compute the optimal gain by typing</p><pre class="codeinput">Pxdes = Px(<span class="string">'x-gap'</span>,<span class="string">'u_x'</span>);      <span class="comment">% transfer u_x -&gt; x-gap</span>
+Kx = lqry(Pxdes,1,1e-4)
+</pre><pre class="codeoutput">
+Kx =
+
+    0.0621    0.1315    0.0222   -0.0008   -0.0074
+
+</pre><p>Next, use <tt>kalman</tt> to design a Kalman estimator for the plant states. Set the measurement noise covariance to 1e4 to limit the gain at high frequencies:</p><pre class="codeinput">Ex = kalman(Px(<span class="string">'x-force'</span>,:),eye(2),1e4);
+</pre><p>Finally, use <tt>lqgreg</tt> to assemble the LQG regulator <tt>Regx</tt> from <tt>Kx</tt> and <tt>Ex</tt>:</p><pre class="codeinput">Regx = lqgreg(Ex,Kx);
+zpk(Regx)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input "x-force" to output "u_x":
+     -0.012546 (s+10.97) (s-2.395) (s^2 + 72s + 8100)
+-----------------------------------------------------------
+(s+207.7) (s^2 + 0.738s + 32.33) (s^2 + 310.7s + 2.536e004)
+ 
+Input groups:              
+       Name        Channels
+    Measurement       1    
+                           
+Output groups:          
+      Name      Channels
+    Controls       1    
+                        
+</pre><pre class="codeinput">bode(Regx),
+grid, title(<span class="string">'LQG Regulator'</span>)
+</pre><img vspace="5" hspace="5" src="milldemo_02.png" alt=""> <h2>LQG Regulator Evaluation<a name="20"></a></h2><p>Close the regulation loop shown in Figure 4:</p><pre class="codeinput">clx = feedback(Px,Regx,1,2,+1);
+</pre><p>Note that in this command, the +1  accounts for the fact that <tt>lqgreg</tt> computes a positive feedback compensator.</p><p>You can now compare the open- and closed-loop responses to eccentricity and input thickness disturbances:</p><pre class="codeinput">bodemag(Px(1,2:3),<span class="string">'b'</span>,clx(1,2:3),<span class="string">'r'</span>,{1e-1,1e2})
+grid, legend(<span class="string">'Open Loop'</span>,<span class="string">'Closed Loop'</span>)
+</pre><img vspace="5" hspace="5" src="milldemo_03.png" alt=""> <p>The Bode plot indicates a 20 dB attenuation of disturbance effects. You can confirm this by simulating disturbance-induced thickness variations with and without the LQG regulator as follows:</p><pre class="codeinput">dt = 0.01;  <span class="comment">% simulation time step</span>
+t = 0:dt:30;
+wx = sqrt(1/dt) * randn(2,length(t));    <span class="comment">% sampled driving noise</span>
+
+h = lsimplot(Px(1,2:3),<span class="string">'b'</span>,clx(1,2:3),<span class="string">'r'</span>,wx,t);
+set(h.Input,<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+legend(<span class="string">'Open Loop'</span>,<span class="string">'Closed Loop'</span>)
+</pre><img vspace="5" hspace="5" src="milldemo_04.png" alt=""> <h2>Two-Axis Design<a name="24"></a></h2><p>You can design a similar LQG regulator for the y axis. Use the following actuator, gain, and disturbance models:</p><pre class="codeinput">Hy = tf(7.8e8,[1 71 88^2],<span class="string">'inputname'</span>,<span class="string">'u_y'</span>);
+Fiy = tf(2e4,[1 0.05],<span class="string">'inputname'</span>,<span class="string">'w_{iy}'</span>);
+Fey = tf([1e5 0],[1 0.19 9.4^2],<span class="string">'inputn'</span>,<span class="string">'w_{ey}'</span>);
+gy = 0.5e-6;
+</pre><p>You can construct the open-loop model by typing</p><pre class="codeinput">Py = append([ss(Hy) Fey],Fiy);
+Py = [-gy gy;1 1] * Py;
+set(Py,<span class="string">'outputn'</span>,{<span class="string">'y-gap'</span> <span class="string">'y-force'</span>})
+</pre><p>You can then compute the corresponding LQG regulator by typing</p><pre class="codeinput">ky = lqry(Py(1,1),1,1e-4);
+Ey = kalman(Py(2,:),eye(2),1e4);
+Regy = lqgreg(Ey,ky);
+</pre><p>Assuming the x- and y-axis are decoupled, you can use these two regulators independently to control the two-axis rolling mill.</p><h2>Cross-Coupling Effects<a name="28"></a></h2><p>Treating each axis separately is valid as long as they are fairly decoupled. Unfortunately, rolling mills have some amount of cross-coupling between axes because an increase in force along x compresses the material and causes a relative decrease in force along the y axis.</p><p>Cross-coupling effects are modeled as shown in Figure 5 with gxy=0.1 and gyx=0.4.</p><p><img vspace="5" hspace="5" src="../Figures/rollmill_05.png" alt=""> </p><p><b>Figure 5</b>: Cross-Coupling Model.</p><p>To study the effect of cross-coupling on decoupled SISO loops, construct the two-axis model in Figure 5 and close the x- and y-axis loops using the previously designed LQG regulators:</p><pre class="codeinput">gxy = 0.1;  gyx = 0.4;
+P = append(Px,Py);                <span class="comment">% Append x- and y-axis models</span>
+P = P([1 3 2 4],[1 4 2 3 5 6]);   <span class="comment">% Reorder inputs and outputs</span>
+CC = [1   0    0    gyx*gx  ;<span class="keyword">...</span><span class="comment">  % Cross-coupling matrix</span>
+      0   1  gxy*gy    0    ;<span class="keyword">...</span>
+      0   0    1      -gyx  ;<span class="keyword">...</span>
+      0   0   -gxy     1  ];
+Pxy = CC * P;                     <span class="comment">% Cross-coupling model</span>
+Pxy.outputn = P.outputn;
+
+clxy0 = feedback(Pxy,append(Regx,Regy),1:2,3:4,+1);
+</pre><p>Now, simulate the x and y thickness gaps for the two-axis model:</p><pre class="codeinput">wy = sqrt(1/dt) * randn(2,length(t));     <span class="comment">% y-axis disturbances</span>
+wxy = [wx ; wy];
+
+h = lsimplot(Pxy(1:2,3:6),<span class="string">'b'</span>,clxy0(1:2,3:6),<span class="string">'r'</span>,wxy,t);
+set(h.Input,<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+legend(<span class="string">'Open Loop'</span>,<span class="string">'Closed Loop'</span>)
+</pre><img vspace="5" hspace="5" src="milldemo_05.png" alt=""> <p>Note the high thickness variations along the x axis.  Treating each axis separately is inadequate and you need to use a joint-axis, MIMO design to correctly handle cross-coupling effects.</p><h2>MIMO Design<a name="33"></a></h2><p>The MIMO design consists of a single regulator that uses both force measurements <tt>fx</tt> and <tt>fy</tt> to compute the actuator commands, <tt>u_x</tt> and <tt>u_y</tt>. This control architecture is depicted in Figure 6.</p><p><img vspace="5" hspace="5" src="../Figures/rollmill_06.png" alt=""> </p><p><b>Figure 6</b>: MIMO Control Structure.</p><p>You can design a MIMO LQG regulator for the two-axis model using the exact same steps as for earlier SISO designs. First, compute the state feedback gain, then compute the state estimator, and finally assemble these two components using <tt>lqgreg</tt>. Use the following commands to perform these steps:</p><pre class="codeinput">Kxy = lqry(Pxy(1:2,1:2),eye(2),1e-4*eye(2));
+Exy = kalman(Pxy(3:4,:),eye(4),1e4*eye(2));
+Regxy = lqgreg(Exy,Kxy);
+</pre><p>To compare the performance of the MIMO and multi-loop SISO designs, close the MIMO loop in Figure 6:</p><pre class="codeinput">clxy = feedback(Pxy,Regxy,1:2,3:4,+1);
+</pre><p>Then, simulate the x and y thickness gaps for the two-axis model:</p><pre class="codeinput">h = lsimplot(Pxy(1:2,3:6),<span class="string">'b'</span>,clxy(1:2,3:6),<span class="string">'r'</span>,wxy,t);
+set(h.Input,<span class="string">'Visible'</span>,<span class="string">'off'</span>);
+legend(<span class="string">'Open Loop'</span>,<span class="string">'Closed Loop'</span>)
+</pre><img vspace="5" hspace="5" src="milldemo_06.png" alt=""> <p>The MIMO design shows no performance loss in the x axis and the disturbance attenuation levels now match those obtained for each individual axis. The improvement is also evident when comparing the principal gains of the closed-loop responses from  input disturbances to  thickness gaps <tt>x-gap, y-gap</tt>:</p><pre class="codeinput">sigma(clxy0(1:2,3:6),<span class="string">'b'</span>,clxy(1:2,3:6),<span class="string">'r'</span>,{1e-2,1e2})
+grid, legend(<span class="string">'Two SISO Loops'</span>,<span class="string">'MIMO Loop'</span>)
+</pre><img vspace="5" hspace="5" src="milldemo_07.png" alt=""> <p>Note how the MIMO regulator does a better job at keeping the gain equally low in all directions.</p><h2>Simulink&reg; Model<a name="40"></a></h2><p>If you are a Simulink&reg; user, click on the link below to open a companion Simulink&reg; model that implements both multi-loop SISO and MIMO control architectures. You can use this model to compare both designs by switching between designs during simulation.</p><p><a href="matlab:rolling_mill">Open Simulink model of two-axis rolling mill.</a></p><p><img vspace="5" hspace="5" src="../Figures/rollmill_07.png" alt=""> </p><p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Thickness Control for a Steel Beam
+% This demo shows how to design a MIMO LQG regulator to 
+% control the horizontal and vertical thickness of a steel 
+% beam in a hot steel rolling mill.
+
+%   Copyright 1986-2009 The MathWorks, Inc.
+%   $Revision: 1.14.4.4 $  $Date: 2009/11/09 16:22:11 $
+
+%% Rolling Stand Model
+% Figures 1 and 2 depict the process of shaping a beam of hot steel by
+% compressing it with rolling cylinders.
+%
+% <<../Figures/rollmill_01.png>>
+
+%%
+% *Figure 1*: Beam Shaping by Rolling Cylinders.
+
+%%
+% <<../Figures/rollmill_02.png>>
+
+%%
+% *Figure 2*: Rolling Mill Stand.
+
+%%
+% The desired H shape is impressed by two pairs of rolling cylinders
+% (one per axis) positioned by hydraulic actuators. The gap between
+% the two cylinders is called the roll gap. 
+% The goal is to maintain the x and y thickness within specified
+% tolerances.  Thickness variations arise primarily from variations in
+% thickness and hardness of the incoming beam (input disturbance) and
+% eccentricities of the rolling cylinders.
+
+%%
+% An open-loop model for the x or y axes is shown in Figure 3.  The
+% eccentricity disturbance is modeled as white noise |w_e| driving
+% a band-pass filter |Fe|. The input thickness disturbance is modeled
+% as white noise |w_i| driving a low-pass filter |Fi|.
+% Feedback control is necessary to counter such disturbances.  Because
+% the roll gap |delta| cannot be measured close to the stand, the rolling
+% force |f| is used for feedback.
+%
+% <<../Figures/rollmill_03.png>>
+
+%%
+% *Figure 3*: Open-Loop Model.
+
+%% Building the Open-Loop Model
+% Empirical models for the filters |Fe| and |Fi| for the x axis are
+%
+% $$ F_{ex} = { 3 \times 10^4 s \over s^2 + 0.125 s + 6^2 } , \;\;\; 
+% F_{ix} = { 10^4 \over s + 0.05 } $$
+%
+% and the actuator and gap-to-force gain are modeled as
+%
+% $$ H_x = { 2.4  \times 10^8 \over s^2 + 72 s + 90^2 } , \;\;\;  g_x = 10^{-6} $$
+
+%%
+% To construct the open-loop model in Figure 3, start by specifying each
+% block:
+Hx = tf(2.4e8 , [1  72  90^2] , 'inputname' , 'u_x');
+Fex = tf([3e4 0] , [1 0.125 6^2] , 'inputname' , 'w_{ex}');
+Fix = tf(1e4 , [1 0.05] , 'inputname' , 'w_{ix}');
+gx = 1e-6;
+
+%%
+% Next construct the transfer function from |u,we,wi| to |f1,f2|
+% using concatenation and |append| as follows. To improve numerical accuracy,
+% switch to the state-space representation before you connect models:
+T = append([ss(Hx) Fex],Fix);
+
+%%
+% Finally, apply the transformation mapping |f1,f2| to |delta,f|:
+Px = [-gx gx;1 1] * T;
+Px.OutputName = {'x-gap' , 'x-force'};
+
+%%
+% Plot the frequency response magnitude from the normalized disturbances
+% |w_e| and |w_i| to the outputs:
+bodemag(Px(: , [2 3]),{1e-2,1e2}), grid
+
+%%
+% Note the peak at 6 rad/sec corresponding to the (periodic) eccentricity
+% disturbance.
+
+%% LQG Regulator Design for the X Axis
+% First design an LQG regulator to attenuate the thickness variations
+% due to the eccentricity and input thickness disturbances |w_e| and |w_i|.
+% LQG regulators generate actuator commands u = -K x_e where x_e is
+% an estimate of the plant states. This estimate is derived from available 
+% measurements of the rolling force |f| using an observer called "Kalman
+% filter."
+%
+% <<../Figures/rollmill_04.png>>
+
+%%
+% *Figure 4*: LQG Control Structure.
+
+%%
+% Use |lqry| to calculate a suitable state-feedback gain K.  The gain K is
+% chosen to minimize a cost function of the form
+%
+% $$ C(u) = \int_0^{\infty} \left( \delta^2 (t) + \beta u^2(t) \right) dt $$
+%
+% where the parameter |beta| is used  to trade off performance and control
+% effort. For |beta| = 1e-4, you can compute the optimal gain by typing
+Pxdes = Px('x-gap','u_x');      % transfer u_x -> x-gap
+Kx = lqry(Pxdes,1,1e-4)
+
+%%
+% Next, use |kalman| to design a Kalman estimator for the plant states.  
+% Set the measurement noise covariance to 1e4 to limit the gain at high
+% frequencies:
+Ex = kalman(Px('x-force',:),eye(2),1e4);
+
+%%
+% Finally, use |lqgreg| to assemble the LQG regulator |Regx| from |Kx| and
+% |Ex|:
+Regx = lqgreg(Ex,Kx);
+zpk(Regx)
+
+%%
+bode(Regx), 
+grid, title('LQG Regulator')
+
+%% LQG Regulator Evaluation
+% Close the regulation loop shown in Figure 4:
+clx = feedback(Px,Regx,1,2,+1);
+
+%%
+% Note that in this command, the +1  accounts for the fact that |lqgreg| computes a positive
+% feedback compensator. 
+
+%%
+% You can now compare the open- and closed-loop 
+% responses to eccentricity and input thickness disturbances:
+bodemag(Px(1,2:3),'b',clx(1,2:3),'r',{1e-1,1e2})
+grid, legend('Open Loop','Closed Loop')
+
+%%
+% The Bode plot indicates a 20 dB attenuation of disturbance effects.
+% You can confirm this by simulating disturbance-induced thickness 
+% variations with and without the LQG regulator as follows:
+dt = 0.01;  % simulation time step
+t = 0:dt:30;                    
+wx = sqrt(1/dt) * randn(2,length(t));    % sampled driving noise
+
+h = lsimplot(Px(1,2:3),'b',clx(1,2:3),'r',wx,t);
+set(h.Input,'Visible','off');
+legend('Open Loop','Closed Loop')
+
+%% Two-Axis Design
+% You can design a similar LQG regulator for the y axis. Use the following
+% actuator, gain, and disturbance models:
+Hy = tf(7.8e8,[1 71 88^2],'inputname','u_y');
+Fiy = tf(2e4,[1 0.05],'inputname','w_{iy}');
+Fey = tf([1e5 0],[1 0.19 9.4^2],'inputn','w_{ey}');
+gy = 0.5e-6;
+        
+%%
+% You can construct the open-loop model by typing
+Py = append([ss(Hy) Fey],Fiy);
+Py = [-gy gy;1 1] * Py;
+set(Py,'outputn',{'y-gap' 'y-force'})
+
+%%
+% You can then compute the corresponding LQG regulator by typing
+ky = lqry(Py(1,1),1,1e-4);
+Ey = kalman(Py(2,:),eye(2),1e4);
+Regy = lqgreg(Ey,ky);
+
+%%
+% Assuming the x- and y-axis are decoupled, you can use these two
+% regulators independently to control the two-axis rolling mill. 
+
+%% Cross-Coupling Effects
+% Treating each axis separately is valid as long as they are fairly decoupled.  
+% Unfortunately, rolling mills have some amount of cross-coupling between axes
+% because an increase in force along x compresses the material and
+% causes a relative decrease in force along the y axis.
+%
+% Cross-coupling effects are modeled as shown in Figure 5 with gxy=0.1
+% and gyx=0.4.
+%
+% <<../Figures/rollmill_05.png>>
+
+%%
+% *Figure 5*: Cross-Coupling Model.
+
+%%
+% To study the effect of cross-coupling on decoupled SISO loops, construct
+% the two-axis model in Figure 5 and close the x- and y-axis loops using
+% the previously designed LQG regulators:
+gxy = 0.1;  gyx = 0.4; 
+P = append(Px,Py);                % Append x- and y-axis models
+P = P([1 3 2 4],[1 4 2 3 5 6]);   % Reorder inputs and outputs
+CC = [1   0    0    gyx*gx  ;...  % Cross-coupling matrix
+      0   1  gxy*gy    0    ;...
+      0   0    1      -gyx  ;...
+      0   0   -gxy     1  ];
+Pxy = CC * P;                     % Cross-coupling model
+Pxy.outputn = P.outputn;
+        
+clxy0 = feedback(Pxy,append(Regx,Regy),1:2,3:4,+1);
+
+%%   
+% Now, simulate the x and y thickness gaps for the two-axis model:
+wy = sqrt(1/dt) * randn(2,length(t));     % y-axis disturbances
+wxy = [wx ; wy];
+
+h = lsimplot(Pxy(1:2,3:6),'b',clxy0(1:2,3:6),'r',wxy,t);
+set(h.Input,'Visible','off');
+legend('Open Loop','Closed Loop')
+
+%%
+% Note the high thickness variations along the x axis.  Treating each
+% axis separately is inadequate and you need to use a joint-axis, MIMO
+% design to correctly handle cross-coupling effects.
+
+%% MIMO Design
+% The MIMO design consists of a single regulator that uses both 
+% force measurements |fx| and |fy| to compute the actuator commands, |u_x|
+% and |u_y|. This control architecture is depicted in Figure 6.
+%
+% <<../Figures/rollmill_06.png>>
+
+%%
+% *Figure 6*: MIMO Control Structure.
+
+%%
+% You can design a MIMO LQG regulator for the two-axis model using the
+% exact same steps as for earlier SISO designs. First, compute the state
+% feedback gain, then compute the state estimator, and finally assemble these two 
+% components using |lqgreg|. Use the following commands to perform these
+% steps:
+Kxy = lqry(Pxy(1:2,1:2),eye(2),1e-4*eye(2));
+Exy = kalman(Pxy(3:4,:),eye(4),1e4*eye(2));
+Regxy = lqgreg(Exy,Kxy);
+
+%% 
+% To compare the performance of the MIMO and multi-loop SISO designs, 
+% close the MIMO loop in Figure 6:
+clxy = feedback(Pxy,Regxy,1:2,3:4,+1);
+
+%%
+% Then, simulate the x and y thickness gaps for the two-axis model:
+h = lsimplot(Pxy(1:2,3:6),'b',clxy(1:2,3:6),'r',wxy,t);
+set(h.Input,'Visible','off');
+legend('Open Loop','Closed Loop')
+
+%% 
+% The MIMO design shows no performance loss in the x axis
+% and the disturbance attenuation levels now match those obtained for
+% each individual axis. The improvement is also evident when comparing the principal
+% gains of the closed-loop responses from  input disturbances 
+% to  thickness gaps |x-gap, y-gap|:
+sigma(clxy0(1:2,3:6),'b',clxy(1:2,3:6),'r',{1e-2,1e2})
+grid, legend('Two SISO Loops','MIMO Loop')
+
+%%
+% Note how the MIMO regulator does a better job at keeping the gain equally
+% low in all directions.
+
+%% Simulink(R) Model
+% If you are a Simulink(R) user, click on the link below to open a
+% companion Simulink(R) model that implements both multi-loop SISO and MIMO control 
+% architectures. You can use this model to compare both designs by switching
+% between designs during simulation.
+%
+% <matlab:rolling_mill Open Simulink model of two-axis rolling mill.> 
+%
+% <<../Figures/rollmill_07.png>>
+
+displayEndOfDemoMessage(mfilename)
+
+
+
+##### SOURCE END #####
+--></body></html>

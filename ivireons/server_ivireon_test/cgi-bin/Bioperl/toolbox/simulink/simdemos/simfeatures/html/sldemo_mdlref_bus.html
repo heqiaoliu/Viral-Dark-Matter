@@ -1,0 +1,120 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Interface Specification Using Bus Objects</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_mdlref_bus.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_mdlref_bus.mdl</div><div class="right"><a href="matlab:sldemo_mdlref_bus">Open this model</a></div></div><div class="content"><h1>Interface Specification Using Bus Objects</h1><!--introduction--><p>This demo explains how to propagate bus signals into referenced models. It also shows how the referenced models can be simulated independently using logged signal data from the parent model. (For a quick introduction to Model Reference, see <a href="sldemo_mdlref_basic.html">Component-Based Modeling with Model Reference</a>. See Simulink&reg; documentation for more information about configuring signals for data logging.)</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Open The Demo Model</a></li><li><a href="#2">Demo Requirements</a></li><li><a href="#3">Description of Bus Signal Setup for the Demo</a></li><li><a href="#4">Simulate and View the Output</a></li><li><a href="#5">Code Generation For Standalone Applications (Requires Real-Time Workshop&reg;)</a></li><li><a href="#6">Exit</a></li></ul></div><h2>Open The Demo Model<a name="1"></a></h2><p><a href="matlab:open_system('sldemo_mdlref_bus');">Open the demo model</a></p><img vspace="5" hspace="5" src="sldemo_mdlref_bus_01.png" alt=""> <h2>Demo Requirements<a name="2"></a></h2><p>During this demo, Simulink and Real-Time Workshop&reg; may generate code in a Simulink project directory created in the current working directory. If you do not want to (or cannot) generate files in this directory, you should change the working directory to a suitable directory. Real-Time Workshop is required to generate Model Reference Real-Time Workshop target to be deployed in standalone applications.</p><h2>Description of Bus Signal Setup for the Demo<a name="3"></a></h2><p>This model, <tt>sldemo_mdlref_bus</tt> contains a Model block, CounterA, that references <tt>sldemo_mdlref_counter_bus</tt>, a model of a simple counter. A bus signal called COUNTERBUS feeds the data and the saturation limits of the counter into the model. COUNTERBUS contains two signals:  the data and LIMITBUS. The data signal is used in counting, and LIMITBUS contains the upper and lower limit values of the counter. The following shows the structure of COUNTERBUS:</p><pre>  * COUNTERBUS (bus signal)
+             * data
+             * LIMITBUS (bus signal)
+                       * upper_saturation_limit
+                       * lower_saturation_limit</pre><p>The demo also includes a MAT-file named <tt>sldemo_mdlref_counter_bus.mat</tt> that creates bus objects that define the elements of COUNTERBUS and LIMITBUS. The preload function of <tt>sldemo_mdlref_bus</tt> loads this MAT-file when the model is loaded, causing the bus objects to be created in the MATLAB&reg; workspace.</p><p><b>Note:</b> You can view these objects by selecting the MATLAB workspace in the Model Explorer. You can also view the bus structures in the Bus Editor. You can open the bus editor by typing <tt>buseditor</tt> at the MATLAB command prompt. The model uses these bus objects to specify the outputs of the following Bus Creator Blocks:</p><div><ul><li>COUNTERBUSCreator</li><li>LIMITBUSCreator</li></ul></div><p>The Inport of the referenced model <tt>sldemo_mdlref_counter_bus</tt> specifies the COUNTERBUS bus object in its <b>Bus object for validating input bus</b> field and enables the <b>Specify properties via bus object</b> option in the <b>Signal specification</b> tab of the parameter dialog, thereby configuring the port to accept buses of the COUNTERBUS type.</p><p>Note that the COUNTERBUS signal in <tt>sldemo_mdlref_bus</tt> has been marked for signal logging. When the model is simulated, the logged signal will be available in the MATLAB workspace in a variable called <tt>topOut</tt>. The referenced model <tt>sldemo_mdlref_counter_bus</tt> has been configured to read the logged signal data through the root Inport block. You can see how this is done by opening the Configuration Parameters dialog of the referenced model and selecting the <b>Data Inport/Export</b> tab. The <b>Inport</b> field in the dialog is configured to read the logged data <tt>topOut</tt>.</p><h2>Simulate and View the Output<a name="4"></a></h2><p>Now you can <a href="matlab:sim('sldemo_mdlref_bus')">simulate sldemo_mdlref_bus</a> to see the output in the scope window.</p><p>The logged signal data should be available in the MATLAB workspace under the variable <tt>topOut</tt>. The referenced model <tt>sldemo_mdlref_counter_bus</tt> reads the logged TimeSeries data as described above.</p><p><a href="matlab:open_system('sldemo_mdlref_counter_bus');">Open the referenced model sldemo_mdlref_counter_bus</a></p><p>You can <a href="matlab:sim('sldemo_mdlref_counter_bus')">simulate sldemo_mdlref_counter_bus</a> to see the output in the scope window. The scope from <tt>sldemo_mdlref_bus</tt> and <tt>sldemo_mdlref_counter_bus</tt> will show the same trace. The signal feeding the scope in the referenced model is also logged. The logged data will be available in the MATLAB workspace under the variable <tt>subOut</tt>. You can verify that the data in <tt>topOut</tt> and <tt>subOut</tt> is the same.</p><h2>Code Generation For Standalone Applications (Requires Real-Time Workshop&reg;)<a name="5"></a></h2><p><a href="matlab:slbuild('sldemo_mdlref_bus','StandaloneRTWTarget')">Create the executable</a> and inspect the code for <tt>sldemo_mdlref_bus</tt>.</p><h2>Exit<a name="6"></a></h2><p><a href="matlab:close_system('sldemo_mdlref_counter_bus',0);close_system('sldemo_mdlref_bus',0);">Close <tt>sldemo_mdlref_counter_bus</tt> and <tt>sldemo_mdlref_bus</tt></a>.</p><p class="footer">Copyright 1990-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Interface Specification Using Bus Objects
+% This demo explains how to propagate bus signals into referenced
+% models. It also shows how the referenced models can be simulated independently using 
+% logged signal data from the parent model. (For a quick introduction to Model Reference, 
+% see <sldemo_mdlref_basic.html Component-Based Modeling with Model Reference>. See Simulink(R)
+% documentation for more information about configuring signals for data logging.)
+
+% Copyright 1990-2007 The MathWorks, Inc.
+% $Revision: 1.1.8.5 $  $Date: 2007/12/10 22:41:56 $
+
+
+%% Open The Demo Model
+% <matlab:open_system('sldemo_mdlref_bus'); Open the demo model>
+tmpdir = tempname;
+mkdir(tmpdir);
+origdir = cd(tmpdir);
+open_system('sldemo_mdlref_bus');
+[c] = evalc('set_param(''sldemo_mdlref_bus'',''SimulationCommand'',''update'');');
+cd(origdir);
+
+
+%% Demo Requirements
+% During this demo, Simulink and Real-Time Workshop(R) may generate code
+% in a Simulink project directory created in the current working directory.
+% If you do not want to (or cannot) generate files in this
+% directory, you should change the working directory to a suitable directory.    
+% Real-Time Workshop is required to generate Model Reference Real-Time 
+% Workshop target to be deployed in standalone applications.    
+%
+%% Description of Bus Signal Setup for the Demo
+% This model, |sldemo_mdlref_bus| contains a Model block, CounterA, that 
+% references |sldemo_mdlref_counter_bus|, a model of a simple counter. A bus 
+% signal called COUNTERBUS feeds the data and the saturation limits of the
+% counter into the model. COUNTERBUS contains two signals:  the
+% data and LIMITBUS. The data signal is used in counting, and 
+% LIMITBUS contains the upper and lower limit values of the counter.
+% The following shows the structure of COUNTERBUS: 
+%
+%    * COUNTERBUS (bus signal)
+%               * data
+%               * LIMITBUS (bus signal) 
+%                         * upper_saturation_limit 
+%                         * lower_saturation_limit        
+%
+% The demo also includes a MAT-file named |sldemo_mdlref_counter_bus.mat|
+% that creates bus objects that define the elements of COUNTERBUS
+% and LIMITBUS. The preload function of |sldemo_mdlref_bus| 
+% loads this MAT-file when the model is loaded, causing the bus 
+% objects to be created in the MATLAB(R) workspace.     
+%
+% *Note:* You can view these objects by selecting the MATLAB workspace in the
+% Model Explorer. You can also view the bus structures in the Bus
+% Editor. You can open the bus editor by typing |buseditor| at the MATLAB
+% command prompt. The model uses these bus objects to specify the outputs of the
+% following Bus Creator Blocks:  
+%
+% * COUNTERBUSCreator 
+% * LIMITBUSCreator
+%
+% The Inport of the referenced model |sldemo_mdlref_counter_bus| specifies
+% the COUNTERBUS bus object in its *Bus object for validating input
+% bus* field and enables the *Specify properties via bus object* option in the
+% *Signal specification* tab of the parameter dialog, thereby configuring
+% the port to accept buses of the COUNTERBUS type.     
+%
+% Note that the COUNTERBUS signal in |sldemo_mdlref_bus| has been marked for signal logging. 
+% When the model is simulated, the logged signal will be available in the MATLAB workspace in a 
+% variable called |topOut|. The referenced model |sldemo_mdlref_counter_bus| has
+% been configured to read the logged signal data through the root Inport block.
+% You can see how this is done by opening the Configuration Parameters
+% dialog of the referenced model and selecting the *Data Inport/Export* tab. The *Inport*
+% field in the dialog is configured to read the logged data |topOut|.
+
+%% Simulate and View the Output
+% Now you can <matlab:sim('sldemo_mdlref_bus') simulate sldemo_mdlref_bus> 
+% to see the output in the scope window.
+%
+% The logged signal data should be available in the MATLAB workspace under
+% the variable |topOut|. The referenced model |sldemo_mdlref_counter_bus| reads the
+% logged TimeSeries data as described above. 
+%
+% <matlab:open_system('sldemo_mdlref_counter_bus'); Open the referenced model sldemo_mdlref_counter_bus>
+%
+% You can <matlab:sim('sldemo_mdlref_counter_bus') 
+% simulate sldemo_mdlref_counter_bus> to see the output in the scope
+% window. The scope from |sldemo_mdlref_bus| and |sldemo_mdlref_counter_bus|
+% will show the same trace. The signal feeding the scope in the referenced model
+% is also logged. The logged data will be available in the MATLAB workspace
+% under the variable |subOut|. You can verify that the data in |topOut| and
+% |subOut| is the same.
+
+%% Code Generation For Standalone Applications (Requires Real-Time Workshop(R)) 
+% <matlab:slbuild('sldemo_mdlref_bus','StandaloneRTWTarget') Create the
+% executable> and inspect the code for |sldemo_mdlref_bus|.    
+
+%% Exit
+% <matlab:close_system('sldemo_mdlref_counter_bus',0);close_system('sldemo_mdlref_bus',0); Close
+% |sldemo_mdlref_counter_bus| and |sldemo_mdlref_bus|>.   
+
+bdclose all
+clear mex
+rmdir(tmpdir,'s');
+clear tmpdir origdir
+##### SOURCE END #####
+--></body></html>

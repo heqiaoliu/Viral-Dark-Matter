@@ -1,0 +1,31 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>スパース行列のグラフィカルな表現</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="airfoil.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit airfoil">エディターで airfoil.m を開く</a></div><div class="right"><a href="matlab:echodemo airfoil">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>スパース行列のグラフィカルな表現</h1><!--introduction--><p>このデモは、2 つのトレーリング フラップを含む NASA の翼に対する有限要素メッシュを示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#2">有限要素メッシュ</a></li><li><a href="#3">スパース パターンの可視化</a></li><li><a href="#4">対称的な並べ替え - 逆 Cuthill-McKee</a></li><li><a href="#5">対称的な並べ替え - COLPERM</a></li><li><a href="#6">対称的な並べ替え - SYMAMD</a></li></ul></div><p>データは、ファイル AIRFOIL.MAT に格納されています。4253 組のメッシュ点の (x,y) 座標が保存されています。メッシュ点間の結合を指定する 12,289 組のインデックス (i,j) を含む配列も保存されています。</p><pre class="codeinput">load <span class="string">airfoil</span>
+</pre><h2>有限要素メッシュ<a name="2"></a></h2><p>まず初めに、範囲が [0,1] になるように 2^(-32) で x と y をスケーリングします。次に、スパース隣接行列を作成し、これを正定にします。</p><pre class="codeinput"><span class="comment">% Scaling x and y</span>
+x = pow2(x,-32);
+y = pow2(y,-32);
+
+<span class="comment">% Forming the sparse adjacency matrix and making it positive definite</span>
+n = max(max(i),max(j));
+A = sparse(i,j,-1,n,n);
+A = A + A';
+d = abs(sum(A)) + 1;
+A = A + diag(sparse(d));
+
+<span class="comment">% Plotting the finite element mesh</span>
+gplot(A,[x y])
+</pre><img vspace="5" hspace="5" src="../airfoil_01.png" alt=""> <h2>スパース パターンの可視化<a name="3"></a></h2><p>SPY は、スパース パターンを可視化するために使われます。SPY(A) は、行列 A の スパース パターンをプロットします。</p><pre class="codeinput">spy(A)
+title(<span class="string">'The adjacency matrix.'</span>)
+</pre><img vspace="5" hspace="5" src="../airfoil_02.png" alt=""> <h2>対称的な並べ替え - 逆 Cuthill-McKee<a name="4"></a></h2><p>SYMRCM は、隣接行列の並べ替えに逆 Cuthill-McKee 手法を使用します。r = SYMRCM(A) は、A より対角に近い対角要素を持つ傾向がある A(r,r) となるような置換ベクトル r を返します。これは、&quot;細長い&quot; 問題から生じる行列の LU 分解、またはコレスキー分解に対して、良い前処理の並べ替えを行います。対称と非対称の A の両方に対して機能します。</p><pre class="codeinput">r = symrcm(A);
+spy(A(r,r))
+title(<span class="string">'Reverse Cuthill-McKee'</span>)
+</pre><img vspace="5" hspace="5" src="../airfoil_03.png" alt=""> <h2>対称的な並べ替え - COLPERM<a name="5"></a></h2><p>非ゼロ数の降順でないスパース行列 A の列を並べ替える置換ベクトルを返すために j = COLPERM(A) を使用します。これは、LU 分解の前処理の並べ替えとして有効です。lu(A(:,j)).</p><pre class="codeinput">j = colperm(A);
+spy(A(j,j))
+title(<span class="string">'Column count reordering'</span>)
+</pre><img vspace="5" hspace="5" src="../airfoil_04.png" alt=""> <h2>対称的な並べ替え - SYMAMD<a name="6"></a></h2><p>SYMAMD は、対称な近似最小次数置換を与えます。対称の正定行列 A に対して、p = SYMAMD(S) は、S よりもスパースなコレスキー因子を持つ傾向のある S(p,p) となるような置換ベクトル p を返します。しばしば、SYMAMD は、対称不定行列に対しても、問題なく機能します。</p><pre class="codeinput">m = symamd(A);
+spy(A(m,m))
+title(<span class="string">'Approximate minimum degree'</span>)
+</pre><img vspace="5" hspace="5" src="../airfoil_05.png" alt=""> <p class="footer">Copyright 1984-2005 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Graphical Representation of Sparse Matrices % This demo shows the finite element mesh for a NASA airfoil, including two  % trailing flaps. % % Copyright 1984-2005 The MathWorks, Inc. % $Revision: 1.1.6.10.2.1 $ $Date: 2010/07/29 21:28:52 $  %% % The data is stored in the file AIRFOIL.MAT.  It holds 4253 pairs of (x,y) % coordinates of the mesh points.  It also holds an array of 12,289 pairs of % indices, (i,j), specifying connections between the mesh points.  load airfoil  %% The Finite Element Mesh % First, scale x and y by 2^(-32) to bring them into the range [0,1].  Then % form the sparse adjacency matrix and make it positive definite.  % Scaling x and y x = pow2(x,-32);  y = pow2(y,-32);  % Forming the sparse adjacency matrix and making it positive definite n = max(max(i),max(j)); A = sparse(i,j,-1,n,n); A = A + A'; d = abs(sum(A)) + 1; A = A + diag(sparse(d));  % Plotting the finite element mesh gplot(A,[x y])  %% Visualizing the Sparsity Pattern % SPY is used to visualize sparsity pattern.  SPY(A) plots the sparsity pattern % of the matrix A.  spy(A) title('The adjacency matrix.')  %% Symmetric Reordering - Reverse Cuthill-McKee % SYMRCM uses the Reverse Cuthill-McKee technique for reordering the adjacency % matrix.  r = SYMRCM(A) returns a permutation vector r such that A(r,r) tends % to have its diagonal elements closer to the diagonal than A.  This is a good % preordering for LU or Cholesky factorization of matrices that come from "long, % skinny" problems.  It works for both symmetric and asymmetric A.  r = symrcm(A); spy(A(r,r)) title('Reverse Cuthill-McKee')  %% Symmetric Reordering - COLPERM % Use j = COLPERM(A) to return a permutation vector that reorders the columns of % the sparse matrix A in non-decreasing order of non-zero count.  This is % sometimes useful as a preordering for LU factorization: lu(A(:,j)).      j = colperm(A); spy(A(j,j)) title('Column count reordering')  %% Symmetric Reordering - SYMAMD % SYMAMD gives a symmetric approximate minimum degree permutation. % p = SYMAMD(S), for a symmetric positive definite matrix A, returns the % permutation vector p such that S(p,p) tends to have a sparser Cholesky factor % than S.  Sometimes SYMAMD works well for symmetric indefinite matrices too.  m = symamd(A); spy(A(m,m)) title('Approximate minimum degree')   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

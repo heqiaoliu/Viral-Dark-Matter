@@ -1,0 +1,395 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Anti-Windup Control Using a PID Controller</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_antiwindup.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_antiwindup.mdl</div><div class="right"><a href="matlab:sldemo_antiwindup">Open this model</a></div></div><div class="content"><h1>Anti-Windup Control Using a PID Controller</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Model Description</a></li><li><a href="#7">Performance Without Using Anti-Windup</a></li><li><a href="#12">Configuring the Block for Anti-Windup Based on Back-Calculation</a></li><li><a href="#22">Configuring the Block for Anti-Windup Based on Integrator Clamping</a></li><li><a href="#29">Using Tracking Mode to Handle Complex Anti-Windup Scenarios</a></li><li><a href="#30">Constructing Anti-Windup Circuitry for Saturated Actuators with Cascaded Dynamics</a></li><li><a href="#40">Constructing Anti-Windup Circuitry for PID Control with Feedforward</a></li><li><a href="#51">Summary</a></li><li><a href="#52">References</a></li></ul></div><h2>Model Description<a name="1"></a></h2><p>This demo explores the anti-windup capabilities supported by the PID Controller block in Simulink&reg;. The block features two built-in anti-windup methods, <tt>back-calculation</tt> and <tt>clamping</tt>, as well as a tracking mode to handle more complex scenarios.</p><p>The plant to be controlled is a saturated first-order process with dead-time.</p><p>We start by opening the model.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_01.png" alt=""> <p><b>Figure 1:</b> Simulink model of PID control of a plant with input saturation.</p><p>To open this model, type <tt>sldemo_antiwindup</tt> in a MATLAB&reg; terminal.</p><p>The PID Controller has been tuned with saturation ignored using the PID tuner of Simulink&reg; Control Design&#8482;.</p><p>The controlled plant is a first-order process with dead-time described by</p><p><img src="sldemo_antiwindup_eq99110.png" alt="$$P(s)=\frac{1}{10s+1}e^{-2s}$$"></p><p>The plant has known input saturation limits of [-10, 10], which are accounted for in the Saturation block labeled Plant Actuator. The PID Controller block in Simulink features two built-in anti-windup methods that allow the PID Controller block to account for the available information about the plant input saturation.</p><h2>Performance Without Using Anti-Windup<a name="7"></a></h2><p>First, we examine the effect of saturation on the closed-loop when the saturation model is not considered by the PID Controller block. Simulating the model in Figure 1 generates the results shown below.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_02.png" alt=""> <p><b>Figure 2:</b> Setpoint vs. measured output with no anti-windup.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_03.png" alt=""> <p><b>Figure 3:</b> Controller output and saturated input with no anti-windup.</p><p>Figures 2 and 3 highlight two of the problems that arise when controlling a system with input saturation:</p><div><ol><li>When the setpoint value is 10, the PID control signal reaches a steady-state at about 24, outside the range of the actuator. The controller is therefore operating in a nonlinear region where increasing the control signal has no effect on the system output, a condition known as <i>winding up</i>. Note that the dc-gain of the plant is unity, and therefore there is no reason for the controller output to have a steady-state value outside the actuator's range.</li><li>When the setpoint value becomes 5, there is a considerable delay before the PID controller output returns to within the actuator range.</li></ol></div><p>Designing the PID controller to account for the effect of saturation will improve its performance by allowing it to operate in the linear region most of the time and recover quickly from nonlinearity. Anti-windup circuitry is one way to achieve this.</p><h2>Configuring the Block for Anti-Windup Based on Back-Calculation<a name="12"></a></h2><p>The back-calculation anti-windup method uses a feedback loop to discharge the PID Controller's internal integrator when the controller hits specified saturation limits and enters nonlinear operation. To enable anti-windup, go to the <b>PID Advanced</b> tab in the block's dialog; select <b>Limit output</b>; and enter the plant's saturation limits. Then, select <b>back-calculation</b> from the <b>Anti-windup method</b> menu and specify the back-calculation gain <tt>Kb</tt>. The inverse of this gain is the time constant of the anti-windup loop. In this demo, the back-calculation gain is chosen to be 1. For more information on how to choose this value, see Reference [1].</p><p><img vspace="5" hspace="5" src="../images/blkDlgAntiWindup.png" alt=""> </p><p><b>Figure 4:</b> Enabling the back-calculation anti-windup method.</p><p>Once back-calculation is enabled, the block has an internal tracking loop that discharges the Integrator output.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_04.png" alt=""> <p><b>Figure 5:</b> Under-mask view of the PID Controller block with back-calculation.</p><p>Figures 6 and 7 illustrate the result of simulating the model with anti-windup activated. Note how quickly the PID control signal returns to the linear region and how fast the loop recovers from saturation.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_05.png" alt=""> <p><b>Figure 6:</b> Setpoint vs. measured output with back-calculation.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_06.png" alt=""> <p><b>Figure 7:</b> Controller output and saturated input with back-calculation.</p><p>
+Figure 7 shows that the controller output <SPAN STYLE="font-family:
+courier; font-size: 11px">u(t)</SPAN> and the saturated input <SPAN
+STYLE="font-family:courier; font-size: 11px">SAT(u)</SPAN> coincide with
+each other because <b>Limit output</b> is enabled.
+</p><p>
+To better visualize the effect of anti-windup, Figure 8 illustrates the
+plant measured output <SPAN STYLE="font-family:courier; font-size:
+11px">y(t)</SPAN> with and without anti-windup.
+</p><img vspace="5" hspace="5" src="sldemo_antiwindup_07.png" alt=""> <p><b>Figure 8:</b> Measured output with and without anti-windup.</p><h2>Configuring the Block for Anti-Windup Based on Integrator Clamping<a name="22"></a></h2><p>Another commonly used anti-windup strategy is based on conditional integration. To enable anti-windup, go to the <b>PID Advanced</b> tab in the block's dialog; select <b>Limit output</b>; and enter the plant's saturation limits. Then, select <b>clamping</b> from the <b>Anti-windup method</b> menu.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_08.png" alt=""> <p><b>Figure 9:</b> Setpoint vs. measured output with clamping.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_09.png" alt=""> <p><b>Figure 10:</b> Controller output and saturated input with clamping.</p><p>
+Figure 10 shows that the controller output <SPAN STYLE="font-family:
+courier; font-size: 11px">u(t)</SPAN> and the saturated input <SPAN
+STYLE="font-family:courier; font-size: 11px">SAT(u)</SPAN> coincide with
+each other because <b>Limit output</b> is enabled.
+</p><p>For more information on when to use <i>clamping</i>, see Reference [1].</p><h2>Using Tracking Mode to Handle Complex Anti-Windup Scenarios<a name="29"></a></h2><p>The previously discussed anti-windup strategies relied on built-in methods to process the saturation information provided to the block via its dialog. For those built-in techniques to work as intended, two conditions must be met:</p><div><ol><li>The plant's saturation limits are known and can be entered into the dialog of the block.</li><li>The PID Controller output signal is the only signal feeding the actuator.</li></ol></div><p>These conditions may be restrictive when handling general anti-windup scenarios. The PID Controller block features a tracking mode that allows the user to set up a back-calculation anti-windup loop externally. In the rest of the demo, the following two examples are considered to illustrate the use of tracking mode for anti-windup purposes:</p><div><ol><li>Anti-windup for saturated actuators with cascaded dynamics</li><li>Anti-windup for PID control with Feedforward</li></ol></div><h2>Constructing Anti-Windup Circuitry for Saturated Actuators with Cascaded Dynamics<a name="30"></a></h2><p>In the following model, the actuator has complex dynamics. This is common when an actuator has its own closed-loop dynamics. The PID controller is in an outer loop and sees the actuator dynamics as an inner loop, or simply a cascaded saturated dynamics as shown in Figure 1.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_10.png" alt=""> <p><b>Figure 11:</b> Simulink model of PID controller with cascaded actuator dynamics.</p><p>To open this model, type <tt>sldemo_antiwindupactuator</tt> in a MATLAB terminal.</p><p>In this case, a successful anti-windup strategy requires feeding back the actuator output to the tracking port of the PID Controller block as shown in Figure 11. To configure the <tt>tracking mode</tt> of the PID Controller block, go to the <b>PID Advanced</b> tab in the block's dialog; select <b>Enable tracking mode</b>; and specify the gain <tt>Kt</tt>. The inverse of this gain is the time constant of the tracking loop. For more information on how to choose this gain, see Reference [1].</p><p><img vspace="5" hspace="5" src="../images/blkDlgTracking.png" alt=""> </p><p><b>Figure 12:</b> Enabling the tracking mode of the PID Controller block.</p><p>
+Figures 13 and 14 show that the plant's measured output <SPAN
+STYLE="font-family: courier; font-size: 11px">y(t)</SPAN> and the
+controller output <SPAN STYLE="font-family: courier; font-size:
+11px">u(t)</SPAN> are responding almost immediately to changes in the
+setpoint. Without the anti-windup circuit, these responses would be
+sluggish with long delays.
+</p><img vspace="5" hspace="5" src="sldemo_antiwindup_11.png" alt=""> <p><b>Figure 13:</b> Setpoint vs. measured output.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_12.png" alt=""> <p><b>Figure 14:</b> Controller output and effective saturated input.</p><h2>Constructing Anti-Windup Circuitry for PID Control with Feedforward<a name="40"></a></h2><p>In another common control configuration, the actuator receives a control signal that is a combination of a PID control signal and a feedforward control signal.</p><p>To accurately build a back-calculation anti-windup loop, the tracking signal should subtract the contribution of the feedforward signal. This allows the PID Controller block to know its share of the effective control signal applied to the actuator.</p><p>The following model includes a feedforward control.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_13.png" alt=""> <p><b>Figure 15:</b> Simulink model of PID controller with feedforward, and plant input saturation.</p><p>The feedforward gain is selected to be unity here because the plant has a dc-gain of 1.</p><p>To open this model, type <tt>sldemo_antiwindupfeedforward</tt> in a MATLAB terminal.</p><p>
+Figures 16 and 17 show that the plant's measured output <SPAN
+STYLE="font-family: courier; font-size: 11px">y(t)</SPAN> and the
+controller output <SPAN STYLE="font-family: courier; font-size:
+11px">u(t)</SPAN> are responding almost immediately to changes in the
+setpoint. When the setpoint value is 10, note how in Figure 17 the
+controller output <SPAN STYLE="font-family: courier; font-size:
+11px">u(t)</SPAN> reduces to be within the range of the actuator.
+</p><img vspace="5" hspace="5" src="sldemo_antiwindup_14.png" alt=""> <p><b>Figure 16:</b> Setpoint vs. measured output without anti-windup.</p><img vspace="5" hspace="5" src="sldemo_antiwindup_15.png" alt=""> <p><b>Figure 17:</b> Controller output and saturated input with anti-windup.</p><h2>Summary<a name="51"></a></h2><p>The PID Controller block supports several features that allow it to handle controller windup issues under commonly encountered industrial scenarios.</p><h2>References<a name="52"></a></h2><p>
+[1]  K. &Aring;str&ouml;m, T. H&auml;gglund, <i>Advanced PID
+Control</i>, ISA, Research Triangle Park, NC, August 2005.
+</p><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Anti-Windup Control Using a PID Controller
+%
+% Copyright 2009 The MathWorks, Inc.
+% $Revision: 1.1.6.3 $  $Date: 2010/01/25 23:00:29 $
+
+%% Model Description
+% This demo explores the anti-windup capabilities supported by the PID
+% Controller block in Simulink(R). The block features two built-in
+% anti-windup methods, |back-calculation| and |clamping|, as well as a
+% tracking mode to handle more complex scenarios.
+
+%%
+% The plant to be controlled is a saturated first-order process with
+% dead-time.
+%
+% We start by opening the model.
+
+open_system('sldemo_antiwindup')
+
+%%
+% *Figure 1:* Simulink model of PID control of a plant with input
+% saturation.
+
+%%
+% To open this model, type |sldemo_antiwindup| in a MATLAB(R) terminal.
+
+%%
+% The PID Controller has been tuned with saturation ignored using the
+% PID tuner of Simulink(R) Control Design(TM).
+
+%%
+% The controlled plant is a first-order process with dead-time described
+% by
+%
+% $$P(s)=\frac{1}{10s+1}e^{-2s}$$
+% 
+% The plant has known input saturation limits of [-10, 10], which are
+% accounted for in the Saturation block labeled Plant Actuator. The PID 
+% Controller block in Simulink features two built-in anti-windup methods
+% that allow the PID Controller block to account for the available
+% information about the plant input saturation.
+
+%% Performance Without Using Anti-Windup
+% First, we examine the effect of saturation on the closed-loop when the
+% saturation model is not considered by the PID Controller block.
+% Simulating the model in Figure 1 generates the results shown below.
+
+open_system('sldemo_antiwindup/Scope');
+open_system('sldemo_antiwindup/Scope1'); % This ensures legends get displayed
+simout1= sim('sldemo_antiwindup','ReturnWorkspaceOutputs','on');
+close_system('sldemo_antiwindup/Scope1');
+
+%%
+% *Figure 2:* Setpoint vs. measured output with no anti-windup.
+
+%%
+
+close_system('sldemo_antiwindup/Scope');
+open_system('sldemo_antiwindup/Scope1');
+
+%%
+% *Figure 3:* Controller output and saturated input with no anti-windup.
+
+%%
+% Figures 2 and 3 highlight two of the problems that arise when controlling
+% a system with input saturation:
+%
+% # When the setpoint value is 10, the PID control signal reaches a
+% steady-state at about 24, outside the range of the actuator. The
+% controller is therefore operating in a nonlinear region where increasing
+% the control signal has no effect on the system output, a condition known
+% as _winding up_. Note that the dc-gain of the plant is unity, and
+% therefore there is no reason for the controller output to have a
+% steady-state value outside the actuator's range.
+% # When the setpoint value becomes 5, there is a considerable delay before
+% the PID controller output returns to within the actuator range.
+%
+% Designing the PID controller to account for the effect of saturation will
+% improve its performance by allowing it to operate in the linear region
+% most of the time and recover quickly from nonlinearity. Anti-windup
+% circuitry is one way to achieve this.
+
+%% Configuring the Block for Anti-Windup Based on Back-Calculation
+% The back-calculation anti-windup method uses a feedback loop to discharge
+% the PID Controller's internal integrator when the controller hits
+% specified saturation limits and enters nonlinear operation. To enable
+% anti-windup, go to the *PID Advanced* tab in the block's dialog; select
+% *Limit output*; and enter the plant's saturation limits. Then, select
+% *back-calculation* from the *Anti-windup method* menu and specify the
+% back-calculation gain |Kb|. The inverse of this gain is the time constant
+% of the anti-windup loop. In this demo, the back-calculation gain is
+% chosen to be 1. For more information on how to choose this value, see
+% Reference [1].
+
+%%
+% 
+% <<../images/blkDlgAntiWindup.png>>
+%
+% *Figure 4:* Enabling the back-calculation anti-windup method.
+
+set_param('sldemo_antiwindup/PID Controller','LimitOutput','on',...
+    'UpperSaturationLimit','10','LowerSaturationLimit','-10',...
+    'AntiWindupMode','back-calculation');
+
+
+%%
+% Once back-calculation is enabled, the block has an internal tracking loop
+% that discharges the Integrator output.
+
+open_system('sldemo_antiwindup/PID Controller','force');
+
+%%
+% *Figure 5:* Under-mask view of the PID Controller block with
+% back-calculation.
+
+%%
+% Figures 6 and 7 illustrate the result of simulating the model with
+% anti-windup activated. Note how quickly the PID control signal returns to
+% the linear region and how fast the loop recovers from saturation.
+
+close_system('sldemo_antiwindup/PID Controller');
+close_system('sldemo_antiwindup/Scope1');
+open_system('sldemo_antiwindup/Scope');
+simout2= sim('sldemo_antiwindup','ReturnWorkspaceOutputs','on');
+
+%%
+% *Figure 6:* Setpoint vs. measured output with back-calculation.
+
+close_system('sldemo_antiwindup/Scope');
+open_system('sldemo_antiwindup/Scope1');
+
+%%
+% *Figure 7:* Controller output and saturated input with back-calculation.
+
+%%
+% <html>
+% Figure 7 shows that the controller output <SPAN STYLE="font-family:
+% courier; font-size: 11px">u(t)</SPAN> and the saturated input <SPAN
+% STYLE="font-family:courier; font-size: 11px">SAT(u)</SPAN> coincide with
+% each other because <b>Limit output</b> is enabled.
+% </html>
+
+%%
+% <html>
+% To better visualize the effect of anti-windup, Figure 8 illustrates the
+% plant measured output <SPAN STYLE="font-family:courier; font-size:
+% 11px">y(t)</SPAN> with and without anti-windup.
+% </html>
+
+close_system('sldemo_antiwindup/Scope1');
+t1 = get(simout1,'tout');  y1 = get(simout1,'yout');
+t2 = get(simout2,'tout');  y2 = get(simout2,'yout');
+figure('Tag','sldemo_antiwindup');
+plot(t1,y1,t2,y2);axis([0 t1(end) round(min([y1;y2])-2) round(max([y1;y2])+2)]);
+title('Measured output');
+legend('Without anti-windup','With anti-windup');
+
+%%
+% *Figure 8:* Measured output with and without anti-windup.
+
+%% Configuring the Block for Anti-Windup Based on Integrator Clamping
+% Another commonly used anti-windup strategy is based on conditional
+% integration. To enable anti-windup, go to the *PID Advanced* tab in the
+% block's dialog; select *Limit output*; and enter the plant's saturation
+% limits. Then, select *clamping* from the *Anti-windup method* menu.
+
+open_system('sldemo_antiwindup/Scope');
+set_param('sldemo_antiwindup/PID Controller','AntiWindupMode','clamping');
+sim('sldemo_antiwindup');
+
+%%
+% *Figure 9:* Setpoint vs. measured output with clamping.
+
+%%
+close_system('sldemo_antiwindup/Scope');
+open_system('sldemo_antiwindup/Scope1');
+
+%%
+bdclose('sldemo_antiwindup')
+close(findobj('type','figure','Tag','sldemo_antiwindup'))
+
+%%
+% *Figure 10:* Controller output and saturated input with clamping.
+
+%%
+% <html>
+% Figure 10 shows that the controller output <SPAN STYLE="font-family:
+% courier; font-size: 11px">u(t)</SPAN> and the saturated input <SPAN
+% STYLE="font-family:courier; font-size: 11px">SAT(u)</SPAN> coincide with
+% each other because <b>Limit output</b> is enabled.
+% </html>
+
+
+
+%%
+% For more information on when to use _clamping_, see Reference [1].
+
+%% Using Tracking Mode to Handle Complex Anti-Windup Scenarios
+% The previously discussed anti-windup strategies relied on built-in
+% methods to process the saturation information provided to the block via
+% its dialog. For those built-in techniques to work as intended, two
+% conditions must be met:
+%
+% # The plant's saturation limits are known and can be entered into the
+% dialog of the block.
+% # The PID Controller output signal is the only signal feeding the
+% actuator.
+%
+% These conditions may be restrictive when handling general anti-windup
+% scenarios. The PID Controller block features a tracking mode that
+% allows the user to set up a back-calculation anti-windup loop externally.
+% In the rest of the demo, the following two examples are considered to
+% illustrate the use of tracking mode for anti-windup purposes:
+%
+% # Anti-windup for saturated actuators with cascaded dynamics
+% # Anti-windup for PID control with Feedforward
+
+
+%% Constructing Anti-Windup Circuitry for Saturated Actuators with Cascaded Dynamics
+% In the following model, the actuator has complex dynamics. This is common
+% when an actuator has its own closed-loop dynamics. The PID controller is
+% in an outer loop and sees the actuator dynamics as an inner loop, or
+% simply a cascaded saturated dynamics as shown in Figure 1.
+
+open_system('sldemo_antiwindupactuator');
+
+%%
+% *Figure 11:* Simulink model of PID controller with cascaded actuator
+% dynamics.
+
+%%
+% To open this model, type |sldemo_antiwindupactuator| in a MATLAB
+% terminal.
+
+%%
+% In this case, a successful anti-windup strategy requires feeding back the
+% actuator output to the tracking port of the PID Controller block as shown
+% in Figure 11. To configure the |tracking mode| of the PID Controller
+% block, go to the *PID Advanced* tab in the block's dialog; select *Enable
+% tracking mode*; and specify the gain |Kt|. The inverse of this gain is
+% the time constant of the tracking loop. For more information on how to
+% choose this gain, see Reference [1].
+
+%%
+% 
+% <<../images/blkDlgTracking.png>>
+%
+% *Figure 12:* Enabling the tracking mode of the PID Controller block.
+
+%%
+% <html>
+% Figures 13 and 14 show that the plant's measured output <SPAN
+% STYLE="font-family: courier; font-size: 11px">y(t)</SPAN> and the
+% controller output <SPAN STYLE="font-family: courier; font-size:
+% 11px">u(t)</SPAN> are responding almost immediately to changes in the
+% setpoint. Without the anti-windup circuit, these responses would be
+% sluggish with long delays.
+% </html>
+
+open_system('sldemo_antiwindupactuator/Scope');
+open_system('sldemo_antiwindupactuator/Scope1'); % This ensures legends get displayed
+sim('sldemo_antiwindupactuator');
+close_system('sldemo_antiwindupactuator/Scope1');
+
+%%
+% *Figure 13:* Setpoint vs. measured output.
+
+%%
+close_system('sldemo_antiwindupactuator/Scope');
+open_system('sldemo_antiwindupactuator/Scope1');
+
+%%
+% *Figure 14:* Controller output and effective saturated input.
+
+%%
+bdclose('sldemo_antiwindupactuator')
+
+%% Constructing Anti-Windup Circuitry for PID Control with Feedforward
+% In another common control configuration, the actuator receives a control
+% signal that is a combination of a PID control signal and a feedforward
+% control signal.
+
+%%
+% To accurately build a back-calculation anti-windup loop, the tracking
+% signal should subtract the contribution of the feedforward signal. This
+% allows the PID Controller block to know its share of the effective
+% control signal applied to the actuator.
+
+%%
+% The following model includes a feedforward control.
+
+open_system('sldemo_antiwindupfeedforward');
+
+%%
+% *Figure 15:* Simulink model of PID controller with feedforward, and plant
+% input saturation.
+
+%%
+% The feedforward gain is selected to be unity here because the plant has a
+% dc-gain of 1.
+
+%%
+% To open this model, type |sldemo_antiwindupfeedforward| in a MATLAB
+% terminal.
+
+%%
+% <html>
+% Figures 16 and 17 show that the plant's measured output <SPAN
+% STYLE="font-family: courier; font-size: 11px">y(t)</SPAN> and the
+% controller output <SPAN STYLE="font-family: courier; font-size:
+% 11px">u(t)</SPAN> are responding almost immediately to changes in the
+% setpoint. When the setpoint value is 10, note how in Figure 17 the
+% controller output <SPAN STYLE="font-family: courier; font-size:
+% 11px">u(t)</SPAN> reduces to be within the range of the actuator.
+% </html>
+
+open_system('sldemo_antiwindupfeedforward/Scope');
+open_system('sldemo_antiwindupfeedforward/Scope1'); % This ensures legends get displayed
+sim('sldemo_antiwindupfeedforward');
+close_system('sldemo_antiwindupfeedforward/Scope1');
+
+%%
+% *Figure 16:* Setpoint vs. measured output without anti-windup.
+
+%%
+close_system('sldemo_antiwindupfeedforward/Scope');
+open_system('sldemo_antiwindupfeedforward/Scope1');
+
+%%
+% *Figure 17:* Controller output and saturated input with anti-windup.
+
+%%
+bdclose('sldemo_antiwindupfeedforward')
+
+%% Summary
+% The PID Controller block supports several features that allow it to
+% handle controller windup issues under commonly encountered industrial
+% scenarios.
+
+
+%% References
+% 
+% <html>
+% [1]  K. &Aring;str&ouml;m, T. H&auml;gglund, <i>Advanced PID
+% Control</i>, ISA, Research Triangle Park, NC, August 2005.
+% </html>
+%
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

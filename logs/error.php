@@ -1,0 +1,68 @@
+#<?php die('Forbidden.'); ?>
+#Date: 2011-12-07 00:13:47 UTC
+#Software: Joomla Platform 11.2.0 Stable+Modified [ Omar ] 27-Jul-2011 00:00 GMT
+
+#Fields: date	time	priority	clientip	category	message
+2011-12-07	00:13:47	INFO	130.191.158.54	Joomla FAILURE: 	Invalid password
+2011-12-07	00:13:54	INFO	130.191.158.54	Joomla FAILURE: 	Invalid password
+2011-12-07	00:14:05	INFO	130.191.158.54	Joomla FAILURE: 	Invalid password
+2011-12-07	00:14:19	INFO	130.191.158.54	Joomla FAILURE: 	User does not exist
+2011-12-07	00:14:34	INFO	130.191.158.54	Joomla FAILURE: 	User does not exist
+2011-12-07	00:15:01	INFO	130.191.158.54	Joomla FAILURE: 	User does not exist
+2011-12-07	00:19:03	INFO	130.191.158.54	Joomla FAILURE: 	User does not exist
+2011-12-07	00:20:52	INFO	130.191.158.54	Joomla FAILURE: 	User does not exist
+2012-01-13	19:43:20	INFO	130.191.157.223	Joomla FAILURE: 	Invalid password
+2012-01-13	19:43:28	INFO	130.191.157.223	Joomla UNKNOWN ERROR: 	
+2012-01-13	19:43:45	INFO	130.191.157.223	Joomla FAILURE: 	Invalid password
+2012-01-13	19:43:56	INFO	130.191.157.223	Joomla FAILURE: 	User does not exist
+2012-01-13	19:44:19	INFO	130.191.157.223	Joomla FAILURE: 	Invalid password
+2012-01-13	19:44:48	INFO	130.191.157.223	Joomla FAILURE: 	Invalid password
+2012-01-13	19:45:03	INFO	130.191.157.223	Joomla UNKNOWN ERROR: 	
+2012-01-13	19:45:30	INFO	130.191.157.223	Joomla UNKNOWN ERROR: 	
+2012-01-13	19:47:05	INFO	130.191.157.223	Joomla FAILURE: 	Invalid password
+2012-01-21	03:41:15	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-21	12:03:02	INFO	72.207.60.101	Joomla FAILURE: 	User does not exist
+2012-01-22	07:01:58	INFO	75.32.246.12	Joomla FAILURE: 	Invalid password
+2012-01-22	07:02:04	INFO	75.32.246.12	Joomla FAILURE: 	Invalid password
+2012-01-23	08:40:51	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-23	08:42:05	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-23	08:42:11	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-23	14:24:57	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-23	23:37:59	INFO	130.191.157.229	Joomla FAILURE: 	Invalid password
+2012-01-23	23:38:05	INFO	130.191.157.229	Joomla FAILURE: 	Invalid password
+2012-01-25	11:55:39	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-25	11:55:46	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-25	21:55:29	INFO	130.191.157.186	Joomla FAILURE: 	Invalid password
+2012-01-25	23:12:25	INFO	130.191.157.186	Joomla FAILURE: 	Invalid password
+2012-01-26	00:34:46	INFO	130.191.157.186	Joomla FAILURE: 	Invalid password
+2012-01-26	10:46:07	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-27	20:23:41	INFO	130.191.157.186	Joomla FAILURE: 	Invalid password
+2012-01-27	21:23:47	INFO	130.191.157.186	Joomla FAILURE: 	Invalid password
+2012-01-27	22:27:47	INFO	130.191.157.186	Joomla FAILURE: 	Invalid password
+2012-01-27	22:43:53	INFO	130.191.157.186	Joomla FAILURE: 	Invalid password
+2012-01-27	22:54:12	INFO	130.191.157.186	Joomla FAILURE: 	Invalid password
+2012-01-27	23:05:43	INFO	130.191.157.186	Joomla FAILURE: 	Invalid password
+2012-01-30	19:40:23	INFO	146.244.102.53	Joomla FAILURE: 	Invalid password
+2012-01-30	23:42:33	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-30	23:51:08	INFO	72.207.60.101	Joomla FAILURE: 	Invalid password
+2012-01-31	20:26:49	INFO	130.191.157.149	Joomla FAILURE: 	Invalid password
+2012-02-01	23:21:58	INFO	130.191.157.113	Joomla FAILURE: 	Invalid password
+2012-02-01	23:22:05	INFO	130.191.157.113	Joomla FAILURE: 	Invalid password
+2012-02-01	23:22:13	INFO	130.191.157.113	Joomla FAILURE: 	Invalid password
+2012-02-01	23:45:16	INFO	130.191.157.113	Joomla FAILURE: 	Invalid password
+2012-02-06	21:05:10	INFO	146.244.158.158	Joomla FAILURE: 	Invalid password
+2012-04-01	19:05:02	INFO	72.220.186.187	Joomla FAILURE: 	User does not exist
+2012-04-01	19:05:09	INFO	72.220.186.187	Joomla FAILURE: 	User does not exist
+2012-04-01	20:16:47	INFO	132.239.1.230	Joomla FAILURE: 	User does not exist
+2012-04-02	17:54:20	INFO	146.244.145.17	Joomla FAILURE: 	Invalid password
+2012-04-02	17:54:27	INFO	146.244.145.17	Joomla FAILURE: 	Invalid password
+2012-04-02	17:54:38	INFO	146.244.145.17	Joomla FAILURE: 	Invalid password
+2012-04-02	17:55:09	INFO	146.244.145.17	Joomla FAILURE: 	Invalid password
+2012-04-19	17:41:34	INFO	146.244.111.172	Joomla FAILURE: 	Invalid password
+2012-04-20	18:05:26	INFO	146.244.224.53	Joomla FAILURE: 	User does not exist
+2012-04-23	16:42:41	INFO	173.160.175.90	Joomla UNKNOWN ERROR: 	
+2012-04-23	16:43:05	INFO	173.160.175.90	Joomla UNKNOWN ERROR: 	
+2012-04-23	17:14:53	INFO	68.8.49.79	Joomla FAILURE: 	User does not exist
+2012-04-26	01:28:06	INFO	68.8.55.230	Joomla FAILURE: 	User does not exist
+2012-05-03	09:53:58	INFO	72.197.111.109	Joomla FAILURE: 	Invalid password
+2012-05-03	13:25:08	INFO	72.220.186.187	Joomla FAILURE: 	User does not exist

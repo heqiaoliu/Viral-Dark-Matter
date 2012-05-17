@@ -1,0 +1,141 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   <!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>長いむだ時間を持つプロセス制御: スミス予測器</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="smithdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit smithdemo">エディターで smithdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo smithdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>長いむだ時間を持つプロセス制御: スミス予測器</h1><!--introduction--><p>このデモでは、長いむだ時間を持つプロセスの PI 制御における制約を示し、「スミス予測器」と呼ばれる制御方法の利点について説明します。</p><p>このデモは次の文献に基づいて作成されたものです。</p><pre> A. Ingimundarson and T. Hagglund, &quot;Robust Tuning Procedures of
+ Dead-Time Compensating Controllers,&quot; Control Engineering Practice,
+ 9, 2001, pp. 1195-1208.</pre><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">プロセス モデル</a></li><li><a href="#3">PI 制御</a></li><li><a href="#7">スミス予測器</a></li><li><a href="#10">PI 制御とスミス予測器の比較</a></li><li><a href="#13">モデル不一致のロバスト性</a></li><li><a href="#16">ロバスト性の改善</a></li><li><a href="#23">外乱抑圧の改善</a></li></ul></div><h2>プロセス モデル<a name="1"></a></h2><p>プロセスの開ループ応答は、40.2 秒の時定数と 93.9 秒の時間遅れを持つむだ時間を 1 次プロセスに付加したものとしてモデル化されます。</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);
+P = exp(-93.9*s) * 5.6/(40.2*s+1);
+P.InputName = <span class="string">'u'</span>; P.OutputName = <span class="string">'y'</span>;
+P
+</pre><pre class="codeoutput"> 
+Transfer function from input &quot;u&quot; to output &quot;y&quot;:
+                  5.6
+exp(-93.9*s) * ----------
+               40.2 s + 1
+ 
+</pre><p>遅れが時定数の 2 倍以上になっていることに注目してください。これは、多くの化学的プロセスの典型的なモデルです。このモデルのステップ応答は次のとおりです。</p><pre class="codeinput">step(P), grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../smithdemo_01.png" alt=""> <h2>PI 制御<a name="3"></a></h2><p>比例-積分 (PI) 制御は、プロセス制御においてよく使用されるテクニックです。これに対応する制御アーキテクチャは次に示すとおりです。</p><p><img vspace="5" hspace="5" src="../../Figures/smith_01.png" alt=""> </p><p>補償器 C は、比例ゲイン <tt>Kp</tt> と積分時間 <tt>Ti</tt> の 2 つの調整パラメーターを持つ標準型 PI コントローラーです。<tt>PIDTUNE</tt> コマンドを使用して、0.006 ラジアン/秒の開ループ帯域幅を持つ PI コントローラーを設計します。</p><pre class="codeinput">Cpi = pidtune(P,pidstd(1,1),pidtuneOptions(<span class="string">'CrossoverFrequency'</span>,0.006));
+Cpi
+</pre><pre class="codeoutput">Continuous-time PI controller in standard form:
+ 
+           1      1 
+Kp * (1 + ---- * ---)
+           Ti     s 
+ 
+with Kp = 0.050143, Ti = 47.2913
+ 
+</pre><p>PI 制御の性能を評価するには、フィードバック ループを閉じて、基準信号 <tt>ysp</tt> と出力外乱信号 <tt>d</tt> におけるステップ変化に対する応答をシミュレートします。フィードバック パスに遅れがあるため、<tt>SS</tt> コマンドを使用して、<tt>P</tt> または <tt>Cpi</tt> を状態空間表現に変換する必要があります。</p><pre class="codeinput">Tpi = feedback([P*ss(Cpi),1],1,1,1);  <span class="comment">% closed-loop model [ysp;d]-&gt;y</span>
+Tpi.InputName = {<span class="string">'ysp'</span> <span class="string">'d'</span>};
+
+step(Tpi), grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../smithdemo_02.png" alt=""> <p>閉ループ応答では、オーバーシュートは許容可能ですが、多少の遅れがあります (約 600 秒の整定時間)。比例ゲイン Kp を大きくすると、応答は高速化しますが、オーバーシュートの大幅な増加も招くため、すぐに不安定性につながります。</p><pre class="codeinput">Kp3 = [0.06;0.08;0.1];      <span class="comment">% try three increasing values of Kp</span>
+Ti3 = repmat(Cpi.Ti,3,1);   <span class="comment">% Ti remains the same</span>
+C3 = pidstd(Kp3,Ti3);       <span class="comment">% corresponding three PI controllers</span>
+T3 = feedback(P*ss(C3),1);
+T3.InputName = <span class="string">'ysp'</span>;
+
+step(T3)
+title(<span class="string">'Loss of stability when increasing Kp'</span>)
+</pre><img vspace="5" hspace="5" src="../smithdemo_03.png" alt=""> <p>むだ時間が長いと、PI 制御の性能が厳しく制限されます。これは、PI 制御がむだ時間を認識しておらず、実際の出力 <tt>y</tt> が希望の設定点 <tt>ysp</tt> と一致していないときに &quot;性急&quot; に反応するためです。これと似た状況は、シャワーを浴びるときに水温調整に時間がかかった場合に誰でも経験したことがあるはずです。この場合、性急に反応したことが原因で、水温を上げすぎて熱湯を浴び、水温を下げすぎて冷水を浴びるといったことを繰り返すことがよくあります。制御方法をより効果的なものとするには、温度設定に加えた変更が有効になるまで待ってから、さらなる調整を加えることが必要です。また、どのノブ設定で好ましい温度が得られるかがわかったら、シャワーが反応するのにかかる時間と同時に正しい温度を実現できるようになります。次に説明するスミス予測器は、この &quot;最適&quot; な制御方法を基本的な考えとしています。</p><h2>スミス予測器<a name="7"></a></h2><p>スミス予測器とは、次の図に示す制御構造のことです。</p><p><img vspace="5" hspace="5" src="../../Figures/smith_02.png" alt=""> </p><p>スミス予測器は、内部モデル <tt>Gp</tt> を使用して、プロセスの遅延なし応答 yp を予測します (特定のノブ設定からどの水温が得られるかなど)。次に、この予測値 yp をターゲット設定点 ysp と比較して、どのような調整が必要であるか (制御量 u) を決定します。ドリフトを防ぎ、外乱を抑圧するため、スミス予測器は、むだ時間を考慮に入れた予測値 <tt>y1</tt> と実際のプロセス出力の比較も行います。ギャップ <tt>dy=y-y1</tt> は、フィルター F を通過してフィードバックされ、全体的な偏差信号 <tt>e</tt> に寄与します。<tt>dy</tt> の値は、シャワーが反応するまで十分な時間待ってから、温度の知覚差異と等しくなります。<i></i></p><p>スミス予測器スキームを展開するには、以下が必要となります。</p><div><ul><li>プロセス ダイナミクスのモデル <tt>Gp</tt>、およびプロセスむだ時間の推定値 <tt>tau</tt></li></ul></div><div><ul><li>補償器とフィルター ダイナミクスの適切な設定 (<tt>C</tt> と <tt>F</tt>)</li></ul></div><p>プロセス モデルに基づいて、次の式を使用します。</p><p><img src="../smithdemo_eq00085.png" alt="$$G_p(s) = {5.6 \over 1 + 40.2 s } , \tau = 93.9 $$"></p><p><tt>F</tt> には、低周波数外乱を取り込むための 20 秒の時定数を持つ 1 次フィルターを使用します。</p><pre class="codeinput">F = 1/(20*s+1);
+F.InputName = <span class="string">'dy'</span>; F.OutputName = <span class="string">'dp'</span>;
+</pre><p><tt>C</tt> については、PI コントローラーによって認識されるプラント全体を使用して、PI コントローラーを再設計します。これには、<tt>P</tt>、<tt>Gp</tt>、<tt>F</tt>、むだ時間からのダイナミクスが含まれます。スミス予測器制御構造を使用すれば、開ループ帯域幅を上げて高速応答を実現したり、位相余裕を大きくしてオーバーシュートを削減したりすることができます。</p><pre class="codeinput"><span class="comment">% Process</span>
+P = ss(exp(-93.9*s) * 5.6/(40.2*s+1));
+P.InputName = <span class="string">'u'</span>; P.OutputName = <span class="string">'y0'</span>;
+
+<span class="comment">% Prediction model</span>
+Gp = 5.6/(40.2*s+1);
+Gp.InputName = <span class="string">'u'</span>; Gp.OutputName = <span class="string">'yp'</span>;
+
+Dp = exp(-93.9*s);
+Dp.InputName = <span class="string">'yp'</span>; Dp.OutputName = <span class="string">'y1'</span>;
+
+<span class="comment">% Overall plant</span>
+Sum1 = sumblk(<span class="string">'e'</span>,<span class="string">'ysp'</span>,<span class="string">'yp'</span>,<span class="string">'dp'</span>,<span class="string">'+--'</span>);
+Sum2 = sumblk(<span class="string">'y'</span>,<span class="string">'d'</span>,<span class="string">'y0'</span>,<span class="string">'++'</span>);
+Sum3 = sumblk(<span class="string">'dy'</span>,<span class="string">'y'</span>,<span class="string">'y1'</span>,<span class="string">'+-'</span>);
+Sum4 = sumblk(<span class="string">'ym'</span>,<span class="string">'dp'</span>,<span class="string">'yp'</span>,<span class="string">'++'</span>);
+Plant = connect(P,Gp,Dp,F,Sum2,Sum3,Sum4,<span class="string">'u'</span>,<span class="string">'ym'</span>);
+
+<span class="comment">% Design PI controller with</span>
+C = pidtune(Plant,pidstd(1,1),pidtuneOptions(<span class="string">'CrossoverFrequency'</span>,0.08,<span class="string">'PhaseMargin'</span>,90));
+C.InputName = <span class="string">'e'</span>; C.OutputName = <span class="string">'u'</span>;
+C
+</pre><pre class="codeoutput">Continuous-time PI controller in standard form, from input &quot;e&quot; to output &quot;u&quot;:
+ 
+           1      1 
+Kp * (1 + ---- * ---)
+           Ti     s 
+ 
+with Kp = 0.57429, Ti = 40.1787
+ 
+</pre><h2>PI 制御とスミス予測器の比較<a name="10"></a></h2><p>2 つの設計の性能を比較するには、まず、<tt>ysp,d</tt> から <tt>y</tt> への閉ループ伝達関数をスミス予測器アーキテクチャ用に導出します。関連するブロックの連結作業を合理化するため、入力チャネルと出力チャネルのすべてに名前を付け、<tt>CONNECT</tt> を使用して配線を自動的に行います。</p><pre class="codeinput"><span class="comment">% Assemble closed-loop model from [y_sp,d] to y</span>
+T = connect(P,Gp,Dp,C,F,Sum1,Sum2,Sum3,{<span class="string">'ysp'</span>,<span class="string">'d'</span>},<span class="string">'y'</span>);
+</pre><p><tt>STEP</tt> を使用して、スミス予測器 (青) と PI 制御 (赤) を比較します。</p><pre class="codeinput">step(T,<span class="string">'b'</span>,Tpi,<span class="string">'r--'</span>)
+grid <span class="string">on</span>
+legend(<span class="string">'Smith Predictor'</span>,<span class="string">'PI Controller'</span>)
+</pre><img vspace="5" hspace="5" src="../smithdemo_04.png" alt=""> <p>スミス予測器の方が応答が格段に速く、オーバーシュートが生じません。また、<tt>ysp</tt> から <tt>y</tt> への閉ループ ボード応答をプロットすると、周波数領域の違いも明らかになります。スミス予測器の方が帯域幅が高いことに注目してください。</p><pre class="codeinput">bode(T(1,1),<span class="string">'b'</span>,Tpi(1,1),<span class="string">'r--'</span>,{1e-3,1})
+grid <span class="string">on</span>
+legend(<span class="string">'Smith Predictor'</span>,<span class="string">'PI Controller'</span>)
+</pre><img vspace="5" hspace="5" src="../smithdemo_05.png" alt=""> <h2>モデル不一致のロバスト性<a name="13"></a></h2><p>前の節で示した解析では、内部モデル</p><p><img src="../smithdemo_eq81504.png" alt="$$ G_p(s) e^{-\tau s} $$"></p><p>は、プロセス モデル <tt>P</tt> と完全に一致しました。実際の状況では、内部モデルは真のプロセス ダイナミクスの近似にすぎないため、プロセス ダイナミクスとむだ時間の不確実性に対してスミス予測器がどの程度ロバストであるかを把握しておくことが重要です。</p><p>摂動の影響を受けるプラント モデルが 2 つあり、プロセス パラメーターに対する次の範囲の不確実性をそれぞれ表しているとします。</p><pre class="codeinput">P1 = exp(-90*s) * 5/(38*s+1);
+P2 = exp(-100*s) * 6/(42*s+1);
+
+bode(P,P1,P2), grid <span class="string">on</span>
+title(<span class="string">'Nominal and Perturbed Process Models'</span>)
+</pre><img vspace="5" hspace="5" src="../smithdemo_06.png" alt=""> <p>ロバスト性を解析するには、ノミナル モデルと摂動モデルをプロセス モデルの配列に収集して、PI 設計およびスミス予測器設計の閉ループ伝達関数を再作成し、閉ループ応答をシミュレートします。</p><pre class="codeinput">Plants = stack(1,P,P1,P2);  <span class="comment">% array of process models</span>
+T1 = connect(Plants,Gp,Dp,C,F,Sum1,Sum2,Sum3,{<span class="string">'ysp'</span>,<span class="string">'d'</span>},<span class="string">'y'</span>); <span class="comment">% Smith</span>
+Tpi = feedback([Plants*Cpi,1],1,1,1);   <span class="comment">% PI</span>
+
+step(T1,<span class="string">'b'</span>,Tpi,<span class="string">'r--'</span>)
+grid <span class="string">on</span>
+legend(<span class="string">'Smith Predictor 1'</span>,<span class="string">'PI Controller'</span>)
+</pre><img vspace="5" hspace="5" src="../smithdemo_07.png" alt=""> <p>どちらの設計も、閉ループ ボード線図で確認できるとおり、モデルの不一致の影響を受けます。</p><pre class="codeinput">bode(T1(1,1),<span class="string">'b'</span>,Tpi(1,1),<span class="string">'r--'</span>)
+grid <span class="string">on</span>
+legend(<span class="string">'Smith Predictor 1'</span>,<span class="string">'PI Controller'</span>)
+</pre><img vspace="5" hspace="5" src="../smithdemo_08.png" alt=""> <h2>ロバスト性の改善<a name="16"></a></h2><p>モデル化エラーに対するスミス予測器の感度を下げるには、内側ループと外側ループの安定余裕をチェックします。内側ループ <tt>C</tt> には開ループ伝達関数 <tt>C*Gp</tt> があるため、安定余裕は次のコマンドによって取得できます。</p><pre class="codeinput">margin(C * Gp)
+title(<span class="string">'Stability Margins for the Inner Loop (C)'</span>)
+</pre><img vspace="5" hspace="5" src="../smithdemo_09.png" alt=""> <p>内側ループには快適なゲイン余裕と位相余裕があるため、次に外側ループに注目します。<tt>CONNECT</tt> を使用して、内側ループを閉じた状態で <tt>ysp</tt> から <tt>dp</tt> への開ループ伝達関数 <tt>L</tt> を導出します。</p><pre class="codeinput">Sum1o = sumblk(<span class="string">'e'</span>,<span class="string">'ysp'</span>,<span class="string">'yp'</span>,<span class="string">'+-'</span>);  <span class="comment">% open the loop at dp</span>
+L = connect(P,Gp,Dp,C,F,Sum1o,Sum2,Sum3,{<span class="string">'ysp'</span>,<span class="string">'d'</span>},<span class="string">'dp'</span>);
+
+bode(L(1,1))
+</pre><img vspace="5" hspace="5" src="../smithdemo_10.png" alt=""> <p>ゲインが -300dB であることに注目してください。この伝達関数は本質的にゼロです。これは、プロセス モデルと予測モデルが完全に一致する場合に予想される値です。外側ループの安定余裕を詳しく把握するには、摂動プロセス モデル (<tt>P1</tt> など) のいずれかを使用する必要があります。</p><pre class="codeinput">H = connect(Plants(:,:,2),Gp,Dp,C,Sum1o,Sum2,Sum3,{<span class="string">'ysp'</span>,<span class="string">'d'</span>},<span class="string">'dy'</span>);
+H = H(1,1);  <span class="comment">% open-loop transfer ysp -&gt; dy</span>
+L = F * H;
+
+margin(L)
+title(<span class="string">'Stability Margins for the Outer Loop (F)'</span>)
+grid <span class="string">on</span>, set(gca,<span class="string">'xlim'</span>,[1e-2 1])
+</pre><img vspace="5" hspace="5" src="../smithdemo_11.png" alt=""> <p>このゲイン曲線には 0.04 rad/sec の近傍に凸部があり、これが原因でゲイン余裕が下がり、閉ループ ステップ応答の隆起が大きくなっています。この問題を解決するには、より早急かつ迅速にロールオフするフィルター <tt>F</tt> を選択します。</p><pre class="codeinput">F = (1+10*s)/(1+100*s);
+F.InputName = <span class="string">'dy'</span>; F.OutputName = <span class="string">'dp'</span>;
+</pre><p>0.04 rad/sec の位相交差の近傍でゲイン余裕が改善されたことを確認します。</p><pre class="codeinput">L = F * H;
+margin(L)
+title(<span class="string">'Stability Margins for the Outer Loop with Modified F'</span>)
+grid <span class="string">on</span>, set(gca,<span class="string">'xlim'</span>,[1e-2 1])
+</pre><img vspace="5" hspace="5" src="../smithdemo_12.png" alt=""> <p>最後に、修正されたフィルターを使用して、閉ループ応答をシミュレートします。</p><pre class="codeinput">T2 = connect(Plants,Gp,Dp,C,F,Sum1,Sum2,Sum3,{<span class="string">'ysp'</span>,<span class="string">'d'</span>},<span class="string">'y'</span>);
+
+step(T2,<span class="string">'b'</span>,Tpi,<span class="string">'r--'</span>)
+grid <span class="string">on</span>
+legend(<span class="string">'Smith Predictor 2'</span>,<span class="string">'PI Controller'</span>)
+</pre><img vspace="5" hspace="5" src="../smithdemo_13.png" alt=""> <p>変更後の設計では、標準応答は多少遅くなりますが、より一貫性の高い性能が実現します。</p><h2>外乱抑圧の改善<a name="23"></a></h2><p><tt>d</tt> から <tt>y</tt> への閉ループ伝達関数の式では、<tt>F</tt> の最適な選択肢が次のように示されています。</p><p><img src="../smithdemo_eq68835.png" alt="$$ F(s) = e^{\tau s} $$"></p><p>ここで、<tt>tau</tt> は内部モデルのむだ時間です。この選択肢では、<tt>P</tt> と <tt>Gp</tt> の不一致にかかわらず、外乱を完全に抑圧できます。ただし、これらの &quot;負の遅れ&quot; は問題の原因ではないため、実装できません。次の文献</p><pre>  Huang, H.-P., et al., &quot;A Modified Smith Predictor with an Approximate
+Inverse of Dead Time,&quot; AiChE Journal, 36 (1990), pp.1025-1031</pre><p>の中で著者は、位相進み近似を使用することを提案しています。</p><p><img src="../smithdemo_eq13312.png" alt="$$ e^{\tau s} \approx { 1 + B(s) \over 1 + B(s) e^{-\tau s} }$$"></p><p>ここで、<tt>B</tt> は、内部モデル <tt>Gp</tt> と同じ時定数を持つローパス フィルターです。このスキームは次のようにテストできます。</p><p>B(s) と F(s) の定義</p><pre class="codeinput">B = ss(0.05/(40*s+1));
+tau = totaldelay(Dp);
+F = (1+B)/(1+B*exp(-tau*s));
+F.InputName = <span class="string">'dy'</span>; F.OutputName = <span class="string">'dp'</span>;
+</pre><p>帯域幅が狭い PI コントローラーの再設計</p><pre class="codeinput">Plant = connect(P,Gp,Dp,F,Sum2,Sum3,Sum4,<span class="string">'u'</span>,<span class="string">'ym'</span>);
+C = pidtune(Plant,pidstd(1,1),pidtuneOptions(<span class="string">'CrossoverFrequency'</span>,00.02,<span class="string">'PhaseMargin'</span>,90));
+C.InputName = <span class="string">'e'</span>; C.OutputName = <span class="string">'u'</span>;
+C
+</pre><pre class="codeoutput">Continuous-time PI controller in standard form, from input &quot;e&quot; to output &quot;u&quot;:
+ 
+           1      1 
+Kp * (1 + ---- * ---)
+           Ti     s 
+ 
+with Kp = 0.14357, Ti = 40.1376
+ 
+</pre><p>計算された閉ループモデル T3</p><pre class="codeinput">T3 = connect(Plants,Gp,Dp,C,F,Sum1,Sum2,Sum3,{<span class="string">'ysp'</span>,<span class="string">'d'</span>},<span class="string">'y'</span>);
+</pre><p>T3 と T2 および Tpi との比較</p><pre class="codeinput">step(T2,<span class="string">'b'</span>,T3,<span class="string">'g'</span>,Tpi,<span class="string">'r--'</span>)
+grid <span class="string">on</span>
+legend(<span class="string">'Smith Predictor 2'</span>,<span class="string">'Smith Predictor 3'</span>,<span class="string">'PI Controller'</span>)
+</pre><img vspace="5" hspace="5" src="../smithdemo_14.png" alt=""> <p>この比較が示すとおり、最後の設計では、設定点の追跡が低速化する代わりに外乱抑圧を高速化できます。</p><p class="footer">Copyright 1986-2010 The MathWorks, Inc.<br> Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Control of Processes with Long Dead Time: The Smith Predictor % This demo shows the limitations of PI control for  % processes with long dead time and illustrates the benefits of  % a control strategy called "Smith Predictor."  % % The demo is inspired by: % %   A. Ingimundarson and T. Hagglund, "Robust Tuning Procedures of %   Dead-Time Compensating Controllers," Control Engineering Practice, %   9, 2001, pp. 1195-1208.  %   Copyright 1986-2010 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $  %% Process Model % The process open-loop response is modeled as a first-order plus  % dead time with a 40.2 second time constant and 93.9 second time delay:  s = tf('s'); P = exp(-93.9*s) * 5.6/(40.2*s+1); P.InputName = 'u'; P.OutputName = 'y'; P  %% % Note that the delay is more than twice the time constant. This % model is representative of many chemical processes. Its step  % response is shown below.  step(P), grid on  %% PI Controller % Proportional-Integral (PI) control is a commonly used technique in  % Process Control. The corresponding control architecture is  % shown below. % % <<../Figures/smith_01.png>> % % Compensator C is a PI controller in standard form with two tuning % parameters: proportional gain |Kp| and an integral time |Ti|. We use the % |PIDTUNE| command to design a PI controller with the open loop bandwidth % at 0.006 rad/sec: Cpi = pidtune(P,pidstd(1,1),pidtuneOptions('CrossoverFrequency',0.006)); Cpi  %%  % To evaluate the performance of the PI controller, close the feedback loop % and simulate the responses to step changes in the reference signal |ysp| % and output disturbance signal |d|. Because of the delay in the feedback % path, it is necessary to convert |P| or |Cpi| to the state-space % representation using the |SS| command:  Tpi = feedback([P*ss(Cpi),1],1,1,1);  % closed-loop model [ysp;d]->y Tpi.InputName = {'ysp' 'd'};  step(Tpi), grid on  %% % The closed-loop response has acceptable overshoot but is somewhat % sluggish (it settles in about 600 seconds). Increasing the proportional % gain Kp speeds up the response but also significantly increases overshoot % and quickly leads to instability:  Kp3 = [0.06;0.08;0.1];      % try three increasing values of Kp Ti3 = repmat(Cpi.Ti,3,1);   % Ti remains the same C3 = pidstd(Kp3,Ti3);       % corresponding three PI controllers T3 = feedback(P*ss(C3),1); T3.InputName = 'ysp';  step(T3) title('Loss of stability when increasing Kp')  %% % The performance of the PI controller is severely limited by the long dead % time. This is because the PI controller has no knowledge of the dead time % and reacts too "impatiently" when the actual output |y| does not match % the desired setpoint |ysp|. Everyone has experienced a similar phenomenon % in showers where the water temperature takes a long time to adjust. % There, impatience typically leads to alternate scolding by burning hot % and freezing cold water. A better strategy consists of waiting for a % change in temperature setting to take effect before making further % adjustments. And once we have learned what knob setting delivers our % favorite temperature, we can get the right temperature in just the time % it takes the shower to react. This "optimal" control strategy is the % basic idea behind the Smith Predictor scheme.  %% Smith Predictor % The Smith Predictor control structure is sketched below. % % <<../Figures/smith_02.png>> % % The Smith Predictor uses an internal model |Gp| to predict the delay-free  % response yp of the process (e.g., what water temperature a given knob % setting will deliver). It then compares this prediction yp with the % desired setpoint ysp to decide what adjustments are needed (control u). % To prevent drifting and reject external disturbances, the Smith predictor % also compares the actual process output with a prediction |y1| that takes % the dead time into account. The gap |dy=y-y1| is fed back through a % filter F and contributes to the overall error signal |e|.  Note that |dy| % amounts to the perceived temperature mismatch _after_ waiting long enough % for the shower to react.  %%  % Deploying the Smith Predictor scheme requires % % * A model |Gp| of the process dynamics and an estimate |tau| of the  %   process dead time % % * Adequate settings for the compensator and filter dynamics (|C| and |F|) % % Based on the process model, we use: % % $$G_p(s) = {5.6 \over 1 + 40.2 s } , \tau = 93.9 $$ % % For |F|, use a first-order filter with a 20 second time constant to % capture low-frequency disturbances.   F = 1/(20*s+1); F.InputName = 'dy'; F.OutputName = 'dp';  %% % For |C|, we re-design the PI controller with the overall plant seen by % the PI controller, which includes dynamics from |P|, |Gp|, |F| and dead % time. With the help of the Smith Predictor control structure we are able % to increase the open loop bandwidth to achieve faster response and % increase the phase margin to reduce the overshoot.  % Process P = ss(exp(-93.9*s) * 5.6/(40.2*s+1)); P.InputName = 'u'; P.OutputName = 'y0';  % Prediction model Gp = 5.6/(40.2*s+1); Gp.InputName = 'u'; Gp.OutputName = 'yp';  Dp = exp(-93.9*s); Dp.InputName = 'yp'; Dp.OutputName = 'y1';  % Overall plant  Sum1 = sumblk('e','ysp','yp','dp','+REPLACE_WITH_DASH_DASH'); Sum2 = sumblk('y','d','y0','++'); Sum3 = sumblk('dy','y','y1','+-'); Sum4 = sumblk('ym','dp','yp','++'); Plant = connect(P,Gp,Dp,F,Sum2,Sum3,Sum4,'u','ym');  % Design PI controller with  C = pidtune(Plant,pidstd(1,1),pidtuneOptions('CrossoverFrequency',0.08,'PhaseMargin',90)); C.InputName = 'e'; C.OutputName = 'u'; C  %% Comparison of PI Controller vs. Smith Predictor % To compare the performance of the two designs, first derive the % closed-loop transfer function from |ysp,d| to |y| for the Smith Predictor % architecture. To facilitate the task of connecting all the blocks % involved, name all their input and output channels and let |CONNECT| do % the wiring:  % Assemble closed-loop model from [y_sp,d] to y T = connect(P,Gp,Dp,C,F,Sum1,Sum2,Sum3,{'ysp','d'},'y');  %%  % Use |STEP| to compare the Smith Predictor (blue) with the PI controller (red):  step(T,'b',Tpi,'rREPLACE_WITH_DASH_DASH') grid on legend('Smith Predictor','PI Controller')  %% % The Smith Predictor provides much faster response with no overshoot.  % The difference is also visible in the frequency domain by plotting the  % closed-loop Bode response from |ysp| to |y|. Note the higher bandwidth % for the Smith Predictor.  bode(T(1,1),'b',Tpi(1,1),'rREPLACE_WITH_DASH_DASH',{1e-3,1}) grid on legend('Smith Predictor','PI Controller')  %% Robustness to Model Mismatch % In the previous analysis, the internal model  % % $$ G_p(s) e^{-\tau s} $$ % % matched the process model |P| exactly. In practical situations, the % internal model is only an approximation of the true process dynamics, % so it is important to understand how robust the Smith Predictor is to  % uncertainty on the process dynamics and dead time. % % Consider two perturbed plant models representative % of the range of uncertainty on the process parameters:  P1 = exp(-90*s) * 5/(38*s+1); P2 = exp(-100*s) * 6/(42*s+1);  bode(P,P1,P2), grid on title('Nominal and Perturbed Process Models')  %% % To analyze robustness, collect the nominal and perturbed models % into an array of process models, rebuild the closed-loop transfer % functions for the PI and Smith Predictor designs, and simulate % the closed-loop responses:  Plants = stack(1,P,P1,P2);  % array of process models T1 = connect(Plants,Gp,Dp,C,F,Sum1,Sum2,Sum3,{'ysp','d'},'y'); % Smith  Tpi = feedback([Plants*Cpi,1],1,1,1);   % PI  step(T1,'b',Tpi,'rREPLACE_WITH_DASH_DASH') grid on legend('Smith Predictor 1','PI Controller')  %%  % Both designs are sensitive to model mismatch, as confirmed by the % closed-loop Bode plots:  bode(T1(1,1),'b',Tpi(1,1),'rREPLACE_WITH_DASH_DASH') grid on legend('Smith Predictor 1','PI Controller')   %% Improving Robustness % To reduce the Smith Predictor's  sensitivity to modeling errors,  % check the stability margins for the  % inner and outer loops. The inner loop |C| has open-loop transfer % |C*Gp| so the stability margin are obtained by  margin(C * Gp) title('Stability Margins for the Inner Loop (C)')  %% % The inner loop has comfortable gain and phase margins so focus on the  % outer loop next. Use |CONNECT| to derive the open-loop transfer function  % |L| from |ysp| to |dp| with the inner loop closed:  Sum1o = sumblk('e','ysp','yp','+-');  % open the loop at dp L = connect(P,Gp,Dp,C,F,Sum1o,Sum2,Sum3,{'ysp','d'},'dp');  bode(L(1,1))  %% % Note the -300dB gain: this transfer function is essentially zero, which % is to be expected when the process and prediction models  match exactly. % To get insight into the stability margins for the outer loop, we need to % work with one of the perturbed process models, e.g., |P1|:  H = connect(Plants(:,:,2),Gp,Dp,C,Sum1o,Sum2,Sum3,{'ysp','d'},'dy'); H = H(1,1);  % open-loop transfer ysp -> dy L = F * H;  margin(L) title('Stability Margins for the Outer Loop (F)') grid on, set(gca,'xlim',[1e-2 1])  %%  % This gain curve has a hump near 0.04 rad/s that lowers the %  gain margin and increases the hump in the closed-loop step response. % To fix this issue, pick a filter |F| that rolls off earlier and more % quickly:  F = (1+10*s)/(1+100*s); F.InputName = 'dy'; F.OutputName = 'dp';  %%  % Verify that the gain margin has improved near the 0.04 rad/s phase % crossing:  L = F * H; margin(L)  title('Stability Margins for the Outer Loop with Modified F') grid on, set(gca,'xlim',[1e-2 1])  %%  % Finally, simulate the closed-loop responses with the modified filter:  T2 = connect(Plants,Gp,Dp,C,F,Sum1,Sum2,Sum3,{'ysp','d'},'y');  step(T2,'b',Tpi,'rREPLACE_WITH_DASH_DASH') grid on legend('Smith Predictor 2','PI Controller')  %% % The modified design provides more consistent performance at the % expense of a slightly slower nominal response.  %% Improving Disturbance Rejection % Formulas for the closed-loop transfer function from |d| to |y|  % show that the optimal choice for |F| is  % % $$ F(s) = e^{\tau s} $$ % % where |tau| is the internal model's dead time. This choice achieves % perfect disturbance rejection regardless of the mismatch between % |P| and |Gp|. Unfortunately, such "negative delay" is not causal and % cannot be implemented. In the paper: % %    Huang, H.-P., et al., "A Modified Smith Predictor with an Approximate %    Inverse of Dead Time," AiChE Journal, 36 (1990), pp. 1025-1031 % % the authors suggest using the phase lead approximation: %  % $$ e^{\tau s} \approx { 1 + B(s) \over 1 + B(s) e^{-\tau s} }$$ % % where |B| is a low-pass filter with the same time constant as  % the internal model |Gp|. You can test this scheme as follows:  %% % Define B(s) and F(s) B = ss(0.05/(40*s+1)); tau = totaldelay(Dp); F = (1+B)/(1+B*exp(-tau*s));  F.InputName = 'dy'; F.OutputName = 'dp';  %% % Re-design PI controller with reduced bandwidth Plant = connect(P,Gp,Dp,F,Sum2,Sum3,Sum4,'u','ym'); C = pidtune(Plant,pidstd(1,1),pidtuneOptions('CrossoverFrequency',0.02,'PhaseMargin',90)); C.InputName = 'e'; C.OutputName = 'u'; C  %%  % Computed closed-loop model T3  T3 = connect(Plants,Gp,Dp,C,F,Sum1,Sum2,Sum3,{'ysp','d'},'y');  %% % Compare T3 with T2 and Tpi step(T2,'b',T3,'g',Tpi,'rREPLACE_WITH_DASH_DASH') grid on legend('Smith Predictor 2','Smith Predictor 3','PI Controller')   %% % This comparison shows that our last design speeds up disturbance % rejection at the expense of slower setpoint tracking.  displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

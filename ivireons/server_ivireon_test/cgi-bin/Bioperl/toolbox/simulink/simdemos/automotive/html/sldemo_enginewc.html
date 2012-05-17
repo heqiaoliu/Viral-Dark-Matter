@@ -1,0 +1,188 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Engine Timing Model with Closed Loop Control</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_enginewc.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_enginewc.mdl</div><div class="right"><a href="matlab:sldemo_enginewc">Open this model</a></div></div><div class="content"><h1>Engine Timing Model with Closed Loop Control</h1><!--introduction--><p>This model (<tt>sldemo_enginewc.mdl</tt>) is an enhanced version of the open-loop engine model (<tt>sldemo_engine.mdl</tt> - described in "Modeling Engine Timing Using Triggered Subsystems" demo). This model, <tt>sldemo_enginewc.mdl</tt>, contains a closed-loop and demonstrates the flexibility and extensibility of Simulink&reg; models. In this enhanced model, the objective of the controller is to regulate engine speed with a fast throttle actuator, such that changes in load torque have minimal effect. This is easily accomplished in Simulink by adding a discrete-time PI controller to the engine model.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Closed-Loop Model</a></li><li><a href="#3">Opening and Running the Simulation</a></li><li><a href="#7">Results</a></li><li><a href="#9">Closing Model</a></li><li><a href="#10">Conclusions</a></li><li><a href="#11">References</a></li></ul></div><h2>Closed-Loop Model<a name="1"></a></h2><p>We chose a control law which uses proportional plus integral (PI) control. The integrator is needed to adjust the steady-state throttle as the operating point changes, and the proportional term compensates for phase lag introduced by the integrator.</p><div><ul><li>Note: See the <a href="matlab:open_system('sldemo_engine')">open-loop engine model</a> (this model is an enhanced version of the open-loop model).</li></ul></div><p><b>Equation 1</b></p><p><img src="sldemo_enginewc_eq52992.png" alt="$$ \theta = K_{\rho}(N_{set}-N) + K_I \int (N_{set}-N) dt $$"></p><p><img src="sldemo_enginewc_eq23847.png" alt="$$ N_{set} = \mbox{ speed set point (rpm) } $$"></p><p><img src="sldemo_enginewc_eq88964.png" alt="$$ K_{\rho} = \mbox{ proportional gain } $$"></p><p><img src="sldemo_enginewc_eq40458.png" alt="$$ K_I = \mbox{ integral gain } $$"></p><h2>Opening and Running the Simulation<a name="3"></a></h2><p>To <a href="matlab:open_system('sldemo_enginewc')">open this model</a> type <tt>sldemo_enginewc</tt> at MATLAB&reg; terminal (click on the hyperlink if you are using MATLAB Help). Press the "Play" button on the model toolbar to run the simulation.</p><div><ul><li>Note: The model logs relevant data to MATLAB workspace in a structure called <tt>sldemo_enginewc_output</tt>. Logged signals have a blue indicator (<a href="matlab:open_system('sldemo_enginewc')">see the model</a>). Read more about Signal Logging in Simulink Help.</li></ul></div><img vspace="5" hspace="5" src="sldemo_enginewc_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_enginewc_02.png" alt=""> <img vspace="5" hspace="5" src="sldemo_enginewc_03.png" alt=""> <p><b>Figure 1:</b> Closed-loop engine model and simulation results</p><p>In this model we employ a discrete-time controller, which is suitable for microprocessor implementation. The integral term in Equation 1 must thus be realized with a discrete-time approximation. As is typical in the industry, the controller execution is synchronized with the engine's crankshaft rotation. The controller is embedded in a triggered subsystem that is triggered by the valve timing signal described above.</p><p>The detailed construction of the 'Controller' subsystem is illustrated in Figure 2. Of note is the use of the 'Discrete-Time Integrator' block with its sample time parameter set (internally) at <tt>-1</tt>. This indicates that the block inherits its sample time, in this case executing each time the subsystem is triggered. The key component that makes this a triggered subsystem is the 'Trigger' block shown at the bottom of Figure 2. Any subsystem can be converted to a triggered subsystem by dragging a copy of this block into the subsystem diagram from the Simulink Connections library.</p><img vspace="5" hspace="5" src="sldemo_enginewc_04.png" alt=""> <p><b>Figure 2:</b> Speed controller subsystem</p><h2>Results<a name="7"></a></h2><p>Typical simulation results are shown in Figure 3. The speed set point steps from <tt>2000 rpm</tt> to <tt>3000 rpm</tt> at <tt>t = 5 sec</tt>. The torque disturbances are identical to those used in <tt>sldemo_engine.mdl</tt>, the open-loop model (<a href="matlab:open_system('sldemo_engine')">open</a> the other engine model). Note the quick transient response, with zero steady-state error. Several alternative controller tunings (<tt>Ki</tt> and <tt>Kp</tt>) are shown. These can be adjusted by the user at MATLAB command line. This allows the engineer to understand the relative effects of parameter variations.</p><img vspace="5" hspace="5" src="sldemo_enginewc_05.png" alt=""> <p><b>Figure 3:</b> Typical simulation results</p><h2>Closing Model<a name="9"></a></h2><p>Close the model. Clear logged data.</p><h2>Conclusions<a name="10"></a></h2><p>The ability to model nonlinear, complex systems, such as the engine model described here, is one of Simulink's key features. The power of the simulation is evident in the presentation of the models above. Simulink retains model fidelity, including precisely timed cylinder intake events, which is critical in creating a model of this type. The complete speed control system demonstrates the flexibility of Simulink. In particular, the Simulink modeling approaches allow rapid prototyping of an interrupt-driven engine speed controller.</p><div><ul><li>Note: See the <a href="matlab:open_system('sldemo_engine')">open-loop engine model</a> (this model is an enhanced version of the open-loop model).</li></ul></div><h2>References<a name="11"></a></h2><p>[1] P.R. Crossley and J.A. Cook, IEEE&reg; International Conference &#8216;Control 91&#8217;, Conference Publication 332, vol. 2, pp. 921-925, 25-28 March, 1991, Edinburgh, U.K.</p><p>[2] The Simulink Model. Developed by Ken Butts, Ford Motor Company&reg;. Modified by Paul Barnard, Ted Liefeld and Stan Quinn, MathWorks&reg;, 1994-7.</p><p>[3] J. J. Moskwa and J. K. Hedrick, "Automotive Engine Modeling for Real Time Control Application," Proc.1987 ACC, pp. 341-346.</p><p>[4] B. K. Powell and J. A. Cook, "Nonlinear Low Frequency Phenomenological Engine Modeling and Analysis," Proc. 1987 ACC, pp. 332-340.</p><p>[5] R. W. Weeks and J. J. Moskwa, "Automotive Engine Modeling for Real-Time Control Using Matlab/Simulink," 1995 SAE Intl. Cong. paper 950417.</p><p class="footer">Copyright 2006-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Engine Timing Model with Closed Loop Control
+%
+% This model (|sldemo_enginewc.mdl|) is an enhanced version of the
+% open-loop engine model (|sldemo_engine.mdl| - 
+% described in "Modeling Engine Timing Using Triggered Subsystems" demo).
+% This model, |sldemo_enginewc.mdl|, contains a closed-loop and
+% demonstrates the flexibility and extensibility of Simulink(R)
+% models. 
+% In this enhanced model, the objective of the controller is to regulate
+% engine speed with a fast throttle actuator, such that changes in load
+% torque have minimal effect. This is easily accomplished in Simulink by
+% adding a discrete-time PI controller to the engine model. 
+
+% Copyright 2006-2009 The MathWorks, Inc.
+
+%% Closed-Loop Model
+%
+% We chose a control law which uses proportional plus integral (PI)
+% control. The integrator is needed to adjust the steady-state throttle as
+% the operating point changes, and the proportional term compensates for
+% phase lag introduced by the integrator. 
+%
+% * Note: See the
+% <matlab:open_system('sldemo_engine') open-loop engine model>
+% (this model is an enhanced version of the open-loop model).  
+
+
+%% 
+% *Equation 1*
+%
+% $$ \theta = K_{\rho}(N_{set}-N) + K_I \int (N_{set}-N) dt $$
+%
+% $$ N_{set} = \mbox{ speed set point (rpm) } $$
+%
+% $$ K_{\rho} = \mbox{ proportional gain } $$
+%
+% $$ K_I = \mbox{ integral gain } $$
+
+
+%% Opening and Running the Simulation
+%
+% To <matlab:open_system('sldemo_enginewc') open this model> type
+% |sldemo_enginewc| at MATLAB(R) terminal (click on the hyperlink if you are
+% using MATLAB Help). Press the "Play" button on the model toolbar to run
+% the simulation. 
+%
+% * Note: The model logs relevant data to MATLAB workspace in a structure
+% called |sldemo_enginewc_output|. Logged signals have a blue indicator
+% (<matlab:open_system('sldemo_enginewc') see 
+% the model>). Read more about Signal Logging in Simulink Help.    
+
+open_system('sldemo_enginewc');   % hidden code, not displayed in HTML demo page
+evalc('sim(''sldemo_enginewc'')');  % run simulation, don't display output
+
+%%
+% *Figure 1:* Closed-loop engine model and simulation results
+
+%%
+% 
+% In this model we employ a discrete-time controller, which is suitable for
+% microprocessor implementation. The integral term in Equation 1 must thus
+% be realized with a discrete-time approximation. As is typical in the
+% industry, the controller execution is synchronized with the engine's
+% crankshaft rotation. The controller is embedded in a triggered subsystem
+% that is triggered by the valve timing signal described above. 
+%
+% The detailed construction of the 'Controller' subsystem is illustrated in
+% Figure 2. Of note is the use of the 'Discrete-Time Integrator' block with
+% its sample time parameter set (internally) at |-1|. This indicates that the
+% block inherits its sample time, in this case executing each time
+% the subsystem is triggered. The key component that makes this a triggered
+% subsystem is the 'Trigger' block shown at the bottom of Figure 2. Any
+% subsystem can be converted to a triggered subsystem by dragging a copy of
+% this block into the subsystem diagram from the Simulink Connections
+% library.     
+
+open_system('sldemo_enginewc/Controller');
+
+%%
+% *Figure 2:* Speed controller subsystem
+
+%% Results 
+%
+% Typical simulation results are shown in Figure 3. The speed set point
+% steps from |2000 rpm| to |3000 rpm| at |t = 5 sec|. The torque disturbances are
+% identical to those used in |sldemo_engine.mdl|, the open-loop model
+% (<matlab:open_system('sldemo_engine') open> the other engine model). Note
+% the quick transient  
+% response, with zero steady-state error. Several alternative controller
+% tunings (|Ki| and |Kp|) are shown. These can be adjusted by the user at MATLAB
+% command line. This allows the engineer to understand the relative effects
+% of parameter variations.  
+
+% close the scopes before running 3 simulations in a row
+% this prevents unwanted scope images from showing up in the HTML
+
+close_system('sldemo_enginewc/EngineSpeed');
+close_system('sldemo_enginewc/SimulationInputs');
+clear Kp Ki;
+% 3 different sets of Ki and Kp parameters
+Param.Kp = [0.05 0.033 0.061];
+Param.Ki = [0.10 0.064 0.072];
+% run the simulation three times with these different parameters 
+% save the EngineSpeed data every time
+
+for i=1:3
+    Kp = Param.Kp(i);
+    Ki = Param.Ki(i);
+    evalc('sim(''sldemo_enginewc'')');
+    x{i} = sldemo_enginewc_output.EngineSpeed.Time; % x-axis data
+    y{i} = sldemo_enginewc_output.EngineSpeed.Data; % y-axis data
+end
+
+
+PlotHandle = plot(x{1}, y{1}, 'y-',  ...
+                  x{2}, y{2}, 'y:', ...
+                  x{3}, y{3}, 'y-.');
+              
+title('Closed-Loop Simulation Results: Engine Speed (rpm)');
+xlabel('Time (sec)'); ylabel('Engine Speed (rpm)');
+set(gca,'Color','k','XGrid','On','XColor',[0.3 0.3 0.3],...
+                    'YGrid','On','YColor',[0.3 0.3 0.3]);
+axis([0 10 1950 3150]);
+h = legend( ['Kp = ' num2str(Param.Kp(1)) ', Ki = ' num2str(Param.Ki(1))], ...
+            ['Kp = ' num2str(Param.Kp(2)) ', Ki = ' num2str(Param.Ki(2))], ...
+            ['Kp = ' num2str(Param.Kp(3)) ', Ki = ' num2str(Param.Ki(3))], ...
+            'Location','SouthEast');
+        
+set(h,'TextColor','w','Color','none'); 
+
+%%
+%
+% *Figure 3:* Typical simulation results
+
+%% Closing Model
+% 
+% Close the model. Clear logged data.
+
+close_system('sldemo_enginewc', 0);
+clear sldemo_enginewc_output Ki Kp h PlotHandle Param x y i; %clear unnecessary variables
+%% Conclusions 
+%
+% The ability to model nonlinear, complex systems, such as the engine model
+% described here, is one of Simulink's key features. The power of the
+% simulation is evident in the presentation of the models above. Simulink
+% retains model fidelity, including precisely timed cylinder intake events,
+% which is critical in creating a model of this type. The complete speed
+% control system demonstrates the flexibility of Simulink. In particular,
+% the Simulink modeling approaches allow rapid prototyping of an
+% interrupt-driven engine speed controller. 
+%
+% * Note: See the
+% <matlab:open_system('sldemo_engine') open-loop engine model>
+% (this model is an enhanced version of the open-loop model).  
+
+%% References
+%
+% [1] P.R. Crossley and J.A. Cook, IEEE(R) International Conference ‘Control
+% 91’, Conference Publication 332, vol. 2, pp. 921-925, 25-28 March, 1991,
+% Edinburgh, U.K. 
+%
+% [2] The Simulink Model. Developed by Ken Butts, Ford Motor Company(R).
+% Modified by Paul Barnard, Ted Liefeld and Stan Quinn, MathWorks(R), 1994-7. 
+%
+% [3] J. J. Moskwa and J. K. Hedrick, "Automotive Engine
+% Modeling for Real Time Control Application," Proc.1987 ACC, pp. 341-346.
+% 
+% [4] B. K. Powell and J. A. Cook, "Nonlinear Low Frequency
+% Phenomenological Engine Modeling and Analysis," Proc. 1987 ACC, pp.
+% 332-340. 
+%
+% [5] R. W. Weeks and J. J. Moskwa, "Automotive Engine Modeling for
+% Real-Time Control Using Matlab/Simulink," 1995 SAE Intl. Cong. paper
+% 950417.  
+
+##### SOURCE END #####
+--></body></html>

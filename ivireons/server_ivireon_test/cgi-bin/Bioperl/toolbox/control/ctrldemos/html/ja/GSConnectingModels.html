@@ -1,0 +1,137 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>モデルの結合</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="GSConnectingModels.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit GSConnectingModels">エディターで GSConnectingModels.m を開く</a></div><div class="right"><a href="matlab:echodemo GSConnectingModels">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>モデルの結合</h1><!--introduction--><p>このデモでは、単純な直列および並列接続から複雑なブロック線図まで、LTI システムの相互接続をモデルする方法を紹介します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">概要</a></li><li><a href="#3">直列接続</a></li><li><a href="#6">並列接続</a></li><li><a href="#9">フィードバック接続</a></li><li><a href="#13">入出力の連結</a></li><li><a href="#21">ブロック線図からのモデル構築</a></li><li><a href="#26">実行の優先順位</a></li></ul></div><h2>概要<a name="1"></a></h2><p>Control System Toolbox™ には、LTI モデルのネットワーク構築を支援するためのさまざまな関数が用意されています。これらの関数には、以下のような関数が含まれます。</p><div><ul><li>直列および並列接続 (関数 <tt>series</tt> および <tt>parallel</tt>)</li><li>フィードバック接続 (関数 <tt>feedback</tt> および <tt>lft</tt>)</li><li>入出力連結 (関数 <tt>[ , ]</tt>、<tt>[ ; ]</tt>、および <tt>append</tt>)</li><li>一般的なブロック線図構築 (関数 <tt>connect</tt>)</li></ul></div><p>上記の関数は、モデル表現のあらゆる組み合わせを処理できます。例示のために、以下の 2 つの SISO 伝達関数モデルを作成します。</p><pre class="codeinput">H1 = tf(2,[1 3 0])
+</pre><pre class="codeoutput"> 
+Transfer function:
+    2
+---------
+s^2 + 3 s
+ 
+</pre><pre class="codeinput">H2 = zpk([],-5,5)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+  5
+-----
+(s+5)
+ 
+</pre><h2>直列接続<a name="3"></a></h2><p><img vspace="5" hspace="5" src="../../Figures/GSConnectingModels_Fig02.png" alt=""> </p><p>演算子 <tt>*</tt> または関数 <tt>series</tt> を使用して、以下のように LTI モデルを直列に接続します。</p><pre class="codeinput">H = H2 * H1
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+     10
+-------------
+s (s+5) (s+3)
+ 
+</pre><p>これと等価な関数は以下のとおりです。</p><pre class="codeinput">H = series(H1,H2);
+</pre><h2>並列接続<a name="6"></a></h2><p><img vspace="5" hspace="5" src="../../Figures/GSConnectingModels_Fig03.png" alt=""> </p><p>演算子 <tt>+</tt> または関数 <tt>parallel</tt> を使用して、以下のように LTI モデルを並列に接続します。</p><pre class="codeinput">H = H1 + H2
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+5 (s+2.643) (s+0.7566)
+----------------------
+    s (s+3) (s+5)
+ 
+</pre><p>これと等価な関数は以下のとおりです。</p><pre class="codeinput">H = parallel(H1,H2);
+</pre><h2>フィードバック接続<a name="9"></a></h2><p>標準のフィードバック構成は、以下のとおりです。</p><p><img vspace="5" hspace="5" src="../../Figures/GSConnectingModels_Fig04.png" alt=""> </p><p><tt>u</tt> から <tt>y</tt> への閉ループ伝達のモデルを構築するには、以下のように入力します。</p><pre class="codeinput">H = feedback(H1,H2)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+            2 (s+5)
+--------------------------------
+(s+5.663) (s^2 + 2.337s + 1.766)
+ 
+</pre><p>関数 <tt>feedback</tt> は、既定の既定では負のフィードバックを前提としています。正のフィードバックを適用するには、以下の構文を使用します。</p><pre class="codeinput">H = feedback(H1,H2,+1);
+</pre><p>また、関数 <tt>lft</tt> を使用して、さらに一般的なフィードバック相互接続を以下のように構築することもできます。</p><p><img vspace="5" hspace="5" src="../../Figures/GSConnectingModels_Fig08.png" alt=""> </p><h2>入出力の連結<a name="13"></a></h2><p><tt>H1</tt> と <tt>H2</tt> という 2 つのモデルの入力を連結するには、以下のように入力します。</p><pre class="codeinput">H = [ H1 , H2 ]
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input 1 to output:
+   2
+-------
+s (s+3)
+ 
+Zero/pole/gain from input 2 to output:
+  5
+-----
+(s+5)
+ 
+</pre><p>結果として得られるモデルには、2 つの入力があり、以下の相互接続に対応しています。</p><p><img vspace="5" hspace="5" src="../../Figures/GSConnectingModels_Fig05.png" alt=""> </p><p>同様に、以下のように入力すると <tt>H1</tt> と <tt>H2</tt> という出力を連結できます。</p><pre class="codeinput">H = [ H1 ; H2 ]
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input to output...
+         2
+ #1:  -------
+      s (s+3)
+ 
+        5
+ #2:  -----
+      (s+5)
+ 
+</pre><p>結果として得られるモデル <tt>H</tt> には、2 つの出力と 1 つの入力があり、以下のブロック線図に相当します。</p><p><img vspace="5" hspace="5" src="../../Figures/GSConnectingModels_Fig06.png" alt=""> </p><p>最後に、以下を使用して 2 つのモデルの入出力を追加します。</p><pre class="codeinput">H = append(H1,H2)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input 1 to output...
+         2
+ #1:  -------
+      s (s+3)
+ 
+ #2:  0
+ 
+Zero/pole/gain from input 2 to output...
+ #1:  0
+ 
+        5
+ #2:  -----
+      (s+5)
+ 
+</pre><p>結果として得られるモデル <tt>H</tt> には、2 つの出力と 2 つの入力があり、以下のブロック線図に相当します。</p><p><img vspace="5" hspace="5" src="../../Figures/GSConnectingModels_Fig07.png" alt=""> </p><p>基本的名 SISO モデルから、結合を使用して MIMO モデルを以下のように構築できます。</p><pre class="codeinput">H = [H1 , -tf(10,[1 10]) ; 0 , H2 ]
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input 1 to output...
+         2
+ #1:  -------
+      s (s+3)
+ 
+ #2:  0
+ 
+Zero/pole/gain from input 2 to output...
+       -10
+ #1:  ------
+      (s+10)
+ 
+        5
+ #2:  -----
+      (s+5)
+ 
+</pre><pre class="codeinput">sigma(H), grid
+</pre><img vspace="5" hspace="5" src="../GSConnectingModels_01.png" alt=""> <h2>ブロック線図からのモデル構築<a name="21"></a></h2><p>ここまでに紹介した関数と演算を組み合わせると、簡単なブロック線図のモデルを構築できます。たとえば、以下のブロック線図に</p><p><img vspace="5" hspace="5" src="../../Figures/GSConnectingModels_Fig09.png" alt=""> </p><p>ブロック <tt>F</tt>、<tt>C</tt>、<tt>G</tt>、<tt>S</tt> の次のデータがあるとします。</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);
+F = 1/(s+1);
+G = 100/(s^2+5*s+100);
+C = 20*(s^2+s+60)/s/(s^2+40*s+400);
+S = 10/(s+10);
+</pre><p>閉ループ伝達関数 <tt>T</tt> を <tt>r</tt> から <tt>y</tt> まで以下のように計算できます。</p><pre class="codeinput">T = F * feedback(G*C,S);
+step(T), grid
+</pre><img vspace="5" hspace="5" src="../GSConnectingModels_02.png" alt=""> <p>さらに複雑なブロック線図では、関数 <tt>connect</tt> を使用すると、系統的かつ簡単な方法でブロック同士を配線で結合できます。関数 <tt>connect</tt> を使用するには、以下の手順に従います。</p><p>
+<ol>
+<li> 加算ブロックも含め、ブロック線図内のすべてのブロックを定義する </li>
+<li> ブロック線図内のすべての信号に名前を付ける </li>
+<li> 信号名を使用して各ブロックの InputName および OutputName プロパティを指定する </li>
+</ol>
+</p><p><img vspace="5" hspace="5" src="../../Figures/GSConnectingModels_Fig10.png" alt=""> </p><p>上記のブロック線図では、これらの手順は以下のようになります。</p><pre class="codeinput">Sum1 = sumblk(<span class="string">'e'</span>,<span class="string">'r'</span>,<span class="string">'y'</span>,<span class="string">'+-'</span>);
+Sum2 = sumblk(<span class="string">'u'</span>,<span class="string">'uC'</span>,<span class="string">'uF'</span>,<span class="string">'++'</span>);
+
+<span class="comment">% Define the block I/Os</span>
+F.inputname = <span class="string">'r'</span>;   F.OutputName = <span class="string">'uF'</span>;
+C.inputname = <span class="string">'e'</span>;   C.OutputName = <span class="string">'uC'</span>;
+G.inputname = <span class="string">'u'</span>;   G.OutputName = <span class="string">'ym'</span>;
+S.inputname = <span class="string">'ym'</span>;  S.OutputName = <span class="string">'y'</span>;
+
+<span class="comment">% Compute transfer r -&gt; ym</span>
+T = connect(F,C,G,S,Sum1,Sum2,<span class="string">'r'</span>,<span class="string">'ym'</span>);
+step(T), grid
+</pre><img vspace="5" hspace="5" src="../GSConnectingModels_03.png" alt=""> <h2>実行の優先順位<a name="26"></a></h2><p>異なるタイプのモデルを接続する場合、結果として得られるモデル タイプは、実行の優先順位によって決まります。</p><pre>  FRD &gt; SS &gt; ZPK &gt; TF</pre><p>この規則では、優先順位は、FRD が最も高く、続いて SS、ZPK、そして TF は最も低くなります。たとえば、以下の並列接続では、</p><pre class="codeinput">H1 = ss(-1,2,3,0);
+H2 = tf(1,[1 0]);
+H = H2 * H1;
+</pre><p><tt>H2</tt> が自動的に状態空間表現に変換され、結果 <tt>H</tt> は以下の状態空間モデルとなります。</p><pre class="codeinput">class(H)
+</pre><pre class="codeoutput">
+ans =
+
+ss
+
+</pre><p>SS および FRD 表現がシステム相互接続に最も適しているため、すべての計算がこれらの 2 つの表現のいずれかを使用して実行されるようにするために、最低でも 1 つのモデルを SS または FRD にキャストすることをお勧めします。たとえば、上記の <tt>T</tt> は、以下が最適な計算となります。</p><pre class="codeinput">T = connect(ss(F),C,G,S,Sum1,Sum2,<span class="string">'r'</span>,<span class="string">'ym'</span>);
+</pre><p class="footer">Copyright 1986-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Connecting Models % This demo shows how to model interconnections of LTI systems,  % from simple series and parallel connections to complex % block diagrams.  %   Copyright 1986-2007 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:40 $  %% Overview % Control System Toolbox(TM) provides a number of functions to help you % build networks of LTI models.  These include functions to perform % % * Series and parallel connections (|series| and |parallel|) % * Feedback connections (|feedback| and |lft|) % * Input and output concatenations (|[ , ]|, |[ ; ]|, and |append|) % * General block-diagram building (|connect|). % % These functions can handle any combination of model representations. % For illustration purposes, create the following two SISO transfer  % function models: H1 = tf(2,[1 3 0])  %% H2 = zpk([],-5,5)  %% Series Connection % <<../Figures/GSConnectingModels_Fig02.png>>  %%  % Use the |*| operator or the |series| function to connect LTI models in % series, for example: H = H2 * H1  %% % or equivalently H = series(H1,H2);  %% Parallel Connection % <<../Figures/GSConnectingModels_Fig03.png>>   %% % Use the |+| operator or the |parallel| function to connect LTI models in % parallel, for example: H = H1 + H2  %% % or equivalently H = parallel(H1,H2);   %% Feedback Connections % The standard feedback configuration is shown below: % % <<../Figures/GSConnectingModels_Fig04.png>>  %% % To build a model of the closed-loop transfer from |u| to |y|, type H = feedback(H1,H2)  %% % Note that |feedback| assumes negative feedback by default.  % To apply positive feedback, use the following syntax: H = feedback(H1,H2,+1);  %%  % You can also use the |lft| function to build the more general  % feedback interconnection sketched below. % % <<../Figures/GSConnectingModels_Fig08.png>>     %% Concatenating Inputs and Outputs % You can concatenate the inputs of the two models |H1| and |H2| by typing H = [ H1 , H2 ]  %% % The resulting model has two inputs and corresponds to the % interconnection: % % <<../Figures/GSConnectingModels_Fig05.png>>  %%  % Similarly, you can concatenate the outputs of |H1| and |H2|  by typing H = [ H1 ; H2 ]  %% % The resulting model |H| has two outputs and one input and  % corresponds to the following block diagram: % % <<../Figures/GSConnectingModels_Fig06.png>>      %% % Finally, you can append the inputs and outputs of two models using: H = append(H1,H2)  %% % The resulting model |H| has two inputs and two outputs and  % corresponds to the block diagram: % % <<../Figures/GSConnectingModels_Fig07.png>>   %% % You can use concatenation to build MIMO models from elementary SISO % models, for example: H = [H1 , -tf(10,[1 10]) ; 0 , H2 ]  %% sigma(H), grid  %% Building Models from Block Diagrams % You can use combinations of the functions and operations introduced so far to construct % models of simple block diagrams. For example, consider % the following block diagram: % % <<../Figures/GSConnectingModels_Fig09.png>> % % with the following data for the blocks |F|, |C|, |G|, |S|: s = tf('s'); F = 1/(s+1); G = 100/(s^2+5*s+100); C = 20*(s^2+s+60)/s/(s^2+40*s+400); S = 10/(s+10);  %%  % You can compute the closed-loop transfer |T| from |r| to |y| as T = F * feedback(G*C,S); step(T), grid  %% % For more complicated block diagrams, the |connect| function provides a % systematic and simple way to wire  blocks together. To use |connect|, % follow these steps:  %% % <html> % <ol> % <li> Define all blocks in the diagram, including summation blocks </li> % <li> Name all signals in the diagram </li> % <li> Use signals names to specify the InputName and OutputName properties of % each block. </li> % </ol>  % </html>  %% % % <<../Figures/GSConnectingModels_Fig10.png>> % % For the block diagram above, these steps amount to: Sum1 = sumblk('e','r','y','+-'); Sum2 = sumblk('u','uC','uF','++');  % Define the block I/Os F.inputname = 'r';   F.OutputName = 'uF'; C.inputname = 'e';   C.OutputName = 'uC'; G.inputname = 'u';   G.OutputName = 'ym'; S.inputname = 'ym';  S.OutputName = 'y';  % Compute transfer r -> ym T = connect(F,C,G,S,Sum1,Sum2,'r','ym'); step(T), grid  %% Precedence Rules % When connecting models of different types, the resulting model type is % determined by the precedence rule   %% %    FRD > SS > ZPK > TF  %% % This rule states that FRD has highest precedence, followed by SS and ZPK, and TF has % the lowest precedence. For example, in the series connection: H1 = ss(-1,2,3,0); H2 = tf(1,[1 0]); H = H2 * H1;  %% % |H2| is automatically converted to the state-space representation and the % result |H| is a state-space model: class(H)  %% % Because the SS and FRD representations are best suited for system % interconnections, it is recommended that you cast at least one of the models to % SS or FRD to ensure that all computations are performed using one of % these two representations. For example, the computation of |T| above is  % best performed by T = connect(ss(F),C,G,S,Sum1,Sum2,'r','ym');   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

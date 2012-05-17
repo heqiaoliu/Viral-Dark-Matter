@@ -1,0 +1,315 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>IEEE 802.16 Channel Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="chandemo_802_16.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit chandemo_802_16">Open chandemo_802_16.m in the Editor</a></div><div class="right"><a href="matlab:echodemo chandemo_802_16">Run in the Command Window</a></div></div><div class="content"><h1>IEEE 802.16 Channel Models</h1><!--introduction--><p>This demo shows how to simulate multiple-input multiple-output (MIMO) multipath fading channels based on the IEEE&reg; 802.16 channel models for fixed wireless applications. Two transmit antennas and one receive antennas are used. The demo uses the MIMO multipath fading channel and the rounded Doppler spectrum objects.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">IEEE 802.16 Channel Models: Overview</a></li><li><a href="#2">Initialization of Simulation-Specific Parameters</a></li><li><a href="#3">Modified SUI-1 Channel Model</a></li><li><a href="#10">Selected Bibliography</a></li></ul></div><h2>IEEE 802.16 Channel Models: Overview<a name="1"></a></h2><p>The IEEE 802.16 channel models [ <a href="#10">1</a> ] for fixed wireless applications are proposed for scenarios where the cell radius is less than 10 km, the directional antennas at the receiver are installed under-the-eaves/windows or on the rooftop, and the base station (BS) antennas are 15 to 40 m in height. The channel models comprise a set of path loss models including shadowing (suburban, urban) and a multipath fading model, which describes the multipath delay profile, the K-factor distribution, and the Doppler spectrum. The antenna gain reduction factor, due to the use of directional antennas, is also characterized.</p><p>The modified Stanford University Interim (SUI) channel models consist of a set of 6 typical channels used to simulate the IEEE 802.16 channel models (more specifically the 2004 version of the standard for fixed wireless applications). They are proposed for a scenario where: the cell size is 7 km, the BS antenna height is 30 m, the receive antenna height is 6 m, the BS antenna beamwidth is 120 degrees, the receive antenna is either omnidirectional or directional (30 degrees), and only vertical polarization is used.</p><p>Each modified SUI channel model has three taps. Each tap is characterized by a relative delay (with respect to the first path delay), a relative power, a Rician K-factor, and a maximum Doppler shift. Two sets of relative powers are specified for each channel model: one for an omnidirectional antenna, and one for a 30 degrees directional antenna. Furthermore, for each set of relative powers, two different K-factors are specified, a K-factor for 90% cell coverage, and a K-factor for 75% cell coverage. Hence, each of the 6 modified SUI channel models comprises parameters for four distinct scenarios. Each modified SUI channel model is further assigned an antenna correlation, defined as the envelope correlation coefficient between signals received at different antenna elements.</p><h2>Initialization of Simulation-Specific Parameters<a name="2"></a></h2><p>The simulation sampling rate is specified, and kept the same for the remainder of the demo.  The input to the channel simulator is oversampled by a factor of four.</p><pre class="codeinput">S = RandStream(<span class="string">'swb2712'</span>, <span class="string">'Seed'</span>, 12345); <span class="comment">% Set a local random number stream</span>
+M = 2;                      <span class="comment">% Modulation order</span>
+hModem = modem.pskmod(M);   <span class="comment">% 2-PSK modulator object</span>
+
+Rsym = 10e3;                <span class="comment">% Input symbol rate</span>
+Rbit = Rsym * log2(M);      <span class="comment">% Input bit rate</span>
+Nos = 4;                    <span class="comment">% Oversampling factor</span>
+ts = (1/Rbit) / Nos;        <span class="comment">% Input sample period</span>
+</pre><h2>Modified SUI-1 Channel Model<a name="3"></a></h2><p>The code below constructs a MIMO channel object according to the modified SUI-1 channel model, for an omnidirectional antenna and 90% cell coverage.</p><p>The channel model has 3 paths: the first path is Rician while the remaining two are Rayleigh. Each path has a rounded Doppler spectrum for its diffuse component: the parameters are as specified in the default doppler.rounded object. While different maximum Doppler shifts are specified for each path in [ <a href="#10">1</a> ], we use the maximum value of the Doppler shifts for all paths.</p><p>We use 2 transmit antennas and 1 receive antenna. Similar to Appendix B of [ <a href="#10">1</a> ], the correlation coefficient between the two signals on each path is taken equal to the antenna correlation.</p><pre class="codeinput">tau = [0 0.4 0.9]*1e-6;     <span class="comment">% Path delays, in seconds</span>
+pdb = [0 -15 -20];          <span class="comment">% Average path gains, in dB</span>
+
+dop = doppler.rounded;      <span class="comment">% Doppler spectrum, with default parameters</span>
+
+fd = 0.5;                   <span class="comment">% Maximum Doppler shift for all paths (identical)</span>
+
+Nt = 2;                     <span class="comment">% Number of transmit antennas</span>
+Nr = 1;                     <span class="comment">% Number of receive antennas</span>
+
+rho = 0.7;                  <span class="comment">% Correlation coefficient = antenna correlation</span>
+
+h = mimochan(Nt, Nr, ts, fd, tau, pdb);     <span class="comment">% MIMO channel object</span>
+h.KFactor = 4;                              <span class="comment">% Rician K-factor on first path</span>
+h.DopplerSpectrum = dop;                    <span class="comment">% Doppler spectrum of MIMO object</span>
+h.TxCorrelationMatrix = toeplitz([1 rho]);  <span class="comment">% Transmit correlation matrix</span>
+</pre><p>The code below simulates the modified SUI-1 channel model.</p><pre class="codeinput"><span class="comment">% After each frame is processed, the channel is not reset: this is necessary</span>
+<span class="comment">% to preserve continuity across frames.</span>
+h.ResetBeforeFiltering = 0;
+<span class="comment">% This setting is needed to store the path gains.</span>
+h.StorePathGains = 1;
+
+Nsamp = 1.5e6;                    <span class="comment">% Total number of channel samples</span>
+Nsamp_f = 1000;                 <span class="comment">% Number of samples per frame</span>
+Nframes = Nsamp/Nsamp_f;        <span class="comment">% Number of frames</span>
+
+out = zeros(Nsamp, Nr);
+y1 = zeros(Nsamp, Nt);  y2 = zeros(Nsamp, Nt); y3 = zeros(Nsamp, Nt);
+<span class="keyword">for</span> iFrames = 1:Nframes
+    inputSig = modulate(hModem, randi(S, [0 M-1], Nsamp_f, Nt));
+    idx = (1:Nsamp_f)+(iFrames-1)*Nsamp_f;
+    out(idx,:) = filter(h, inputSig);
+    <span class="keyword">for</span> it = 1:Nt
+        <span class="comment">% For each transmit antenna, store gains of all three paths</span>
+        y1(idx,it) = h.PathGains(:,1,it,1);
+        y2(idx,it) = h.PathGains(:,2,it,1);
+        y3(idx,it) = h.PathGains(:,3,it,1);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><p>The Doppler spectrum of the 1st link of the 2nd path is estimated from the complex path gains and plotted.</p><pre class="codeinput">Hs = spectrum.welch(<span class="string">'Hamming'</span>, Nsamp/5, 50);
+figure;
+psd(Hs, y2(:,1), <span class="string">'Fs'</span>, 1/ts, <span class="string">'SpectrumType'</span>, <span class="string">'twosided'</span>, <span class="string">'Centerdc'</span>, true)
+axis([-0.1/10 0.1/10 -80 10]);
+legend(<span class="string">'Simulation'</span>);
+</pre><img vspace="5" hspace="5" src="chandemo_802_16_01.png" alt=""> <p>The theoretical rounded Doppler spectrum is overlaid to the estimated Doppler spectrum.  We observe a good fit between both.</p><pre class="codeinput">f = -fd: 0.01 :fd;
+a = [1 -1.72 0.785];    <span class="comment">% Parameters of the rounded Doppler spectrum</span>
+Sd = 1/(2*fd*(a(1)+a(2)/3+a(3)/5)) * ( a(1) + a(2)*(f/fd).^2 + a(3)*(f/fd).^4 );
+Sd = Sd * 10^(-15/10);  <span class="comment">% Scaling by average path power</span>
+
+hold <span class="string">on</span>;
+plot(f(Sd&gt;0)/1e3, 10*log10(Sd(Sd&gt;0)), <span class="string">'k--'</span>);
+legend(<span class="string">'Simulation'</span>, <span class="string">'Theory'</span>);
+</pre><img vspace="5" hspace="5" src="chandemo_802_16_02.png" alt=""> <p>The Doppler spectrum for the 2nd link of the 2nd path is also estimated and compared to the theoretical spectrum. We also observe a good fit between both.</p><pre class="codeinput">figure;
+psd(Hs, y2(:,2), <span class="string">'Fs'</span>, 1/ts, <span class="string">'SpectrumType'</span>, <span class="string">'twosided'</span>, <span class="string">'Centerdc'</span>, true)
+axis([-0.1/10 0.1/10 -80 10]);
+legend(<span class="string">'Simulation'</span>);
+hold <span class="string">on</span>;
+plot(f(Sd&gt;0)/1e3, 10*log10(Sd(Sd&gt;0)), <span class="string">'k--'</span>);
+legend(<span class="string">'Simulation'</span>, <span class="string">'Theory'</span>);
+</pre><img vspace="5" hspace="5" src="chandemo_802_16_03.png" alt=""> <p>For each path, we plot the fading envelope waveforms of both transmit links. We can observe a correlation between the fading envelopes</p><pre class="codeinput">figure;
+semilogy(abs(y1(:,1)),<span class="string">'b'</span>);
+hold <span class="string">on</span>; grid <span class="string">on</span>;
+semilogy(abs(y1(:,2)),<span class="string">'r'</span>);
+legend(<span class="string">'First transmit link'</span>, <span class="string">'Second transmit link'</span>);
+title(<span class="string">'Fading envelopes for two transmit links of Path 1'</span>);
+
+figure;
+semilogy(abs(y2(:,1)),<span class="string">'b'</span>);
+hold <span class="string">on</span>; grid <span class="string">on</span>;
+semilogy(abs(y2(:,2)),<span class="string">'r'</span>);
+legend(<span class="string">'First transmit link'</span>, <span class="string">'Second transmit link'</span>);
+title(<span class="string">'Fading envelopes for two transmit links of Path 2'</span>);
+
+figure;
+semilogy(abs(y3(:,1)),<span class="string">'b'</span>);
+hold <span class="string">on</span>; grid <span class="string">on</span>;
+semilogy(abs(y3(:,2)),<span class="string">'r'</span>);
+legend(<span class="string">'First transmit link'</span>, <span class="string">'Second transmit link'</span>);
+title(<span class="string">'Fading envelopes for two transmit links of Path 3'</span>);
+</pre><img vspace="5" hspace="5" src="chandemo_802_16_04.png" alt=""> <img vspace="5" hspace="5" src="chandemo_802_16_05.png" alt=""> <img vspace="5" hspace="5" src="chandemo_802_16_06.png" alt=""> <p>We compute the correlation matrices for each path. We observe that they show a match with the theoretical values (compare with h.TxCorrelationMatrix specified earlier). Note that corrcoef function estimate can be improved if Nsamp is increased.</p><pre class="codeinput">TxCorrMatrixPath1 = corrcoef(y1(:,1),y1(:,2)).'
+TxCorrMatrixPath2 = corrcoef(y2(:,1),y2(:,2)).'
+TxCorrMatrixPath3 = corrcoef(y3(:,1),y3(:,2)).'
+</pre><pre class="codeoutput">
+TxCorrMatrixPath1 =
+
+   1.0000             0.6950 + 0.1210i
+   0.6950 - 0.1210i   1.0000          
+
+
+TxCorrMatrixPath2 =
+
+   1.0000             0.6590 - 0.1296i
+   0.6590 + 0.1296i   1.0000          
+
+
+TxCorrMatrixPath3 =
+
+   1.0000             0.6553 - 0.1275i
+   0.6553 + 0.1275i   1.0000          
+
+</pre><h2>Selected Bibliography<a name="10"></a></h2><div><ol><li>IEEE 802.16 Broadband Wireless Access Working Group, "Channel models for fixed wireless applications", IEEE 802.16a-03/01, 2003-06-27.</li></ol></div><p class="footer">Copyright 2008-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% IEEE 802.16 Channel Models
+% This demo shows how to simulate multiple-input multiple-output (MIMO)
+% multipath fading channels based on the IEEE(R) 802.16 channel models for
+% fixed wireless applications. Two transmit antennas and one receive
+% antennas are used. The demo uses the MIMO multipath fading channel and
+% the rounded Doppler spectrum objects.
+
+% Copyright 2008-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.5 $ $Date: 2009/12/05 01:58:37 $
+
+%% IEEE 802.16 Channel Models: Overview
+% The IEEE 802.16 channel models [ <#10 1> ] for fixed wireless applications
+% are proposed for scenarios where the cell radius is less than 10 km, the
+% directional antennas at the receiver are installed under-the-eaves/windows
+% or on the rooftop, and the base station (BS) antennas are 15 to 40 m in
+% height. The channel models comprise a set of path loss models including
+% shadowing (suburban, urban) and a multipath fading model, which describes
+% the multipath delay profile, the K-factor distribution, and the Doppler
+% spectrum. The antenna gain reduction factor, due to the use of directional
+% antennas, is also characterized.
+%
+% The modified Stanford University Interim (SUI) channel models consist of a
+% set of 6 typical channels used to simulate the IEEE 802.16 channel models 
+% (more specifically the 2004 version of the standard for fixed wireless 
+% applications). They are proposed for a scenario where: the cell size is 7
+% km, the BS antenna height is 30 m, the receive antenna height is 6 m, the
+% BS antenna beamwidth is 120 degrees, the receive antenna is either 
+% omnidirectional or directional (30 degrees), and only vertical 
+% polarization is used. 
+%
+% Each modified SUI channel model has three taps. Each tap is characterized
+% by a relative delay (with respect to the first path delay), a relative
+% power, a Rician K-factor, and a maximum Doppler shift. Two sets of
+% relative powers are specified for each channel model: one for an
+% omnidirectional antenna, and one for a 30 degrees directional antenna.
+% Furthermore, for each set of relative powers, two different K-factors are
+% specified, a K-factor for 90% cell coverage, and a K-factor for 75% cell
+% coverage. Hence, each of the 6 modified SUI channel models comprises
+% parameters for four distinct scenarios. Each modified SUI channel model is
+% further assigned an antenna correlation, defined as the envelope
+% correlation coefficient between signals received at different antenna
+% elements. 
+
+%% Initialization of Simulation-Specific Parameters 
+% The simulation sampling rate is specified, and kept the same for the
+% remainder of the demo.  The input to the channel simulator is oversampled
+% by a factor of four.
+
+S = RandStream('swb2712', 'Seed', 12345); % Set a local random number stream
+M = 2;                      % Modulation order
+hModem = modem.pskmod(M);   % 2-PSK modulator object
+
+Rsym = 10e3;                % Input symbol rate
+Rbit = Rsym * log2(M);      % Input bit rate
+Nos = 4;                    % Oversampling factor
+ts = (1/Rbit) / Nos;        % Input sample period
+
+%% Modified SUI-1 Channel Model
+% The code below constructs a MIMO channel object according to the modified
+% SUI-1 channel model, for an omnidirectional antenna and 90% cell
+% coverage. 
+%
+% The channel model has 3 paths: the first path is Rician while the
+% remaining two are Rayleigh. Each path has a rounded Doppler spectrum for
+% its diffuse component: the parameters are as specified in the default
+% doppler.rounded object. While different maximum Doppler shifts are
+% specified for each path in [ <#10 1> ], we use the maximum value of the 
+% Doppler shifts for all paths. 
+%
+% We use 2 transmit antennas and 1 receive antenna. Similar to Appendix B
+% of [ <#10 1> ], the correlation coefficient between the two signals on 
+% each path is taken equal to the antenna correlation.
+
+tau = [0 0.4 0.9]*1e-6;     % Path delays, in seconds
+pdb = [0 -15 -20];          % Average path gains, in dB
+
+dop = doppler.rounded;      % Doppler spectrum, with default parameters
+
+fd = 0.5;                   % Maximum Doppler shift for all paths (identical)
+
+Nt = 2;                     % Number of transmit antennas
+Nr = 1;                     % Number of receive antennas
+
+rho = 0.7;                  % Correlation coefficient = antenna correlation
+
+h = mimochan(Nt, Nr, ts, fd, tau, pdb);     % MIMO channel object
+h.KFactor = 4;                              % Rician K-factor on first path
+h.DopplerSpectrum = dop;                    % Doppler spectrum of MIMO object
+h.TxCorrelationMatrix = toeplitz([1 rho]);  % Transmit correlation matrix
+
+%%
+% The code below simulates the modified SUI-1 channel model.
+
+% After each frame is processed, the channel is not reset: this is necessary
+% to preserve continuity across frames.
+h.ResetBeforeFiltering = 0;
+% This setting is needed to store the path gains.
+h.StorePathGains = 1;
+
+Nsamp = 1.5e6;                    % Total number of channel samples
+Nsamp_f = 1000;                 % Number of samples per frame
+Nframes = Nsamp/Nsamp_f;        % Number of frames
+
+out = zeros(Nsamp, Nr);  
+y1 = zeros(Nsamp, Nt);  y2 = zeros(Nsamp, Nt); y3 = zeros(Nsamp, Nt);
+for iFrames = 1:Nframes
+    inputSig = modulate(hModem, randi(S, [0 M-1], Nsamp_f, Nt));
+    idx = (1:Nsamp_f)+(iFrames-1)*Nsamp_f;
+    out(idx,:) = filter(h, inputSig);
+    for it = 1:Nt
+        % For each transmit antenna, store gains of all three paths
+        y1(idx,it) = h.PathGains(:,1,it,1);
+        y2(idx,it) = h.PathGains(:,2,it,1);
+        y3(idx,it) = h.PathGains(:,3,it,1);
+    end
+end
+
+%%
+% The Doppler spectrum of the 1st link of the 2nd path is estimated
+% from the complex path gains and plotted.
+
+Hs = spectrum.welch('Hamming', Nsamp/5, 50);
+figure;
+psd(Hs, y2(:,1), 'Fs', 1/ts, 'SpectrumType', 'twosided', 'Centerdc', true)
+axis([-0.1/10 0.1/10 -80 10]);
+legend('Simulation');
+
+%%
+% The theoretical rounded Doppler spectrum is overlaid to the estimated
+% Doppler spectrum.  We observe a good fit between both.
+
+f = -fd: 0.01 :fd;      
+a = [1 -1.72 0.785];    % Parameters of the rounded Doppler spectrum
+Sd = 1/(2*fd*(a(1)+a(2)/3+a(3)/5)) * ( a(1) + a(2)*(f/fd).^2 + a(3)*(f/fd).^4 );
+Sd = Sd * 10^(-15/10);  % Scaling by average path power
+
+hold on;
+plot(f(Sd>0)/1e3, 10*log10(Sd(Sd>0)), 'kREPLACE_WITH_DASH_DASH');
+legend('Simulation', 'Theory');
+
+%%
+% The Doppler spectrum for the 2nd link of the 2nd path is also estimated
+% and compared to the theoretical spectrum. We also observe a good fit
+% between both.
+
+figure;
+psd(Hs, y2(:,2), 'Fs', 1/ts, 'SpectrumType', 'twosided', 'Centerdc', true)
+axis([-0.1/10 0.1/10 -80 10]);
+legend('Simulation');
+hold on;
+plot(f(Sd>0)/1e3, 10*log10(Sd(Sd>0)), 'kREPLACE_WITH_DASH_DASH');
+legend('Simulation', 'Theory');
+
+%%
+% For each path, we plot the fading envelope waveforms of both transmit
+% links. We can observe a correlation between the fading envelopes
+
+figure;
+semilogy(abs(y1(:,1)),'b');
+hold on; grid on;
+semilogy(abs(y1(:,2)),'r');
+legend('First transmit link', 'Second transmit link');
+title('Fading envelopes for two transmit links of Path 1');
+
+figure;
+semilogy(abs(y2(:,1)),'b');
+hold on; grid on;
+semilogy(abs(y2(:,2)),'r');
+legend('First transmit link', 'Second transmit link');
+title('Fading envelopes for two transmit links of Path 2');
+
+figure;
+semilogy(abs(y3(:,1)),'b');
+hold on; grid on;
+semilogy(abs(y3(:,2)),'r');
+legend('First transmit link', 'Second transmit link');
+title('Fading envelopes for two transmit links of Path 3');
+
+%%
+% We compute the correlation matrices for each path. We observe that they
+% show a match with the theoretical values (compare with 
+% h.TxCorrelationMatrix specified earlier). Note that corrcoef function
+% estimate can be improved if Nsamp is increased.
+
+TxCorrMatrixPath1 = corrcoef(y1(:,1),y1(:,2)).'
+TxCorrMatrixPath2 = corrcoef(y2(:,1),y2(:,2)).'
+TxCorrMatrixPath3 = corrcoef(y3(:,1),y3(:,2)).'
+
+%% Selected Bibliography
+% # IEEE 802.16 Broadband Wireless Access Working Group, "Channel models 
+% for fixed wireless applications", IEEE 802.16a-03/01, 2003-06-27.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

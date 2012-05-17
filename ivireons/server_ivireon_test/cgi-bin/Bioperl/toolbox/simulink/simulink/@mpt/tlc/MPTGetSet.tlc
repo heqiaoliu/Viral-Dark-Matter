@@ -1,0 +1,167 @@
+%% $RCSfile: MPTGetSet.tlc,v $
+%% $Revision: 1.1.6.8 $
+%%
+%% Copyright 1994-2009 The MathWorks, Inc.
+%% 
+%implements * "C"
+
+%% GetSet is a custom storage class that is used to define signals
+%% (including states) whose values are read and written to using 
+%% "get" and "set" functions
+
+%% Function: FcnPreProcessIndex ==============================================
+%% Abstract:
+%%   Validate and pre-process index for GetSet custom storage class
+%%
+%function FcnPreProcessIndex(idx) void
+  %if ISEMPTY(idx)
+    %% Scalar data
+    %return ""
+  %endif
+  
+  %assign length = SIZE(idx, 1)
+  
+  %if ((idx[0] == "[") && (idx[length-1] == "]"))
+    %% Get rid of the [] brackets
+    %assign idx[0] = " "
+    %assign idx[length-1] = " "
+  %else
+    %assign errTxt = "Invalid index '%<idx>' for GetSet custom storage class."
+    %<LibReportFatalError(errTxt)>
+  %endif
+
+  %return idx
+%endfunction
+
+%% Function: DataAccess ======================================================
+%% Abstract:
+%%   DataAccess provides an API for requesting code fragments or other
+%%   information corresponding to data of this custom storage class.
+%%
+%function DataAccess(record, request, idx, reim, extra) void
+
+  %switch request
+ 
+    %case "initialize"
+      %% Use the default initialization to ground.
+      %return ""
+      %break
+      
+    %case "contents"
+      %% Use the default reference to a global variable.
+      %assign props = LibGetCustomStorageAttributes(record)
+      
+      %if (LibIsStructDataType(LibGetRecordDataTypeId(record)) && !ISEMPTY(idx))
+        %% For bus/structure data, return "GetFcn().b.c.d"
+        %assert(idx[0] == ".")
+        %return "%<props.GetFunction>()%<idx>"
+      %else
+        %assign idx = FcnPreProcessIndex(idx)
+        %return "%<props.GetFunction>(%<idx>)"
+      %endif
+      %break
+
+    %case "address"
+      %% Use the default address of a global variable.
+      %return "address not supported for accessors"
+      %break
+
+    %case "declare"
+      %% Since the data is supposed to be internal to the code
+      %% generated, generate no declaration for external use.
+      %return ""
+      %break
+
+    %case "define"
+      %% Use the default definition of a global variable.
+      %return ""
+      %break
+      
+    %case "layout"
+      %% Uses The Mathworks' data layout.
+      %return ["other"]
+      %break
+
+    %case "qualifier"
+      %% No type qualifier.
+      %return ""
+      %break
+      
+    %case "set"
+      %assign props = LibGetCustomStorageAttributes(record)
+      
+      %% Disallow assigning elements of structure for GetSet custom storage class
+      %if (LibIsStructDataType(LibGetRecordDataTypeId(record)) && !ISEMPTY(idx))
+        %assign varName    = LibGetRecordVarName(record)
+        %assign identifier = LibGetRecordIdentifier(record)
+        %assign errTxt = "Cannot set elements of bus signal '%<identifier>' because " + ...
+                         "object '%<varName>' is using the GetSet custom storage class."
+        %<LibReportError(errTxt)>
+      %endif
+      
+      %assign idx = FcnPreProcessIndex(idx)
+      %if idx == ""
+	%return "%<props.SetFunction>(%<extra>);\n"
+      %else
+	%return "%<props.SetFunction>(%<idx>, %<extra>);\n"
+      %endif
+
+    %default
+      %% Unknown access type.
+      %return LibDefaultCustomStorageUnknownDataAccessType ...
+	(record, request, idx, reim)
+      %break
+
+  %endswitch
+
+%endfunction
+
+
+
+%% Function: ClassAccess ============================================
+%% Abstract:
+%%   ClassAccess provides an API for requesting information or action
+%%   corresponding to the custom storage class
+%%
+%function ClassAccess(record, request) void
+
+  %switch request
+    %case "setup"
+      %assign numData = LibCustomStorageClassRecordNumData(record)
+      %foreach idx = numData
+
+	%% Get the idx'th data record
+	%assign item = LibGetDataRecord(record, idx)
+	
+	%% Make sure the record is non-complex.
+	%<LibCustomStorageVerifyRecordIsNonComplex(item)>
+
+	%% Make sure function names were specified
+	%<LibCustomStorageVerifyAttributesIsNotEmpty(item, "GetFunction")>
+	%<LibCustomStorageVerifyAttributesIsNotEmpty(item, "SetFunction")>
+
+      %endforeach
+      %return
+      %break
+
+    %case "comment"
+      %return LibDefaultCustomStorageComment(record)
+      %break
+
+    %default
+      %% Unknown access type.
+      %return LibDefaultCustomStorageUnknownClassAccessType ...
+	(record, request)
+      %break
+      
+  %endswitch
+      
+%endfunction
+
+
+%% Function: Version ============================================
+%% Abstract:
+%%
+%function Version(record) void
+  %return 2
+%endfunction

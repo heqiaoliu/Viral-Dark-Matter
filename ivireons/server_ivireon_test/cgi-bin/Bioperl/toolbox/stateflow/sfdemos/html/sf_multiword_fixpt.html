@@ -1,0 +1,73 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using Multiword Fixed-point Data</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_multiword_fixpt.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_multiword_fixpt.mdl</div><div class="right"><a href="matlab:sf_multiword_fixpt">Open this model</a></div></div><div class="content"><h1>Using Multiword Fixed-point Data</h1><!--introduction--><!--/introduction--><p>This demo showcases a simple use of multiword fixed-point data in Stateflow charts. Starting from R2010a, you can define multiword fixed-point data at the chart level, with one of the following scopes:</p><div><ul><li>Input</li><li>Output</li><li>Parameter</li><li>Data Store Memory</li></ul></div><p>You can also pass these data as inputs and outputs to and from Embedded MATLAB functions, Embedded MATLAB truth tables and Simulink functions in Stateflow charts.</p><img vspace="5" hspace="5" src="sf_multiword_fixpt_01.png" alt=""> <p>Chart <tt>multiwordFixptIO</tt> takes in an input, <tt>data</tt>, that is a multiword fixed-point type, and returns an output, <tt>out</tt>, that is also a multiword fixed-point data type.</p><img vspace="5" hspace="5" src="sf_multiword_fixpt_02.png" alt=""> <p>The chart defines a Simulink function <tt>foo</tt> that declares both its input and output to be of multiword fixed-point type. <tt>foo</tt> returns the value of its input, incremented by a fixed-point constant value. At each time step, chart <tt>multiwordFixptIO</tt> passes its input to <tt>foo</tt>, and assigns <tt>foo</tt>'s output to <tt>out</tt>.</p><img vspace="5" hspace="5" src="sf_multiword_fixpt_03.png" alt=""> <p class="footer">Copyright 2009-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using Multiword Fixed-point Data
+%
+% Copyright 2009-2010 The MathWorks, Inc.
+%
+%%
+% This demo showcases a simple use of multiword fixed-point data in
+% Stateflow charts. Starting from R2010a, you can define multiword
+% fixed-point data at the chart level, with one of the following scopes:
+%%
+% 
+% * Input
+% * Output
+% * Parameter
+% * Data Store Memory
+%% 
+%
+% You can also pass these data as inputs and outputs to and from Embedded
+% MATLAB functions, Embedded MATLAB truth tables and Simulink functions in
+% Stateflow charts. 
+%
+
+clear all
+close all 
+bdclose all
+
+model = 'sf_multiword_fixpt';
+open_system(model);
+rt = sfroot;
+m = rt.find('-isa', 'Stateflow.Machine', 'Name', model);
+c = m.find('-isa', 'Stateflow.Chart');
+c.Visible = 0;
+evalc(['sim(''' model ''')']);
+
+%%
+%
+% Chart |multiwordFixptIO| takes in an input, |data|, that is a multiword
+% fixed-point type, and returns an output, |out|, that is also a multiword
+% fixed-point data type. 
+%
+
+open_system(model);
+c.Visible = 1;
+
+%%
+% 
+% The chart defines a Simulink function |foo| that declares both its input and output
+% to be of multiword fixed-point type. |foo| returns the value of its input,
+% incremented by a fixed-point constant value. 
+% At each time step, chart |multiwordFixptIO| passes its input to |foo|,
+% and assigns |foo|'s output to |out|.
+%
+
+open_system([model '/' c.Name '/foo']);
+
+%%
+%
+bdclose all;
+close all;
+clear all;
+
+##### SOURCE END #####
+--></body></html>

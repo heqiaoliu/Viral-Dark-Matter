@@ -1,0 +1,67 @@
+<!-- $Revision: 1.1.4.5.2.1 $ -->
+<html>
+
+<head>
+<!-- Inserted by TRADOS: --><META HTTP-EQUIV="content-type" CONTENT="text/html; charset=Shift_JIS">
+
+<title>Simulink Subsystem の定義
+</title>
+</head>
+
+<body>
+<h1>Simulink Subsystem の定義</h1>
+
+<p>
+Subsystem とは、モデルの複雑さに対処できるように、モデル内でブロックをひとまとめにする手段のことです。Simulink は次の 2 つのクラスの Subsystem で構成されます。
+</p>
+<ul>
+<li><b>バーチャル サブシステム</b>は、モデル内のグラフィカルな階層を提供します。バーチャル サブシステムは、実行に影響を及ぼすことはありません。モデルの実行中、Simulink エンジンはバーチャル サブシステムをフラット化します。つまり、Simulink は実行前にこのサブシステムを適切な場所に拡張するということです。この拡張は、マクロが C や C++ などのプログラミング言語で機能する際のやり方と非常によく似ています。</p></li>
+
+<li><b>非バーチャル サブシステム</b>は、モデル内の実行とグラフィカルな階層を提供します。非バーチャル サブシステムは、Simulink エンジンによって、単一の単位 (アトミック実行) として実行されます。非バーチャル サブシステム内のブロックは、すべての Subsystem の入力が有効である場合にのみ実行します。すべての非バーチャル サブシステムは、境界が太線で描かれます。Simulink は、以下の非バーチャル サブシステムを定義しています。
+   </p>
+   <ul>
+
+<li><b>Atomic Subsystem</b>。バーチャル サブシステムと Atomic Subsystem の主な違いは、Atomic Subsystem 内のブロックは単一の単位として実行されるという点です。これには、モデルの機能面を実行レベルでコンポーネント化できるという利点があります。任意の Simulink ブロックを、さまざまな実行レートのブロックが含まれている Atomic Subsystem 内に配置できます。Atomic Subsystem を作成するには、バーチャル サブシステムで <code>[アトミック単位として処理]</code> を選択します。</p></li>
+
+<li><b>Enabled Subsystem</b>。Enabled Subsystem は、その Subsystem のイネーブル端子を駆動する信号がゼロよりも大きい場合にのみ実行するという点を除けば、Atomic Subsystem と同様に動作します。Enabled Subsystem は、Enable Port ブロックの <code>[イネーブル時の状態]</code> パラメーターを使用して、Enabled Subsystem 内のブロックの状態を保持またはリセットするように設定することもできます。Enabled Subsystem の各出力端子は、Outport ブロックの <code>[ディセーブル時の出力]</code> パラメーターを使用して、その端子の出力を保持またはリセットするように設定できます。Enabled Subsystem を作成するには、Enable Port ブロックを Subsystem 内に配置します。 </p></li>
+
+<li><b>Triggered Subsystem</b>。Triggered Subsystem は、Subsystem のトリガー端子を駆動する信号に、ゼロに対する立ち上がりエッジまたは立ち下がりエッジが現れると実行します。トリガー エッジの方向は、Trigger Port ブロックの <code>[トリガー タイプ]</code> パラメーターによって定義されます。Simulink は Triggered Subsystem 内に配置されるブロックのタイプを、陽的なサンプル時間が設定されていないブロックだけに限定しています (つまり、Subsystem 内のブロックには、-1 というサンプル時間が設定されている必要があります) 。これは、Triggered Subsystem の内容が非周期的に実行されるためです。Triggered Subsystem を作成するには、Trigger Port ブロックを Subsystem 内に配置します。Stateflow の Chart にも、Stateflow エディターを使用して定義されるトリガー端子を含めることができます。Simulink の観点からすれば、Triggered Subsystem とトリガー チャートには、違いはありません。</p></li>
+
+<li><b>関数呼び出しサブシステム</b>。関数呼び出しサブシステムは、シミュレーション中に別のブロックが直接起動できる Subsystem です。この Subsystem は、手続き型プログラミング言語の関数に似ています。関数呼び出しサブシステムを起動するということは、その Subsystem に含まれているブロックの出力メソッドを並べ替えられた順序で起動するのと同じことです。関数呼び出しサブシステムを起動するブロックは、関数呼び出しのイニシエーターと呼ばれます。Stateflow ブロック、Function-Call Generator ブロックおよび S-function ブロックは、すべて関数呼び出しのイニシエーターとして機能できます。関数呼び出しサブシステムを作成するには、Simulink の Ports &amp; Subsystems ライブラリからモデルに Function-Call Subsystem ブロックをドラッグして、関数呼び出しのイニシエーターを Subsystem の上部に表示されている関数呼び出し端子に接続します。関数呼び出しサブシステムは、まったくの最初から作成することもできます。そのためには、まず、モデル内に Subsystem ブロックを作成してから、その Subsystem 内に Trigger ブロックを作成します。その後、その Trigger ブロックの <code>[トリガー タイプ]</code> を <code>[関数呼び出し]</code> に設定します。
+
+<p>関数呼び出しサブシステムは、その Subsystem の <code>[サンプル時間のタイプ]</code> を <code>[トリガー]</code> または <code>[周期的]</code> に設定することによって、トリガー型 (既定) または周期型に設定することができます。関数呼び出しのイニシエーターは、トリガー型関数呼び出しサブシステムをタイム ステップごとに 0 回、1 回、または複数回起動できます。トリガー型関数呼び出しサブシステム内のすべてのブロックのサンプル時間は、継承 (-1) に設定する必要があります。</p>
+
+<p>関数呼び出しのイニシエーターは、周期型関数呼び出しサブシステムをタイム ステップごとに 1 回のみ起動でき、Subsystem を周期的に起動する必要があります。イニシエーターが周期型関数呼び出しサブシステムを非周期的に起動した場合は、Simulink はシミュレーションを停止し、エラー メッセージを表示します。周期型関数呼び出しサブシステム内のブロックは、継承されていないサンプル時間または継承されたサンプル時間 (-1) を指定できます。継承されていないサンプル時間を指定するブロックはすべて、同じサンプル時間を指定する必要があります。つまり、1 つのブロックがサンプル時間として .1 を指定すると、他のすべてのブロックは、.1 または -1 というサンプル時間を指定する必要があります。関数呼び出しのイニシエーターが周期型関数呼び出しサブシステムをその Subsystem 内ブロックで指定されているサンプル時間とは異なるレートで起動した場合は、Simulink はシミュレーションを停止し、エラー メッセージを表示します。</p></li>
+
+<li><b>Enabled with Trigger Subsystem</b>。Enabled with Trigger Subsystem は、本質的には、その Subsystem が有効になっていて、かつ、その Subsystem のトリガー端子を駆動する信号に、ゼロに対する立ち上がりエッジまたは立ち下がりエッジが現れると実行する Triggered Subsystem です。トリガー エッジの方向は、Trigger Port ブロックの <code>[トリガー タイプ]</code> パラメーターによって定義されます。Simulink は Enabled with Trigger Subsystem 内に配置されるブロックのタイプを、明示的なサンプル時間が設定されていないブロックだけに限定しています (つまり、Subsystem 内のブロックには、-1 というサンプル時間が設定されている必要があります) 。これは、Triggered Subsystem の内容が非周期的に実行されるためです。Enabled with Trigger Subsystem を作成するには、Trigger Port ブロックと Enable Port ブロックを Subsystem 内に配置します。<p></li>
+
+<li><b>Action Subsystem</b>。Action Subsystem は、Enabled Subsystem と関数呼び出しサブシステムのプロパティの共通部分と考えられます。Action Subsystem は、サンプル時間を 1 つしか (たとえば、連続サンプル時間、離散サンプル時間、または継承されるサンプル時間など) 設定できないように制限されています。Action Subsystem は、Action Subsystem のイニシエーターによって実行される必要があります。これは、If ブロックまたは SwitchCase ブロックのいずれかです。1 つの Action Subsystem のイニシエーターに接続されているすべての Action Subsystem に、同じサンプル時間が設定されている必要があります。Action Subsystem を作成するには、Action Port ブロックを Subsystem 内に配置します。[Subsystem] アイコンは、自動的にその Action Subsystem を実行しているブロックのタイプ (つまり、If ブロックまたは SwitchCase ブロック) に適応します。
+   <p>
+  
+   <p>
+Action Subsystem は、Action Subsystem のイニシエーターによって、最大で 1 回だけ実行できます。Action Subsystem を使用すると、Action Port ブロックの <code>[実行が再開されるときの状態]</code> パラメーターによって、どのような場合に状態がリセットされるのかを制御できます。また、Action Subsystem を使用すると、Outport ブロックの <code>[ディセーブル時の出力]</code> パラメーターによって、出力端子の値を保持するかどうかを制御することもできます。この点は、Enabled Subsystem に似ています。
+   </p>
+
+   <p>
+Action Subsystem の動作は関数呼び出しサブシステムの動作と非常によく似ています。これは、これらの Subsystem が Initiator ブロックによって実行される必要があるからです。関数呼び出しサブシステムが任意のタイム ステップで複数回実行できるのに対し、Action Subsystem は最大でも 1 回しか実行できません。<em></em>このような制約があるということは、関数呼び出しサブシステムと比べると、Action Subsystem には、より大きなブロックのセット (Periodic ブロックのセットなど) を配置できるということです。また、状態と出力の動作を制御できるということでもあります。
+   </p>
+   </p></li>
+
+<li><b>While-Subsystem</b>。While-Subsystem は、各モデルのタイム ステップで複数回の反復を実行します。反復回数は、While-Iterator ブロックの条件によって制御されます。While-Subsystem を作成するには、While-Iterator ブロックを Subsystem ブロック内に配置します。
+   <p>
+
+While-Subsystem は、任意のタイム ステップで任意の回数の反復を実行できるという点で、関数呼び出しサブシステムと非常によく似ています。While-Subsystem と関数呼び出しサブシステムとの違いは、While-Subsystem には独立したイニシエーター (たとえば Stateflow の Chart など) がないという点です。 さらに、While-Subsystem は、While-Iterator ブロックがオプションで生成する現在の反復回数にアクセスすることもできます。また、While-Subsystem を使用すると、While-Iterator ブロックの <code>[開始時の状態]</code> パラメーターによって、開始時に状態をリセットするかどうか制御することもできます。  </p></li>
+ 
+<li><b>For-Subsystem</b>。For-Subsystem は、各モデルのタイム ステップで固定回数の反復を実行します。反復回数は、For-Subsystem への外部入力にするか、あるいは For-Iterator ブロックで内部的に指定することができます。For-Subsystem を作成するには、For-Iterator ブロックを Subsystem ブロック内に配置します。
+   <p>
+  
+For-Subsystem は、For-Iterator ブロックがオプションで生成する現在の反復回数にアクセスできます。また、For-Subsystem を使用すると、For-Iterator ブロックの <code>[開始時の状態]</code> パラメーターによって、開始時に状態をリセットするかどうか制御することもできます。For-Subsystem は、任意のタイム ステップでの反復回数が固定されるという制限を課された While-Subsystem と非常によく似ています。
+   </p>
+   </li>
+ 
+   </ul>
+</li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,42 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>球面調和関数</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="spharm2.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit spharm2">エディターで spharm2.m を開く</a></div><div class="right"><a href="matlab:echodemo spharm2">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>球面調和関数</h1><p>By Denise L. Chen  9-1-93.</p><p>球面調和関数は、球面バージョンのフーリエ級数です。これらは、地球の自由振動のモデル化に使用できます。</p><p>半径 5 の球の表面上に、振幅 2 の球面調和関数 Ymn(6,1) のイメージが描かれています。</p><pre class="codeinput"><span class="comment">% Define constants.</span>
+degree = 6;
+order = 1;
+
+<span class="comment">% Create the grid</span>
+delta = pi/40;
+theta = 0 : delta : pi; <span class="comment">% altitude</span>
+phi = 0 : 2*delta : 2*pi; <span class="comment">% azimuth</span>
+[phi,theta] = meshgrid(phi,theta);
+
+<span class="comment">% Calculate the harmonic</span>
+Ymn = legendre(degree,cos(theta(:,1)));
+Ymn = Ymn(order+1,:)';
+yy = Ymn;
+<span class="keyword">for</span> kk = 2: size(theta,1)
+    yy = [yy Ymn];
+<span class="keyword">end</span>;
+yy = yy.*cos(order*phi);
+
+order = max(max(abs(yy)));
+rho = 5 + 2*yy/order;
+
+<span class="comment">% Apply spherical coordinate equations</span>
+r = rho.*sin(theta);
+x = r.*cos(phi);    <span class="comment">% spherical coordinate equations</span>
+y = r.*sin(phi);
+z = rho.*cos(theta);
+
+<span class="comment">% Plot the surface</span>
+clf
+surf(x,y,z)
+light
+lighting <span class="string">phong</span>
+axis <span class="string">tight</span> <span class="string">equal</span> <span class="string">off</span>
+view(40,30)
+camzoom(1.5)
+</pre><img vspace="5" hspace="5" src="../spharm2_01.png" alt=""> <p class="footer">Copyright 1984-2006 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Spherical Surface Harmonic  % By Denise L. Chen  9-1-93. % % Spherical harmonics are the spherical version of Fourier series. They can % be used to model the free oscillations of the earth. %                                             % The image pictured is the spherical harmonic of degree 6, order 1, and % amplitude 2 plotted on the surface of a sphere of radius 5.  % Copyright 1984-2006 The MathWorks, Inc. % $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:28:53 $  % Define constants. degree = 6; order = 1;  % Create the grid delta = pi/40; theta = 0 : delta : pi; % altitude phi = 0 : 2*delta : 2*pi; % azimuth [phi,theta] = meshgrid(phi,theta);  % Calculate the harmonic Ymn = legendre(degree,cos(theta(:,1))); Ymn = Ymn(order+1,:)'; yy = Ymn; for kk = 2: size(theta,1)     yy = [yy Ymn]; end; yy = yy.*cos(order*phi);  order = max(max(abs(yy))); rho = 5 + 2*yy/order;  % Apply spherical coordinate equations r = rho.*sin(theta); x = r.*cos(phi);    % spherical coordinate equations y = r.*sin(phi); z = rho.*cos(theta);  % Plot the surface clf surf(x,y,z) light lighting phong axis tight equal off view(40,30) camzoom(1.5)  displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

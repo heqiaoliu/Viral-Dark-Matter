@@ -1,0 +1,218 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Distributed Air Traffic Control Radar Simulation</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-09"><meta name="m-file" content="paralleldemo_aero_atc_dist"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_aero_atc_dist">Open paralleldemo_aero_atc_dist.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_aero_atc_dist">Run in the Command Window</a></div></div><div class="content"><h1>Distributed Air Traffic Control Radar Simulation</h1><!--introduction--><p>This demo uses the Parallel Computing Toolbox&#8482; to perform a conceptual air traffic control radar simulation based on the radar range equation.  The simulation varies radar range and rainfall amount, then calculates the difference between the actual and the estimated aircraft position.  This demo also provides an example of how the Parallel Computing Toolbox can perform a parameter sweep of a Simulink&reg; model.</p><p>For details about the computations, you can <a href="matlab:edit('pctdemo_setup_aero_atc.m')">view the code for pctdemo_setup_aero_atc</a> and <a href="matlab:open('aero_atc')">open the aero_atc model</a>.</p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a></li><li><a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB&reg; Computations into Tasks</a></li><li><a href="paralleltutorial_callbacks.html">Using Callback Functions</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_aero_atc_seq.html">Sequential Air Traffic Control Radar Simulation</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analyze the Sequential Problem</a></li><li><a href="#2">Load the Demo Settings and the Data</a></li><li><a href="#4">Divide the Work into Smaller Tasks</a></li><li><a href="#5">Create and Submit the Job</a></li><li><a href="#7">Retrieve the Results</a></li><li><a href="#10">Measure the Elapsed Time</a></li></ul></div><h2>Analyze the Sequential Problem<a name="1"></a></h2><p>First, we look at how the computations in the sequential demo fit into the model introduced in the <a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB Computations into Tasks</a> demo.  The main computations consist of multiple simulations using different rainfall and radar range parameters. A single simulation takes only a few seconds, so we have each task perform several simulations.  Because the function <tt>pctdemo_task_aero_atc</tt> is vectorized, we can use it directly as our task function.</p><h2>Load the Demo Settings and the Data<a name="2"></a></h2><p>The demo uses the default configuration when identifying the scheduler to use. The <a href="matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')">configurations documentation</a> explains how to create new configurations and how to change the default configuration.  See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for instructions on how to change the demo difficulty level or the number of tasks created.</p><p>Because this demo uses callbacks, we also verify that we have a job manager object to use, rather than one of the other scheduler types.</p><pre class="codeinput">[difficulty, manager, numTasks] = pctdemo_helper_getDefaults();
+<span class="keyword">if</span> ~isa(manager, <span class="string">'distcomp.jobmanager'</span>)
+    error(<span class="string">'distcomp:demo:NotJobmanager'</span>, <span class="keyword">...</span>
+          [<span class="string">'This demo uses callbacks, which are only available with '</span> <span class="keyword">...</span>
+           <span class="string">'a job manager.'</span>]);
+<span class="keyword">end</span>
+</pre><p>We obtain all the input parameters for our simulation from <tt>pctdemo_setup_aero_atc</tt>.  The length of the rainfall and radar range vectors (and, therefore, the number of simulations) is determined by the <tt>difficulty</tt> parameter.  You can <a href="matlab:edit('pctdemo_setup_aero_atc.m')">view the code for pctdemo_setup_aero_atc</a> for full details.</p><pre class="codeinput">[figHandles, iters, in_rainfall, in_Rrange] = <span class="keyword">...</span>
+    pctdemo_setup_aero_atc(difficulty);
+</pre><h2>Divide the Work into Smaller Tasks<a name="4"></a></h2><p>We have three vectors of equal length that we want to divide into <tt>numTasks</tt> segments.  We can have task <tt>i</tt> work on the iterations <tt>splitIters{i}</tt>, corresponding to the rainfall <tt>splitRain{i}</tt> and the radar range <tt>splitRrange{i}</tt>.</p><pre class="codeinput">[splitRrange, numTasks] = pctdemo_helper_split_vector(in_Rrange, numTasks);
+splitRain = pctdemo_helper_split_vector(in_rainfall, numTasks);
+splitIters = pctdemo_helper_split_vector(iters, numTasks);
+fprintf([<span class="string">'This demo will submit a job with %d task(s) '</span> <span class="keyword">...</span>
+         <span class="string">'to the scheduler.\n'</span>], numTasks);
+</pre><pre class="codeoutput">This demo will submit a job with 4 task(s) to the scheduler.
+</pre><h2>Create and Submit the Job<a name="5"></a></h2><p>We set the task finished callback function to be <tt>pctdemo_taskfin_aero_atc</tt>. The task finished function collects the task results and calls <tt>pctdemo_plot_aero_atc</tt> to update our plots as new data becomes available.  We let the <tt>UserData</tt> property of the task store the output figure and the iterations, thereby giving the callback function easy access to them. You can view the code for <a href="matlab:edit('pctdemo_task_aero_atc.m')">pctdemo_task_aero_atc</a> and <a href="matlab:edit('pctdemo_taskfin_aero_atc.m')">pctdemo_taskfin_aero_atc</a> for full details.</p><pre class="codeinput">startTime = clock;
+job = createJob(manager);
+<span class="keyword">for</span> i = 1:numTasks
+    task = createTask(job, @pctdemo_task_aero_atc, 1, <span class="keyword">...</span>
+                      {splitRain{i}, splitRrange{i}});
+    set(task, <span class="string">'FinishedFcn'</span>, @pctdemo_taskfin_aero_atc);
+    dataForFinishedFcn = struct(<span class="string">'figHandles'</span>, figHandles, <span class="keyword">...</span>
+                                <span class="string">'iterations'</span>, splitIters{i});
+    set(task, <span class="string">'UserData'</span>, dataForFinishedFcn);
+<span class="keyword">end</span>
+</pre><p>We can now submit the job and wait for it to finish.</p><pre class="codeinput">submit(job);
+waitForState(job, <span class="string">'finished'</span>);
+</pre><img vspace="5" hspace="5" src="paralleldemo_aero_atc_dist_01.png" alt=""> <h2>Retrieve the Results<a name="7"></a></h2><p>As each task finishes, the task finished callback function collects the task results and adds them to the <tt>UserData</tt> property of the job.  The callback function also updates the plot of the difference between the actual and the estimated aircraft position.  Therefore, we do not need to perform any plotting here, and we simply verify that we obtained the results we were expecting.  We throw an error if we could not obtain any results, but display a warning if we got only some of the results.</p><pre class="codeinput">jobResults = getAllOutputArguments(job);
+<span class="keyword">if</span> isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job);
+    error(<span class="string">'distcomp:demo:EmptyJobOutput'</span>,  <span class="keyword">...</span>
+          [<span class="string">'Could not obtain any job results.  The following error(s) '</span> <span class="keyword">...</span>
+           <span class="string">'occurred \nduring task execution:\n\n%s'</span>], <span class="keyword">...</span>
+          taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>Combine all the task results into one column vector and verify the results we obtained.</p><pre class="codeinput">results = cat(2, jobResults{:});
+<span class="keyword">if</span> ~(numel(results) == numel(iters))
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning(<span class="string">'distcomp:demo:IncompleteJobResults'</span>, <span class="keyword">...</span>
+            [<span class="string">'Some tasks did not finish. Only %d out of %d '</span> <span class="keyword">...</span>
+             <span class="string">'calculation steps were completed.  \nThe following '</span> <span class="keyword">...</span>
+             <span class="string">'error(s) occurred during task execution:\n\n%s'</span>], <span class="keyword">...</span>
+            numel(results), numel(iters), taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>We have now finished all the verifications, so we can destroy the job.</p><pre class="codeinput">destroy(job);
+</pre><h2>Measure the Elapsed Time<a name="10"></a></h2><p>The time used for the distributed computations should be compared against the time it takes to perform the same set of calculations in the <a href="paralleldemo_aero_atc_seq.html">Sequential Air Traffic Control Radar Simulation</a> demo. The elapsed time varies with the underlying hardware and network infrastructure.</p><pre class="codeinput">elapsedTime = etime(clock, startTime);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 50.7 seconds
+</pre><p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Distributed Air Traffic Control Radar Simulation
+% This demo uses the Parallel Computing Toolbox(TM) to perform a conceptual air
+% traffic control radar simulation based on the radar range equation.  The
+% simulation varies radar range and rainfall amount, then calculates the
+% difference between the actual and the estimated aircraft position.  This demo
+% also provides an example of how the Parallel Computing Toolbox can perform
+% a parameter sweep of a Simulink(R) model.
+%
+% For details about the computations, you can
+% <matlab:edit('pctdemo_setup_aero_atc.m') 
+% view the code for pctdemo_setup_aero_atc> 
+% and 
+% <matlab:open('aero_atc') open the aero_atc model>.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html 
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox>
+% * <paralleltutorial_dividing_tasks.html 
+% Dividing MATLAB(R) Computations into Tasks>
+% * <paralleltutorial_callbacks.html Using Callback Functions>
+%
+% Related demos:
+%
+% * <paralleldemo_aero_atc_seq.html 
+% Sequential Air Traffic Control Radar Simulation>
+
+%   Copyright 2007-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.3 $  $Date: 2009/11/07 20:52:34 $
+
+%% Analyze the Sequential Problem
+% First, we look at how the computations in the sequential demo fit into the
+% model introduced in the <paralleltutorial_dividing_tasks.html Dividing MATLAB
+% Computations into Tasks> demo.  The main computations consist of multiple
+% simulations using different rainfall and radar range parameters. A single
+% simulation takes only a few seconds, so we have each task perform
+% several simulations.  Because the function |pctdemo_task_aero_atc| is 
+% vectorized, we can use it directly as our task function.
+
+%% Load the Demo Settings and the Data
+% The demo uses the default configuration when identifying the scheduler to use.
+% The
+% <matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')
+% configurations documentation> 
+% explains how to create new configurations and how to change the default 
+% configuration.  See 
+% <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% for instructions on how to change the demo difficulty level or the number of
+% tasks created.
+%
+% Because this demo uses callbacks, we also verify that we have a job manager
+% object to use, rather than one of the other scheduler types.
+[difficulty, manager, numTasks] = pctdemo_helper_getDefaults();
+if ~isa(manager, 'distcomp.jobmanager')
+    error('distcomp:demo:NotJobmanager', ...
+          ['This demo uses callbacks, which are only available with ' ...
+           'a job manager.']);
+end
+
+%%
+% We obtain all the input parameters for our simulation from
+% |pctdemo_setup_aero_atc|.  The length of the rainfall and radar range vectors
+% (and, therefore, the number of simulations) is determined by the |difficulty|
+% parameter.  You can 
+% <matlab:edit('pctdemo_setup_aero_atc.m') view the code for pctdemo_setup_aero_atc> 
+% for full details.
+[figHandles, iters, in_rainfall, in_Rrange] = ...
+    pctdemo_setup_aero_atc(difficulty); 
+
+%% Divide the Work into Smaller Tasks
+% We have three vectors of equal length that we want to divide into |numTasks| 
+% segments.  We can have task |i| work on the iterations |splitIters{i}|, 
+% corresponding to the rainfall |splitRain{i}| and the radar range
+% |splitRrange{i}|.
+[splitRrange, numTasks] = pctdemo_helper_split_vector(in_Rrange, numTasks);
+splitRain = pctdemo_helper_split_vector(in_rainfall, numTasks);
+splitIters = pctdemo_helper_split_vector(iters, numTasks);
+fprintf(['This demo will submit a job with %d task(s) ' ...
+         'to the scheduler.\n'], numTasks);
+
+%% Create and Submit the Job
+% We set the task finished callback function to be |pctdemo_taskfin_aero_atc|.
+% The task finished function collects the task results and calls
+% |pctdemo_plot_aero_atc| to update our plots as new data becomes
+% available.  We let the |UserData| property of the task store the output
+% figure and the iterations, thereby giving the callback function easy
+% access to them.
+% You can view the code for 
+% <matlab:edit('pctdemo_task_aero_atc.m') pctdemo_task_aero_atc>
+% and 
+% <matlab:edit('pctdemo_taskfin_aero_atc.m') pctdemo_taskfin_aero_atc>
+% for full details.
+startTime = clock;
+job = createJob(manager);
+for i = 1:numTasks
+    task = createTask(job, @pctdemo_task_aero_atc, 1, ...
+                      {splitRain{i}, splitRrange{i}});
+    set(task, 'FinishedFcn', @pctdemo_taskfin_aero_atc);
+    dataForFinishedFcn = struct('figHandles', figHandles, ...
+                                'iterations', splitIters{i});
+    set(task, 'UserData', dataForFinishedFcn);
+end
+
+%%
+% We can now submit the job and wait for it to finish.
+submit(job);
+waitForState(job, 'finished');
+
+%% Retrieve the Results
+% As each task finishes, the task finished callback function collects the task
+% results and adds them to the |UserData| property of the job.  The callback
+% function also updates the plot of the difference between the actual and the
+% estimated aircraft position.  Therefore, we do not need to perform any
+% plotting here, and we simply verify that we obtained the results we were
+% expecting.  We throw an error if we could not obtain any results, but display
+% a warning if we got only some of the results.
+jobResults = getAllOutputArguments(job);
+if isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job);
+    error('distcomp:demo:EmptyJobOutput',  ...
+          ['Could not obtain any job results.  The following error(s) ' ...
+           'occurred \nduring task execution:\n\n%s'], ...
+          taskErrorMsgs);
+end
+
+%%
+% Combine all the task results into one column vector and verify the results
+% we obtained.
+results = cat(2, jobResults{:});
+if ~(numel(results) == numel(iters))
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning('distcomp:demo:IncompleteJobResults', ...
+            ['Some tasks did not finish. Only %d out of %d ' ...
+             'calculation steps were completed.  \nThe following ' ...
+             'error(s) occurred during task execution:\n\n%s'], ...
+            numel(results), numel(iters), taskErrorMsgs);
+end
+
+%%
+% We have now finished all the verifications, so we can destroy the job.
+destroy(job);
+
+%% Measure the Elapsed Time
+% The time used for the distributed computations should be compared
+% against the time it takes to perform the same set of calculations
+% in the
+% <paralleldemo_aero_atc_seq.html 
+% Sequential Air Traffic Control Radar Simulation>
+% demo.  
+% The elapsed time varies with the underlying hardware and network infrastructure.
+elapsedTime = etime(clock, startTime);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

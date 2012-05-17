@@ -1,0 +1,15 @@
+function val = setlogsignal(h, val)
+%SETLOGSIGNAL Set the logsignal property
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.1 $  $Date: 2007/07/31 20:00:42 $
+
+if(isempty(h.daobject)); return; end
+state = 'Off';
+if(val)
+  state = 'On';
+end
+h.outport.TestPoint = state;
+h.outport.DataLogging = state;
+
+% [EOF]

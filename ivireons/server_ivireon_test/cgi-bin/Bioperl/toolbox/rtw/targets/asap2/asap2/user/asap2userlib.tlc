@@ -1,0 +1,303 @@
+%% $RCSfile: asap2userlib.tlc,v $
+%% $Revision: 1.6.2.8.2.2 $ 
+%% $Date: 2010/07/06 14:41:40 $
+%%
+%% Abstract:
+%%   User ASAP2 library.
+%%
+%% Copyright 1994-2010 The MathWorks, Inc.
+%%
+%selectfile NULL_FILE
+
+%% Function: ASAP2UserFcnWriteHead
+%% Abstract: Text to include at beginning of ASAP2 file.
+%%
+%function ASAP2UserFcnWriteFileHead() Output
+  /******************************************************************************
+   *
+   *  ASAP2 file:     %<ASAP2FileName>
+   *
+   %<SLibCommonHeaderInfo()>\
+   *
+   * (add additional file header information here)
+   *
+   ******************************************************************************/
+%endfunction
+
+
+%% Function: ASAP2UserFcnWriteHeader
+%% Abstract: Define format for HEADER section of ASAP2 file.
+%%
+%function ASAP2UserFcnWriteHeader() Output
+  /begin HEADER "Header Comments go here"
+   
+  /end HEADER
+%endfunction
+
+
+%% Function: ASAP2UserFcnWriteHardwareInterface
+%% Abstract: Used to define hardware interface for ASAP2 file.
+%%
+%% NOTE: It may be easiest to inline separate files for each section:
+%% For example:
+%%   %include "./user_a2ml.txt"
+%% 
+%function ASAP2UserFcnWriteHardwareInterface() Output
+
+     /begin MOD_PAR "%<ASAP2ModParComment>"
+
+     /end MOD_PAR
+    
+     /begin MOD_COMMON  "%<ASAP2MOD_COMMON_Comment>" 
+        BYTE_ORDER     %<ASAP2BYTE_ORDER>
+     /end MOD_COMMON
+%endfunction
+
+%% Function: ASAP2UserFcnWriteFileTail
+%% Abstract: Text to include at end of ASAP2 file.
+%%
+%function ASAP2UserFcnWriteFileTail() Output
+  /* (add any file trailer comments here) */
+  /* EOF %<ASAP2FileName> */
+%endfunction
+
+
+%% Function: ASAP2UserFcnDataTypeAlias
+%% Abstract: Maps Simulink DataTypeId to desired data type name.
+%%
+%function ASAP2UserFcnDataTypeAlias(dtId) void
+  %switch dtId
+    %case tSS_BOOLEAN
+      %return "UBYTE"
+    %case tSS_UINT8
+      %return "UBYTE"
+    %case tSS_INT8
+      %return "SBYTE"
+    %case tSS_UINT16
+      %return "UWORD"
+    %case tSS_INT16
+      %return "SWORD"
+    %case tSS_UINT32
+      %return "ULONG"
+    %case tSS_INT32
+      %return "SLONG"
+    %case tSS_SINGLE
+      %return "FLOAT32_IEEE"
+    %case tSS_DOUBLE
+      %return "FLOAT64_IEEE"
+    %default
+      %if LibIsEnumDataType(dtId)
+          %return "SLONG"
+      %endif
+
+     %%START_ASSERT
+       %assign errTxt = "Unhandled dataType. DataTypeID = %<dtId>"
+       %<LibReportError(errTxt)>
+     %%END_ASSERT
+  %endswitch
+%endfunction
+
+
+%% Function: ASAP2UserFcnWriteMeasurement
+%% Abstract: Defines format for writing out MEASUREMENTs.
+%%
+%function ASAP2UserFcnWriteMeasurement(signal) Output
+  %assign dtId = LibASAP2GetDataTypeId(signal)
+    /begin MEASUREMENT
+      /* Name                   */      %<LibASAP2GetSymbol(signal)>
+      /* Long identifier        */      "%<LibASAP2GetLongID(signal)>"
+      /* Data type              */      %<ASAP2UserFcnDataTypeAlias(dtId)>
+      /* Conversion method      */      %<LibASAP2GetCompuMethod(signal)>
+      /* Resolution (Not used)  */      0
+      /* Accuracy (Not used)    */      0
+      /* Lower limit            */      %<LibASAP2GetPhysicalMin(signal)>
+      /* Upper limit            */      %<LibASAP2GetPhysicalMax(signal)>
+      %if LibGetRecordWidth(signal) > 1
+	/* Array Size             */
+	ARRAY_SIZE                        %<LibGetRecordWidth(signal)>
+      %endif
+      ECU_ADDRESS                       %<LibASAP2GetAddress(signal)>
+    /end MEASUREMENT
+%selectfile ASAP2List
+%<LibASAP2GetSymbol(signal)>
+%selectfile ModelASAP2File
+%endfunction
+
+%% Function: ASAP2UserFcnWriteCompuVTab
+%% Abstract: Defines format for writing out COMPU_VTab.
+%%
+%function ASAP2UserFcnWriteCompuVTab(idx) Output
+  %assign valuePairs    = LibASAP2GetCompuMethodVTabContents(idx)
+  %assign numValuePairs = SIZE(valuePairs, 1)
+  /begin COMPU_VTAB
+    /* Name of Table          */      VTAB_FOR_%<LibASAP2GetCompuMethodName(idx)>
+    /* Long identifier        */      "%<LibASAP2GetCompuMethodLongID(idx)>"
+    /* Conversion Type        */      TAB_VERB
+    /* Number of Elements     */      %<numValuePairs>
+  %foreach pairIdx = numValuePairs
+    /* Table Element          */      %<valuePairs[pairIdx]>
+  %endforeach
+  /end COMPU_VTAB
+%endfunction
+
+%% Function: ASAP2UserFcnWriteCompuMethods
+%% Abstract: Defines format for writing out COMPU_METHODs.
+%%
+%function ASAP2UserFcnWriteCompuMethods(idx) Output
+  %assign convType = LibASAP2GetCompuMethodConvType(idx)
+  %switch convType
+  %case "RAT_FUNC"
+    /begin COMPU_METHOD
+      /* Name of CompuMethod    */      %<LibASAP2GetCompuMethodName(idx)>
+      /* Long identifier        */      "%<LibASAP2GetCompuMethodLongID(idx)>"
+      /* Conversion Type        */      RAT_FUNC
+      /* Format                 */      "%<LibASAP2GetCompuMethodFormat(idx)>"
+      /* Units                  */      "%<LibASAP2GetCompuMethodUnits(idx)>"
+      /* Coefficients           */      COEFFS %<LibASAP2GetCompuMethodCoeffs(idx)>
+    /end COMPU_METHOD
+    %break
+
+  %case "TAB_VERB"
+    /begin COMPU_METHOD
+      /* Name of CompuMethod    */      %<LibASAP2GetCompuMethodName(idx)>
+      /* Long identifier        */      "%<LibASAP2GetCompuMethodLongID(idx)>"
+      /* Conversion Type        */      TAB_VERB
+      /* Format                 */      "%<LibASAP2GetCompuMethodFormat(idx)>"
+      /* Units                  */      "%<LibASAP2GetCompuMethodUnits(idx)>"
+      /* Conversion Table       */      COMPU_TAB_REF VTAB_FOR_%<LibASAP2GetCompuMethodName(idx)>
+    /end COMPU_METHOD
+    
+    %<ASAP2UserFcnWriteCompuVTab(idx)>
+    %break
+    
+  %default
+    %%START_ASSERT
+      %assign errTxt = "Unhandled conversion type (%<convType>)"
+      %<LibReportError(errTxt)>
+    %%END_ASSERT
+  %endswitch
+%endfunction
+
+
+%% Function: ASAP2UserFcnWriteComAxis
+%% Abstract: Defines format for writing out AXIS_DESCR as COM_AXIS.
+%%
+%function ASAP2UserFcnWriteComAxis(axisName, param, inputReference) Output
+  %%
+      /begin AXIS_DESCR                 
+        /* Description of %<axisName> Points */
+	/* Axis Type            */      COM_AXIS
+	%if ISEMPTY(inputReference)
+	  /* Reference to Input   */      NO_INPUT_QUANTITY
+	%else
+	  /* Reference to Input   */      %<inputReference>
+	%endif
+	/* Conversion Method    */      %<LibASAP2GetCompuMethod(param)>
+	/* Number of Axis Pts   */      %<LibASAP2GetNumAxisPts(param)>
+	/* Lower Limit          */      %<LibASAP2GetPhysicalMin(param)>
+	/* Upper Limit          */      %<LibASAP2GetPhysicalMax(param)>
+	AXIS_PTS_REF                    %<LibASAP2GetSymbol(param)>
+      /end AXIS_DESCR
+  %%    
+%endfunction 
+
+%% Function: ASAP2UserFcnWriteStdAxis
+%% Abstract: Defines format for writing out AXIS_DESCR as STD_AXIS
+%%
+%function ASAP2UserFcnWriteStdAxis(axisName, param, inputReference) Output
+  %%
+      /begin AXIS_DESCR                 
+        /* Description of %<axisName> Points */
+	/* Axis Type            */      STD_AXIS
+	%if ISEMPTY(inputReference)
+	  /* Reference to Input   */      NO_INPUT_QUANTITY
+	%else
+	  /* Reference to Input   */      %<inputReference>
+	%endif
+	/* Conversion Method    */      %<LibASAP2GetCompuMethod(param)>
+	/* Number of Axis Pts   */      %<LibASAP2GetNumAxisPts(param)>
+	/* Lower Limit          */      %<LibASAP2GetPhysicalMin(param)>
+	/* Upper Limit          */      %<LibASAP2GetPhysicalMax(param)>	
+      /end AXIS_DESCR
+  %%    
+%endfunction 
+
+%% Function: ASAP2UserFcnWriteFixAxis 
+%% Abstract: Defines format for writing out AXIS_DESCR as FIX_AXIS.
+%%
+%function ASAP2UserFcnWriteFixAxis(axisName, param, inputReference) Output
+  %assign axisValue     = param.Value  
+  %%  
+  %% Compute AXIS_DESCR characteristics for the FIX_AXIS
+  %assign numAxisPoints = %<SIZE(axisValue,1)>
+  %assign lowerLimit    = CAST("Number", %<axisValue[0]>)
+  %assign upperLimit    = CAST("Number", %<axisValue[numAxisPoints-1]>)
+  %assign distance      = CAST("Number", %<axisValue[1]-axisValue[0]>)
+  %assign axisInfo      = LibASAP2GetFixAxisInfo(param)
+  %%
+  %% Compute if distance is a power of 2  
+  %if (distance > 1) && ((distance & (distance-1)) == 0)
+    %% If distance is a power of 2 we write FIX_AXIS_PAR
+    %assign shift         = CAST("Number",FEVAL("eval","log2(%<distance>)")) 
+    %assign fixAxisParStr = "FIX_AXIS_PAR"
+    %assign fixAxisParVal = "     %<lowerLimit> %<shift> %<numAxisPoints>"    
+  %else
+    %assign fixAxisParStr = "FIX_AXIS_PAR_DIST"
+    %assign fixAxisParVal = "%<lowerLimit> %<distance> %<numAxisPoints>"
+  %endif
+  %%  
+      /begin AXIS_DESCR                 
+        /* Description of %<axisName> Points */
+        /* Axis Type            */      FIX_AXIS
+	%if ISEMPTY(inputReference)
+	  /* Reference to Input   */      NO_INPUT_QUANTITY
+	%else
+	  /* Reference to Input   */      %<inputReference>
+	%endif
+	/* Conversion Method    */      %<axisInfo.CompuMethod>
+	/* Number of Axis Pts   */      %<numAxisPoints>
+	/* Lower Limit          */      %<axisInfo.PhysicalMin>
+	/* Upper Limit          */      %<axisInfo.PhysicalMax>
+	FORMAT                          "%<axisInfo.Format>"
+    %<fixAxisParStr>               %<fixAxisParVal>
+      /end AXIS_DESCR 
+%endfunction 
+
+%% Function: ASAP2UserFcnWriteFixAxisList
+%% Abstract: Defines format for writing out AXIS_DESCR as FIX_AXIS_PAR_LIST.
+%%
+%function ASAP2UserFcnWriteFixAxisList(axisName, param, inputReference) Output
+  %assign axisValue     = param.Value
+  %% Compute AXIS_DESCR characteristics for the FIX_AXIS
+  %assign numAxisPoints = %<SIZE(axisValue,1)>
+  %assign lowerLimit    = CAST("Number", %<axisValue[0]>)
+  %assign upperLimit    = CAST("Number", %<axisValue[numAxisPoints-1]>)
+  %%  
+  %assign axisInfo      = LibASAP2GetFixAxisInfo(param)
+  %%  
+      /begin AXIS_DESCR                 
+        /* Description of %<axisName> Points */
+        /* Axis Type            */      FIX_AXIS
+	%if ISEMPTY(inputReference)
+	  /* Reference to Input   */      NO_INPUT_QUANTITY
+	%else
+	  /* Reference to Input   */      %<inputReference>
+	%endif
+	/* Conversion Method    */      %<axisInfo.CompuMethod>
+	/* Number of Axis Pts   */      %<numAxisPoints>
+	/* Lower Limit          */      %<axisInfo.PhysicalMin>
+	/* Upper Limit          */      %<axisInfo.PhysicalMax>
+	FORMAT                          "%<axisInfo.Format>"
+        %openfile axisValues
+        %foreach jj = numAxisPoints
+           %<CAST("Number", axisValue[jj])> \
+        %endforeach
+        %closefile axisValues
+        %assign listValue = FEVAL("regexprep", axisValues, "\\s\*", " ")
+        /begin FIX_AXIS_PAR_LIST
+        %<listValue>
+        /end FIX_AXIS_PAR_LIST
+      /end AXIS_DESCR 
+%endfunction 
+
+%% [EOF] asap2userlib.tlc

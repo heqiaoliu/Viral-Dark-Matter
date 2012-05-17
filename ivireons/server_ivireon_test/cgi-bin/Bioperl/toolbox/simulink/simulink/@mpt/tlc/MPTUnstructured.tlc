@@ -1,0 +1,406 @@
+%% $Revision: 1.1.6.13 $
+%%
+%% Copyright 1994-2009 The MathWorks, Inc.
+
+
+%% Target language is C
+%implements * "C"
+
+%if ISEQUAL(ConfigSet.EnableCustomComments, 1) & ISFIELD(ConfigSet,"CustomCommentsFcn")
+  %assign CusCommFile = ConfigSet.CustomCommentsFcn
+  %assign CusCommFcn = FEVAL("strtok",CusCommFile,".")
+  %if !ISEMPTY(CusCommFcn)
+    %assign CusCommTLCFile = CusCommFcn + ".tlc"
+    %if FILE_EXISTS(CusCommTLCFile)
+       %include "%<CusCommTLCFile>"
+    %else 
+       %assign temp = "fileparts(which('%<CusCommTLCFile>'))"
+       %assign filePath = FEVAL("eval", temp)
+       %if !ISEMPTY(filePath)
+          %addincludepath filePath
+          %include "%<CusCommTLCFile>"
+       %endif
+    %endif
+  %endif
+%endif
+
+%%=============================================================================
+%function GetCustomComments(record,request) void
+      
+%assign comment1 = ""
+    %if ISFIELD(ConfigSet,"CustomCommentsFcn") 
+       %assign CusCommFile = ConfigSet.CustomCommentsFcn
+    %else
+       %assign CusCommFile = ""
+    %endif
+    %assign CusCommFcn = FEVAL("strtok",CusCommFile,".")
+    %assign temp = "fileparts(which('%<CusCommFile>'))"
+    %assign mfilePath = FEVAL("eval", temp)
+    %if !ISEMPTY(CusCommFcn)
+        %assign CusCommTLCFile = CusCommFcn + ".tlc"
+        %assign CusCommMFile = CusCommFcn + ".m"
+        %if ISEQUAL(CusCommFile,CusCommTLCFile) & FILE_EXISTS(CusCommTLCFile) 
+            %assign comment1 = UserCustomComments(record,CompiledModel.Name,request)
+        %elseif ISEQUAL(CusCommFile,CusCommMFile) & !ISEMPTY(mfilePath) 
+            %assign id = LibGetRecordIdentifier(record)
+            %assign comment1 = FEVAL(CusCommFcn,id,CompiledModel.Name,request)
+        %elseif FILE_EXISTS(CusCommTLCFile) 
+            %assign comment1 = UserCustomComments(record,CompiledModel.Name,request)
+        %elseif !ISEMPTY(mfilePath)
+            %assign id = LibGetRecordIdentifier(record)
+            %assign comment1 = FEVAL(CusCommFcn,id,CompiledModel.Name,request)
+        %else
+            %assign errTxt = "Error: %<CusCommFile> is a undefined file for" +...
+                              " Custom Comments. Please check if it is on the matlab path."
+            %<LibReportFatalError(errTxt)>
+        %endif
+    %else
+        %assign errTxt = "Error: Custom comments is turned on. A Custom comments" +...
+                         " function needs to be specified."
+        %<LibReportFatalError(errTxt)>
+    %endif
+
+%if ISEQUAL(comment1, 0)
+  %%% Something wrong in Custom comments file
+    %assign comment1 = ""
+    %assign errTxt = "Calling custom comments function error for '%<id>'." +...
+                     " No custom comment is placed in generated code."
+    %<LibReportWarning(errTxt)>
+%elseif ISEQUAL(comment1,[])
+   %%% custom comments are empty 
+    %assign comment1 = ""
+%endif
+
+%return comment1
+%endfunction
+
+%%=============================================================================
+%function ExpandInit(dim, initValue, id, dtypeid) void
+%% No Complex number
+
+%assign curDT = DataTypes.DataType[dtypeid]
+
+%if curDT.IsFixedPoint
+  %assign isFixpt = TLC_TRUE
+  %assign castTo =""
+%else
+  %assign isFixpt = TLC_FALSE
+  %assign SSdtName = curDT.Enum
+  %switch SSdtName
+    %case "SS_UINT8"
+    %case "SS_UINT16"
+    %case "SS_UINT32"
+       %assign  castTo = "Unsigned"
+       %break
+    %case "SS_INT8"
+    %case "SS_INT16"
+    %case "SS_INT32"
+       %assign  castTo = "Number"
+       %break
+    %case "SS_SINGLE"
+       %assign  castTo = "Real32"
+       %break
+    %case "SS_DOUBLE"
+       %assign  castTo = "Real"
+       %break
+    %case "SS_BOOLEAN"
+       %assign  castTo = "Boolean"
+       %break
+    %default
+       %assign  castTo = "Real"
+       %break
+  %endswitch
+%endif
+
+%if !ISEQUAL(SIZE(initValue),dim) 
+    %assign errTxt = "Error in '%<id>' InitialValue dimension. "+...
+         "InitialValue dimension must be consistent with port widths "+...
+         "or dimensions. Enter [] for the InitialValue "+...
+          "to use the default Simulink initialization."  
+    %<LibReportError(errTxt)>
+%elseif dim[1] == 1 &&  dim[0] == 1 
+    %% For scalar
+    %assign init = CastInitValue(isFixpt, initValue[0], castTo, curDT)
+    %return init
+%else 
+    %% For non scalar
+    %%%% dimension matches between InitialValue and block signal setting  
+      %assign nRows = SIZE(initValue, 0)
+      %assign nCols = SIZE(initValue, 1)
+   
+      %openfile initStr
+     {
+      %if nRows == 1
+        %foreach j = nCols
+           %assign init = CastInitValue(isFixpt, initValue[j], castTo, curDT)
+           %if j < (nCols - 1)
+             %<init>,
+           %else
+             %<init>
+           %endif
+        %endforeach
+      %else   
+       %foreach j = nCols
+        %foreach i = nRows
+           %assign init = CastInitValue(isFixpt, initValue[i][j], castTo, curDT)       
+           %if j == nCols-1 && i == nRows-1
+             %<init>
+           %else
+             %<init>,
+           %endif
+        %endforeach
+      %endforeach
+     %endif
+     }\
+     %closefile initStr
+     %return initStr
+
+%endif
+%endfunction
+
+%%=============================================================================
+%function CastInitValue(isFixpt, initValue, castTo, curDT) void
+
+  %if isFixpt
+      %assign init = FixPt_Dbl2StoredInt(initValue,curDT)
+  %elseif ISEQUAL(castTo,"Boolean")
+      %assign init = "FALSE"
+      %if !ISEQUAL(initValue,0.0)
+          %assign init = "TRUE"
+      %endif
+  %else
+      %assign init = FixPt_Dbl2StoredInt(initValue,curDT)
+      %assign init = CAST(castTo,init)
+  %endif
+  %return init
+%endfunction
+
+
+%%=============================================================================
+%function GetPointerForData(cscDefn, datarec) void
+
+  %assign dataAccess = SLibGetDataAccess(cscDefn, datarec)
+  %if dataAccess == "Pointer"
+    %return "*"
+  %else
+    %return ""
+  %endif
+%endfunction
+
+%%=============================================================================
+%function GetDefnUnstructForInitFromDataObject(cscDefn, msDefn, record) void
+ 
+  %assign id = LibGetRecordIdentifier(record)
+  %assign dt           = LibGetRecordCompositeDataTypeName(record)
+  %assign width        = LibGetDataWidth(record)
+  %assign initStr        = ""
+
+  %assign object = record.Object.ObjectProperties
+  %assign initValue = object.RTWInfo.Object.ObjectProperties.InitialValue
+  %if (TYPE(initValue) != "Real") && (TYPE(initValue) != "Vector")...
+       && (TYPE(initValue) != "Matrix")
+      %assign errTxt = "Invalid value for signal '%<id>' InitialValue. "+...
+          "'InitialValue' must be numeric with double data type. Enter [] for the InitialValue "+...
+          "to use the default Simulink initialization." 
+       %<LibReportError(errTxt)>
+  %endif
+  %assign dim = LibGetRecordDimensions(record)
+  %if SIZE(dim, 1) < 2
+      %assign dim = [1,1]
+      %assign dim[1] = width
+  %endif
+  %assign dtypeid = SLibGetRecordDataTypeId(record)
+  %assign initStr = ExpandInit(dim,initValue,id,dtypeid)
+  %assign initStr = " = %<initStr>"
+  %assign pointer      = GetPointerForData(cscDefn, record)
+  %assign qualifier    = SLibGetQualifier(msDefn)
+  %assign dims         = (width == 1) ? "" : "[%<width>]"
+  %assign typeandname  = qualifier + dt + " " + pointer + id + dims
+  %assign terminator = ";"
+
+  %return typeandname + ...
+    initStr + ...
+    terminator 
+%endfunction
+
+%%=============================================================================
+%function isRemoveZeroInitValue(record, initValue, id, dtypeid) void
+%% Check if InitalValue need to be removed 
+            
+   %assign isZero = TLC_TRUE   
+   %assign nRows = SIZE(initValue, 0)
+   %assign nCols = SIZE(initValue, 1)  
+   %assign dim = [1,1]        
+   %if nRows == 1
+       %foreach j = nCols
+           %assign tempInitStr = ExpandInit(dim,initValue[j],id,dtypeid)
+              %if !SLibRemoveZeroInitForData(record,tempInitStr)
+                 %assign isZero = TLC_FALSE
+                 %break
+              %endif
+       %endforeach
+   %else   
+       %foreach j = nCols
+           %foreach i = nRows      
+               %assign tempInitStr = ExpandInit(dim,initValue[i][j],id,dtypeid)
+               %if !SLibRemoveZeroInitForData(record,tempInitStr)
+                   %assign isZero = TLC_FALSE
+                   %break
+               %endif         
+           %endforeach
+           %if !isZero
+               %break
+           %endif
+       %endforeach
+   %endif
+   %return isZero
+
+%endfunction
+
+%%=============================================================================
+%% Function: DataAccess =========================================================
+%% Abstract:
+%%   DataAccess provides an API for requesting code fragments or other
+%%   information corresponding to data of a custom storage class.
+%%
+%function DataAccess(record, request, idx, reim) void
+
+  %switch request
+
+    %case "declare"
+         %return LibDataAccessInSpecificTLC("Simulink", "Unstructured.tlc", record, request, idx, reim)
+      %break
+
+    %case "define"
+         %return LibDataAccessInSpecificTLC("Simulink", "Unstructured.tlc", record, request, idx, reim)
+      %break
+
+    %case "declComment"
+
+      %%% Custom comments for this data declaration can be inserted here
+      %assign comment1 = ""
+      %if ISEQUAL(ConfigSet.EnableCustomComments,1)
+         %assign comment1 = GetCustomComments(record,request)
+      %endif
+
+      %%%%% Place Description field of Data Object in Generated Code
+      %assign comment2 = ""
+      %if ISEQUAL(ConfigSet.SimulinkDataObjDesc, 1)
+        %assign object = record.Object.ObjectProperties
+        %assign objDes = record.Object.ObjectProperties.Description
+        %if !ISEMPTY(objDes)
+           %assign comment2 = "/* %<objDes> */"
+        %endif
+      %endif
+
+      %assign comment3 = ""
+      %return ["%<comment1>","%<comment2>","%<comment3>"]
+      %break
+
+    %case "defnComment"
+      
+      %%% Custom comments for this data definition can be inserted
+      %assign comment1 = ""
+      %if ISEQUAL(ConfigSet.EnableCustomComments,1)
+         %assign comment1 = GetCustomComments(record,request)     
+      %endif
+
+      %%%%% Place Description field of Data Object in Generated Code
+      %assign comment2 = ""
+      %if ISEQUAL(ConfigSet.SimulinkDataObjDesc, 1)
+        %assign object = record.Object.ObjectProperties
+        %assign objDes = record.Object.ObjectProperties.Description
+        %if !ISEMPTY(objDes)
+           %assign comment2 = "/* %<objDes> */"
+        %endif
+      %endif
+
+      %assign comment3 = ""
+      %return ["%<comment1>","%<comment2>","%<comment3>"]
+      %break
+
+    %case "contents"
+      %return LibDataAccessInSpecificTLC("Simulink", "Unstructured.tlc", record, request, idx, reim)
+      %break
+
+    %case "address"
+      %return LibDataAccessInSpecificTLC("Simulink", "Unstructured.tlc", record, request, idx, reim)
+      %break
+
+    %case "initialize"
+
+      %return LibDataAccessInSpecificTLC("Simulink", "Unstructured.tlc", record, request, idx, reim)
+      %break
+
+    %case "layout"
+      %return LibDataAccessInSpecificTLC("Simulink", "Unstructured.tlc", record, request, idx, reim)
+      %break
+
+    %default
+      %% You should invoke LibDefaultCustomStorageUnknownClassAccessType
+      %% for unrecognized requests.  It gracefully errors for unhandled
+      %% critical cases, and supplies safe defaults for unhandled
+      %% noncritical requests.
+      %return LibDefaultCustomStorageUnknownDataAccessType ...
+        (record, request, idx, reim)
+      %break
+
+  %endswitch
+
+%endfunction
+
+%% Function: ClassAccess ========================================================
+%% Abstract:
+%%   ClassAccess provides an API for requesting information or actions
+%%   corresponding to a custom storage class.
+%%
+%function ClassAccess(record, request) void
+
+  %assign cscDefn = SLibGetCSCDefForCSC(record)
+
+  %switch request  
+   
+    %case "setup"
+      
+      %<SLibCheckForUndefinedImportedMacros(record, 0)>
+      %return ""
+      %break
+
+    %case "comment"
+      %assign rtnStr = ""
+
+      %return rtnStr
+      %break
+
+    %case "typeComment"
+      %assert cscDefn.CommentSource == "Default"
+      %assign rtnStr = ""
+
+      %return rtnStr
+      %break
+
+    %case "declComment"
+      %assert cscDefn.CommentSource == "Default"
+
+      %%% Custom comments for this CSC in declaration can be inserted
+      %assign rtnStr = ""
+
+      %return rtnStr
+      %break
+
+    %case "defnComment"
+      %assert cscDefn.CommentSource == "Default"
+      %%% Custom comments for this CSC in definition can be inserted
+      %assign rtnStr = ""
+
+      %return rtnStr
+
+     %default
+        %return LibClassAccessInSpecificTLC("Simulink", "Unstructured.tlc", record, request)
+      %break
+
+  %endswitch
+
+%endfunction
+
+%% [EOF] MPTUnstructured.tlc

@@ -1,0 +1,65 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>線形性への変換による非線形モデルの近似の注意点</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="xform2lineardemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit xform2lineardemo">エディターで xform2lineardemo.m を開く</a></div><div class="right"><a href="matlab:echodemo xform2lineardemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>線形性への変換による非線形モデルの近似の注意点</h1><!--introduction--><!--/introduction--><p>2 つの変数 x と y で測定値を収集し、y を x の関数としてモデル化する場合を考えます。x は正確に測定されましたが、y の測定には、加法的誤差、対称誤差、ゼロ平均誤差の影響があるとします。</p><pre class="codeinput">x = [5.72 4.22 5.72 3.59 5.04 2.66 5.02 3.11 0.13 2.26 <span class="keyword">...</span>
+     5.39 2.57 1.20 1.82 3.23 5.46 3.15 1.84 0.21 4.29 <span class="keyword">...</span>
+     4.61 0.36 3.76 1.59 1.87 3.14 2.45 5.36 3.44 3.41]';
+y = [2.66 2.91 0.94 4.28 1.76 4.08 1.11 4.33 8.94 5.25 <span class="keyword">...</span>
+     0.02 3.88 6.43 4.08 4.90 1.33 3.63 5.49 7.23 0.88 <span class="keyword">...</span>
+     3.08 8.12 1.22 4.24 6.21 5.48 4.89 2.30 4.13 2.17]';
+</pre><p>さらに、理論的には、これらのデータは指数関数的減退 y = p1*exp(p2*x) のモデルに従うはずです。この場合、p1 は正、p2 は負です。このモデルを近似するには、非線形最小二乗を使用できます。</p><pre class="codeinput">modelFun = @(p,x) p(1)*exp(p(2)*x);
+</pre><p>しかし、両側で対数を取り、log(y) = log(p1) + p2*x を取得することで、非線形モデルを線形モデルに変換することもできます。この線形モデルは、普通の線形最小二乗によって近似できるので、この方法には魅力があります。線形最小二乗から得る係数は log(p1) および p2 です。</p><pre class="codeinput">paramEstsLin = [ones(size(x)), x] \ log(y);
+paramEstsLin(1) = exp(paramEstsLin(1))
+</pre><pre class="codeoutput">
+paramEstsLin =
+
+   11.9312
+   -0.4462
+
+</pre><p>結果はどうでしたか? データに近似を重ねることで、それを確認できます。</p><pre class="codeinput">xx = linspace(min(x), max(x));
+yyLin = modelFun(paramEstsLin, xx);
+plot(x,y,<span class="string">'o'</span>, xx,yyLin,<span class="string">'-'</span>);
+xlabel(<span class="string">'x'</span>);ylabel(<span class="string">'y'</span>);
+legend({<span class="string">'Raw data'</span>,<span class="string">'Linear fit on the log scale'</span>},<span class="string">'location'</span>,<span class="string">'NE'</span>);
+</pre><img vspace="5" hspace="5" src="../xform2lineardemo_01.png" alt=""> <p>近似が生データにある傾向に従っていないことから、何か間違っていることがわかります。代わりに <tt>nlinfit</tt> を使用して非線形最小二乗を行った場合、どのような近似になるでしょうか?前の近似は、最適な近似ではありませんが、ラフな開始点として使用します。</p><pre class="codeinput">paramEsts = nlinfit(x, y, modelFun, paramEstsLin)
+</pre><pre class="codeoutput">
+paramEsts =
+
+    8.8145
+   -0.2885
+
+</pre><pre class="codeinput">yy = modelFun(paramEsts,xx);
+plot(x,y,<span class="string">'o'</span>, xx,yyLin,<span class="string">'-'</span>, xx,yy,<span class="string">'-'</span>);
+xlabel(<span class="string">'x'</span>);ylabel(<span class="string">'y'</span>);
+legend({<span class="string">'Raw data'</span>,<span class="string">'Linear fit on the log scale'</span>, <span class="string">'Nonlinear fit on the original scale'</span>},<span class="string">'location'</span>,<span class="string">'NE'</span>);
+</pre><img vspace="5" hspace="5" src="../xform2lineardemo_02.png" alt=""> <p><tt>nlinfit</tt> を使用した近似は分散したデータ点のおおよその中心を通ります。残差プロットは、一様に分散したゼロのようなものを示します。</p><pre class="codeinput">r = y-modelFun(paramEsts,x);
+plot(x,r,<span class="string">'+'</span>, [min(x) max(x)],[0 0],<span class="string">'k:'</span>);
+xlabel(<span class="string">'x'</span>); ylabel(<span class="string">'resdiuals'</span>);
+</pre><img vspace="5" hspace="5" src="../xform2lineardemo_03.png" alt=""> <p>では、線形近似のどこで問題が発生したのでしょうか?問題は対数変換にあります。データと 2 つの近似を対数スケールにプロットすると、極端な外れ値があることがわかります。</p><pre class="codeinput">plot(x,log(y),<span class="string">'o'</span>, xx,log(yyLin),<span class="string">'-'</span>, xx,log(yy),<span class="string">'-'</span>);
+xlabel(<span class="string">'x'</span>); ylabel(<span class="string">'log(y)'</span>);
+ylim([-5,3]);
+legend({<span class="string">'Raw data'</span>, <span class="string">'Linear fit on the log scale'</span>,<span class="string">'Nonlinear fit on the original scale'</span>},<span class="string">'location'</span>,<span class="string">'SW'</span>);
+</pre><img vspace="5" hspace="5" src="../xform2lineardemo_04.png" alt=""> <p>オリジナル データではこの観測は外れ値ではありません。対数スケールで外れ値になったのはなぜでしょうか?対数変換は、トレンド ラインをまっすぐにするために必要です。しかし、対数は非常に非線形の変換であるため、オリジナル スケールでの対称測定誤差が対数スケールで非対称になりました。外れ値には、オリジナル スケールでは最小の y 値 (0 に近い値) があったことに注目してください。対数変換はその最小の y 値をその近隣の値よりも &quot;拡張&quot; しました。対数スケールでは線形近似を行ったため、外れ値への影響が大きくなりました。</p><p>その 1 点における測定が若干異なっていれば、2 つの近似はよく似たものになっていた可能性があります。たとえば、</p><pre class="codeinput">y(11) = 1;
+paramEsts = nlinfit(x, y, modelFun, [10;-.3])
+</pre><pre class="codeoutput">
+paramEsts =
+
+    8.7618
+   -0.2833
+
+</pre><pre class="codeinput">paramEstsLin = [ones(size(x)), x] \ log(y);
+paramEstsLin(1) = exp(paramEstsLin(1))
+</pre><pre class="codeoutput">
+paramEstsLin =
+
+    9.6357
+   -0.3394
+
+</pre><pre class="codeinput">yy = modelFun(paramEsts,xx);
+yyLin = modelFun(paramEstsLin, xx);
+plot(x,y,<span class="string">'o'</span>, xx,yyLin,<span class="string">'-'</span>, xx,yy,<span class="string">'-'</span>);
+xlabel(<span class="string">'x'</span>);ylabel(<span class="string">'y'</span>);
+legend({<span class="string">'Raw data'</span>,<span class="string">'Linear fit on the log scale'</span>, <span class="string">'Nonlinear fit on the original scale'</span>},<span class="string">'location'</span>,<span class="string">'NE'</span>);
+</pre><img vspace="5" hspace="5" src="../xform2lineardemo_05.png" alt=""> <p>2 つの近似は依然として異なります。どちらが &quot;正しい&quot; のでしょうか? これに答えるためには、y の測定が加法的測定誤差ではなく、乗法的誤差による影響を受けたとします。これらの誤差は対称ではなく、オリジナル スケールの最小二乗も適切ではありません。一方、対数変換は対数スケールで誤差を対称にし、そのスケールでは線形最小二乗近似が適しています。</p><p>そのため、どちらの方法が &quot;正しい&quot; かは、データに対する仮定によって異なります。実際には、傾向に比べて雑音項が小さい場合、同じ x 値の近くの y 値は非対称的にはあまり拡張されないため、対数変換は &quot;ローカルに線形&quot; です。その場合、2 つの方法は基本的に同じ近似になります。しかし、雑音項が小さくない場合は、どのような仮定が現実的であるかを考えて、適切な近似法を使用してください。</p><p class="footer">Copyright 2005 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Pitfalls in Fitting Nonlinear Models by Transforming to Linearity  %   Copyright 2005 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:29:29 $  %% % Imagine that we have collected measurements on two variables, x and y, and % we want to model y as a function of x.  Assume that x is measured exactly, % while measurements of y are affected by additive, symmetric, zero-mean % errors. x = [5.72 4.22 5.72 3.59 5.04 2.66 5.02 3.11 0.13 2.26 ...      5.39 2.57 1.20 1.82 3.23 5.46 3.15 1.84 0.21 4.29 ...      4.61 0.36 3.76 1.59 1.87 3.14 2.45 5.36 3.44 3.41]'; y = [2.66 2.91 0.94 4.28 1.76 4.08 1.11 4.33 8.94 5.25 ...      0.02 3.88 6.43 4.08 4.90 1.33 3.63 5.49 7.23 0.88 ...      3.08 8.12 1.22 4.24 6.21 5.48 4.89 2.30 4.13 2.17]';  %% % Let's also assume that theory tells us that these data should follow a model % of exponential decay, y = p1*exp(p2*x), where p1 is positive and p2 is % negative.  To fit this model, we could use nonlinear least squares. modelFun = @(p,x) p(1)*exp(p(2)*x); %% % But the nonlinear model can also be transformed to a linear one by taking % the log on both sides, to get log(y) = log(p1) + p2*x. That's tempting, % because we can fit that linear model by ordinary linear least squares.  The % coefficients we'd get from a linear least squares would be log(p1) and p2. paramEstsLin = [ones(size(x)), x] \ log(y); paramEstsLin(1) = exp(paramEstsLin(1))  %% % How did we do?  We can superimpose the fit on the data to find out. xx = linspace(min(x), max(x)); yyLin = modelFun(paramEstsLin, xx); plot(x,y,'o', xx,yyLin,'-'); xlabel('x'); ylabel('y'); legend({'Raw data','Linear fit on the log scale'},'location','NE');  %% % Something seems to have gone wrong, because the fit doesn't really follow % the trend that we can see in the raw data.  What kind of fit would we get % if we used |nlinfit| to do nonlinear least squares instead?  We'll use the % previous fit as a rough starting point, even though it's not a great fit. paramEsts = nlinfit(x, y, modelFun, paramEstsLin) %% yy = modelFun(paramEsts,xx); plot(x,y,'o', xx,yyLin,'-', xx,yy,'-'); xlabel('x'); ylabel('y'); legend({'Raw data','Linear fit on the log scale', 'Nonlinear fit on the original scale'},'location','NE');  %% % The fit using |nlinfit| more or less passes through the center of the data % point scatter.  A residual plot shows something approximately like an even % scatter about zero. r = y-modelFun(paramEsts,x); plot(x,r,'+', [min(x) max(x)],[0 0],'k:'); xlabel('x'); ylabel('resdiuals');  %% % So what went wrong with the linear fit?  The problem is in log transform. If % we plot the data and the two fits on the log scale, we can see that there's % an extreme outlier. plot(x,log(y),'o', xx,log(yyLin),'-', xx,log(yy),'-'); xlabel('x'); ylabel('log(y)'); ylim([-5,3]); legend({'Raw data', 'Linear fit on the log scale','Nonlinear fit on the original scale'},'location','SW'); %% % That observation is not an outlier in the original data, so what happened to % make it one on the log scale?  The log transform is exactly the right thing % to straighten out the trend line.  But the log is a very nonlinear % transform, and so symmetric measurement errors on the original scale have % become asymmetric on the log scale.  Notice that the outlier had the smallest % y value on the original scale REPLACE_WITH_DASH_DASH close to zero.  The log transform has % "stretched out" that smallest y value more than its neighbors.  We made the % linear fit on the log scale, and so it is very much affected by that % outlier. % % Had the measurement at that one point been slightly different, the two fits % might have been much more similar.  For example,  y(11) = 1; paramEsts = nlinfit(x, y, modelFun, [10;-.3]) %% paramEstsLin = [ones(size(x)), x] \ log(y); paramEstsLin(1) = exp(paramEstsLin(1)) %% yy = modelFun(paramEsts,xx); yyLin = modelFun(paramEstsLin, xx); plot(x,y,'o', xx,yyLin,'-', xx,yy,'-'); xlabel('x'); ylabel('y'); legend({'Raw data', 'Linear fit on the log scale','Nonlinear fit on the original scale'},'location','NE');  %% % Still, the two fits are different.  Which one is "right"?  To answer that, % suppose that instead of additive measurement errors, measurements of y were % affected by multiplicative errors.  These errors would not be symmetric, and % least squares on the original scale would not be appropriate.  On the other % hand, the log transform would make the errors symmetric on the log scale, % and the linear least squares fit on that scale is appropriate. % % So, which method is "right" depends on what assumptions you are willing to % make about your data.  In practice, when the noise term is small relative to % the trend, the log transform is "locally linear" in the sense that y values % near the same x value will not be stretched out too asymmetrically.  In that % case, the two methods lead to essentially the same fit.  But when the noise % term is not small, you should consider what assumptions are realistic, and % choose an appropriate fitting method.   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

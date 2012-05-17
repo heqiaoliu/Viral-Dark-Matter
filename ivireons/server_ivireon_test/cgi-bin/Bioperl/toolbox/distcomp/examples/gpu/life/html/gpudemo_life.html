@@ -1,0 +1,287 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>GPU Life Demo</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-07"><meta name="DC.source" content="gpudemo_life.m"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h1>GPU Life Demo</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#3">Setting up the kernel</a></li><li><a href="#4">Setting up the game board</a></li><li><a href="#5">Creating the data on the GPU</a></li><li><a href="#6">Playing the Game of Life</a></li><li><a href="#9">Helper functions</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>This demo plays Conway's Game of Life on the GPU. This is effectively a very simple "stencil" computation on the GPU, demonstrating how to use dynamically-sized shared memory. The thread block size can be configured at runtime. Each thread block loads a portion of the game board into shared memory, plus a border of "ghost cells". The amount of shared memory therefore depends on the thread block size.</p><pre class="codeinput"><span class="keyword">function</span> gpudemo_life( opt_N, opt_start_board )
+</pre><h2>Setting up the kernel<a name="3"></a></h2><p>Define the name of the kernel that we are going to use, and locate the CU source and PTX file. See the <a href="matlab:edit(fullfile(matlabroot,'toolbox','distcomp','examples','gpu','life','life_kernel_dynblock.cu'))">code</a> for the kernel</p><pre class="codeinput">basename = <span class="string">'life_kernel_dynblock'</span>;
+cuname   = sprintf( <span class="string">'%s.cu'</span>, basename );
+ptxname  = sprintf( <span class="string">'%s.%s'</span>, basename, parallel.gpu.ptxext() );
+
+<span class="comment">% Load the kernel object</span>
+kernel   = parallel.gpu.CUDAKernel( ptxname, cuname, <span class="string">'life'</span> );
+
+<span class="comment">% Choose the thread block size for playing the game of life.</span>
+kernel.ThreadBlockSize = [16 16];
+
+<span class="comment">% The input data is of type |uint8|, and each thread block loads up a border</span>
+<span class="comment">% of ghost cells, therefore the total number of bytes of dynamic shared</span>
+<span class="comment">% memory required is as follows:</span>
+kernel.SharedMemorySize = prod( (2 + kernel.ThreadBlockSize) );
+</pre><h2>Setting up the game board<a name="4"></a></h2><p>Here we choose how many iterations to run the game over, define the starting game board, and set up the kernel grid size so that each thread operates on one element of the board.</p><pre class="codeinput"><span class="keyword">if</span> nargin &lt; 1
+    N = 20;
+<span class="keyword">else</span>
+    N = opt_N;
+<span class="keyword">end</span>
+
+<span class="comment">% Choose the starting game board</span>
+<span class="keyword">if</span> nargin &lt; 2
+    boardCPU = uint8( rand( 192, 192 ) &gt; 0.5 );
+<span class="keyword">else</span>
+    boardCPU = uint8( opt_start_board );
+<span class="keyword">end</span>
+
+<span class="comment">% Extract the size of the board for calculating the kernel execution grid</span>
+<span class="comment">% size.</span>
+[m, n] = size( boardCPU );
+
+<span class="comment">% Choose the grid size based on block size and board size</span>
+kernel.GridSize = ceil( [n, m] ./ kernel.ThreadBlockSize(1:2) );
+</pre><h2>Creating the data on the GPU<a name="5"></a></h2><p>Create the initial board as a GPUArray. This transfers the data to the GPU where it will be overwritten on each iteration of the game of life.</p><pre class="codeinput">board = parallel.gpu.GPUArray( boardCPU );
+</pre><h2>Playing the Game of Life<a name="6"></a></h2><p>Loop over the game of life. Note that "board" is overwritten each time.</p><pre class="codeinput"><span class="comment">% Set up the figure</span>
+[~, ploth] = iGetOrCreateFigure( m, n );
+
+<span class="keyword">for</span> ii=1:N
+    board = feval( kernel, board, m, n );
+    <span class="comment">% Display the board</span>
+    [i, j] = find( gather( board ) );
+    set( ploth, <span class="string">'XData'</span>, j, <span class="string">'YData'</span>, i );
+    <span class="comment">% Pause a short while</span>
+    drawnow(); pause( 0.05 );
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="gpudemo_life_01.png" alt=""> <pre class="codeinput">snapnow;
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><h2>Helper functions<a name="9"></a></h2><p>Simple helper to create a figure with a plot similar to MATLAB's life demo</p><pre class="codeinput"><span class="keyword">function</span> [axh, ploth] = iGetOrCreateFigure( m, n )
+
+tag = <span class="string">'GPU:Life'</span>;
+
+figh = findall( 0, <span class="string">'-depth'</span>, 1, <span class="string">'Tag'</span>, tag );
+
+<span class="keyword">if</span> isempty( figh )
+    figh=figure( <span class="keyword">...</span>
+        <span class="string">'Name'</span>,<span class="string">'Life: Conway''s Game of Life on the GPU'</span>, <span class="keyword">...</span>
+        <span class="string">'NumberTitle'</span>,<span class="string">'off'</span>, <span class="keyword">...</span>
+        <span class="string">'ToolBar'</span>, <span class="string">'none'</span>, <span class="keyword">...</span>
+        <span class="string">'MenuBar'</span>, <span class="string">'none'</span>, <span class="keyword">...</span>
+        <span class="string">'IntegerHandle'</span>, <span class="string">'off'</span>, <span class="keyword">...</span>
+        <span class="string">'HandleVisibility'</span>, <span class="string">'off'</span>, <span class="keyword">...</span>
+        <span class="string">'DoubleBuffer'</span>,<span class="string">'on'</span>, <span class="keyword">...</span>
+        <span class="string">'Visible'</span>,<span class="string">'on'</span>, <span class="keyword">...</span>
+        <span class="string">'Color'</span>,<span class="string">'white'</span>, <span class="keyword">...</span>
+        <span class="string">'BackingStore'</span>,<span class="string">'off'</span>, <span class="keyword">...</span>
+        <span class="string">'Tag'</span>, tag );
+<span class="keyword">end</span>
+clf( figh );
+figure( figh );
+axh = axes( <span class="keyword">...</span>
+    <span class="string">'Parent'</span>, figh, <span class="keyword">...</span><span class="comment">.</span>
+    <span class="string">'Units'</span>,<span class="string">'normalized'</span>, <span class="keyword">...</span>
+    <span class="string">'Position'</span>,[0.05 0.05 0.75 0.90], <span class="keyword">...</span>
+    <span class="string">'XLim'</span>, [0 n + 1], <span class="keyword">...</span>
+    <span class="string">'YLim'</span>, [0 m + 1], <span class="keyword">...</span>
+    <span class="string">'Visible'</span>,<span class="string">'off'</span>, <span class="keyword">...</span>
+    <span class="string">'DrawMode'</span>,<span class="string">'fast'</span>, <span class="keyword">...</span>
+    <span class="string">'NextPlot'</span>,<span class="string">'add'</span>);
+ploth = line(0,0, <span class="keyword">...</span>
+             <span class="string">'Marker'</span>, <span class="string">'.'</span>, <span class="keyword">...</span>
+             <span class="string">'LineStyle'</span>, <span class="string">'none'</span>, <span class="keyword">...</span>
+             <span class="string">'Color'</span>,<span class="string">'blue'</span>, <span class="keyword">...</span>
+             <span class="string">'MarkerSize'</span>,12, <span class="keyword">...</span>
+             <span class="string">'Parent'</span>, axh );
+
+
+<span class="keyword">end</span>
+</pre><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+      Published with MATLAB&reg; 7.11<br></p></div><!--
+##### SOURCE BEGIN #####
+%% GPU Life Demo
+%% Introduction
+% This demo plays Conway's Game of Life on the GPU. This is effectively a
+% very simple "stencil" computation on the GPU, demonstrating how to use
+% dynamically-sized shared memory. The thread block size can be configured
+% at runtime. Each thread block loads a portion of the game board into
+% shared memory, plus a border of "ghost cells". The amount of shared memory
+% therefore depends on the thread block size.
+
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.8.1.2.1 $   $Date: 2010/06/21 17:55:27 $
+
+function gpudemo_life( opt_N, opt_start_board )
+
+%% Setting up the kernel
+% Define the name of the kernel that we are going to use, and locate the CU
+% source and PTX file. See the 
+% <matlab:edit(fullfile(matlabroot,'toolbox','distcomp','examples','gpu','life','life_kernel_dynblock.cu')) code>
+% for the kernel
+
+basename = 'life_kernel_dynblock';
+cuname   = sprintf( '%s.cu', basename );
+ptxname  = sprintf( '%s.%s', basename, parallel.gpu.ptxext() );
+
+% Load the kernel object
+kernel   = parallel.gpu.CUDAKernel( ptxname, cuname, 'life' );
+
+% Choose the thread block size for playing the game of life. 
+kernel.ThreadBlockSize = [16 16];
+
+% The input data is of type |uint8|, and each thread block loads up a border
+% of ghost cells, therefore the total number of bytes of dynamic shared
+% memory required is as follows:
+kernel.SharedMemorySize = prod( (2 + kernel.ThreadBlockSize) );
+
+%% Setting up the game board
+% Here we choose how many iterations to run the game over, define the
+% starting game board, and set up the kernel grid size so that each thread
+% operates on one element of the board.
+
+if nargin < 1
+    N = 20;
+else
+    N = opt_N;
+end
+
+% Choose the starting game board
+if nargin < 2
+    boardCPU = uint8( rand( 192, 192 ) > 0.5 );
+else
+    boardCPU = uint8( opt_start_board );
+end
+
+% Extract the size of the board for calculating the kernel execution grid
+% size.
+[m, n] = size( boardCPU );
+
+% Choose the grid size based on block size and board size
+kernel.GridSize = ceil( [n, m] ./ kernel.ThreadBlockSize(1:2) );
+
+%% Creating the data on the GPU
+% Create the initial board as a GPUArray. This transfers the data to the GPU
+% where it will be overwritten on each iteration of the game of life.
+
+board = parallel.gpu.GPUArray( boardCPU );
+
+
+%% Playing the Game of Life
+% Loop over the game of life. Note that "board" is overwritten each time.
+
+% Set up the figure
+[~, ploth] = iGetOrCreateFigure( m, n );
+
+for ii=1:N
+    board = feval( kernel, board, m, n );
+    % Display the board
+    [i, j] = find( gather( board ) );
+    set( ploth, 'XData', j, 'YData', i );
+    % Pause a short while
+    drawnow(); pause( 0.05 );
+end
+
+%% 
+snapnow;
+end
+
+
+%% Helper functions
+% Simple helper to create a figure with a plot similar to MATLAB's life demo
+function [axh, ploth] = iGetOrCreateFigure( m, n )
+
+tag = 'GPU:Life';
+
+figh = findall( 0, '-depth', 1, 'Tag', tag );
+
+if isempty( figh )
+    figh=figure( ...
+        'Name','Life: Conway''s Game of Life on the GPU', ...
+        'NumberTitle','off', ...
+        'ToolBar', 'none', ...
+        'MenuBar', 'none', ...
+        'IntegerHandle', 'off', ...
+        'HandleVisibility', 'off', ...
+        'DoubleBuffer','on', ...
+        'Visible','on', ...
+        'Color','white', ...
+        'BackingStore','off', ...
+        'Tag', tag );
+end
+clf( figh );
+figure( figh );
+axh = axes( ...
+    'Parent', figh, ....
+    'Units','normalized', ...
+    'Position',[0.05 0.05 0.75 0.90], ...
+    'XLim', [0 n + 1], ...
+    'YLim', [0 m + 1], ...
+    'Visible','off', ...
+    'DrawMode','fast', ...
+    'NextPlot','add');
+ploth = line(0,0, ...
+             'Marker', '.', ...
+             'LineStyle', 'none', ...
+             'Color','blue', ...
+             'MarkerSize',12, ...
+             'Parent', axh );
+
+
+end
+
+##### SOURCE END #####
+--></body></html>

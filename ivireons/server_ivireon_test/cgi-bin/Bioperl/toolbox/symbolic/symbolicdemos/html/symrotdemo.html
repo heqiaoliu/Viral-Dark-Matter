@@ -1,0 +1,139 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Plane Rotations</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="symrotdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit symrotdemo">Open symrotdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo symrotdemo">Run in the Command Window</a></div></div><div class="content"><h1>Plane Rotations</h1><!--introduction--><!--/introduction--><p>Create a symbolic variable named t.</p><pre class="codeinput">t = sym(<span class="string">'t'</span>)
+</pre><pre class="codeoutput"> 
+t =
+ 
+t
+ 
+</pre><p>Create a 2-by-2 matrix representing a plane rotation through an angle t.</p><pre class="codeinput">G = [ cos(t) sin(t); -sin(t) cos(t)]
+</pre><pre class="codeoutput"> 
+G =
+ 
+[  cos(t), sin(t)]
+[ -sin(t), cos(t)]
+ 
+</pre><p>Compute the matrix product of G with itself.</p><pre class="codeinput">G*G
+</pre><pre class="codeoutput"> 
+ans =
+ 
+[ cos(t)^2 - sin(t)^2,     2*cos(t)*sin(t)]
+[    -2*cos(t)*sin(t), cos(t)^2 - sin(t)^2]
+ 
+</pre><p>This should represent a rotation through an angle of 2*t. Simplification using trigonometric identities is necessary.</p><pre class="codeinput">ans = simple(ans)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+[  cos(2*t), sin(2*t)]
+[ -sin(2*t), cos(2*t)]
+ 
+</pre><p>G is an orthogonal matrix; its transpose is its inverse.</p><pre class="codeinput">G.'*G
+
+ans = simple(ans)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+[ cos(t)^2 + sin(t)^2,                   0]
+[                   0, cos(t)^2 + sin(t)^2]
+ 
+ 
+ans =
+ 
+[ 1, 0]
+[ 0, 1]
+ 
+</pre><p>What are the eigenvalues of G?</p><pre class="codeinput">e = eig(G)
+</pre><pre class="codeoutput"> 
+e =
+ 
+ cos(t) - sin(t)*i
+ cos(t) + sin(t)*i
+ 
+</pre><p>Repeatedly apply the simplification rules.</p><pre class="codeinput">e, <span class="keyword">for</span> k = 1:4, e = simple(e), <span class="keyword">end</span>
+</pre><pre class="codeoutput"> 
+e =
+ 
+ cos(t) - sin(t)*i
+ cos(t) + sin(t)*i
+ 
+ 
+e =
+ 
+ 1/exp(t*i)
+   exp(t*i)
+ 
+ 
+e =
+ 
+ 1/exp(t*i)
+   exp(t*i)
+ 
+ 
+e =
+ 
+ 1/exp(t*i)
+   exp(t*i)
+ 
+ 
+e =
+ 
+ 1/exp(t*i)
+   exp(t*i)
+ 
+</pre><p class="footer">Copyright 1993-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Plane Rotations
+
+%  Copyright 1993-2009 The MathWorks, Inc.
+%  $Revision: 1.1.6.2 $  $Date: 2009/04/16 00:44:13 $
+
+%%
+% Create a symbolic variable named t.
+
+t = sym('t')
+
+%%
+% Create a 2-by-2 matrix representing a plane rotation through an angle t.
+
+G = [ cos(t) sin(t); -sin(t) cos(t)]
+
+%%
+% Compute the matrix product of G with itself.
+
+G*G
+
+%%
+% This should represent a rotation through an angle of 2*t.
+% Simplification using trigonometric identities is necessary.
+
+ans = simple(ans)
+
+%%
+% G is an orthogonal matrix; its transpose is its inverse.
+
+G.'*G
+
+ans = simple(ans)
+
+%%
+% What are the eigenvalues of G?
+
+e = eig(G)
+
+%%
+% Repeatedly apply the simplification rules.
+
+e, for k = 1:4, e = simple(e), end
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

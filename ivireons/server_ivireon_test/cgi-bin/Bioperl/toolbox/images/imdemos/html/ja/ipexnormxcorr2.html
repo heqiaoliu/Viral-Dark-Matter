@@ -1,0 +1,67 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>正規化された相互相関を使ったイメージのレジストレーション</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipexnormxcorr2.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexnormxcorr2">エディターで ipexnormxcorr2.m を開く</a></div><div class="right"><a href="matlab:echodemo ipexnormxcorr2">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>正規化された相互相関を使ったイメージのレジストレーション</h1><!--introduction--><p>時々、1 つのイメージは別の一部になります。正規化された相互相関は、それらの 1 つを変換することで、イメージをどのように結合し、または整合するかを決定するために使うことができます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">手順 1:イメージの読み込み</a></li><li><a href="#2">手順 2:各イメージの部分領域の選択</a></li><li><a href="#3">手順 3:正規化した相互相関の実行とピークの座標の検出</a></li><li><a href="#4">手順 4:イメージ間の全オフセットの検出</a></li><li><a href="#5">手順 5:玉ねぎのイメージがピーマンのイメージから抽出されたかどうかの確認</a></li><li><a href="#6">手順 6:ピーマンのイメージのサイズに合わせて玉ねぎのイメージを付加</a></li><li><a href="#7">手順 7:ピーマンのイメージに玉ねぎのイメージを透過的に重ね書き</a></li></ul></div><h2>手順 1:イメージの読み込み<a name="1"></a></h2><pre class="codeinput">onion = imread(<span class="string">'onion.png'</span>);
+peppers = imread(<span class="string">'peppers.png'</span>);
+
+imshow(onion)
+figure, imshow(peppers)
+</pre><img vspace="5" hspace="5" src="../ipexnormxcorr2_01.png" alt=""> <img vspace="5" hspace="5" src="../ipexnormxcorr2_02.png" alt=""> <h2>手順 2:各イメージの部分領域の選択<a name="2"></a></h2><p>似ている領域を選択することが重要です。イメージ <tt>sub_onion</tt> はテンプレートであり、イメージ <tt>sub_peppers</tt> より小さくなければなりません。以下の非対話型スクリプト<b></b>または対話型スクリプトを使用して、これらの部分領域を取得できます。</p><pre class="codeinput"><span class="comment">% non-interactively</span>
+rect_onion = [111 33 65 58];
+rect_peppers = [163 47 143 151];
+sub_onion = imcrop(onion,rect_onion);
+sub_peppers = imcrop(peppers,rect_peppers);
+
+<span class="comment">% OR</span>
+
+<span class="comment">% interactively</span>
+<span class="comment">%[sub_onion,rect_onion] = imcrop(onion); % choose the pepper below the onion</span>
+<span class="comment">%[sub_peppers,rect_peppers] = imcrop(peppers); % choose the whole onion</span>
+
+<span class="comment">% display sub images</span>
+figure, imshow(sub_onion)
+figure, imshow(sub_peppers)
+</pre><img vspace="5" hspace="5" src="../ipexnormxcorr2_03.png" alt=""> <img vspace="5" hspace="5" src="../ipexnormxcorr2_04.png" alt=""> <h2>手順 3:正規化した相互相関の実行とピークの座標の検出<a name="3"></a></h2><p>正規化した相互相関を計算し、表面プロットとして表示します。相互相関行列のピークは、sub_images が最適相関である場合に発生します。関数 <tt>normxcorr2</tt> は、グレースケール イメージでのみ機能するので、normxcorr2 に各サブイメージの赤い面を渡します。</p><pre class="codeinput">c = normxcorr2(sub_onion(:,:,1),sub_peppers(:,:,1));
+figure, surf(c), shading <span class="string">flat</span>
+</pre><img vspace="5" hspace="5" src="../ipexnormxcorr2_05.png" alt=""> <h2>手順 4:イメージ間の全オフセットの検出<a name="4"></a></h2><p>イメージ間の全オフセットまたは変換は、相互相関行列のピークの位置と、サブイメージのサイズおよび位置によって異なります。</p><pre class="codeinput"><span class="comment">% offset found by correlation</span>
+[max_c, imax] = max(abs(c(:)));
+[ypeak, xpeak] = ind2sub(size(c),imax(1));
+corr_offset = [(xpeak-size(sub_onion,2))
+               (ypeak-size(sub_onion,1))];
+
+<span class="comment">% relative offset of position of subimages</span>
+rect_offset = [(rect_peppers(1)-rect_onion(1))
+               (rect_peppers(2)-rect_onion(2))];
+
+<span class="comment">% total offset</span>
+offset = corr_offset + rect_offset;
+xoffset = offset(1);
+yoffset = offset(2);
+</pre><h2>手順 5:玉ねぎのイメージがピーマンのイメージから抽出されたかどうかの確認<a name="5"></a></h2><p><tt>onion</tt> が <tt>peppers</tt> の内に収まる場所について考えます。</p><pre class="codeinput">xbegin = round(xoffset+1);
+xend   = round(xoffset+ size(onion,2));
+ybegin = round(yoffset+1);
+yend   = round(yoffset+size(onion,1));
+
+<span class="comment">% extract region from peppers and compare to onion</span>
+extracted_onion = peppers(ybegin:yend,xbegin:xend,:);
+<span class="keyword">if</span> isequal(onion,extracted_onion)
+   disp(<span class="string">'onion.png was extracted from peppers.png'</span>)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">onion.png was extracted from peppers.png
+</pre><h2>手順 6:ピーマンのイメージのサイズに合わせて玉ねぎのイメージを付加<a name="6"></a></h2><p>上記で決定したオフセットを使用して、<tt>onion</tt> イメージを付加し、<tt>peppers</tt> に重ね書きします。</p><pre class="codeinput">recovered_onion = uint8(zeros(size(peppers)));
+recovered_onion(ybegin:yend,xbegin:xend,:)= onion;
+figure, imshow(recovered_onion)
+</pre><img vspace="5" hspace="5" src="../ipexnormxcorr2_06.png" alt=""> <h2>手順 7:ピーマンのイメージに玉ねぎのイメージを透過的に重ね書き<a name="7"></a></h2><p>玉ねぎを不透明にし、他の場所を半透明にするための透明度マスクを作成します。</p><pre class="codeinput">[m,n,p] = size(peppers);
+mask = ones(m,n);
+i = find(recovered_onion(:,:,1)==0);
+mask(i) = .2; <span class="comment">% try experimenting with different levels of</span>
+              <span class="comment">% transparency</span>
+
+<span class="comment">% overlay images with transparency</span>
+figure, imshow(peppers(:,:,1)) <span class="comment">% show only red plane of peppers</span>
+hold <span class="string">on</span>
+h = imshow(recovered_onion); <span class="comment">% overlay recovered_onion</span>
+set(h,<span class="string">'AlphaData'</span>,mask)
+</pre><img vspace="5" hspace="5" src="../ipexnormxcorr2_07.png" alt=""> <p class="footer">Copyright 1993-2005 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Registering an Image Using Normalized Cross-Correlation % Sometimes one image is a subset of another. Normalized cross-correlation % can be used to determine how to register or align the images by % translating one of them.  % Copyright 1993-2005 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:50 $  %% Step 1: Read Image  onion = imread('onion.png'); peppers = imread('peppers.png');  imshow(onion) figure, imshow(peppers)   %% Step 2: Choose Subregions of Each Image % It is important to choose regions that are similar. The image |sub_onion| % will be the template, and must be smaller than the image |sub_peppers|.  % You can get these sub regions using either the non-interactive script % below *or* the interactive script.  % non-interactively rect_onion = [111 33 65 58]; rect_peppers = [163 47 143 151]; sub_onion = imcrop(onion,rect_onion); sub_peppers = imcrop(peppers,rect_peppers);  % OR      % interactively %[sub_onion,rect_onion] = imcrop(onion); % choose the pepper below the onion %[sub_peppers,rect_peppers] = imcrop(peppers); % choose the whole onion  % display sub images figure, imshow(sub_onion) figure, imshow(sub_peppers)   %% Step 3: Do Normalized Cross-Correlation and Find Coordinates of Peak % Calculate the normalized cross-correlation and display it as a surface % plot. The peak of the cross-correlation matrix occurs where the % sub_images are best correlated. |normxcorr2| only works on grayscale % images, so we pass it the red plane of each sub image.  c = normxcorr2(sub_onion(:,:,1),sub_peppers(:,:,1)); figure, surf(c), shading flat  %% Step 4: Find the Total Offset Between the Images % The total offset or translation between images depends on the location of % the peak in the cross-correlation matrix, and on the size and position of % the sub images.  % offset found by correlation [max_c, imax] = max(abs(c(:))); [ypeak, xpeak] = ind2sub(size(c),imax(1)); corr_offset = [(xpeak-size(sub_onion,2))                 (ypeak-size(sub_onion,1))];  % relative offset of position of subimages rect_offset = [(rect_peppers(1)-rect_onion(1))                 (rect_peppers(2)-rect_onion(2))];  % total offset offset = corr_offset + rect_offset; xoffset = offset(1); yoffset = offset(2);  %% Step 5: See if the Onion Image was Extracted from the Peppers Image % Figure out where |onion| falls inside of |peppers|.   xbegin = round(xoffset+1); xend   = round(xoffset+ size(onion,2)); ybegin = round(yoffset+1); yend   = round(yoffset+size(onion,1));  % extract region from peppers and compare to onion extracted_onion = peppers(ybegin:yend,xbegin:xend,:); if isequal(onion,extracted_onion)     disp('onion.png was extracted from peppers.png') end  %% Step 6: Pad the Onion Image to the Size of the Peppers Image % Pad the |onion| image to overlay on |peppers|, using the offset % determined above.  recovered_onion = uint8(zeros(size(peppers))); recovered_onion(ybegin:yend,xbegin:xend,:) = onion; figure, imshow(recovered_onion)  %% Step 7: Transparently Overlay Onion Image on Peppers Image % Create transparency mask to be opaque for onion and semi-transparent % elsewhere.  [m,n,p] = size(peppers); mask = ones(m,n);  i = find(recovered_onion(:,:,1)==0); mask(i) = .2; % try experimenting with different levels of                % transparency  % overlay images with transparency figure, imshow(peppers(:,:,1)) % show only red plane of peppers hold on h = imshow(recovered_onion); % overlay recovered_onion set(h,'AlphaData',mask)   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

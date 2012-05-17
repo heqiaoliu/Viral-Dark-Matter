@@ -1,0 +1,145 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>基本的な行列演算</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="intro.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit intro">エディターで intro.m を開く</a></div><div class="right"><a href="matlab:echodemo intro">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>基本的な行列演算</h1><!--introduction--><p>これは、MATLAB&reg; 言語のいくつかの特徴を示すデモです。</p><!--/introduction--><p>最初に 9 つの要素を持つ単純なベクトル <tt>a</tt> を作成しましょう。</p><pre class="codeinput">a = [1 2 3 4 6 4 3 4 5]
+</pre><pre class="codeoutput">
+a =
+
+     1     2     3     4     6     4     3     4     5
+
+</pre><p>ベクトル <tt>a</tt> の各要素に 2 を加え、結果を新しいベクトルに格納します。</p><p>MATLAB では、ベクトルや行列演算の特別な操作は必要ありません。</p><pre class="codeinput">b = a + 2
+</pre><pre class="codeoutput">
+b =
+
+     3     4     5     6     8     6     5     6     7
+
+</pre><p>MATLAB でグラフを作成する場合、1 つのコマンドで簡単に行えます。ベクトル加算の結果をグリッド ライン付きでプロットしてみましょう。</p><pre class="codeinput">plot(b)
+grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../intro_01.png" alt=""> <p>MATLAB はこの他の種類のグラフも軸ラベル付きで表示することができます。</p><pre class="codeinput">bar(b)
+xlabel(<span class="string">'Sample #'</span>)
+ylabel(<span class="string">'Pounds'</span>)
+</pre><img vspace="5" hspace="5" src="../intro_02.png" alt=""> <p>MATLAB は記号によるプロットも行うことができます。これは、データ点をマークするのにアスタリスク (星印) * を使った例です。MATLAB では、この他にもさまざまな記号、ライン タイプでプロットすることができます。</p><pre class="codeinput">plot(b,<span class="string">'*'</span>)
+axis([0 10 0 10])
+</pre><img vspace="5" hspace="5" src="../intro_03.png" alt=""> <p>MATLAB は、行列演算が優れています。</p><p>行列の行の区切りにセミコロン (;) を使って、ベクトルと同じように簡単に行列を作成します。</p><pre class="codeinput">A = [1 2 0; 2 5 -1; 4 10 -1]
+</pre><pre class="codeoutput">
+A =
+
+     1     2     0
+     2     5    -1
+     4    10    -1
+
+</pre><p>行列 <tt>A</tt> の転置も簡単に求めることができます。</p><pre class="codeinput">B = A'
+</pre><pre class="codeoutput">
+B =
+
+     1     2     4
+     2     5    10
+     0    -1    -1
+
+</pre><p>2 つの行列の乗算を行います。</p><p>MATLAB は、行列を数値の集合として扱うように制限しません。MATLAB は行列を扱っていることを認識した上で、それに応じて計算を調整します。</p><pre class="codeinput">C = A * B
+</pre><pre class="codeoutput">
+C =
+
+     5    12    24
+    12    30    59
+    24    59   117
+
+</pre><p>今度は行列の乗算ではなく、.* 演算子を使って 2 つの行列や、ベクトルの要素ごとの乗算を行います。</p><pre class="codeinput">C = A .* B
+</pre><pre class="codeoutput">
+C =
+
+     1     4     0
+     4    25   -10
+     0   -10     1
+
+</pre><p>逆行列を求めましょう ...</p><pre class="codeinput">X = inv(A)
+</pre><pre class="codeoutput">
+X =
+
+     5     2    -2
+    -2    -1     1
+     0    -2     1
+
+</pre><p>... そして、その後で行列にその逆行列を乗じると、単位行列になることがわかります。</p><pre class="codeinput">I = inv(A) * A
+</pre><pre class="codeoutput">
+I =
+
+     1     0     0
+     0     1     0
+     0     0     1
+
+</pre><p>MATLAB には、一般的な行列演算のほとんどを行うための関数が提供されています。</p><p>固有値を得る関数もあります ...</p><pre class="codeinput">eig(A)
+</pre><pre class="codeoutput">
+ans =
+
+    3.7321
+    0.2679
+    1.0000
+
+</pre><p>... 同様に、特異値分解を行います。</p><pre class="codeinput">svd(A)
+</pre><pre class="codeoutput">
+ans =
+
+   12.3171
+    0.5149
+    0.1577
+
+</pre><p>関数 &quot;poly&quot; は、特性多項式の係数を含むベクトルを生成します。</p><p>行列 <tt>A</tt> の特性多項式は、以下の式で表されます。</p><p><img src="../intro_eq48038.png" alt="$$det(\lambda I - A)$$"></p><pre class="codeinput">p = round(poly(A))
+</pre><pre class="codeoutput">
+p =
+
+     1    -5     5    -1
+
+</pre><p>関数 <tt>roots</tt> を使用すると、多項式の根を簡単に求めることができます。</p><p>これらはまさに、元の行列の固有値です。</p><pre class="codeinput">roots(p)
+</pre><pre class="codeoutput">
+ans =
+
+    3.7321
+    1.0000
+    0.2679
+
+</pre><p>MATLAB は単なる行列演算を超えて、いろいろな応用があります。</p><p>2 つのベクトルの畳み込みを行うには ...</p><pre class="codeinput">q = conv(p,p)
+</pre><pre class="codeoutput">
+q =
+
+     1   -10    35   -52    35   -10     1
+
+</pre><p>... または、もう一度畳み込みを行い、結果をプロットします。</p><pre class="codeinput">r = conv(p,q)
+plot(r);
+</pre><pre class="codeoutput">
+r =
+
+     1   -15    90  -278   480  -480   278   -90    15    -1
+
+</pre><img vspace="5" hspace="5" src="../intro_04.png" alt=""> <p><tt>who</tt> または <tt>whos</tt> コマンドを使うと、いつでもメモリ内に格納されている変数のリストが得られます。</p><pre class="codeinput">whos
+</pre><pre class="codeoutput">  Name      Size            Bytes  Class     Attributes
+
+  A         3x3                72  double              
+  B         3x3                72  double              
+  C         3x3                72  double              
+  I         3x3                72  double              
+  X         3x3                72  double              
+  a         1x9                72  double              
+  ans       3x1                24  double              
+  b         1x9                72  double              
+  p         1x4                32  double              
+  q         1x7                56  double              
+  r         1x10               80  double              
+
+</pre><p>特定の変数の値を見るときには、変数名を入力します。</p><pre class="codeinput">A
+</pre><pre class="codeoutput">
+A =
+
+     1     2     0
+     2     5    -1
+     4    10    -1
+
+</pre><p>ステートメントをコンマまたはセミコロンで区切ると、1 行に複数のステートメントを記述することができます。</p><p>演算の結果を格納する変数を割り当てなかった場合、結果は <tt>ans</tt> という一時変数に格納されます。</p><pre class="codeinput">sqrt(-1)
+</pre><pre class="codeoutput">
+ans =
+
+        0 + 1.0000i
+
+</pre><p>このように、MATLAB は、複素数も計算で簡単に扱うことができます。</p><p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Basic Matrix Operations % This is a demonstration of some aspects of the MATLAB(R) language. % % Copyright 1984-2007 The MathWorks, Inc. % $Revision: 1.1.6.10.2.1 $ $Date: 2010/07/29 21:28:52 $  %% % First, let's create a simple vector with 9 elements called |a|.  a = [1 2 3 4 6 4 3 4 5]  %% % Now let's add 2 to each element of our vector, |a|, and store the result in a % new vector. %  % Notice how MATLAB requires no special handling of vector or matrix math.  b = a + 2  %% % Creating graphs in MATLAB is as easy as one command.  Let's plot the result of % our vector addition with grid lines.  plot(b) grid on  %% % MATLAB can make other graph types as well, with axis labels.  bar(b) xlabel('Sample #') ylabel('Pounds')  %% % MATLAB can use symbols in plots as well.  Here is an example using stars % to mark the points.  MATLAB offers a variety of other symbols and line % types.  plot(b,'*') axis([0 10 0 10])  %% % One area in which MATLAB excels is matrix computation. %  % Creating a matrix is as easy as making a vector, using semicolons (;) to % separate the rows of a matrix.  A = [1 2 0; 2 5 -1; 4 10 -1]  %% % We can easily find the transpose of the matrix |A|.  B = A'  %% % Now let's multiply these two matrices together. %  % Note again that MATLAB doesn't require you to deal with matrices as a % collection of numbers.  MATLAB knows when you are dealing with matrices and % adjusts your calculations accordingly.  C = A * B  %% % Instead of doing a matrix multiply, we can multiply the corresponding elements % of two matrices or vectors using the .* operator.  C = A .* B  %% % Let's find the inverse of a matrix ...  X = inv(A)  %% % ... and then illustrate the fact that a matrix times its inverse is the % identity matrix.  I = inv(A) * A  %% % MATLAB has functions for nearly every type of common matrix calculation. %  % There are functions to obtain eigenvalues ...  eig(A)  %% % ... as well as the singular value decomposition.  svd(A)  %% % The "poly" function generates a vector containing the coefficients of the % characteristic polynomial. %  % The characteristic polynomial of a matrix |A| is %  % $$det(\lambda I - A)$$  p = round(poly(A))  %% % We can easily find the roots of a polynomial using the |roots| function. %  % These are actually the eigenvalues of the original matrix.  roots(p)  %% % MATLAB has many applications beyond just matrix computation. %  % To convolve two vectors ...  q = conv(p,p)  %% % ... or convolve again and plot the result.  r = conv(p,q) plot(r);  %% % At any time, we can get a listing of the variables we have stored in memory % using the |who| or |whos| command.  whos  %% % You can get the value of a particular variable by typing its name.  A  %% % You can have more than one statement on a single line by separating each % statement with commas or semicolons. %  % If you don't assign a variable to store the result of an operation, the result % is stored in a temporary variable called |ans|.  sqrt(-1)  %% % As you can see, MATLAB easily deals with complex numbers in its % calculations.   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

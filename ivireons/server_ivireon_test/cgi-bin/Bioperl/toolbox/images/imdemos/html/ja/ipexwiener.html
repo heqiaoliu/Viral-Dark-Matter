@@ -1,0 +1,54 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>Wiener フィルターを使ったイメージのブレ除去</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipexwiener.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexwiener">エディターで ipexwiener.m を開く</a></div><div class="right"><a href="matlab:echodemo ipexwiener">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>Wiener フィルターを使ったイメージのブレ除去</h1><!--introduction--><p>Wiener のデコンボリューションは、点像強度関数と既知のノイズレベルが既知であるか、推定可能な場合に役立ちます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">イメージの読み込み</a></li><li><a href="#2">動きによるブレのシミュレーション</a></li><li><a href="#3">ブレを含むイメージの復元</a></li><li><a href="#4">ブレおよびノイズのシミュレーション</a></li><li><a href="#5">ブレとノイズを含むイメージの復元最初の試行</a></li><li><a href="#7">ブレとノイズを含むイメージの復元:第 2 の試行</a></li><li><a href="#8">ブレおよび 8 ビットの量子化ノイズのシミュレーション</a></li><li><a href="#10">ブレを含み量子化されたイメージの復元:最初の試行</a></li><li><a href="#11">ブレを含み量子化されたイメージの復元:第 2 の試行</a></li></ul></div><h2>イメージの読み込み<a name="1"></a></h2><pre class="codeinput">I = im2double(imread(<span class="string">'cameraman.tif'</span>));
+imshow(I);
+title(<span class="string">'Original Image (courtesy of MIT)'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexwiener_01.png" alt=""> <h2>動きによるブレのシミュレーション<a name="2"></a></h2><p>カメラの動きから取得するブレを含むイメージをシミュレートします。31 ピクセル (<tt>LEN=31</tt>) を超える線形移動に対応する点像分布関数 <tt>PSF</tt> を、11 度の角度 (<tt>THETA=11</tt>) で作成します。ブレをシミュレートするには、<tt>imfilter</tt> を使用してイメージのあるフィルターを畳み込みます。</p><pre class="codeinput">LEN = 21;
+THETA = 11;
+PSF = fspecial(<span class="string">'motion'</span>, LEN, THETA);
+blurred = imfilter(I, PSF, <span class="string">'conv'</span>, <span class="string">'circular'</span>);
+imshow(blurred);
+title(<span class="string">'Blurred Image'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexwiener_02.png" alt=""> <h2>ブレを含むイメージの復元<a name="3"></a></h2><p><tt>deconvwnr</tt> の最も簡単な構文は、<tt>deconvwnr(A, PSF, NSR)</tt> です。ここで、<tt>A</tt> はブレを含むイメージ、<tt>PSF</tt> は点像分布関数、そして <tt>NSR</tt> はノイズと信号の強度比です。手順 2 で形成されたブレを含むイメージにはノイズがないため、<tt>NSR</tt> に 0 を使用します。</p><pre class="codeinput">wnr1 = deconvwnr(blurred, PSF, 0);
+imshow(wnr1);
+title(<span class="string">'Restored Image'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexwiener_03.png" alt=""> <h2>ブレおよびノイズのシミュレーション<a name="4"></a></h2><p>ここで、ノイズを追加してみましょう。</p><pre class="codeinput">noise_mean = 0;
+noise_var = 0.0001;
+blurred_noisy = imnoise(blurred, <span class="string">'gaussian'</span>, <span class="keyword">...</span>
+                        noise_mean, noise_var);
+imshow(blurred_noisy)
+title(<span class="string">'Simulate Blur and Noise'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexwiener_04.png" alt=""> <h2>ブレとノイズを含むイメージの復元: 最初の試行<a name="5"></a></h2><p>最初の復元試行では、<tt>deconvwnr</tt> にノイズがない (NSR = 0) ことを伝えます。NSR = 0 の場合、Wiener 復元フィルターは、理想的な逆フィルターと同じことになります。理想的な逆フィルターは、次のイメージで示すように、入力イメージのノイズに非常に敏感になります。</p><pre class="codeinput">wnr2 = deconvwnr(blurred_noisy, PSF, 0);
+imshow(wnr2)
+title(<span class="string">'Restoration of Blurred, Noisy Image Using NSR = 0'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexwiener_05.png" alt=""> <p>ノイズは逆フィルターによって、人間の形状の最低限の気配のみという程度まで増幅されました。</p><h2>ブレとノイズを含むイメージの復元: 第 2 の試行<a name="7"></a></h2><p>第 2 の試行では、ノイズと信号の強度比を推定します。</p><pre class="codeinput">signal_var = var(I(:));
+wnr3 = deconvwnr(blurred_noisy, PSF, noise_var / signal_var);
+imshow(wnr3)
+title(<span class="string">'Restoration of Blurred, Noisy Image Using Estimated NSR'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexwiener_06.png" alt=""> <h2>ブレおよび 8 ビット の量子化ノイズのシミュレーション<a name="8"></a></h2><p>視覚的には感知できない量のノイズでも結果に影響を与えることがあります。<tt>double</tt> に変換する代わりに、<tt>uint8</tt> 表現の入力イメージを維持します。</p><pre class="codeinput">I = imread(<span class="string">'cameraman.tif'</span>);
+class(I)
+</pre><pre class="codeoutput">
+ans =
+
+uint8
+
+</pre><p><tt>uint8</tt> イメージを <tt>imfilter</tt> に渡すと、別の <tt>uint8</tt> イメージを戻すために、出力を量子化します。</p><pre class="codeinput">blurred_quantized = imfilter(I, PSF, <span class="string">'conv'</span>, <span class="string">'circular'</span>);
+class(blurred_quantized)
+</pre><pre class="codeoutput">
+ans =
+
+uint8
+
+</pre><h2>ブレを含み量子化されたイメージの復元: 最初の試行<a name="10"></a></h2><p>再度、 <tt>deconvwnr</tt> にはノイズがないことを最初に伝えます。</p><pre class="codeinput">wnr4 = deconvwnr(blurred_quantized, PSF, 0);
+imshow(wnr4)
+title(<span class="string">'Restoration of blurred, quantized image using NSR = 0'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexwiener_07.png" alt=""> <h2>ブレを含み量子化されたイメージの復元: 第 2 の試行<a name="11"></a></h2><p>次に、NSR 推定を <tt>deconvwnr</tt> に提供します。</p><pre class="codeinput">uniform_quantization_var = (1/256)^2 / 12;
+signal_var = var(im2double(I(:)));
+wnr5 = deconvwnr(blurred_quantized, PSF, <span class="keyword">...</span>
+    uniform_quantization_var / signal_var);
+imshow(wnr5)
+title(<span class="string">'Restoration of Blurred, Quantized Image Using Computed NSR'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexwiener_08.png" alt=""> <p class="footer">Copyright 1993-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Deblurring Images Using a Wiener Filter % Wiener deconvolution can be useful when the point-spread function and % noise level are known or can be estimated.  % Copyright 1993-2008 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:28:51 $  %% Read Image  I = im2double(imread('cameraman.tif')); imshow(I); title('Original Image (courtesy of MIT)');  %% Simulate a Motion Blur % Simulate a blurred image that you might get from camera motion.  Create a % point-spread function, |PSF|, corresponding to the linear motion across % 31 pixels (|LEN=31|), at an angle of 11 degrees (|THETA=11|). To simulate % the blur, convolve the filter with the image using |imfilter|.   LEN = 21; THETA = 11; PSF = fspecial('motion', LEN, THETA); blurred = imfilter(I, PSF, 'conv', 'circular'); imshow(blurred); title('Blurred Image');  %% Restore the Blurred Image % The simplest syntax for |deconvwnr| is |deconvwnr(A, PSF, NSR)|, where % |A| is the blurred image, |PSF| is the point-spread function, and |NSR| % is the noise-power-to-signal-power ratio.  The blurred image formed in % Step 2 has no noise, so we'll use 0 for |NSR|.  wnr1 = deconvwnr(blurred, PSF, 0); imshow(wnr1); title('Restored Image');  %% Simulate Blur and Noise % Now let's try adding noise. noise_mean = 0; noise_var = 0.0001; blurred_noisy = imnoise(blurred, 'gaussian', ...                         noise_mean, noise_var); imshow(blurred_noisy) title('Simulate Blur and Noise')  %% Restore the Blurred and Noisy Image: First Attempt % In our first restoration attempt, we'll tell |deconvwnr| that there is no % noise (NSR = 0).  When NSR = 0, the Wiener restoration filter is equivalent % to an ideal inverse filter.  The ideal inverse filter can be extremely % sensitive to noise in the input image, as the next image shows:  wnr2 = deconvwnr(blurred_noisy, PSF, 0); imshow(wnr2) title('Restoration of Blurred, Noisy Image Using NSR = 0')  %% % The noise was amplified by the inverse filter to such a degree that only % the barest hint of the man's shape is visible.  %% Restore the Blurred and Noisy Image: Second Attempt % In our second attempt we supply an estimate of the % noise-power-to-signal-power ratio.  signal_var = var(I(:)); wnr3 = deconvwnr(blurred_noisy, PSF, noise_var / signal_var); imshow(wnr3) title('Restoration of Blurred, Noisy Image Using Estimated NSR');  %% Simulate Blur and 8-Bit Quantization Noise % Even a visually imperceptible amount of noise can affect the result. % Let's try keeping the input image in |uint8| representation instead of % converting it to |double|.  I = imread('cameraman.tif'); class(I)  %% % If you pass a |uint8| image to |imfilter|, it will quantize the output  % in order to return another |uint8| image.  blurred_quantized = imfilter(I, PSF, 'conv', 'circular'); class(blurred_quantized)  %% Restore the Blurred, Quantized Image: First Attempt % Again, we'll try first telling |deconvwnr| that there is no noise.  wnr4 = deconvwnr(blurred_quantized, PSF, 0); imshow(wnr4) title('Restoration of blurred, quantized image using NSR = 0');  %% Restore the Blurred, Quantized Image: Second Attempt % Next, we supply an NSR estimate to |deconvwnr|.  uniform_quantization_var = (1/256)^2 / 12; signal_var = var(im2double(I(:))); wnr5 = deconvwnr(blurred_quantized, PSF, ...     uniform_quantization_var / signal_var); imshow(wnr5) title('Restoration of Blurred, Quantized Image Using Computed NSR');  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

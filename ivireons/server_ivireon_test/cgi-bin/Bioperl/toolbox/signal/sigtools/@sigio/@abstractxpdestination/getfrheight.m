@@ -1,0 +1,11 @@
+function fh = getfrheight(h)
+%GETFRHEIGHT Get frame height.
+
+%   Author(s): P. Costa
+%   Copyright 1988-2003 The MathWorks, Inc.
+%   $Revision: 1.1.6.1 $  $Date: 2003/04/11 18:44:04 $
+
+sz = gui_sizes(h);
+fh = 100*sz.pixf;        
+
+% [EOF]

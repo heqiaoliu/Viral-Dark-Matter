@@ -1,0 +1,105 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Sequential Value-at-Risk Simulation</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-09"><meta name="m-file" content="paralleldemo_garch_seq"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_garch_seq">Open paralleldemo_garch_seq.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_garch_seq">Run in the Command Window</a></div></div><div class="content"><h1>Sequential Value-at-Risk Simulation</h1><!--introduction--><p>This demo assesses the value at risk (VaR) of the NASDAQ Composite Index over a 12-month holding period.  Additionally, the demo compares the simulation-based VaR results of two models of the NASDAQ returns.</p><p>We use the Monte Carlo simulation capabilities of the Econometrics Toolbox&#8482; to estimate the VaR of the NASDAQ index.  The first model of the NASDAQ index is the most traditional, and simply assumes a constant mean, constant volatility process with conditionally Gaussian returns.  The second model also assumes a constant mean, but allows for time-varying volatility by fitting the NASDAQ series to a GJR model with conditionally t-distributed returns.</p><p>For details about the value-at-risk model and the graphs that are generated, <a href="matlab:edit('pctdemo_setup_garch.m')">view the code for pctdemo_setup_garch</a>.</p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox&#8482;</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_garch_dist.html">Distributed Value-at-Risk Simulation</a></li><li><a href="paralleldemo_garch_dist_filedata.html">Distributed Value-at-Risk Simulation Using the File System</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Load the Demo Settings and the Data</a></li><li><a href="#3">Run the Simulation</a></li><li><a href="#4">Measure the Elapsed Time</a></li><li><a href="#5">Plot the Results</a></li></ul></div><h2>Load the Demo Settings and the Data<a name="1"></a></h2><p>We start by getting the demo difficulty level.  If you want to use a different demo difficulty level, use <tt>paralleldemoconfig</tt> and then run this demo again. See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for full details.</p><pre class="codeinput">difficulty = pctdemo_helper_getDefaults();
+</pre><p>We call the function <tt>pctdemo_setup_garch</tt> to perform all the initializations for this demo.  The most important function output arguments are the time horizon, the number of simulations to perform, and both models to the NASDAQ index. The demo difficulty level determines the number of simulations we perform. You can <a href="matlab:edit('pctdemo_setup_garch.m')">view the code for pctdemo_setup_garch</a> for full details.</p><pre class="codeinput">[fig, constant, GJR, horizon, nPaths, eFit, sFit] = <span class="keyword">...</span>
+    pctdemo_setup_garch(difficulty);
+startTime = clock;
+</pre><img vspace="5" hspace="5" src="paralleldemo_garch_seq_01.png" alt=""> <h2>Run the Simulation<a name="3"></a></h2><p>We now perform <tt>nPaths</tt> simulations of <tt>horizon</tt> trading days for both models. The <tt>pctdemo_task_garch</tt> function calls <tt>garchsim</tt> to perform the simulations, and then calculates the cumulative returns as if we held the NASDAQ Composite Index for the entire simulated period.  You can <a href="matlab:edit('pctdemo_task_garch.m')">view the code for pctdemo_task_garch</a> for full details.</p><pre class="codeinput">constantCumReturns = pctdemo_task_garch(constant, horizon, nPaths);
+GJRCumReturns = pctdemo_task_garch(GJR, horizon, nPaths, eFit, sFit);
+</pre><h2>Measure the Elapsed Time<a name="4"></a></h2><p>The time used for the sequential computations should be compared against the time it takes to perform the same set of calculations using the Parallel Computing Toolbox in the <a href="paralleldemo_garch_dist.html">Distributed Value-at-Risk Simulation</a> demo. The elapsed time varies with the underlying hardware.</p><pre class="codeinput">elapsedTime = etime(clock, startTime);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 31.7 seconds
+</pre><h2>Plot the Results<a name="5"></a></h2><p>The first plot illustrates the entire cumulative distribution function. The second plot highlights the lower tail of the distributions, corresponding to portfolio losses, and allows us to compare the predicted value at risk at the high confidence levels, that is at low levels of probability.  You can <a href="matlab:edit('pctdemo_plot_garch.m')">view the code for pctdemo_plot_garch</a> for full details.</p><pre class="codeinput">pctdemo_plot_garch(fig, constantCumReturns, GJRCumReturns);
+</pre><img vspace="5" hspace="5" src="paralleldemo_garch_seq_02.png" alt=""> <p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Sequential Value-at-Risk Simulation
+% This demo assesses the value at risk (VaR) of the NASDAQ Composite Index
+% over a 12-month holding period.  Additionally, the demo compares the 
+% simulation-based VaR results of two models of the NASDAQ returns.  
+% 
+% We use the Monte Carlo simulation capabilities of the 
+% Econometrics Toolbox(TM) to estimate the VaR of the NASDAQ index.  The first
+% model of the NASDAQ index is the most traditional, and simply assumes a
+% constant mean, constant volatility process with conditionally Gaussian
+% returns.  The second model also assumes a constant mean, but allows for
+% time-varying volatility by fitting the NASDAQ series to a GJR model with
+% conditionally t-distributed returns.
+% 
+% For details about the value-at-risk model and the graphs that are
+% generated, <matlab:edit('pctdemo_setup_garch.m') 
+% view the code for pctdemo_setup_garch>.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox(TM)>
+%
+% Related demos:
+%
+% * <paralleldemo_garch_dist.html Distributed Value-at-Risk Simulation>
+% * <paralleldemo_garch_dist_filedata.html
+% Distributed Value-at-Risk Simulation Using the File System>
+
+%   Copyright 2007-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2009/11/07 20:53:01 $
+
+%% Load the Demo Settings and the Data
+% We start by getting the demo difficulty level.  If you want to use a
+% different demo difficulty level, use |paralleldemoconfig| and then run
+% this demo again. See <paralleltutorial_defaults.html Customizing the
+% Settings for the Demos in the Parallel Computing Toolbox> for full
+% details.
+difficulty = pctdemo_helper_getDefaults();
+%%
+% We call the function |pctdemo_setup_garch| to perform all the
+% initializations for this demo.  The most important function output
+% arguments are the time horizon, the number of simulations to perform, and
+% both models to the NASDAQ index. The demo difficulty level determines the
+% number of simulations we perform. You can 
+% <matlab:edit('pctdemo_setup_garch.m') view the code for pctdemo_setup_garch> 
+% for full details.
+[fig, constant, GJR, horizon, nPaths, eFit, sFit] = ...
+    pctdemo_setup_garch(difficulty);
+startTime = clock;
+
+%% Run the Simulation
+% We now perform |nPaths| simulations of |horizon| trading days for both
+% models. The |pctdemo_task_garch| function calls |garchsim| to perform the
+% simulations, and then calculates the cumulative returns as if we held the
+% NASDAQ Composite Index for the entire simulated period.  You can
+% <matlab:edit('pctdemo_task_garch.m') view the code for pctdemo_task_garch>
+% for full details.
+constantCumReturns = pctdemo_task_garch(constant, horizon, nPaths);
+GJRCumReturns = pctdemo_task_garch(GJR, horizon, nPaths, eFit, sFit);
+
+%% Measure the Elapsed Time
+% The time used for the sequential computations should be compared
+% against the time it takes to perform the same set of calculations
+% using the Parallel Computing Toolbox in
+% the <paralleldemo_garch_dist.html Distributed Value-at-Risk Simulation>
+% demo. The elapsed time varies with the underlying hardware.
+elapsedTime = etime(clock, startTime);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+%% Plot the Results
+% The first plot illustrates the entire cumulative distribution function.
+% The second plot highlights the lower tail of the distributions, 
+% corresponding to portfolio losses, and allows us to compare the predicted
+% value at risk at the high confidence levels, that is at low levels 
+% of probability.  You can 
+% <matlab:edit('pctdemo_plot_garch.m') view the code for pctdemo_plot_garch> 
+% for full details.
+pctdemo_plot_garch(fig, constantCumReturns, GJRCumReturns);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

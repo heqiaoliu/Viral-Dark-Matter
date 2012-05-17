@@ -1,0 +1,99 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Converting Subsystems to Model Reference</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_mdlref_conversion.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_mdlref_conversion.mdl</div><div class="right"><a href="matlab:sldemo_mdlref_conversion">Open this model</a></div></div><div class="content"><h1>Converting Subsystems to Model Reference</h1><!--introduction--><p>This demonstration shows a way to automate conversion of a model containing buses to use model reference.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Demo Requirements</a></li><li><a href="#2">Open the Demo Model</a></li><li><a href="#3">Convert a Subsystem to Model Reference</a></li><li><a href="#4">Perform the Conversion</a></li><li><a href="#5">Simulate and Generate Code from the Model</a></li><li><a href="#6">Close Models and Clear Workspace</a></li></ul></div><h2>Demo Requirements<a name="1"></a></h2><p>During this demonstration, Simulink&reg; generates files in the current working directory. If you do not want to generate files in this directory, you should change the working directory to a suitable directory.</p><h2>Open the Demo Model<a name="2"></a></h2><p><a href="matlab:sldemo_mdlref_conversion">Open the demo model.</a> This model contains an atomic subsystem, Bus Counter, modeling a simple counter.</p><img vspace="5" hspace="5" src="sldemo_mdlref_conversion_01.png" alt=""> <h2>Convert a Subsystem to Model Reference<a name="3"></a></h2><p>You can use <tt>Simulink.SubSystem.convertToModelReference</tt> to convert an atomic subsystem to model reference. This utility function converts an atomic subsystem by creating a new model, copying the contents of the subsystem into the model, and reconfiguring the root level Inport and Outport blocks and configuration parameters of the model. Then, based on its input arguments, it either replaces the subsystem block with a Model block that references the new model, or it creates another, temporary model containing a Model block that references the model derived from the subsystem block. For more information see Simulink documentation or type:</p><p><tt>&gt;&gt; help Simulink.SubSystem.convertToModelReference</tt></p><p>at the MATLAB&reg; prompt.</p><h2>Perform the Conversion<a name="4"></a></h2><p>You can run the following command to <a href="matlab:sldemo_mdlref_util('sldemo_mdlref_conversion','convert')">convert</a> the Bus Counter subsystem to a Model block.</p><pre>Simulink.SubSystem.convertToModelReference(...
+    'sldemo_mdlref_conversion/Bus Counter', ...
+    'sldemo_bus_counter', ...
+    'ReplaceSubsystem', true, ...
+    'BusSaveFormat', 'Object');</pre><img vspace="5" hspace="5" src="sldemo_mdlref_conversion_02.png" alt=""> <h2>Simulate and Generate Code from the Model<a name="5"></a></h2><p>You can update, simulate, and generate code for the model containing the Model block.</p><h2>Close Models and Clear Workspace<a name="6"></a></h2><p><a href="matlab:sldemo_mdlref_util('sldemo_mdlref_conversion','exit')">Close the models and clear variables</a> added to the workspace during this demo.</p><p class="footer">Copyright 1990-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Converting Subsystems to Model Reference
+% This demonstration shows a way to automate conversion of a 
+% model containing buses to use model reference. 
+
+% Copyright 1990-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.3 $   $Date: 2007/12/10 22:41:57 $
+
+
+
+%% Demo Requirements
+% During this demonstration, Simulink(R) generates files in the current 
+% working directory. If you do not want to generate files in this 
+% directory, you should change the working directory to a suitable 
+% directory.
+
+%% Open the Demo Model
+% <matlab:sldemo_mdlref_conversion Open the demo model.> This model contains an 
+% atomic subsystem, Bus Counter, modeling a simple counter. 
+open_system('sldemo_mdlref_conversion');
+sim('sldemo_mdlref_conversion');
+
+
+%% Convert a Subsystem to Model Reference
+% You can use |Simulink.SubSystem.convertToModelReference| to convert an atomic 
+% subsystem to model reference. This utility function converts an atomic 
+% subsystem by creating a new model, copying the contents of the subsystem
+% into the model, and reconfiguring the root level Inport and Outport blocks
+% and configuration parameters of the model. Then, based on its input
+% arguments, it either replaces the subsystem block with a Model block that
+% references the new model, or it creates another, temporary model containing
+% a Model block that references the model derived from the subsystem block.
+% For more information see Simulink documentation or type:
+% 
+% |>> help Simulink.SubSystem.convertToModelReference|
+%
+% at the MATLAB(R) prompt.
+
+%% Perform the Conversion
+% You can run the following command to 
+% <matlab:sldemo_mdlref_util('sldemo_mdlref_conversion','convert') convert> 
+% the Bus Counter subsystem to a Model block.
+%
+%  Simulink.SubSystem.convertToModelReference(...
+%      'sldemo_mdlref_conversion/Bus Counter', ...
+%      'sldemo_bus_counter', ...
+%      'ReplaceSubsystem', true, ...
+%      'BusSaveFormat', 'Object');  
+  
+cmd = ['Simulink.SubSystem.convertToModelReference(', ...
+       '''sldemo_mdlref_conversion/Bus Counter'', ' ...
+       '''sldemo_bus_counter'', ' ...
+       '''ReplaceSubsystem'', true ,' ...
+       '''BusSaveFormat'', ''Object'')'];  
+evalc(cmd); 
+close_system('sldemo_bus_counter');
+save_system('sldemo_mdlref_conversion', 'sldemo_mdlref_conversion_');
+  
+% This command creates a new model, i.e., sldemo_bus_counter.mdl, and replaces 
+% the subsystem block with a Model block referencing the new model. It creates 
+% a set of bus objects in the base workspace and saves the bus objects in 
+% the file sldemo_bus_counter_bus.m. You can view the bus objects by 
+%
+%  (1) viewing the bus structures in the (<matlab:buseditor>).
+%  (2) opening the sldemo_bus_counter_bus.m file (<matlab:edit('sldemo_bus_counter_bus')>).
+%  (3) opening the MATLAB workspace in the Model Explorer. 
+
+
+%% Simulate and Generate Code from the Model
+% You can update, simulate, and generate code for the 
+% model containing the Model block.
+
+%% Close Models and Clear Workspace
+% <matlab:sldemo_mdlref_util('sldemo_mdlref_conversion','exit') 
+% Close the models and clear variables> added to the workspace 
+% during this demo.  
+
+bdclose('all');
+delete('sldemo_bus_counter.mdl');
+delete('sldemo_bus_counter_bus.m');
+delete('sldemo_mdlref_conversion_.mdl');
+clear all;
+
+##### SOURCE END #####
+--></body></html>

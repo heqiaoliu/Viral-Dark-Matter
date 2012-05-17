@@ -1,0 +1,181 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Vehicle Electrical and Climate Control Systems</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_auto_climate_elec.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_auto_climate_elec.mdl</div><div class="right"><a href="matlab:sldemo_auto_climate_elec">Open this model</a></div></div><div class="content"><h1>Vehicle Electrical and Climate Control Systems</h1><!--introduction--><p>This model interfaces the vehicle climate control system with a model of the electrical system to examine the loading effects of the climate control system on the entire electrical system of the car.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#3">The Climate Control System</a></li><li><a href="#5">The Stateflow&reg; Controller</a></li><li><a href="#7">Heater and Air Conditioner Models</a></li><li><a href="#10">Heat Transfer in the Cabin</a></li><li><a href="#11">The Electrical System</a></li></ul></div><img vspace="5" hspace="5" src="sldemo_auto_climate_elec_01.png" alt=""> <p><b>Figure 1:</b> Vehicle Electrical and Climate Control System</p><h2>The Climate Control System<a name="3"></a></h2><p>Double clicking on the ClimateControlSystem subsystem will open the model of the climate control system. Here the user can enter the temperature value they would like the air in the car to reach by double clicking on the USER SETPOINT IN CELSIUS Block and entering the value into the dialog box. The EXTERNAL TEMPERATURE IN CELSIUS can also be set by the user in a similar way. The numerical display on the right hand side of the model shows the reading of a temperature sensor placed behind the driver's head. This is the temperature that the driver should be feeling. When the model is run and the climate control is active, it is this display box whose value changes showing the change of temperature in the car.</p><img vspace="5" hspace="5" src="sldemo_auto_climate_elec_02.png" alt=""> <p><b>Figure 2:</b> The automatic climate control system.</p><h2>The Stateflow&reg; Controller<a name="5"></a></h2><p>The control of the system is implemented in Stateflow&reg;. Double clicking on the Stateflow chart will show how this supervisory control logic has been formulated.</p><p>The <b>Heater_AC</b> state shows that when the user enters a setpoint temperature which greater than the current temperature in the car by at least 0.5 deg C, the heater system will be switched on. The heater will remain active until the current temperature in the car reaches to within 0.5 deg of the setpoint temperature. Similarly, when the user enters a setpoint which is 0.5 deg C (or more) lower than the current car temperature, the Air Conditioner is turned on and stays active until the temperature of the air in the car reaches to within 0.5 deg C of the setpoint temperature. After which, the system will switches off. The dead band of 0.5 deg has been implemented to avoid the problem of continuous switching.</p><p>In the <b>Blower</b> State, the larger the difference between the setpoint temperature and the current temperature, the harder the fan blows. This ensures that the temperature will reach the required value in a reasonable amount of time, despite the temperature difference. Once again, when the temperature of the air in the car reaches to within 0.5 deg C of the setpoint temperature, the system will switches off.</p><p>The Air Distribution(<b>AirDist</b>) and Recycling Air States(<b>Recyc_Air</b>) are controlled by the two switches that trigger the Stateflow chart. An internal transition has been implemented within these two states to facilitate effective defrosting of the windows when required. When the defrost state is activated, the recycling air is turned off.</p><img vspace="5" hspace="5" src="sldemo_auto_climate_elec_03.png" alt=""> <p><b>Figure 3:</b> The supervisory control logic in Stateflow.</p><h2>Heater and Air Conditioner Models<a name="7"></a></h2><p>The heater model was built from the equation for a heater exchanger shown below:</p><pre>Tout = Ts - (Ts-Tin)e^[(-pi*D*L*hc)/(m_dot*Cp)]</pre><p>Where:</p><div><ul><li>Ts = constant (radiator wall temperature)</li><li>D  = 0.004m (channel diameter)</li><li>L  = 0.05m (radiator thickness)</li><li>N  = 30000 (Number of channels)</li><li>k  = 0.026 W/mK = constant (thermal conductivity of air)</li><li>Cp = 1007 J/kgK = constant (specific heat of air)</li><li>Laminar flow (hc = 3.66(k/D) = 23.8 W/m2K )</li></ul></div><p>In addition, the effect of the heater flap is taken into account. Similar to the operation of the blower, the greater the temperature difference between the required setpoint temperature and the current temperature in the car, the more the heater flap is opened and the greater the heating effect.</p><p>The Air Conditioner system is one of the two places where the climate control model interfaces with the car's electrical system model. The compressor loads the engine of the car when the A/C system is active. The final temperature to exit from the A/c is calculated as follows:</p><p>y*(w*Tcomp) = m_dot*(h4-h1)</p><p>Where:</p><div><ul><li>y = efficiency</li><li>m_dot = mass flow rate</li><li>w = speed of the engine</li><li>Tcomp = compressor torque</li><li>h4, h1 = enthalpy</li></ul></div><p>Here we have bang-bang control of the A/C system where the temperature of the air that exits the A/C is determined by the engine speed and compressor torque.</p><img vspace="5" hspace="5" src="sldemo_auto_climate_elec_04.png" alt=""> <p><b>Figure 4:</b> Heater control subsystem.</p><img vspace="5" hspace="5" src="sldemo_auto_climate_elec_05.png" alt=""> <p><b>Figure 5:</b> A/C control subsystem.</p><h2>Heat Transfer in the Cabin<a name="10"></a></h2><p>The temperature of the air felt by the driver is affected by all of these factors:</p><div><ul><li>The temperature of the air exiting the vents</li><li>The temperature of the outside air</li><li>The number of people in the car</li></ul></div><p>These factors are inputs into the thermodynamic model of the interior of the cabin. We take into account the temperature of the air exiting the vents by calculating the difference between the vent air temperature and the current temperature inside the car and multiplying it by the fan speed proportion (mass flow rate). Then 100W of energy is added per person in the car. Lastly, the difference between the temperature of the outside air and the interior air temperature is multiplied by a lesser mass flow rate to account for the air radiating into the car from the outside.</p><p>The output of the interior dynamics model is fed to the display block as a measure of the temperature read by a sensor placed behind the driver's head.</p><h2>The Electrical System<a name="11"></a></h2><p>This electrical system models the car at idle speed. The PID controllers ensure that the car's alternator (modeled by a simplified synchronous machine which has its field current regulated to control the output voltage) is also operating at the required speed. The output of voltage is then fed through a three phase 6 pulse diode bridge to supply the voltage needed to charge the battery which supplies the voltage for the car's DC bus.</p><p>The fan used in the climate control system is fed off this DC bus as are the windscreen wipers, radio etc. As the difference between the setpoint temperature and the current temperature in the car drops, so does the fan speed and therefore so does the loading on the DC bus. The inclusion of feedback in the electrical system ensures that regardless of the load, the voltage on the bus remains at a constant 12V.</p><p>The additional model of the car's electrical system allows for the changing of the input voltage to the engine - modeled as a DC machine. Changing the input voltage shows how the speed of the engine changes without effecting the voltage on the DC bus.</p><img vspace="5" hspace="5" src="sldemo_auto_climate_elec_06.png" alt=""> <p><b>Figure 6:</b> The electrical system</p><p class="footer">Copyright 1990-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Vehicle Electrical and Climate Control Systems
+%
+% This model interfaces the vehicle climate control system with a model of 
+% the electrical system to examine the loading effects of the climate 
+% control system on the entire electrical system of the car.    
+
+% Copyright 1990-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.3 $ $Date: 2007/12/10 22:40:43 $
+
+%% 
+%
+open_system('sldemo_auto_climate_elec.mdl')
+%%
+% *Figure 1:* Vehicle Electrical and Climate Control System
+
+%% The Climate Control System
+%
+% Double clicking on the ClimateControlSystem subsystem will open the model
+% of the climate control system. Here the user can enter the temperature 
+% value they would like the air in the car to reach by double clicking on 
+% the USER SETPOINT IN CELSIUS Block and entering the value into the dialog
+% box. The EXTERNAL TEMPERATURE IN CELSIUS can also be set by the user in 
+% a similar way. The numerical display on the right hand side of the model 
+% shows the reading of a temperature sensor placed behind the driver's 
+% head. This is the temperature that the driver should be feeling. When the
+% model is run and the climate control is active, it is this display box 
+% whose value changes showing the change of temperature in the car. 
+
+open_system('sldemo_auto_climate_elec/ClimateControlSystem');
+
+%%
+% *Figure 2:* The automatic climate control system.
+
+%% The Stateflow(R) Controller
+%
+% The control of the system is implemented in Stateflow(R). Double clicking on
+% the Stateflow chart will show how this supervisory control logic has 
+% been formulated.   
+%
+% The *Heater_AC* state shows that when the user enters a setpoint 
+% temperature which greater than the current temperature in the car by at 
+% least 0.5 deg C, the heater system will be switched on. The heater will 
+% remain active until the current temperature in the car reaches to within 
+% 0.5 deg of the setpoint temperature. Similarly, when the user enters a 
+% setpoint which is 0.5 deg C (or more) lower than the current car 
+% temperature, the Air Conditioner is turned on and stays active until the
+% temperature of the air in the car reaches to within 0.5 deg C of the 
+% setpoint temperature. After which, the system will switches off. The dead
+% band of 0.5 deg has been implemented to avoid the problem of continuous 
+% switching.         
+%
+% In the *Blower* State, the larger the difference between the setpoint
+% temperature and the current temperature, the harder the fan blows. This
+% ensures that the temperature will reach the required value in a
+% reasonable amount of time, despite the temperature difference. Once 
+% again, when the temperature of the air in the car reaches to within 0.5 
+% deg C of the setpoint temperature, the system will switches off.       
+%
+% The Air Distribution(*AirDist*) and Recycling Air States(*Recyc_Air*) are
+% controlled by the two switches that trigger the Stateflow chart. An
+% internal transition has been implemented within these two states to
+% facilitate effective defrosting of the windows when required. When the
+% defrost state is activated, the recycling air is turned off.      
+
+open_system('sldemo_auto_climate_elec/ClimateControlSystem/Temperature Control Chart')
+
+%%
+% *Figure 3:* The supervisory control logic in Stateflow.
+
+%% Heater and Air Conditioner Models
+%
+% The heater model was built from the equation for a heater exchanger shown below:
+%
+%  Tout = Ts - (Ts-Tin)e^[(-pi*D*L*hc)/(m_dot*Cp)]
+%
+% Where:
+%
+% * Ts = constant (radiator wall temperature)
+% * D  = 0.004m (channel diameter)
+% * L  = 0.05m (radiator thickness)
+% * N  = 30000 (Number of channels)
+% * k  = 0.026 W/mK = constant (thermal conductivity of air)
+% * Cp = 1007 J/kgK = constant (specific heat of air)
+% * Laminar flow (hc = 3.66(k/D) = 23.8 W/m2K ) 
+%
+% In addition, the effect of the heater flap is taken into account. Similar
+% to the operation of the blower, the greater the temperature difference
+% between the required setpoint temperature and the current temperature in
+% the car, the more the heater flap is opened and the greater the heating effect.   
+%
+% The Air Conditioner system is one of the two places where the climate
+% control model interfaces with the car's electrical system model. The 
+% compressor loads the engine of the car when the A/C system is active. The
+% final temperature to exit from the A/c is calculated as follows:
+%
+% y*(w*Tcomp) = m_dot*(h4-h1)
+%
+% Where:
+%
+% * y = efficiency
+% * m_dot = mass flow rate
+% * w = speed of the engine
+% * Tcomp = compressor torque
+% * h4, h1 = enthalpy 
+%
+% Here we have bang-bang control of the A/C system where the temperature of
+% the air that exits the A/C is determined by the engine speed and
+% compressor torque.   
+
+open_system('sldemo_auto_climate_elec/ClimateControlSystem/Heater Control')
+%%
+% *Figure 4:* Heater control subsystem.
+
+open_system('sldemo_auto_climate_elec/ClimateControlSystem/AC Control')
+%%
+% *Figure 5:* A/C control subsystem.
+
+%% Heat Transfer in the Cabin
+%
+% The temperature of the air felt by the driver is affected by all of 
+% these factors:
+%
+% * The temperature of the air exiting the vents
+% * The temperature of the outside air
+% * The number of people in the car 
+%
+% These factors are inputs into the thermodynamic model of the interior
+% of the cabin. We take into account the temperature of the air exiting 
+% the vents by calculating the difference between the vent air temperature
+% and the current temperature inside the car and multiplying it by the fan
+% speed proportion (mass flow rate). Then 100W of energy is added per person in
+% the car. Lastly, the difference between the temperature of the outside
+% air and the interior air temperature is multiplied by a lesser mass flow
+% rate to account for the air radiating into the car from the outside.        
+%
+% The output of the interior dynamics model is fed to the display block as
+% a measure of the temperature read by a sensor placed behind the driver's head.   
+
+
+%% The Electrical System
+%
+% This electrical system models the car at idle speed. The PID controllers 
+% ensure that the car's alternator (modeled by a simplified synchronous
+% machine which has its field current regulated to control the output 
+% voltage) is also operating at the required speed. The output of voltage 
+% is then fed through a three phase 6 pulse diode bridge to supply the 
+% voltage needed to charge the battery which supplies the voltage for the 
+% car's DC bus. 
+%
+% The fan used in the climate control system is fed off this DC bus as are 
+% the windscreen wipers, radio etc. As the difference between the setpoint
+% temperature and the current temperature in the car drops, so does the 
+% fan speed and therefore so does the loading on the DC bus. The inclusion
+% of feedback in the electrical system ensures that regardless of the load,
+% the voltage on the bus remains at a constant 12V. 
+%
+% The additional model of the car's electrical system allows for the 
+% changing of the input voltage to the engine - modeled as a DC machine. 
+% Changing the input voltage shows how the speed of the engine changes 
+% without effecting the voltage on the DC bus. 
+%
+
+open_system('sldemo_auto_climate_elec/ElectricalSystem')
+%%
+% *Figure 6:* The electrical system
+
+bdclose all
+
+##### SOURCE END #####
+--></body></html>

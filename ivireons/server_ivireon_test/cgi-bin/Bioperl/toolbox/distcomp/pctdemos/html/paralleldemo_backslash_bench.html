@@ -1,0 +1,495 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Benchmarking A\b</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-06"><meta name="m-file" content="paralleldemo_backslash_bench"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_backslash_bench">Open paralleldemo_backslash_bench.m in the Editor</a></div><div class="right">&nbsp;</div></div><div class="content"><h1>Benchmarking A\b</h1><!--introduction--><p>This demo looks at how we can benchmark the solving of a linear system on a cluster.  The MATLAB&reg; code to solve for <tt>x</tt> in <tt>A*x = b</tt> is very simple.  Most frequently, one uses matrix left division, also known as mldivide or the backslash operator (\), to calculate <tt>x</tt>, i.e., <tt>x = A\b</tt>.  Benchmarking the performance of matrix left division on a cluster, however, is not as straightforward.</p><p>One of the most challenging aspects of benchmarking is to avoid falling into the trap of looking for a single number that represents the overall performance of the system.  We will look at the performance curves that might help you identify the performance bottlenecks on your cluster, and maybe even help you see how to benchmark your code and be able to draw meaningful conclusions from the results.</p><p>Related demos:</p><div><ul><li><a href="paralleldemo_parfor_bench.html">Simple Benchmarking of Parfor Using Blackjack</a></li><li><a href="paralleldemo_distribjob_bench.html">Benchmarking Distributed Jobs on the Cluster</a></li><li><a href="paralleldemo_resource_bench.html">Resource Contention in Task Parallel Problems</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#3">Check the Status of the MATLAB&reg; Pool</a></li><li><a href="#4">Avoid Overhead</a></li><li><a href="#5">The Benchmarking Function</a></li><li><a href="#6">Choose Problem Size</a></li><li><a href="#7">Comparing Performance: Gigaflops</a></li><li><a href="#9">Execute the Benchmarks</a></li><li><a href="#10">Plot the Performance</a></li><li><a href="#12">Compare Different Numbers of Workers</a></li><li><a href="#14">Speedup</a></li><li><a href="#16">The Cluster Used</a></li><li><a href="#17">Re-enable the Deadlock Detection</a></li></ul></div><p>The code shown in this demo can be found in this function:</p><pre class="codeinput"><span class="keyword">function</span> results = paralleldemo_backslash_bench(memoryPerWorker)
+</pre><p>As discussed in the section "Choose Problem Size" below, it is very important to choose the appropriate matrix size for the cluster.  We can do this by specifying the amount of system memory in GB available to each worker as an input to this demo function.  The default value is very conservative, so you should specify a value that is appropriate for your system.</p><pre class="codeinput"><span class="keyword">if</span> nargin == 0
+    memoryPerWorker = 0.25; <span class="comment">% In GB</span>
+    warning(<span class="string">'distcomp:BackslashDemo:UsingDefaultMemory'</span>, <span class="keyword">...</span>
+            [<span class="string">'Amount of system memory available to each worker is '</span>, <span class="keyword">...</span>
+             <span class="string">'not specified.  Using the conservative default value '</span>, <span class="keyword">...</span>
+             <span class="string">'of %.2f gigabytes per worker'</span>], memoryPerWorker);
+<span class="keyword">end</span>
+</pre><h2>Check the Status of the MATLAB&reg; Pool<a name="3"></a></h2><p>We use the MATLAB pool to run the body of the <tt>spmd</tt> block in parallel, so we start by checking whether the pool is open.</p><pre class="codeinput">poolSize = matlabpool(<span class="string">'size'</span>);
+<span class="keyword">if</span> poolSize == 0
+    error(<span class="string">'distcomp:demo:poolClosed'</span>, <span class="keyword">...</span>
+        <span class="string">'This demo needs an open MATLAB pool to run.'</span>);
+<span class="keyword">end</span>
+</pre><h2>Avoid Overhead<a name="4"></a></h2><p>To get an accurate measure of our capability to solve linear systems, we need to remove any possible source of overhead.  This includes temporarily disabling the deadlock detection capabilities.</p><pre class="codeinput"><span class="keyword">spmd</span>
+    mpiSettings(<span class="string">'DeadlockDetection'</span>, <span class="string">'off'</span>);
+<span class="keyword">end</span>
+</pre><h2>The Benchmarking Function<a name="5"></a></h2><p>We want to benchmark matrix left division (\), and not the cost of entering an <tt>spmd</tt> block, the time it takes to create a matrix, etc.  We therefore separate the data generation from the solving of the linear system, and measure only the time it takes to do the latter.  We generate the input data using the 2-D block-cyclic codistributor, as that is the most effective distribution scheme for solving a linear system.  Our benchmarking then consists of measuring the time it takes all the workers to complete solving the linear system <tt>A*x = b</tt>.  Again, we try to remove any possible source of overhead.</p><pre class="codeinput"><span class="keyword">function</span> [A, b] = getData(n)
+    fprintf(<span class="string">'Creating a matrix of size %d-by-%d.\n'</span>, n, n);
+    <span class="keyword">spmd</span>
+        <span class="comment">% Use the codistributor that usually gives the best performance</span>
+        <span class="comment">% for solving linear systems.</span>
+        codistr = codistributor2dbc(codistributor2dbc.defaultLabGrid, <span class="keyword">...</span>
+                                    codistributor2dbc.defaultBlockSize, <span class="keyword">...</span>
+                                    <span class="string">'col'</span>);
+        A = codistributed.rand(n, n, codistr);
+        b = codistributed.rand(n, 1, codistr);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> time = timeSolve(A, b)
+    <span class="keyword">spmd</span>
+        tic;
+        x = A\b; <span class="comment">%#ok&lt;NASGU&gt; We don't need the value of x.</span>
+        time = gop(@max, toc); <span class="comment">% Time for all to complete.</span>
+    <span class="keyword">end</span>
+    time = time{1};
+<span class="keyword">end</span>
+</pre><h2>Choose Problem Size<a name="6"></a></h2><p>Just like with a great number of other parallel algorithms, the performance of solving a linear system in parallel depends greatly on the matrix size.  Our <i>a priori</i> expectations are therefore that the computations be:</p><div><ul><li>Somewhat inefficient for small matrices</li><li>Quite efficient for large matrices</li><li>Inefficient if the matrices are too large to fit into system memory and the operating systems start swapping memory to disk</li></ul></div><p>It is therefore important to time the computations for a number of different matrix sizes to gain an understanding of what "small," "large," and "too large" mean in this context.  Based on previous experiments, we expect:</p><div><ul><li>"Too small" matrices to be of size 1000-by-1000</li><li>"Large" matrices to occupy slightly less than 45% of the memory available to each worker</li><li>"Too large" matrices occupy 50% or more of system memory available to each worker</li></ul></div><p>These are heuristics, and the precise values may change between releases. It is therefore important that we use matrix sizes that span this entire range and verify the expected performance.</p><p>Notice that by changing the problem size according to the number of workers, we employ weak scaling.  Other benchmarking demos, such as <a href="paralleldemo_parfor_bench.html">Simple Benchmarking of Parfor Using Blackjack</a> and <a href="paralleldemo_distribjob_bench.html">Benchmarking Distributed Jobs on the Cluster</a>, also employ weak scaling.  As those demos benchmark task parallel computations, their weak scaling consists of making the number of iterations proportional to the number of workers.  This demo, however, is benchmarking data parallel computations, so we relate the upper size limit of the matrices to the number of workers.</p><pre class="codeinput"><span class="comment">% Declare the matrix sizes ranging from 1000-by-1000 up to 45% of system</span>
+<span class="comment">% memory available to each worker.</span>
+maxMemUsagePerWorker = 0.45*memoryPerWorker*1024^3; <span class="comment">% In bytes.</span>
+maxMatSize = round(sqrt(maxMemUsagePerWorker*poolSize/8));
+matSize = round(linspace(1000, maxMatSize, 5));
+</pre><h2>Comparing Performance: Gigaflops<a name="7"></a></h2><p>We use the number of floating point operations per second as our measure of performance because that allows us to compare the performance of the algorithm for different matrix sizes and different number of workers. If we are successful in testing the performance of matrix left division for a sufficiently wide range of matrix sizes, we expect the performance graph to look similar to the following:</p><p><img vspace="5" hspace="5" src="paralleldemo_backslash_bench_expected.png" alt=""> </p><p>By generating graphs such as these, we can answer questions such as:</p><div><ul><li>Are the smallest matrices so small that we get poor performance?</li><li>Do we see a performance decrease when the matrix is so large that it   occupies 45% of total system memory?</li><li>What is the best performance we can possibly achieve for a given number of workers?</li><li>For which matrix sizes do 16 workers perform better than 8 workers?</li><li>Is the system memory limiting the peak performance?</li></ul></div><p>Given a matrix size, the benchmarking function creates the matrix <tt>A</tt> and the right-hand side <tt>b</tt> once, and then solves <tt>A\b</tt> multiple times to get an accurate measure of the time it takes.  We use the floating operations count of the HPC Challenge, so that for an n-by-n matrix, we count the floating point operations as <tt>2/3*n^3 + 3/2*n^2</tt>.</p><pre class="codeinput"><span class="keyword">function</span> gflops = benchFcn(n)
+    numReps = 3;
+    [A, b] = getData(n);
+    time = inf;
+    <span class="comment">% We solve the linear system a few times and calculate the Gigaflops</span>
+    <span class="comment">% based on the best time.</span>
+    <span class="keyword">for</span> itr = 1:numReps
+        tcurr = timeSolve(A, b);
+        <span class="keyword">if</span> itr == 1
+            fprintf(<span class="string">'Execution times: %f'</span>, tcurr);
+        <span class="keyword">else</span>
+            fprintf(<span class="string">', %f'</span>, tcurr);
+        <span class="keyword">end</span>
+        time = min(tcurr, time);
+    <span class="keyword">end</span>
+    fprintf(<span class="string">'\n'</span>);
+    flop = 2/3*n^3 + 3/2*n^2;
+    gflops = flop/time/1e9;
+<span class="keyword">end</span>
+</pre><h2>Execute the Benchmarks<a name="9"></a></h2><p>Having done all the setup, it is straightforward to execute the benchmarks.  However, the computations may take a long time to complete, so we print some intermediate status information as we complete the benchmarking for each matrix size.</p><pre class="codeinput">fprintf([<span class="string">'Starting benchmarks with %d different matrix sizes ranging\n'</span> <span class="keyword">...</span>
+         <span class="string">'from %d-by-%d to %d-by-%d.\n'</span>], <span class="keyword">...</span>
+        length(matSize), matSize(1), matSize(1), matSize(end), <span class="keyword">...</span>
+        matSize(end));
+gflops = zeros(size(matSize));
+<span class="keyword">for</span> i = 1:length(matSize)
+    gflops(i) = benchFcn(matSize(i));
+    fprintf(<span class="string">'Gigaflops: %f\n\n'</span>, gflops(i));
+<span class="keyword">end</span>
+results.matSize = matSize;
+results.gflops = gflops;
+</pre><pre class="codeoutput">Starting benchmarks with 5 different matrix sizes ranging
+from 1000-by-1000 to 21981-by-21981.
+Creating a matrix of size 1000-by-1000.
+Execution times: 1.672150, 1.099787, 0.710820
+Gigaflops: 0.939994
+
+Creating a matrix of size 6245-by-6245.
+Execution times: 20.975375, 20.128477, 19.646448
+Gigaflops: 8.267581
+
+Creating a matrix of size 11491-by-11491.
+Execution times: 106.893197, 105.816044, 108.743211
+Gigaflops: 9.561273
+
+Creating a matrix of size 16736-by-16736.
+Execution times: 304.518869, 309.352987, 305.364110
+Gigaflops: 10.263794
+
+Creating a matrix of size 21981-by-21981.
+Execution times: 802.845287, 760.967366, 759.609278
+Gigaflops: 9.321918
+
+</pre><h2>Plot the Performance<a name="10"></a></h2><p>We can now plot the results, and compare to the expected graph shown above.</p><pre class="codeinput">fig = figure;
+ax = axes(<span class="string">'parent'</span>, fig);
+plot(ax, matSize/1000, gflops);
+lines = get(ax, <span class="string">'Children'</span>);
+set(lines, {<span class="string">'Marker'</span>}, {<span class="string">'+'</span>});
+ylabel(ax, <span class="string">'Gigaflops'</span>)
+xlabel(ax, <span class="string">'Matrix size in thousands'</span>)
+titleStr = sprintf([<span class="string">'Solving A\\b for different matrix sizes on '</span> <span class="keyword">...</span>
+                    <span class="string">'%d workers'</span>], poolSize);
+title(ax, titleStr, <span class="string">'Interpreter'</span>, <span class="string">'none'</span>);
+</pre><img vspace="5" hspace="5" src="paralleldemo_backslash_bench_01.png" alt=""> <p>If the benchmark results are not as good as you might expect, here are some things to consider:</p><div><ul><li>The underlying implementation is using ScaLAPACK, which has a proven reputation of high performance.  It is therefore very unlikely that the algorithm or the library is causing inefficiencies, but rather the way in which it is used, as described in the items below.</li><li>If the matrices are too small or too large for your cluster, the resulting performance will be poor.</li><li>If the network communications are slow, performance will be severely impacted.</li><li>If the CPUs and the network communications are both very fast, but the amount of memory is limited, it is possible you are not able to benchmark with sufficiently large matrices to fully utilize the available CPUs and network bandwidth.</li><li>For ultimate performance, it is important to use a version of MPI that is tailored for your networking setup, and have the workers running in such a manner that as much of the communication happens through shared memory as possible.  It is, however, beyond the scope of this demo to explain how to identify and solve those types of problems.</li></ul></div><h2>Compare Different Numbers of Workers<a name="12"></a></h2><p>We now look at how to compare different numbers of workers by viewing data obtained by running this demo using different numbers of workers.  This data is obtained on a different cluster from the one above.</p><p>Other demos such as <a href="paralleldemo_distribjob_bench.html">Benchmarking Distributed Jobs on the Cluster</a> have explained that when benchmarking parallel algorithms for different numbers of workers, one usually employs weak scaling.  That is, as we increase the number of workers, we increase the problem size proportionally.  In the case of matrix left division, we have to show additional care because the performance of the division depends greatly on the size of the matrix.  The following code creates a graph of the performance in Gigaflops for all of the matrix sizes that we tested with and all the different numbers of workers, as that gives us the most detailed picture of the performance characteristics of matrix left division <i>on this particular cluster</i>.</p><pre class="codeinput">s = load(<span class="string">'pctdemo_data_backslash.mat'</span>, <span class="string">'workers4'</span>, <span class="string">'workers8'</span>, <span class="keyword">...</span>
+         <span class="string">'workers16'</span>, <span class="string">'workers32'</span>, <span class="string">'workers64'</span>);
+fig = figure;
+ax = axes(<span class="string">'parent'</span>, fig);
+plot(ax, s.workers4.matSize./1000, s.workers4.gflops, <span class="keyword">...</span>
+     s.workers8.matSize./1000, s.workers8.gflops, <span class="keyword">...</span>
+     s.workers16.matSize./1000, s.workers16.gflops, <span class="keyword">...</span>
+     s.workers32.matSize./1000, s.workers32.gflops, <span class="keyword">...</span>
+     s.workers64.matSize./1000, s.workers64.gflops);
+lines = get(ax, <span class="string">'Children'</span>);
+set(lines, {<span class="string">'Marker'</span>}, {<span class="string">'+'</span>; <span class="string">'o'</span>; <span class="string">'v'</span>; <span class="string">'.'</span>; <span class="string">'*'</span>});
+ylabel(ax, <span class="string">'Gigaflops'</span>)
+xlabel(ax, <span class="string">'Matrix size in thousands'</span>)
+title(ax, <span class="keyword">...</span>
+      <span class="string">'Comparison data for solving A\\b on different numbers of workers'</span>);
+legend(<span class="string">'4 workers'</span>, <span class="string">'8 workers'</span>, <span class="string">'16 workers'</span>, <span class="string">'32 workers'</span>, <span class="keyword">...</span>
+       <span class="string">'64 workers'</span>,  <span class="string">'location'</span>, <span class="string">'NorthWest'</span>);
+</pre><img vspace="5" hspace="5" src="paralleldemo_backslash_bench_02.png" alt=""> <p>The first thing we notice when looking at the graph above is that 64 workers allow us to solve much larger linear systems of equations than is possible with only 4 workers.  Additionally, we can see that even if one could work with a matrix of size 60,000-by-60,000 on 4 workers, we would get a performance of approximately only 10 Gigaflops.  Thus, even if the 4 workers had sufficient memory to solve such a large problem, 64 workers would nevertheless greatly outperform them.</p><p>Looking at the slope of the curve for 4 workers, we can see that there is only a modest performance increase between the three largest matrix sizes.  Comparing this with the earlier graph of the expected performance of <tt>A\b</tt> for different matrix sizes, we conclude that we are quite close to achieving peak performance for 4 workers with matrix size of 7772-by-7772.</p><p>Looking at the curve for 8 and 16 workers, we can see that the performance drops for the largest matrix size, indicating that we are near or already have exhausted available system memory.  However, we see that the performance increase between the second and third largest matrix sizes is very modest, indicating stability of some sort.  We therefore conjecture that when working with 8 or 16 workers, we would most likely not see a significant increase in the Gigaflops if we increased the system memory and tested with larger matrix sizes.</p><p>Looking at the curves for 32 and 64 workers, we see that there is a significant performance increase between the second and third largest matrix sizes.  For 64 workers, there is also a significant performance increase between the two largest matrix sizes.  We therefore conjecture that we run out of system memory for 32 and 64 workers before we have reached peak performance.  If that is correct, then adding more memory to the computers would both allow us to solve larger problems and perform better at those larger matrix sizes.</p><h2>Speedup<a name="14"></a></h2><p>The traditional way of measuring speedup obtained with linear algebra algorithms such as backslash is to compare the peak performance.  We therefore calculate the maximum number of Gigaflops achieved for each number of workers.</p><pre class="codeinput">peakPerf = [max(s.workers4.gflops), max(s.workers8.gflops), <span class="keyword">...</span>
+            max(s.workers16.gflops), max(s.workers32.gflops), <span class="keyword">...</span>
+            max(s.workers64.gflops)];
+disp(<span class="string">'Peak performance in Gigaflops for 4-64 workers:'</span>)
+disp(peakPerf)
+
+disp(<span class="string">'Speedup when going from 4 workers to 8, 16, 32 and 64 workers:'</span>)
+disp(peakPerf(2:end)/peakPerf(1))
+</pre><pre class="codeoutput">Peak performance in Gigaflops for 4-64 workers:
+   10.9319   23.2508   40.7157   73.5109  147.0693
+
+Speedup when going from 4 workers to 8, 16, 32 and 64 workers:
+    2.1269    3.7245    6.7244   13.4532
+
+</pre><p>We therefore conclude that we get a speedup of approximately 13.5 when increasing the number of workers 16 fold, going from 4 workers to 64.  As we noted above, the performance graph indicates that we might be able to increase the performance on 64 workers (and thereby improve the speedup even further), by increasing the system memory on the cluster computers.</p><h2>The Cluster Used<a name="16"></a></h2><p>This data was generated using 16 dual-processor, dual-core computers, each with 4 GB of memory, connected with GigaBit Ethernet.  When using 4 workers, they were all on a single computer.  We used 2 computers for 8 workers, 4 computers for 16 workers, etc.</p><h2>Re-enable the Deadlock Detection<a name="17"></a></h2><p>Now that we have concluded our benchmarking, we can safely re-enable the deadlock detection in the current MATLAB pool.</p><pre class="codeinput"><span class="keyword">spmd</span>
+    mpiSettings(<span class="string">'DeadlockDetection'</span>, <span class="string">'on'</span>);
+<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Benchmarking A\b
+% This demo looks at how we can benchmark the solving of a linear system on
+% a cluster.  The MATLAB(R) code to solve for |x| in |A*x = b| is very
+% simple.  Most frequently, one uses matrix left division, also known as
+% mldivide or the backslash operator (\), to calculate |x|, i.e., |x =
+% A\b|.  Benchmarking the performance of matrix left division on a cluster,
+% however, is not as straightforward.
+%
+% One of the most challenging aspects of benchmarking is to avoid falling
+% into the trap of looking for a single number that represents the overall
+% performance of the system.  We will look at the performance curves that
+% might help you identify the performance bottlenecks on your cluster, and
+% maybe even help you see how to benchmark your code and be able to draw
+% meaningful conclusions from the results.
+%
+% Related demos:
+%
+% * <paralleldemo_parfor_bench.html Simple Benchmarking of Parfor Using
+% Blackjack>
+% * <paralleldemo_distribjob_bench.html Benchmarking Distributed Jobs on
+% the Cluster>
+% * <paralleldemo_resource_bench.html Resource Contention in Task Parallel
+% Problems>
+
+%   Copyright 2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.2 $  $Date: 2009/11/07 20:52:40 $
+
+%%
+% The code shown in this demo can be found in this function:
+function results = paralleldemo_backslash_bench(memoryPerWorker)
+%%
+% As discussed in the section "Choose Problem Size" below, it is very
+% important to choose the appropriate matrix size for the cluster.  We can
+% do this by specifying the amount of system memory in GB available to each
+% worker as an input to this demo function.  The default value is very
+% conservative, so you should specify a value that is appropriate for your
+% system.
+if nargin == 0
+    memoryPerWorker = 0.25; % In GB
+    warning('distcomp:BackslashDemo:UsingDefaultMemory', ...
+            ['Amount of system memory available to each worker is ', ...
+             'not specified.  Using the conservative default value ', ...
+             'of %.2f gigabytes per worker'], memoryPerWorker);
+end
+
+%% Check the Status of the MATLAB(R) Pool
+% We use the MATLAB pool to run the body of the |spmd| block in parallel,
+% so we start by checking whether the pool is open.
+poolSize = matlabpool('size');
+if poolSize == 0
+    error('distcomp:demo:poolClosed', ...
+        'This demo needs an open MATLAB pool to run.');
+end
+
+%% Avoid Overhead
+% To get an accurate measure of our capability to solve linear systems, we
+% need to remove any possible source of overhead.  This includes
+% temporarily disabling the deadlock detection capabilities.
+spmd 
+    mpiSettings('DeadlockDetection', 'off');
+end
+
+
+%% The Benchmarking Function
+% We want to benchmark matrix left division (\), and not the cost of
+% entering an |spmd| block, the time it takes to create a matrix, etc.  We
+% therefore separate the data generation from the solving of the linear
+% system, and measure only the time it takes to do the latter.  We generate
+% the input data using the 2-D block-cyclic codistributor, as that is the
+% most effective distribution scheme for solving a linear system.  Our
+% benchmarking then consists of measuring the time it takes all the workers
+% to complete solving the linear system |A*x = b|.  Again, we try to remove
+% any possible source of overhead.
+function [A, b] = getData(n)
+    fprintf('Creating a matrix of size %d-by-%d.\n', n, n);
+    spmd
+        % Use the codistributor that usually gives the best performance
+        % for solving linear systems.  
+        codistr = codistributor2dbc(codistributor2dbc.defaultLabGrid, ...
+                                    codistributor2dbc.defaultBlockSize, ...
+                                    'col');
+        A = codistributed.rand(n, n, codistr);
+        b = codistributed.rand(n, 1, codistr);
+    end
+end
+
+function time = timeSolve(A, b)
+    spmd
+        tic;
+        x = A\b; %#ok<NASGU> We don't need the value of x.
+        time = gop(@max, toc); % Time for all to complete.
+    end
+    time = time{1};
+end
+
+%% Choose Problem Size
+% Just like with a great number of other parallel algorithms, the
+% performance of solving a linear system in parallel depends greatly on the
+% matrix size.  Our _a priori_ expectations are therefore that the
+% computations be:
+%
+% * Somewhat inefficient for small matrices
+% * Quite efficient for large matrices
+% * Inefficient if the matrices are too large to fit into system memory and
+% the operating systems start swapping memory to disk
+%
+% It is therefore important to time the computations for a number of
+% different matrix sizes to gain an understanding of what "small," "large,"
+% and "too large" mean in this context.  Based on previous experiments, we
+% expect:
+%
+% * "Too small" matrices to be of size 1000-by-1000 
+% * "Large" matrices to occupy slightly less than 45% of the memory available to
+% each worker
+% * "Too large" matrices occupy 50% or more of system memory available to each
+% worker 
+%
+% These are heuristics, and the precise values may change between releases.
+% It is therefore important that we use matrix sizes that span this entire
+% range and verify the expected performance.
+%
+% Notice that by changing the problem size according to the number of
+% workers, we employ weak scaling.  Other benchmarking demos, such as
+% <paralleldemo_parfor_bench.html Simple Benchmarking of Parfor Using
+% Blackjack> and <paralleldemo_distribjob_bench.html Benchmarking
+% Distributed Jobs on the Cluster>, also employ weak scaling.  As those
+% demos benchmark task parallel computations, their weak scaling consists
+% of making the number of iterations proportional to the number of
+% workers.  This demo, however, is benchmarking data parallel computations,
+% so we relate the upper size limit of the matrices to the number of
+% workers.
+
+% Declare the matrix sizes ranging from 1000-by-1000 up to 45% of system
+% memory available to each worker.
+maxMemUsagePerWorker = 0.45*memoryPerWorker*1024^3; % In bytes.
+maxMatSize = round(sqrt(maxMemUsagePerWorker*poolSize/8));
+matSize = round(linspace(1000, maxMatSize, 5));
+
+
+%% Comparing Performance: Gigaflops 
+% We use the number of floating point operations per second as our measure
+% of performance because that allows us to compare the performance of the
+% algorithm for different matrix sizes and different number of workers. If
+% we are successful in testing the performance of matrix left division for
+% a sufficiently wide range of matrix sizes, we expect the performance
+% graph to look similar to the following:
+%
+% <<paralleldemo_backslash_bench_expected.png>>
+
+%%
+% By generating graphs such as these, we can answer questions such as:
+% 
+% * Are the smallest matrices so small that we get poor performance?
+% * Do we see a performance decrease when the matrix is so large that it
+%   occupies 45% of total system memory?
+% * What is the best performance we can possibly achieve for a given
+% number of workers?
+% * For which matrix sizes do 16 workers perform better than 8 workers?
+% * Is the system memory limiting the peak performance?
+%
+% Given a matrix size, the benchmarking function creates the matrix |A| and
+% the right-hand side |b| once, and then solves |A\b| multiple times to get
+% an accurate measure of the time it takes.  We use the floating operations
+% count of the HPC Challenge, so that for an n-by-n matrix, we count the
+% floating point operations as |2/3*n^3 + 3/2*n^2|.
+function gflops = benchFcn(n)
+    numReps = 3;
+    [A, b] = getData(n);
+    time = inf;
+    % We solve the linear system a few times and calculate the Gigaflops 
+    % based on the best time.
+    for itr = 1:numReps
+        tcurr = timeSolve(A, b);
+        if itr == 1
+            fprintf('Execution times: %f', tcurr);
+        else
+            fprintf(', %f', tcurr);
+        end
+        time = min(tcurr, time);
+    end
+    fprintf('\n');
+    flop = 2/3*n^3 + 3/2*n^2;
+    gflops = flop/time/1e9;
+end
+
+%% Execute the Benchmarks
+% Having done all the setup, it is straightforward to execute the
+% benchmarks.  However, the computations may take a long time to complete,
+% so we print some intermediate status information as we complete the
+% benchmarking for each matrix size.
+fprintf(['Starting benchmarks with %d different matrix sizes ranging\n' ...
+         'from %d-by-%d to %d-by-%d.\n'], ...
+        length(matSize), matSize(1), matSize(1), matSize(end), ...
+        matSize(end));
+gflops = zeros(size(matSize));
+for i = 1:length(matSize)
+    gflops(i) = benchFcn(matSize(i));
+    fprintf('Gigaflops: %f\n\n', gflops(i));
+end
+results.matSize = matSize;
+results.gflops = gflops;
+
+%% Plot the Performance
+% We can now plot the results, and compare to the expected graph shown
+% above.
+fig = figure;
+ax = axes('parent', fig);
+plot(ax, matSize/1000, gflops);
+lines = get(ax, 'Children');
+set(lines, {'Marker'}, {'+'});
+ylabel(ax, 'Gigaflops')
+xlabel(ax, 'Matrix size in thousands')
+titleStr = sprintf(['Solving A\\b for different matrix sizes on ' ...
+                    '%d workers'], poolSize);
+title(ax, titleStr, 'Interpreter', 'none');
+%%
+% If the benchmark results are not as good as you might expect, here are
+% some things to consider:
+%
+% * The underlying implementation is using ScaLAPACK, which has a proven
+% reputation of high performance.  It is therefore very unlikely that the
+% algorithm or the library is causing inefficiencies, but rather the way in
+% which it is used, as described in the items below.
+% * If the matrices are too small or too large for your cluster, the
+% resulting performance will be poor.  
+% * If the network communications are slow, performance will be severely
+% impacted.
+% * If the CPUs and the network communications are both very fast, but the
+% amount of memory is limited, it is possible you are not able to benchmark
+% with sufficiently large matrices to fully utilize the available CPUs and
+% network bandwidth.
+% * For ultimate performance, it is important to use a version of MPI that
+% is tailored for your networking setup, and have the workers running in
+% such a manner that as much of the communication happens through shared
+% memory as possible.  It is, however, beyond the scope of this demo to
+% explain how to identify and solve those types of problems.
+
+
+%% Compare Different Numbers of Workers
+% We now look at how to compare different numbers of workers by viewing data
+% obtained by running this demo using different numbers of workers.  This data
+% is obtained on a different cluster from the one above.
+%
+% Other demos such as 
+% <paralleldemo_distribjob_bench.html Benchmarking Distributed Jobs on the Cluster>
+% have explained that when benchmarking parallel algorithms for different
+% numbers of workers, one usually employs weak scaling.  That is, as we
+% increase the number of workers, we increase the problem size
+% proportionally.  In the case of matrix left division, we have to show
+% additional care because the performance of the division depends greatly
+% on the size of the matrix.  The following code creates a graph of the
+% performance in Gigaflops for all of the matrix sizes that we tested with and
+% all the different numbers of workers, as that gives us the most detailed
+% picture of the performance characteristics of matrix left division _on this
+% particular cluster_.
+
+s = load('pctdemo_data_backslash.mat', 'workers4', 'workers8', 'workers16', ...
+         'workers32', 'workers64');
+fig = figure;
+ax = axes('parent', fig);
+plot(ax, s.workers4.matSize./1000, s.workers4.gflops, ...
+     s.workers8.matSize./1000, s.workers8.gflops, ...
+     s.workers16.matSize./1000, s.workers16.gflops, ...
+     s.workers32.matSize./1000, s.workers32.gflops, ...
+     s.workers64.matSize./1000, s.workers64.gflops);
+lines = get(ax, 'Children');
+set(lines, {'Marker'}, {'+'; 'o'; 'v'; '.'; '*'});
+ylabel(ax, 'Gigaflops')
+xlabel(ax, 'Matrix size in thousands')
+title(ax, ...
+      'Comparison data for solving A\\b on different numbers of workers');
+legend('4 workers', '8 workers', '16 workers', '32 workers', '64 workers',  ...
+       'location', 'NorthWest');
+%%
+% The first thing we notice when looking at the graph above is that 64
+% workers allow us to solve much larger linear systems of equations than is
+% possible with only 4 workers.  Additionally, we can see that even if one
+% could work with a matrix of size 60,000-by-60,000 on 4 workers, we would
+% get a performance of approximately only 10 Gigaflops.  Thus, even if the
+% 4 workers had sufficient memory to solve such a large problem, 64 workers
+% would nevertheless greatly outperform them.
+% 
+% Looking at the slope of the curve for 4 workers, we can see that there is
+% only a modest performance increase between the three largest matrix
+% sizes.  Comparing this with the earlier graph of the expected performance
+% of |A\b| for different matrix sizes, we conclude that we are quite close
+% to achieving peak performance for 4 workers with matrix size of
+% 7772-by-7772.
+% 
+% Looking at the curve for 8 and 16 workers, we can see that the
+% performance drops for the largest matrix size, indicating that we are
+% near or already have exhausted available system memory.  However, we see
+% that the performance increase between the second and third largest matrix
+% sizes is very modest, indicating stability of some sort.  We therefore
+% conjecture that when working with 8 or 16 workers, we would most likely
+% not see a significant increase in the Gigaflops if we increased the
+% system memory and tested with larger matrix sizes.
+% 
+% Looking at the curves for 32 and 64 workers, we see that there is a
+% significant performance increase between the second and third largest
+% matrix sizes.  For 64 workers, there is also a significant performance
+% increase between the two largest matrix sizes.  We therefore conjecture
+% that we run out of system memory for 32 and 64 workers before we have
+% reached peak performance.  If that is correct, then adding more memory to
+% the computers would both allow us to solve larger problems and perform
+% better at those larger matrix sizes.
+
+%% Speedup
+% The traditional way of measuring speedup obtained with linear algebra
+% algorithms such as backslash is to compare the peak performance.  We
+% therefore calculate the maximum number of Gigaflops achieved for each
+% number of workers.
+peakPerf = [max(s.workers4.gflops), max(s.workers8.gflops), ...
+            max(s.workers16.gflops), max(s.workers32.gflops), ...
+            max(s.workers64.gflops)];
+disp('Peak performance in Gigaflops for 4-64 workers:')
+disp(peakPerf)
+
+disp('Speedup when going from 4 workers to 8, 16, 32 and 64 workers:')
+disp(peakPerf(2:end)/peakPerf(1))
+
+%%
+% We therefore conclude that we get a speedup of approximately 13.5 when
+% increasing the number of workers 16 fold, going from 4 workers to 64.  As
+% we noted above, the performance graph indicates that we might be able to
+% increase the performance on 64 workers (and thereby improve the speedup
+% even further), by increasing the system memory on the cluster computers.
+
+%% The Cluster Used
+% This data was generated using 16 dual-processor, dual-core computers,
+% each with 4 GB of memory, connected with GigaBit Ethernet.  When using 4
+% workers, they were all on a single computer.  We used 2 computers for 8
+% workers, 4 computers for 16 workers, etc.
+
+%% Re-enable the Deadlock Detection
+% Now that we have concluded our benchmarking, we can safely re-enable the
+% deadlock detection in the current MATLAB pool.
+spmd 
+    mpiSettings('DeadlockDetection', 'on');
+end
+displayEndOfDemoMessage(mfilename)
+end
+
+##### SOURCE END #####
+--></body></html>

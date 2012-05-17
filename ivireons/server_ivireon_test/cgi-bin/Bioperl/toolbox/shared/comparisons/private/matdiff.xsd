@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- 
+   Copyright 2010 The MathWorks, Inc.
+   $Revision: 1.1.6.2 $
+-->
+
+<xs:schema
+    xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="MatFileEditScript" type="matfileeditscript"/>
+
+    <xs:complexType name="matfileeditscript">
+        <xs:sequence>
+            <xs:element name="Title" type="xs:string"/>
+            <xs:element name="LeftLocation" type="location"/>
+            <xs:element name="RightLocation" type="location"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="location">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <xs:attribute name="ShortName" type="xs:string" use="required"/>
+                <xs:attribute name="Readable" type="xs:string" use="required"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:complexType name="oneside">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <xs:attribute name="class" type="xs:string" use="required"/>
+                <!-- number or "unknown" -->
+                <xs:attribute name="size" type="xs:string" use="required"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:complexType name="bothsides">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <xs:attribute name="contentsMatch" type="matchtype" use="required"/>
+                <xs:attribute name="leftclass" type="xs:string" use="required"/>
+                <xs:attribute name="rightclass" type="xs:string" use="required"/>
+                <!-- number or "unknown" -->
+                <xs:attribute name="leftsize" type="xs:string" use="required"/>
+                <xs:attribute name="rightsize" type="xs:string" use="required"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:simpleType name="matchtype">
+        <!-- There is a fixed set of allowed "contentsMatch" strings -->
+        <xs:restriction base="xs:string">
+            <xs:pattern value="yes|no|classesdiffer"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:element name="Variable" type="bothsides"/>
+    <xs:element name="LeftVariable" type="oneside"/>
+    <xs:element name="RightVariable" type="oneside"/>
+    
+</xs:schema>
+

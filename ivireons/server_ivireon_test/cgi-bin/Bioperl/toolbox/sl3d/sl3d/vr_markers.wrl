@@ -1,0 +1,200 @@
+#VRML V2.0 utf8
+
+WorldInfo {
+ info [ "Copyright 1998-2009 HUMUSOFT s.r.o. and The MathWorks, Inc.",
+  "$Revision: 1.1.6.2 $",
+  "$Date: 2009/04/13 16:48:59 $",
+  "$Author: " ]
+ title "Simulink 3D Animation Trajectory Markers"
+}
+
+# Default Markers (to be optionally enabled by a checkbox in addition to a general marker shapes 
+# selected in a listbox) have names without "_"
+# Default Markers have different set of exposed fields
+
+# markerTranslation perhaps not necessary
+PROTO MarkerLine [ 
+ exposedField SFVec3f markerTranslation 0 0 0
+ exposedField SFColor markerColor 1 0 0
+ exposedField MFVec3f markerPoint  [0 0 0, 0 1 0]
+]
+{
+ Transform {
+  translation IS markerTranslation
+  children Shape {
+   appearance Appearance {
+    material Material {
+     diffuseColor IS markerColor
+     transparency 0.5
+    }
+   }
+   geometry IndexedLineSet {
+    coord Coordinate {
+     point IS markerPoint
+    }
+    coordIndex [0 1 -1]
+   }
+  }
+ }
+}
+
+PROTO MarkerTriad [ 
+ exposedField SFVec3f markerTranslation 0 0 0
+ exposedField SFVec3f markerScale 1 1 1
+]
+{
+ Transform {
+  translation IS markerTranslation
+  scale IS markerScale
+  children DEF Triad_Shape Shape {
+   geometry DEF Triad_Geometry IndexedLineSet {
+    color Color {
+     color [1 0 0,
+      0 1 0,
+      0 0 1]
+    }
+    coord Coordinate {
+     point [ 0 0 0,
+      1 0 0,
+      0 1 0,
+      0 0 1 ]
+    }
+    colorPerVertex FALSE
+    coordIndex [ 0, 1, -1, 0, 2, -1, 0, 3, -1]
+    colorIndex [0, 1, 2]
+   }
+  }                 
+ }
+}
+
+# All PROTOS for general marker shapes must fulfil the following conditions:
+#
+# 1. Have the name Marker_Xxxx, where Xxxx is the shape description - to be displayed in marker selection listbox
+#
+# 2. Have the following exposed fields:
+#
+#    - markerTranslation 
+#    - markerColor 
+#    - markerScale 
+
+PROTO Marker_Tetrahedron [ 
+ exposedField SFVec3f markerTranslation 0 0 0
+ exposedField SFColor markerColor 1 0 0
+ exposedField SFVec3f markerScale 1 1 1
+]
+{
+ Transform {
+  translation IS markerTranslation
+  scale IS markerScale
+  children Shape {
+   appearance Appearance {
+    material Material {
+     diffuseColor IS markerColor
+     transparency 0.5
+    }
+   }
+   geometry IndexedFaceSet {
+    coord Coordinate {
+     point[-0.5 -0.5 0.5, 0.5 -0.5 -0.5, 0.5 0.5 0.5, -0.5 0.5 -0.5]
+    }
+    coordIndex [0 1 2 -1, 0 2 3 -1, 0 3 1 -1, 1 3 2 -1]
+   }
+  }
+ }
+}
+
+PROTO Marker_Pyramid [ 
+ exposedField SFVec3f markerTranslation 0 0 0
+ exposedField SFColor markerColor 1 0 0
+ exposedField SFVec3f markerScale 1 1 1
+]
+{
+ Transform {
+  translation IS markerTranslation
+  scale IS markerScale
+  children Shape {
+   appearance Appearance {
+    material Material {
+     diffuseColor IS markerColor
+     transparency 0.5
+    }
+   }
+   geometry IndexedFaceSet {
+    coord Coordinate {
+     point[-0.5 0 0.5, 0.5 0 0.5, 0.5 0 -0.5, -0.5 0 -0.5, 0 0.70716 0 ]
+    }
+    coordIndex [0 3 2 1 -1, 0 1 4 -1, 1 2 4 -1, 2 3 4 -1, 3 0 4 -1]
+   }
+  }
+ }
+}               
+
+PROTO Marker_Box [ 
+ exposedField SFVec3f markerTranslation 0 0 0
+ exposedField SFColor markerColor 1 0 0
+ exposedField SFVec3f markerScale 1 1 1
+]
+{
+ Transform {
+  translation IS markerTranslation
+  scale IS markerScale
+  children Shape {
+   appearance Appearance {
+    material Material {
+     diffuseColor IS markerColor
+     transparency 0.5
+    }
+   }
+   geometry Box {
+   }
+  }
+ }
+}
+
+PROTO Marker_Octahedron [ 
+ exposedField SFVec3f markerTranslation 0 0 0
+ exposedField SFColor markerColor 1 0 0
+ exposedField SFVec3f markerScale 1 1 1
+]
+{
+ Transform {
+  translation IS markerTranslation
+  scale IS markerScale
+  children Shape {
+   appearance Appearance {
+    material Material {
+     diffuseColor IS markerColor
+     transparency 0.5
+    }
+   }
+   geometry IndexedFaceSet {
+    coord Coordinate {
+     point[-0.5 0 -0.5, -0.5 0 0.5, 0.5 0 0.5, 0.5 0 -0.5, 0 0.5 0, 0 -0.5 0]
+    }
+    coordIndex [0 5 1 -1, 0 1 4 -1, 1 5 2 -1, 1 2 4 -1, 2 5 3 -1, 2 3 4 -1, 3 5 0 -1, 3 0 4 -1]
+   }
+  }
+ }
+}
+
+PROTO Marker_Sphere [ 
+ exposedField SFVec3f markerTranslation 0 0 0
+ exposedField SFColor markerColor 1 0 0
+ exposedField SFVec3f markerScale 1 1 1
+]
+{
+ Transform {
+  translation IS markerTranslation
+  scale IS markerScale
+  children Shape {
+   appearance Appearance {
+    material Material {
+     diffuseColor IS markerColor
+     transparency 0.5
+    }
+   }
+   geometry Sphere {
+   }
+  }
+ }
+}

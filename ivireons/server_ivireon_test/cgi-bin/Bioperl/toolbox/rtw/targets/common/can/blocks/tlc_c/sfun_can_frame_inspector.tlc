@@ -1,0 +1,35 @@
+%% File: sfun_can_frame_inspector.tlc
+%%
+%% Abstract:
+%%   
+%%
+%% $Revision: 1.13.4.4 $
+%% $Date: 2008/11/04 21:24:02 $
+%%
+%% Copyright 2001-2007 The MathWorks, Inc.
+
+%implements sfun_can_frame_inspector "C"
+
+%include "canincludes.tlc"
+
+%function BlockTypeSetup(block,system) void
+   %<SetupCanDataTypes(block)>
+%endfunction
+
+%function Outputs(block,system) Output
+   %% Generate automatic comment for block so that it can be linked to
+   /* %<SLibBlkType(block)>: '%<SLibBlkName(block)>' */
+
+	%assign frame = LibBlockInputSignal(0,"","",0)
+	%<GenerateSignalUnpacking(block,system,SFcnCanDbMessage,"%<frame>.Data")>
+%endfunction
+
+
+%% Function: BlockInitialValues ================================================
+%%
+%function BlockInitialValues(block, system, vectType) void
+
+  %return CAN_BlockInitialValues(block,system,vectType)
+
+%endfunction  %% BlockInitialValues
+

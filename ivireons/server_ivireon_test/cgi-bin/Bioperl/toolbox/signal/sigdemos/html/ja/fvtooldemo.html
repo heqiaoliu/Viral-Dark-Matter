@@ -1,0 +1,94 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>FVTool とアプリケーション プログラム インターフェイス (API) を使ったフィルター解析</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="fvtooldemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit fvtooldemo">エディターで fvtooldemo.m を開く</a></div><div class="right"><a href="matlab:echodemo fvtooldemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>FVTool とアプリケーション プログラム インターフェイス (API) を使ったフィルター解析</h1><!--introduction--><p>Filter Visualization Tool (FVTool) は、Signal Processing Toolbox™ で利用可能なグラフィカル ユーザー インターフェイスです。このツールを利用して、Signal Processing Toolbox のすべてのフィルター解析関数を 1 つの Figure ウィンドウで利用することができます。</p><p>FVTool は、コマンド ラインから GUI を使って利用可能な Application Program Interface (API) も含みます。これにより、FVTool と他のアプリケーションを統合することができます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">FVTool の起動</a></li><li><a href="#5">フィルターの追加と削除</a></li><li><a href="#9">解析パラメーターの変更</a></li><li><a href="#17">2 つの解析結果の重ね描き</a></li><li><a href="#20">Figure ウィンドウと似た FVTool の操作</a></li><li><a href="#24">固定小数点フィルター、マルチレート フィルター、および適応フィルターの解析</a></li></ul></div><h2>FVTool の起動<a name="1"></a></h2><p>0.4 の通過帯域周波数 (1 に正規化)、0.6 の遮断帯域周波数、1dB の通過帯域リップル、80dB の遮断帯域の減衰量を持つローパス フィルターを作成します。ここでは、いくつかの Signal Processing Toolbox のフィルター設計方法を使用してフィルターを作成し、結果を FVTool で解析します。</p><p>ローパス等リップル FIR フィルターを設計します。</p><pre class="codeinput">f    = fdesign.lowpass(<span class="string">'Fp,Fst,Ap,Ast'</span>,.4,.6,1,80);
+Hd1 = design(f,<span class="string">'equiripple'</span>);
+</pre><p>ローパス楕円 IIR フィルターを設計します。</p><pre class="codeinput">Hd2 = design(f,<span class="string">'ellip'</span>);
+</pre><p>フィルター オブジェクトを使用して FVTool を起動し、ハンドルを FVTool に返すことで、同じ FVTool Figure を再使用できます。</p><pre class="codeinput">hfvt = fvtool(Hd1, Hd2);
+set(hfvt, <span class="string">'Color'</span>, [1 1 1])
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_01.png" alt=""> <h2>フィルターの追加と削除<a name="5"></a></h2><p>両方のフィルターが仕様を満たしていますが、チェビシェフ II 型設計がどの程度正しく動作するかを確認します。</p><p>フィルターを FVTool に追加するには、ADDFILTER メソッドを使用します。</p><pre class="codeinput">Hd3 = design(f,<span class="string">'cheby2'</span>);
+addfilter(hfvt, Hd3);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_02.png" alt=""> <p>フィルターに属しているプロット上の線を識別できるように、凡例を追加します。凡例を設定するには、FVTool の LEGEND メソッドを使用します。</p><pre class="codeinput">legend(hfvt, <span class="string">'Equiripple'</span>, <span class="string">'Elliptic'</span>, <span class="string">'Chebyshev Type II'</span>);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_03.png" alt=""> <p>FVTool からフィルターを削除するには、DELETEFILTER メソッドを使用して、削除するフィルターのインデックスを渡します。</p><pre class="codeinput">deletefilter(hfvt, [1 3]);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_04.png" alt=""> <h2>解析パラメーターの変更<a name="9"></a></h2><p>ここでは、このフィルターの特徴について詳しく調べます。FVTool によって返されるハンドルには、フィルターと現在の解析の両方を操作するためのプロパティが含まれています。</p><p>使用可能なすべてのプロパティを確認するには、GET コマンドを使用します。最初のプロパティは、通常の MATLAB&reg; Figure のプロパティです。残りの 14 個のプロパティは FVTool に固有のプロパティです。その中の 6 個のプロパティ (FrequencyScale から MagnitudeDisplay まで) は解析に固有のプロパティです。</p><pre class="codeinput">s = get(hfvt);
+<span class="comment">% Keep the last 14 properties</span>
+c = struct2cell(s); f = fieldnames(s);
+s = cell2struct(c(end-14:end),f(end-14:end),1)
+</pre><pre class="codeoutput">
+s = 
+
+                   Legend: 'on'
+               DesignMask: 'off'
+                       Fs: 1
+          SOSViewSettings: [1x1 dspopts.sosview]
+                 Analysis: 'magnitude'
+        OverlayedAnalysis: ''
+            ShowReference: 'on'
+            PolyphaseView: 'off'
+      NormalizedFrequency: 'on'
+           FrequencyScale: 'Linear'
+           FrequencyRange: '[0, pi)'
+           NumberofPoints: 8192
+          FrequencyVector: [1x256 double]
+         MagnitudeDisplay: 'Magnitude (dB)'
+    NormalizeMagnitudeto1: 'off'
+
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_05.png" alt=""> <p>FVTool の [解析パラメーター] ダイアログで使用可能なパラメーターはすべて、FVTool オブジェクトのプロパティとしても使用可能です。SET コマンドを 2 つの入力引数と一緒に使用すると、すべての可能な値を返します。</p><pre class="codeinput">set(hfvt, <span class="string">'MagnitudeDisplay'</span>)
+</pre><pre class="codeoutput">
+ans = 
+
+    'Magnitude'
+    'Magnitude (dB)'
+    'Magnitude squared'
+    'Zero-phase'
+
+</pre><p>表示を 'Magnitude Squared' にします。</p><pre class="codeinput">set(hfvt, <span class="string">'MagnitudeDisplay'</span>, <span class="string">'Magnitude Squared'</span>);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_06.png" alt=""> <p>'Analysis' プロパティのすべての可能な値を取得します。</p><pre class="codeinput">set(hfvt, <span class="string">'Analysis'</span>)
+</pre><pre class="codeoutput">
+ans = 
+
+    'magnitude'
+    'phase'
+    'freq'
+    'grpdelay'
+    'phasedelay'
+    'impulse'
+    'step'
+    'polezero'
+    'coefficients'
+    'info'
+    'magestimate'
+    'noisepower'
+
+</pre><p>振幅応答は十分に確認できたので、次に群遅延応答について確認します。</p><pre class="codeinput">set(hfvt, <span class="string">'Analysis'</span>, <span class="string">'grpdelay'</span>);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_07.png" alt=""> <p>解析を変更したため、GET コマンドは新しい解析パラメーターを返します。</p><pre class="codeinput">GroupDelayUnits = get(hfvt, <span class="string">'GroupDelayUnits'</span>)
+</pre><pre class="codeoutput">
+GroupDelayUnits =
+
+Samples
+
+</pre><h2>2 つの解析結果の重ね描き<a name="17"></a></h2><p>ここでは、群遅延とゼロ位相応答が周波数領域でどのように重なるのかを確認します。</p><p>FVTool で共通の x 軸 (時間または周波数) を共有する 2 つの解析を重ね描きするには、'OverlayedAnalysis' プロパティを設定します。</p><pre class="codeinput">set(hfvt, <span class="string">'OverlayedAnalysis'</span>, <span class="string">'magnitude'</span>, <span class="string">'MagnitudeDisplay'</span>, <span class="string">'Zero-phase'</span>, <span class="keyword">...</span>
+    <span class="string">'Legend'</span>, <span class="string">'On'</span>);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_08.png" alt=""> <p>重ね描きした解析をオフにするには、次のように 'OverlayedAnalysis' プロパティを設定します。</p><pre class="codeinput">set(hfvt, <span class="string">'OverlayedAnalysis'</span>, <span class="string">''</span>, <span class="string">'Legend'</span>, <span class="string">'Off'</span>);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_09.png" alt=""> <h2>Figure ウィンドウと似た FVTool の操作<a name="20"></a></h2><p>FVTool ウィンドウは、通常の Figure ウィンドウと同様に注釈を付けることもできます。</p><p>FVTool Figure は通常の Figure ウィンドウと同様に動作します。これによって、MATLAB の関数 grid と関数 axis を使用できます。</p><pre class="codeinput">grid <span class="string">on</span>
+axis([.3 .45 5 25]);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_10.png" alt=""> <p>関数 axis は、コマンド ラインからもアクセスできます。これによってタイトルとラベルを変更できます。</p><pre class="codeinput">title(<span class="string">'Group Delay of an Elliptic filter'</span>);
+xlabel(<span class="string">'Frequency (normalized to 1)'</span>);
+ylabel(<span class="string">'Group Delay in samples'</span>);
+
+htext = text(.35, 23, <span class="string">'Maximum Group Delay'</span>);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_11.png" alt=""> <p>FVTool は、追加された注釈を解析から自動的には削除しません。</p><pre class="codeinput">delete(htext);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_12.png" alt=""> <h2>固定小数点フィルター、マルチレート フィルター、および適応フィルターの解析<a name="24"></a></h2><p>Filter Design Toolbox™ がインストールされている場合、FVTool と固定小数点フィルター (DFILT)、マルチレート フィルター (MFILT)、および適応フィルター (ADAPTFILT) を使用できます。</p><p>FVTool で量子化フィルターを表示します。</p><pre class="codeinput">set(Hd1, <span class="string">'Arithmetic'</span>, <span class="string">'fixed'</span>);
+set(hfvt, <span class="string">'Filter'</span>, Hd1, <span class="string">'Analysis'</span>, <span class="string">'magnitude'</span>, <span class="string">'MagnitudeDisplay'</span>, <span class="string">'Magnitude (dB)'</span>);
+legend(hfvt, <span class="string">'Equiripple Filter'</span>);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_13.png" alt=""> <p>FVTool でカスケード接続積分器櫛形間引きを表示します。</p><pre class="codeinput">Hm = mfilt.cicdecim(8,1,4);
+set(hfvt, <span class="string">'Filter'</span>, Hm);
+legend(hfvt, <span class="string">'CIC Decimator:R=8, M=1, N=4'</span>);
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_14.png" alt=""> <p>直接型 FIR 最小二乗 (LMS) 適応フィルターを作成します。</p><pre class="codeinput">H = adaptfilt.lms(32, .008);
+</pre><p>ランダム信号をフィルター処理して、係数を適合させます。</p><pre class="codeinput">filter(H, rand(1,100), [1:100]);
+</pre><p>FVTool で LMS フィルターを表示します。</p><pre class="codeinput">set(hfvt, <span class="string">'Filter'</span>, H);
+legend(hfvt, get(H, <span class="string">'Algorithm'</span>));
+</pre><img vspace="5" hspace="5" src="../fvtooldemo_15.png" alt=""> <p>MATLAB の関数 close を使って FVTool を閉じます。</p><pre class="codeinput">close
+</pre><p class="footer">Copyright 1988-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Filter Analysis using FVTool and its Application Program Interface (API) % The Filter Visualization Tool (FVTool) is a Graphical User Interface % available in the Signal Processing Toolbox(TM).  This tool allows you to % use all of the filter analysis functions available in the Signal % Processing Toolbox in a single figure window. % % FVTool also has an Application Program Interface (API) that allows you to % interact with the GUI from the command line.  This enables you to % integrate FVTool into other applications.  % Copyright 1988-2007 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $ $Date: 2010/07/29 21:29:04 $  %% Launching FVTool % We want to create a lowpass filter with a passband frequency of 0.4 % (normalized to 1), a stopband frequency of 0.6, a passband ripple of 1 dB % and a stopband attenuation of 80 dB.  We will do this using some of the % Signal Processing Toolbox's filter design methods and then analyze the % results in FVTool.  %% % Design a lowpass equiripple FIR filter  f = fdesign.lowpass('Fp,Fst,Ap,Ast',.4,.6,1,80); Hd1 = design(f,'equiripple'); %% % Design a lowpass elliptic IIR filter Hd2 = design(f,'ellip'); %% % Launch FVTool with the filter objects and return a handle to FVTool which % enables us to reuse the same FVTool figure. hfvt = fvtool(Hd1, Hd2); set(hfvt, 'Color', [1 1 1])  %% Adding and Removing Filters % Both filters meet our specification, but we also want to see how well the % Chebyshev Type II design performs.  %% % You can add a filter to FVTool using the ADDFILTER method. Hd3 = design(f,'cheby2'); addfilter(hfvt, Hd3); %% % To help us identify which line on the plot belongs to which filter, we % will put up a legend. You can set the legend using the LEGEND method of % FVTool. legend(hfvt, 'Equiripple', 'Elliptic', 'Chebyshev Type II');  %%  % You can remove a filter from FVTool using the DELETEFILTER method and % passing the index of the filter(s) that you want to remove.  deletefilter(hfvt, [1 3]);  %% Changing the Analysis Parameters % We would like to delve deeper into the characteristics of this filter. % The handle that FVTool returns contains properties that allow us to % interact with both the filter and the current analysis.  %% % To see all of the available properties you can use the GET command. The % first properties are those of a regular MATLAB(R) figure.  The last fourteen % properties are FVTool specific. The last six of these (from % FrequencyScale to MagnitudeDisplay) are analysis specific. s = get(hfvt); % Keep the last 14 properties c = struct2cell(s); f = fieldnames(s); s = cell2struct(c(end-14:end),f(end-14:end),1)  %% % All the parameters that are available from the FVTool's Analysis % Parameters dialog are also available as properties of the FVTool object. % The SET command with only two input arguments returns all possible % values. set(hfvt, 'MagnitudeDisplay')  %% % Turn the display to 'Magnitude Squared' set(hfvt, 'MagnitudeDisplay', 'Magnitude Squared'); %% % Get all possible values for the 'Analysis' property set(hfvt, 'Analysis') %% % We have seen enough of the Magnitude Response and now we would like to % see the Group Delay Response. %% set(hfvt, 'Analysis', 'grpdelay'); %% % Now that we have changed analysis, the GET command will return new % Analysis Parameters. GroupDelayUnits = get(hfvt, 'GroupDelayUnits')  %% Overlaying Two Analyses % We would also like to see how the Group Delay and the Zero-phase response % overlap in the frequency domain.  %% % You can overlay any two analyses in FVTool that share a common x-axis % (time or frequency) by setting the 'OverlayedAnalysis' property. set(hfvt, 'OverlayedAnalysis', 'magnitude', 'MagnitudeDisplay', 'Zero-phase', ...     'Legend', 'On');  %% % To turn off the overlayed analysis simply set the 'OverlayedAnalysis' % property to ''. set(hfvt, 'OverlayedAnalysis', '', 'Legend', 'Off');  %% Interacting with FVTool like a Figure Window % The FVTool window can also be annotated like a normal figure window.  %% % The FVTool figure behaves as a normal figure window.  This allows you to % use MATLAB's grid and axis functions. grid on axis([.3 .45 5 25]); %% % The axis is also accessible from the command line.  This allows you to % change the title and labels. title('Group Delay of an Elliptic filter'); xlabel('Frequency (normalized to 1)'); ylabel('Group Delay in samples');  htext = text(.35, 23, 'Maximum Group Delay');  %% % FVTool will not automatically delete additional annotations from your % analysis. delete(htext);  %% Analyzing Fixed-Point, Multirate and Adaptive Filters % If the Filter Design Toolbox(TM) is installed you can use FVTool with % fixed-point DFILTs, multirate filters (MFILTs) and adaptive filters % (ADAPTFILTs).  %% % Show a quantized filter in FVTool. set(Hd1, 'Arithmetic', 'fixed'); set(hfvt, 'Filter', Hd1, 'Analysis', 'magnitude', 'MagnitudeDisplay', 'Magnitude (dB)'); legend(hfvt, 'Equiripple Filter');  %% % Show a Cascaded Integrator-Comb Decimator in FVTool. Hm = mfilt.cicdecim(8,1,4); set(hfvt, 'Filter', Hm); legend(hfvt, 'CIC Decimator: R=8, M=1, N=4');  %% % Build a Direct-Form FIR Least-mean-square (LMS) Adaptive Filter. H = adaptfilt.lms(32, .008); %% % Filter a random signal to adapt the coefficients. filter(H, rand(1,100), [1:100]); %% % Show the LMS filter in FVTool. set(hfvt, 'Filter', H); legend(hfvt, get(H, 'Algorithm')); %% % Closing FVTool % MATLAB's close function also works. close   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,357 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Fixed-Point Algorithm Development</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="fialgorithmdevelopmentdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit fialgorithmdevelopmentdemo">Open fialgorithmdevelopmentdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo fialgorithmdevelopmentdemo">Run in the Command Window</a></div></div><div class="content"><h1>Fixed-Point Algorithm Development</h1><!--introduction--><p>Shows the development and verification of a simple fixed-point algorithm.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Simple Example of Algorithm Development</a></li><li><a href="#2">Floating-Point Variable Definitions</a></li><li><a href="#3">Data-Type-Independent Algorithm</a></li><li><a href="#4">Visualize Dynamic Range</a></li><li><a href="#5">Instrument Floating-Point Code</a></li><li><a href="#6">Analyze Information in the Scope</a></li><li><a href="#7">Fixed-Point Variable Definitions</a></li><li><a href="#8">Same Data-Type-Independent Algorithm</a></li><li><a href="#10">Compare and Plot the Floating-Point and Fixed-Point Results</a></li><li><a href="#13">Plot the Error</a></li><li><a href="#14">Simulink&reg;</a></li><li><a href="#15">Assumptions Made for this Example</a></li></ul></div><h2>Simple Example of Algorithm Development<a name="1"></a></h2><p>This example shows the development and verification of a simple fixed-point filter algorithm. We will follow the following steps:</p><p>1) Implement a second order filter algorithm and simulate in double-precision floating-point.</p><p>2) Instrument the code to visualize the dynamic range of the output and state.</p><p>3) Convert the algorithm to fixed-point by changing the data type of the variables - the algorithm itself does not change.</p><p>4) Compare and plot the fixed-point and floating-point results.</p><h2>Floating-Point Variable Definitions<a name="2"></a></h2><p>We develop our algorithm in double-precision floating-point. We will use a second-order lowpass filter to remove the high frequencies in the input signal.</p><pre class="codeinput">b = [ 0.25 0.5      0.25    ]; <span class="comment">% Numerator coefficients</span>
+a = [ 1    0.09375  0.28125 ]; <span class="comment">% Denominator coefficients</span>
+<span class="comment">% Random input that has both high and low frequencies.</span>
+rstream = RandStream.create(<span class="string">'mt19937ar'</span>,<span class="string">'seed'</span>,2009);
+reset(rstream);
+x = randn(rstream,1000,1);
+<span class="comment">% Pre-allocate the output and state for speed.</span>
+y = zeros(size(x));
+z = [0;0];
+</pre><h2>Data-Type-Independent Algorithm<a name="3"></a></h2><p>This is a second-order filter that implements the standard difference equation:</p><pre>y(n) = b(1)*x(n) + b(2)*x(n-1) + b(3)*x(n-2) - a(2)*y(n-1) - a(3)*y(n-2)</pre><pre class="codeinput"><span class="keyword">for</span> k=1:length(x)
+    y(k) =  b(1)*x(k) + z(1);
+    z(1) = (b(2)*x(k) + z(2)) - a(2)*y(k);
+    z(2) =  b(3)*x(k)         - a(3)*y(k);
+<span class="keyword">end</span>
+
+<span class="comment">% Save the Floating-Point Result</span>
+ydouble = y;
+</pre><h2>Visualize Dynamic Range<a name="4"></a></h2><p>In order to convert to fixed-point, we need to know the range of the variables. Depending on the complexity of an algorithm, this task can be simple or quite challenging. In this example, the range of the input value is known, so selecting an appropriate fixed-point data type is simple. We will concentrate on the output (y) and states (z) since their range is unknown. To view the dynamic range of the output and states, we will modify the code slightly to instrument it. We will create two NumericTypeScope objects and view the dynamic range of the output (y) and states (z) simultaneously.</p><h2>Instrument Floating-Point Code<a name="5"></a></h2><pre class="codeinput">hscope1 = NumericTypeScope;
+hscope2 = NumericTypeScope;
+<span class="keyword">for</span> k=1:length(x)
+    y(k) =  b(1)*x(k) + z(1);
+    z(1) = (b(2)*x(k) + z(2)) - a(2)*y(k);
+    z(2) =  b(3)*x(k)         - a(3)*y(k);
+    <span class="comment">% process the data and update the visual.</span>
+    step(hscope1,z);
+<span class="keyword">end</span>
+step(hscope2,y);
+</pre><img vspace="5" hspace="5" src="fialgorithmdevelopmentdemo_01.png" alt=""> <img vspace="5" hspace="5" src="fialgorithmdevelopmentdemo_02.png" alt=""> <h2>Analyze Information in the Scope<a name="6"></a></h2><p>Let us first analyze the information displayed for variable z (state). From the histogram we can see that the dynamic range lies between (<img src="fialgorithmdevelopmentdemo_eq77168.png" alt="$2^{1}$"> <img src="fialgorithmdevelopmentdemo_eq67584.png" alt="$2^{-20}$">].</p><p>By default, the scope uses a word length of 16 bits with zero tolerable overflows. This results in a data type of numerictype(true,16, 14) since we need at least 1 integer bit to avoid overflows. With this suggested type, values that require more than 14 fractional bits to represent itself will cause an underflow, which is 0.1% in this case and is negligible. You can get more information on the statistical data from the Input Data and Resulting Type panels. From the Input Data panel we can see that the data has both positive and negative values and hence a signed quantity which is reflected in the suggested numerictype. Also, the maximum data value is 1.8 which can be represented by the suggested type.</p><p>Next, let us look at variable y (output). From the histogram plot we see that the dynamic range lies between (<img src="fialgorithmdevelopmentdemo_eq57861.png" alt="$2^{2}$"> <img src="fialgorithmdevelopmentdemo_eq76087.png" alt="$2^{-11}$">].</p><p>By default, the scope uses a word length of 16 bits with zero tolerable overflows. This results in a data type of numerictype(true,16, 13) since we need at least 2 integer bits to avoid overflows. With this suggested type you see no overflows or underflows. Supposing the application is tolerant to a small amount of overflows, we can optimize the wordsize further. By setting the Maximum Overflow parameter on the Bit Allocation panel to 0.5%, we can reduce the integer length by 1 bit and gain more precision.</p><h2>Fixed-Point Variable Definitions<a name="7"></a></h2><p>We convert variables to fixed-point and run the algorithm again. We will turn on logging to see the overflows and underflows introduced by the selected data types.</p><pre class="codeinput"><span class="comment">% Turn on logging to see overflows/underflows.</span>
+fp = fipref;
+default_loggingmode = fp.LoggingMode;
+fp.LoggingMode = <span class="string">'On'</span>;
+<span class="comment">% Capture the present state of and reset the global fimath to the factory</span>
+<span class="comment">% settings.</span>
+globalFimathAtStartOfThisDemo = fimath;
+resetglobalfimath;
+<span class="comment">% Define the fixed-point types for the variables in the below format:</span>
+<span class="comment">%   fi(Data, Signed, WordLength, FractionLength)</span>
+b = fi(b, 1, 8, 6);
+a = fi(a, 1, 8, 6);
+
+x = fi(x, 1, 16, 13);
+y = fi(zeros(size(x)), 1, 16, 13);
+z = fi([0;0], 1, 16, 14);
+</pre><h2>Same Data-Type-Independent Algorithm<a name="8"></a></h2><pre class="codeinput"><span class="keyword">for</span> k=1:length(x)
+    y(k) =  b(1)*x(k) + z(1);
+    z(1) = (b(2)*x(k) + z(2)) - a(2)*y(k);
+    z(2) =  b(3)*x(k)         - a(3)*y(k);
+<span class="keyword">end</span>
+<span class="comment">% Reset the logging mode.</span>
+fp.LoggingMode = default_loggingmode;
+</pre><p>In this example, we have redefined the fixed-point variables with the same names as the floating-point so that we could inline the algorithm code for clarity.  However, it is a better practice to enclose the algorithm code in an MATLAB&reg; file function that could be called with either floating-point or fixed-point variables.  See <tt>filimitcycledemo.m</tt> for an example of writing and using a datatype-agnostic algorithm.</p><h2>Compare and Plot the Floating-Point and Fixed-Point Results<a name="10"></a></h2><p>We will now plot the magnitude response of the floating-point and fixed-point results and the response of the filter to see if the filter behaves as expected when it is converted to fixed-point.</p><pre class="codeinput">n = length(x);
+f = linspace(0,0.5,n/2);
+x_response = 20*log10(abs(fft(double(x))));
+ydouble_response = 20*log10(abs(fft(ydouble)));
+y_response = 20*log10(abs(fft(double(y))));
+plot(f,x_response(1:n/2),<span class="string">'c-'</span>,<span class="keyword">...</span>
+    f,ydouble_response(1:n/2),<span class="string">'bo-'</span>,<span class="keyword">...</span>
+    f,y_response(1:n/2),<span class="string">'gs-'</span>);
+ylabel(<span class="string">'Magnitude in dB'</span>);
+xlabel(<span class="string">'Normalized Frequency'</span>);
+legend(<span class="string">'Input'</span>,<span class="string">'Floating point output'</span>,<span class="string">'Fixed point output'</span>,<span class="string">'Location'</span>,<span class="string">'Best'</span>);
+title(<span class="string">'Magnitude response of Floating-point and Fixed-point results'</span>);
+</pre><img vspace="5" hspace="5" src="fialgorithmdevelopmentdemo_03.png" alt=""> <pre class="codeinput">h = freqz(double(b),double(a),n/2);
+clf
+hax = axes;
+plot(hax,f,20*log10(abs(h)));
+set(hax,<span class="string">'YLim'</span>,[-40 0]);
+title(<span class="string">'Magnitude response of the filter'</span>);
+ylabel(<span class="string">'Magnitude in dB'</span>)
+xlabel(<span class="string">'Frequency'</span>);
+</pre><img vspace="5" hspace="5" src="fialgorithmdevelopmentdemo_04.png" alt=""> <p>Notice that the high frequencies in the input signal are attenuated by the low-pass filter which is the expected behavior.</p><h2>Plot the Error<a name="13"></a></h2><pre class="codeinput">clf
+n = (0:length(y)-1)';
+e = double(lsb(y));
+plot(n,double(y)-ydouble,<span class="string">'.-r'</span>, <span class="keyword">...</span>
+     [n(1) n(end)],[e/2 e/2],<span class="string">'c'</span>, <span class="keyword">...</span>
+     [n(1) n(end)],[-e/2 -e/2],<span class="string">'c'</span>)
+text(n(end),e/2,<span class="string">'+1/2 LSB'</span>,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>,<span class="string">'VerticalAlignment'</span>,<span class="string">'bottom'</span>)
+text(n(end),-e/2,<span class="string">'-1/2 LSB'</span>,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>,<span class="string">'VerticalAlignment'</span>,<span class="string">'top'</span>)
+xlabel(<span class="string">'n (samples)'</span>); ylabel(<span class="string">'error'</span>)
+</pre><img vspace="5" hspace="5" src="fialgorithmdevelopmentdemo_05.png" alt=""> <h2>Simulink&reg;<a name="14"></a></h2><p>If you have Simulink&reg; and Simulink&reg; Fixed Point&#8482;, you can run this model, which is the equivalent of the algorithm above.  The output, y_sim is a fixed-point variable equal to the variable y calculated above in MATLAB code.</p><p>As in the MATLAB code, the fixed-point parameters in the blocks can be modified to match an actual system; these have been set to match the MATLAB code in the example above.  Double-click on the blocks to see the settings.</p><pre class="codeinput"><span class="keyword">if</span> license(<span class="string">'test'</span>,<span class="string">'Fixed-Point_Blocks'</span>)
+
+    <span class="comment">% Set up the From Workspace variable</span>
+    x_sim.time = n;
+    x_sim.signals.values = x;
+    x_sim.signals.dimensions = 1;
+
+    <span class="comment">% Run the simulation</span>
+    simopts = simset(<span class="string">'SrcWorkspace'</span>,<span class="string">'current'</span>);
+    sim(<span class="string">'fitdf2filter_demo'</span>,[],simopts)
+
+    <span class="comment">% Open the model</span>
+    fitdf2filter_demo
+
+    <span class="comment">% Verify that the Simulink results are the same as the MATLAB file</span>
+    isequal(y, y_sim)
+
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><img vspace="5" hspace="5" src="fialgorithmdevelopmentdemo_06.png" alt=""> <h2>Assumptions Made for this Example<a name="15"></a></h2><p>In order to simplify the example, we have taken the default math parameters: round-to-nearest, saturate on overflow, full precision products and sums.  We can modify all of these parameters to match an actual system.</p><p>The settings were chosen as a starting point in algorithm development. Save a copy of this MATLAB file, start playing with the parameters, and see what effects they have on the output.  How does the algorithm behave with a different input?  See the help for fi, fimath, and numerictype for information on how to set other parameters, such as rounding mode, and overflow mode.</p><pre class="codeinput">close <span class="string">all</span> <span class="string">force</span>;
+bdclose <span class="string">all</span>;
+<span class="comment">% Reset the global fimath</span>
+globalfimath(globalFimathAtStartOfThisDemo);
+</pre><p class="footer">Copyright 2004-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Fixed-Point Algorithm Development 
+% Shows the development and verification of a simple fixed-point algorithm.
+%
+% Copyright 2004-2010 The MathWorks, Inc.
+% $Revision: 1.1.6.10 $
+
+
+%% Simple Example of Algorithm Development
+%
+% This example shows the development and verification of a simple
+% fixed-point filter algorithm. We will follow the following steps:
+% 
+% 1) Implement a second order filter algorithm and simulate in
+% double-precision floating-point. 
+%
+% 2) Instrument the code to visualize the dynamic range of the output and
+% state.   
+%
+% 3) Convert the algorithm to fixed-point by changing the data type of the
+% variables - the algorithm itself does not change.
+%
+% 4) Compare and plot the fixed-point and floating-point results.
+
+%% Floating-Point Variable Definitions
+% We develop our algorithm in double-precision floating-point. We will use
+% a second-order lowpass filter to remove the high frequencies in the input
+% signal.
+
+b = [ 0.25 0.5      0.25    ]; % Numerator coefficients
+a = [ 1    0.09375  0.28125 ]; % Denominator coefficients
+% Random input that has both high and low frequencies.
+rstream = RandStream.create('mt19937ar','seed',2009);
+reset(rstream);
+x = randn(rstream,1000,1);
+% Pre-allocate the output and state for speed.
+y = zeros(size(x));
+z = [0;0];
+
+%% Data-Type-Independent Algorithm
+% This is a second-order filter that implements the standard difference
+% equation: 
+%  
+%  y(n) = b(1)*x(n) + b(2)*x(n-1) + b(3)*x(n-2) - a(2)*y(n-1) - a(3)*y(n-2)
+%
+for k=1:length(x)
+    y(k) =  b(1)*x(k) + z(1);
+    z(1) = (b(2)*x(k) + z(2)) - a(2)*y(k);
+    z(2) =  b(3)*x(k)         - a(3)*y(k);
+end
+
+% Save the Floating-Point Result
+ydouble = y;
+
+%% Visualize Dynamic Range 
+% In order to convert to fixed-point, we need to know the range of the
+% variables. Depending on the complexity of an algorithm, this task can be
+% simple or quite challenging. In this example, the range of the input
+% value is known, so selecting an appropriate fixed-point data type is
+% simple. We will concentrate on the output (y) and states (z) since their
+% range is unknown.
+% To view the dynamic range of the output and states, we will modify the
+% code slightly to instrument it. We will create two NumericTypeScope
+% objects and view the dynamic range of the output (y) and states (z)
+% simultaneously.
+
+%% Instrument Floating-Point Code
+
+hscope1 = NumericTypeScope;
+hscope2 = NumericTypeScope;
+for k=1:length(x)
+    y(k) =  b(1)*x(k) + z(1);
+    z(1) = (b(2)*x(k) + z(2)) - a(2)*y(k);
+    z(2) =  b(3)*x(k)         - a(3)*y(k);
+    % process the data and update the visual.
+    step(hscope1,z);
+end
+step(hscope2,y);
+
+%% Analyze Information in the Scope
+% Let us first analyze the information displayed for variable z (state).
+% From the histogram we can see that the dynamic range lies between
+% ($2^{1}$ $2^{-20}$]. 
+%
+% By default, the scope uses a word length of 16 bits with zero tolerable
+% overflows. This results in a data type of numerictype(true,16, 14) since
+% we need at least 1 integer bit to avoid overflows. With this suggested
+% type, values that require more than 14 fractional bits to represent
+% itself will cause an underflow, which is 0.1% in this case and is
+% negligible. You can get more information on the statistical data from the
+% Input Data and Resulting Type panels. From the Input Data panel we can
+% see that the data has both positive and negative values and hence a
+% signed quantity which is reflected in the suggested numerictype. Also,
+% the maximum data value is 1.8 which can be represented by the suggested
+% type.
+% 
+% Next, let us look at variable y (output). From the histogram plot we see
+% that the dynamic range lies between ($2^{2}$ $2^{-11}$]. 
+%
+% By default, the scope uses a word length of 16 bits with zero tolerable
+% overflows. This results in a data type of numerictype(true,16, 13) since
+% we need at least 2 integer bits to avoid overflows. With this suggested
+% type you see no overflows or underflows. Supposing the application
+% is tolerant to a small amount of overflows, we can optimize the wordsize
+% further. By setting the Maximum Overflow parameter on the Bit Allocation
+% panel to 0.5%, we can reduce the integer length by 1 bit and gain more
+% precision. 
+
+%% Fixed-Point Variable Definitions
+% We convert variables to fixed-point and run the algorithm again. We will
+% turn on logging to see the overflows and underflows introduced by the
+% selected data types.
+%
+
+% Turn on logging to see overflows/underflows.
+fp = fipref;
+default_loggingmode = fp.LoggingMode;
+fp.LoggingMode = 'On';
+% Capture the present state of and reset the global fimath to the factory
+% settings.
+globalFimathAtStartOfThisDemo = fimath;
+resetglobalfimath;
+% Define the fixed-point types for the variables in the below format:
+%   fi(Data, Signed, WordLength, FractionLength)
+b = fi(b, 1, 8, 6);
+a = fi(a, 1, 8, 6);
+
+x = fi(x, 1, 16, 13);
+y = fi(zeros(size(x)), 1, 16, 13);
+z = fi([0;0], 1, 16, 14);
+
+%% Same Data-Type-Independent Algorithm
+for k=1:length(x)
+    y(k) =  b(1)*x(k) + z(1);
+    z(1) = (b(2)*x(k) + z(2)) - a(2)*y(k);
+    z(2) =  b(3)*x(k)         - a(3)*y(k);
+end
+% Reset the logging mode.
+fp.LoggingMode = default_loggingmode;
+
+%%
+% In this example, we have redefined the fixed-point variables with the
+% same names as the floating-point so that we could inline the algorithm
+% code for clarity.  However, it is a better practice to enclose the
+% algorithm code in an MATLAB(R) file function that could be called with either
+% floating-point or fixed-point variables.  See |filimitcycledemo.m| for an
+% example of writing and using a datatype-agnostic algorithm.
+
+%% Compare and Plot the Floating-Point and Fixed-Point Results   
+% We will now plot the magnitude response of the floating-point and
+% fixed-point results and the response of the filter to see if the filter
+% behaves as expected when it is converted to fixed-point.  
+
+n = length(x);
+f = linspace(0,0.5,n/2);
+x_response = 20*log10(abs(fft(double(x))));
+ydouble_response = 20*log10(abs(fft(ydouble)));
+y_response = 20*log10(abs(fft(double(y))));
+plot(f,x_response(1:n/2),'c-',...
+    f,ydouble_response(1:n/2),'bo-',...
+    f,y_response(1:n/2),'gs-');
+ylabel('Magnitude in dB');
+xlabel('Normalized Frequency');
+legend('Input','Floating point output','Fixed point output','Location','Best');
+title('Magnitude response of Floating-point and Fixed-point results');
+%%
+h = freqz(double(b),double(a),n/2);
+clf
+hax = axes;
+plot(hax,f,20*log10(abs(h)));
+set(hax,'YLim',[-40 0]);
+title('Magnitude response of the filter');
+ylabel('Magnitude in dB')
+xlabel('Frequency');
+%%
+% Notice that the high frequencies in the input signal are attenuated by
+% the low-pass filter which is the expected behavior.
+%% Plot the Error
+clf
+n = (0:length(y)-1)';
+e = double(lsb(y));
+plot(n,double(y)-ydouble,'.-r', ...
+     [n(1) n(end)],[e/2 e/2],'c', ...
+     [n(1) n(end)],[-e/2 -e/2],'c')
+text(n(end),e/2,'+1/2 LSB','HorizontalAlignment','right','VerticalAlignment','bottom')
+text(n(end),-e/2,'-1/2 LSB','HorizontalAlignment','right','VerticalAlignment','top')
+xlabel('n (samples)'); ylabel('error')
+
+%% Simulink(R)
+%
+% If you have Simulink(R) and Simulink(R) Fixed Point(TM), you can run this model,
+% which is the equivalent of the algorithm above.  The output, y_sim is
+% a fixed-point variable equal to the variable y calculated above in
+% MATLAB code.
+%
+% As in the MATLAB code, the fixed-point parameters in the blocks can be
+% modified to match an actual system; these have been set to match the
+% MATLAB code in the example above.  Double-click on the blocks to see the
+% settings.
+
+if license('test','Fixed-Point_Blocks')
+    
+    % Set up the From Workspace variable
+    x_sim.time = n;
+    x_sim.signals.values = x;
+    x_sim.signals.dimensions = 1;
+    
+    % Run the simulation
+    simopts = simset('SrcWorkspace','current');
+    sim('fitdf2filter_demo',[],simopts)
+    
+    % Open the model
+    fitdf2filter_demo
+    
+    % Verify that the Simulink results are the same as the MATLAB file
+    isequal(y, y_sim)
+    
+end
+
+%% Assumptions Made for this Example
+%
+% In order to simplify the example, we have taken the default math
+% parameters: round-to-nearest, saturate on overflow, full precision
+% products and sums.  We can modify all of these parameters to match an
+% actual system.
+%
+% The settings were chosen as a starting point in algorithm development.
+% Save a copy of this MATLAB file, start playing with the parameters, and see
+% what effects they have on the output.  How does the algorithm behave
+% with a different input?  See the help for fi, fimath, and numerictype for
+% information on how to set other parameters, such as rounding mode, and
+% overflow mode.
+
+close all force;
+bdclose all;
+% Reset the global fimath
+globalfimath(globalFimathAtStartOfThisDemo);
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

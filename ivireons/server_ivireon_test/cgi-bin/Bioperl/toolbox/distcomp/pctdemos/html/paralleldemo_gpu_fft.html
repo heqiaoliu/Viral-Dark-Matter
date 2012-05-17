@@ -1,0 +1,100 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using FFT on the GPU for Spectral Analysis</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-10"><meta name="DC.source" content="paralleldemo_gpu_fft.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_gpu_fft">Open paralleldemo_gpu_fft.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_gpu_fft">Run in the Command Window</a></div></div><div class="content"><h1>Using FFT on the GPU for Spectral Analysis</h1><!--introduction--><p>This demo uses Parallel Computing Toolbox&#8482; to perform a Fast Fourier Transform (FFT) on a GPU. A common use of FFTs is to find the frequency components of a signal buried in a noisy time-domain signal.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Create Data on the GPU</a></li><li><a href="#2">Add Noise to the Signal</a></li><li><a href="#3">Perform Spectral Analysis</a></li><li><a href="#4">Compute the Power Spectral Density</a></li><li><a href="#5">Display the Power Spectral Density</a></li></ul></div><h2>Create Data on the GPU<a name="1"></a></h2><p>First we simulate the signal. Consider data sampled at 1000 Hz. We start by forming a time axis for our data running for a large number of samples. The signal consists of two harmonic components. We use the <tt>gpuArray</tt> function to transfer data to the GPU for further processing. We start by setting up the time vector <tt>timeVec</tt>, and then calculate <tt>signal</tt> as a combination of two sinusoids at frequencies <tt>freq1</tt> and <tt>freq2</tt>.</p><pre class="codeinput">sampleFreq = 1000;
+sampleTime = 1/sampleFreq;
+numSamples = 2^23;
+timeVec    = gpuArray( (0:numSamples-1) * sampleTime );
+freq1      = 2 * pi * 50;
+freq2      = 2 * pi * 120;
+signal     = sin( freq1 .* timeVec ) + sin( freq2 .* timeVec );
+</pre><h2>Add Noise to the Signal<a name="2"></a></h2><p>We add some random noise to the signal. We can bring the data back to the host using the <tt>gather</tt> function prior to plotting.</p><pre class="codeinput">signal  = signal + 2 * randn( size( timeVec ) );
+yc = gather( signal );
+plot( yc(1:100) );
+title( <span class="string">'Noisy time-domain signal'</span> );
+</pre><img vspace="5" hspace="5" src="paralleldemo_gpu_fft_01.png" alt=""> <h2>Perform Spectral Analysis<a name="3"></a></h2><p>Clearly, it is difficult to identify the frequency components from looking at this signal. We can see the frequency components by taking the discrete Fourier transform using the Fast Fourier Transform. Because we sent <tt>signal</tt> to the GPU, the FFT is performed on the GPU.</p><pre class="codeinput">transformedSignal = fft( signal );
+</pre><h2>Compute the Power Spectral Density<a name="4"></a></h2><p>The power spectral density measures the energy at various frequencies. There is currently limited support for complex arithmetic for GPUArray objects, so we use <tt>real</tt> and <tt>imag</tt> to compute the power spectrum.</p><pre class="codeinput">realPart      = real( transformedSignal );
+imagPart      = imag( transformedSignal );
+powerSpectrum = (realPart .* realPart + <span class="keyword">...</span>
+                 imagPart .* imagPart) ./ numSamples;
+</pre><h2>Display the Power Spectral Density<a name="5"></a></h2><p>We must use the <tt>gather</tt> function to bring <tt>powerSpectrum</tt> back to the host for plotting.</p><pre class="codeinput">powerSpectrum   = gather( powerSpectrum );
+frequencyVector = sampleFreq/2 * linspace( 0, 1, numSamples/2 + 1 );
+
+plot( frequencyVector, powerSpectrum(1:numSamples/2+1) );
+title( <span class="string">'Power spectral density'</span> );
+xlabel( <span class="string">'Frequency (Hz)'</span> );
+</pre><img vspace="5" hspace="5" src="paralleldemo_gpu_fft_02.png" alt=""> <p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Using FFT on the GPU for Spectral Analysis
+% This demo uses Parallel Computing Toolbox(TM) to perform a Fast Fourier
+% Transform (FFT) on a GPU. A common use of FFTs is to find the frequency
+% components of a signal buried in a noisy time-domain signal.
+
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.8.2.4.1 $   $Date: 2010/06/09 17:57:35 $
+
+%% Create Data on the GPU
+% First we simulate the signal. Consider data sampled at 1000 Hz. We start
+% by forming a time axis for our data running for a large number of
+% samples. The signal consists of two harmonic components. We use the
+% |gpuArray| function to transfer data to the GPU for further processing.
+% We start by setting up the time vector |timeVec|, and then calculate
+% |signal| as a combination of two sinusoids at frequencies |freq1| and
+% |freq2|.
+
+sampleFreq = 1000;
+sampleTime = 1/sampleFreq;
+numSamples = 2^23;
+timeVec    = gpuArray( (0:numSamples-1) * sampleTime );
+freq1      = 2 * pi * 50;
+freq2      = 2 * pi * 120;
+signal     = sin( freq1 .* timeVec ) + sin( freq2 .* timeVec );
+
+%% Add Noise to the Signal
+% We add some random noise to the signal. We can bring the data back to the
+% host using the |gather| function prior to plotting.
+
+signal  = signal + 2 * randn( size( timeVec ) );
+yc = gather( signal );
+plot( yc(1:100) );
+title( 'Noisy time-domain signal' );
+
+%% Perform Spectral Analysis
+% Clearly, it is difficult to identify the frequency components from
+% looking at this signal. We can see the frequency components by taking the
+% discrete Fourier transform using the Fast Fourier Transform. Because we
+% sent |signal| to the GPU, the FFT is performed on the GPU.
+
+transformedSignal = fft( signal );
+
+%% Compute the Power Spectral Density
+% The power spectral density measures the energy at various frequencies.
+% There is currently limited support for complex arithmetic for GPUArray
+% objects, so we use |real| and |imag| to compute the power spectrum.
+
+realPart      = real( transformedSignal );
+imagPart      = imag( transformedSignal );
+powerSpectrum = (realPart .* realPart + ...
+                 imagPart .* imagPart) ./ numSamples;
+
+%% Display the Power Spectral Density
+% We must use the |gather| function to bring |powerSpectrum| back to the
+% host for plotting.
+
+powerSpectrum   = gather( powerSpectrum );
+frequencyVector = sampleFreq/2 * linspace( 0, 1, numSamples/2 + 1 );
+
+plot( frequencyVector, powerSpectrum(1:numSamples/2+1) );
+title( 'Power spectral density' );
+xlabel( 'Frequency (Hz)' );
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

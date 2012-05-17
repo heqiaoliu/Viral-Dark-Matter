@@ -1,0 +1,199 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Distributed Marginal Value-at-Risk Simulation</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-09"><meta name="m-file" content="paralleldemo_mvar_dist"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_mvar_dist">Open paralleldemo_mvar_dist.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_mvar_dist">Run in the Command Window</a></div></div><div class="content"><h1>Distributed Marginal Value-at-Risk Simulation</h1><!--introduction--><p>This demo uses the Parallel Computing Toolbox&#8482; to perform a Monte Carlo simulation of a number of stocks in a portfolio. At a given confidence level, we predict the value at risk (VaR) of the portfolio as well as the marginal value at risk (mVaR) of each of the stocks in the portfolio.  We also provide confidence intervals for our estimates.</p><p>For details about the computations, <a href="matlab:edit('pctdemo_setup_mvar.m')">view the code for pctdemo_setup_mvar</a>.</p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a></li><li><a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB&reg; Computations into Tasks</a></li><li><a href="paralleltutorial_taskfunctions.html">Writing Task Functions</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_mvar_seq.html">Sequential Marginal Value-at-Risk Simulation</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analyze the Sequential Problem</a></li><li><a href="#2">Load the Demo Settings and the Data</a></li><li><a href="#5">Divide the Work into Smaller Tasks</a></li><li><a href="#6">Create and Submit the Job</a></li><li><a href="#8">Retrieve the Results</a></li><li><a href="#11">Measure the Elapsed Time</a></li><li><a href="#12">Plot the Results</a></li></ul></div><h2>Analyze the Sequential Problem<a name="1"></a></h2><p>First, we look at how the computations in the sequential demo fit into the model introduced in the <a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB Computations into Tasks</a> demo.  The main computations in the sequential demo consist of calling <tt>pctdemo_task_mvar</tt> to perform repeated simulations. Each simulation takes only a few seconds, so we have each task perform many such simulations.  Because the function <tt>pctdemo_task_mvar</tt> can already perform many simulations in a single function call, we can use it directly as our task function.</p><h2>Load the Demo Settings and the Data<a name="2"></a></h2><p>The demo uses the default configuration when identifying the scheduler to use. The <a href="matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')">configurations documentation</a> explains how to create new configurations and how to change the default configuration.  See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for instructions on how to change the demo difficulty level or the number of tasks created.</p><pre class="codeinput">[difficulty, scheduler, numTasks] = pctdemo_helper_getDefaults();
+</pre><p>We obtain the performance of the stocks, their weights in our portfolio, and other input data from <tt>pctdemo_setup_mvar</tt>.  The number of repetitions, <tt>numTimes</tt>, is determined by the <tt>difficulty</tt> parameter. You can <a href="matlab:edit('pctdemo_setup_mvar.m')">view the code for pctdemo_setup_mvar</a> for full details.</p><pre class="codeinput">[fig, numSims, numTimes, stock, names, weights, time, confLevel] = <span class="keyword">...</span>
+    pctdemo_setup_mvar(difficulty);
+</pre><p>Let's look at the confidence level at which we are calculating the VaR and mVaR.</p><pre class="codeinput">fprintf(<span class="string">'Calculating VaR and mVaR at the %3.1f%% confidence level.\n'</span>, <span class="keyword">...</span>
+        confLevel);
+startTime = clock;
+</pre><pre class="codeoutput">Calculating VaR and mVaR at the 95.0% confidence level.
+</pre><h2>Divide the Work into Smaller Tasks<a name="5"></a></h2><p>We divide the <tt>numTimes</tt> repetitions of the simulations among the <tt>numTasks</tt> tasks.</p><pre class="codeinput">[splitTimes, numTasks] = pctdemo_helper_split_scalar(numTimes, numTasks);
+fprintf([<span class="string">'This demo will submit a job with %d task(s) '</span> <span class="keyword">...</span>
+         <span class="string">'to the scheduler.\n'</span>], numTasks);
+</pre><pre class="codeoutput">This demo will submit a job with 4 task(s) to the scheduler.
+</pre><h2>Create and Submit the Job<a name="6"></a></h2><p>We create the job and the tasks in the job.  We let the task function in task <tt>i</tt> perform <tt>splitTimes(i)</tt> repetitions of the simulations. You can <a href="matlab:edit('pctdemo_task_mvar.m')">view the code for pctdemo_task_mvar</a> for full details.</p><pre class="codeinput">job = createJob(scheduler);
+<span class="keyword">for</span> i = 1:numTasks
+    createTask(job, @pctdemo_task_mvar, 2, <span class="keyword">...</span>
+               {splitTimes(i), stock, weights, time, numSims, confLevel});
+<span class="keyword">end</span>
+</pre><p>We can now submit the job and wait for it to finish.</p><pre class="codeinput">submit(job);
+waitForState(job, <span class="string">'finished'</span>);
+</pre><h2>Retrieve the Results<a name="8"></a></h2><p>Let us obtain the job results, verify that all the tasks finished successfully, and then destroy the job.  We throw an error if we could not obtain any results, but display a warning if we got only some of the results.</p><pre class="codeinput">jobResults = getAllOutputArguments(job);
+<span class="keyword">if</span> isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job);
+    error(<span class="string">'distcomp:demo:EmptyJobOutput'</span>,  <span class="keyword">...</span>
+          [<span class="string">'Could not obtain any job results.  The following error(s) '</span> <span class="keyword">...</span>
+           <span class="string">'occurred \nduring task execution:\n\n%s'</span>], <span class="keyword">...</span>
+          taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>We collect the task results and verify that all of them finished successfully.</p><pre class="codeinput">VaR = cat(1, jobResults{:, 1});
+mVaR = cat(1, jobResults{:, 2});
+numOk = size(VaR, 1);
+<span class="keyword">if</span> ~(numOk == numTimes)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning(<span class="string">'distcomp:demo:IncompleteJobResults'</span>, <span class="keyword">...</span>
+            [<span class="string">'Some tasks did not finish. Results were obtained for '</span> <span class="keyword">...</span>
+             <span class="string">' %d out of %d \nsimulation runs.  The following '</span> <span class="keyword">...</span>
+             <span class="string">'error(s) occurred during task execution:\n\n%s'</span>], <span class="keyword">...</span>
+            numOk, numTimes, taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>We have now finished all the verifications, so we can destroy the job.</p><pre class="codeinput">destroy(job);
+</pre><h2>Measure the Elapsed Time<a name="11"></a></h2><p>The time used for the distributed computations should be compared against the time it takes to perform the same set of calculations in the <a href="paralleldemo_mvar_seq.html">Sequential Marginal Value-at-Risk Simulation</a> demo. The elapsed time varies with the underlying hardware and network infrastructure.</p><pre class="codeinput">elapsedTime = etime(clock, startTime);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 13.3 seconds
+</pre><h2>Plot the Results<a name="12"></a></h2><p>We use <tt>pctdemo_plot_mvar</tt> to create a graph of the value at risk of our portfolio at the given confidence level.  The graph also shows the marginal value at risk of the individual stocks in our portfolio at that same confidence level. You can <a href="matlab:edit('pctdemo_plot_mvar.m')">view the code for pctdemo_plot_mvar</a> for full details.</p><pre class="codeinput">pctdemo_plot_mvar(fig, VaR, mVaR, time, names);
+</pre><img vspace="5" hspace="5" src="paralleldemo_mvar_dist_01.png" alt=""> <p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Distributed Marginal Value-at-Risk Simulation
+% This demo uses the Parallel Computing Toolbox(TM) to perform a Monte Carlo
+% simulation of a number of stocks in a
+% portfolio. At a given confidence level, we predict the value at risk (VaR) 
+% of the portfolio as well as the marginal value at risk (mVaR) of each of
+% the stocks in the portfolio.  We also provide confidence intervals for our 
+% estimates.
+%
+% For details about the computations, 
+% <matlab:edit('pctdemo_setup_mvar.m') view the code for pctdemo_setup_mvar>.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% * <paralleltutorial_dividing_tasks.html
+% Dividing MATLAB(R) Computations into Tasks>
+% * <paralleltutorial_taskfunctions.html Writing Task Functions>
+%
+% Related demos:
+%
+% * <paralleldemo_mvar_seq.html Sequential Marginal Value-at-Risk Simulation>
+
+
+%   Copyright 2007-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.3 $  $Date: 2009/11/07 20:53:11 $
+
+%% Analyze the Sequential Problem
+% First, we look at how the computations in the sequential demo fit into the
+% model introduced in the <paralleltutorial_dividing_tasks.html Dividing MATLAB
+% Computations into Tasks> demo.  The main computations in the sequential demo
+% consist of calling |pctdemo_task_mvar| to perform repeated simulations. 
+% Each simulation takes only a few seconds, so we have each task perform many 
+% such simulations.  Because the function |pctdemo_task_mvar| can already
+% perform many simulations in a single function call, we can use it directly as 
+% our task function.
+
+%% Load the Demo Settings and the Data
+% The demo uses the default configuration when identifying the scheduler to use.
+% The
+% <matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')
+% configurations documentation> 
+% explains how to create new configurations and how to change the default 
+% configuration.  See 
+% <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% for instructions on how to change the demo difficulty level or the number of
+% tasks created.
+[difficulty, scheduler, numTasks] = pctdemo_helper_getDefaults();
+
+%%
+% We obtain the performance of the stocks, their weights in our portfolio, and
+% other input data from |pctdemo_setup_mvar|.  The number of repetitions,
+% |numTimes|, is determined by the |difficulty| parameter.
+% You can 
+% <matlab:edit('pctdemo_setup_mvar.m') view the code for pctdemo_setup_mvar> 
+% for full details.
+[fig, numSims, numTimes, stock, names, weights, time, confLevel] = ...
+    pctdemo_setup_mvar(difficulty); 
+%%
+% Let's look at the confidence level at which we are calculating the VaR and
+% mVaR.
+fprintf('Calculating VaR and mVaR at the %3.1f%% confidence level.\n', ...
+        confLevel);
+startTime = clock;
+
+%% Divide the Work into Smaller Tasks
+% We divide the |numTimes| repetitions of the simulations among the |numTasks| 
+% tasks. 
+[splitTimes, numTasks] = pctdemo_helper_split_scalar(numTimes, numTasks);
+fprintf(['This demo will submit a job with %d task(s) ' ...
+         'to the scheduler.\n'], numTasks);
+
+%% Create and Submit the Job
+% We create the job and the tasks in the job.  We let the task function in task
+% |i| perform |splitTimes(i)| repetitions of the simulations.
+% You can 
+% <matlab:edit('pctdemo_task_mvar.m') view the code for pctdemo_task_mvar> 
+% for full details.
+job = createJob(scheduler);
+for i = 1:numTasks
+    createTask(job, @pctdemo_task_mvar, 2, ...
+               {splitTimes(i), stock, weights, time, numSims, confLevel});
+end
+
+%%
+% We can now submit the job and wait for it to finish.
+submit(job);
+waitForState(job, 'finished');
+
+%% Retrieve the Results
+% Let us obtain the job results, verify that all the tasks finished
+% successfully, and then destroy the job.  We throw an error if we could not
+% obtain any results, but display a warning if we got only some of the results.
+jobResults = getAllOutputArguments(job);
+if isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job);
+    error('distcomp:demo:EmptyJobOutput',  ...
+          ['Could not obtain any job results.  The following error(s) ' ...
+           'occurred \nduring task execution:\n\n%s'], ...
+          taskErrorMsgs);
+end
+
+%%
+% We collect the task results and verify that all of them finished successfully. 
+VaR = cat(1, jobResults{:, 1});
+mVaR = cat(1, jobResults{:, 2});
+numOk = size(VaR, 1);
+if ~(numOk == numTimes)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning('distcomp:demo:IncompleteJobResults', ...
+            ['Some tasks did not finish. Results were obtained for ' ...
+             ' %d out of %d \nsimulation runs.  The following ' ...
+             'error(s) occurred during task execution:\n\n%s'], ...
+            numOk, numTimes, taskErrorMsgs);
+end
+
+%%
+% We have now finished all the verifications, so we can destroy the job.
+destroy(job);
+
+%% Measure the Elapsed Time
+% The time used for the distributed computations should be compared
+% against the time it takes to perform the same set of calculations
+% in the <paralleldemo_mvar_seq.html 
+% Sequential Marginal Value-at-Risk Simulation> demo.
+% The elapsed time varies with the underlying hardware and network infrastructure.
+elapsedTime = etime(clock, startTime);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+%% Plot the Results
+% We use |pctdemo_plot_mvar| to create a graph of the value at risk of our
+% portfolio at the given confidence level.  The graph also shows the marginal
+% value at risk of the individual stocks in our portfolio at that same
+% confidence level. You can 
+% <matlab:edit('pctdemo_plot_mvar.m') view the code for pctdemo_plot_mvar> for
+% full details.
+pctdemo_plot_mvar(fig, VaR, mVaR, time, names);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

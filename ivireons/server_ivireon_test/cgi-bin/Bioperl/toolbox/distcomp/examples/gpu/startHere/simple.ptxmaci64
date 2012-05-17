@@ -1,0 +1,94 @@
+.version 1.4
+// Copyright 2010 The MathWorks, Inc.
+.target sm_13
+.entry _Z12reallySimplePff (
+.param .u64 __cudaparm__Z12reallySimplePff_pi,
+.param .f32 __cudaparm__Z12reallySimplePff_c)
+{
+.reg .u64 %rd<3>;
+.reg .f32 %f<5>;
+$LDWbegin__Z12reallySimplePff:
+ld.param.u64 %rd1, [__cudaparm__Z12reallySimplePff_pi];
+ld.global.f32 %f1, [%rd1+0];
+ld.param.f32 %f2, [__cudaparm__Z12reallySimplePff_c];
+add.f32 %f3, %f1, %f2;
+st.global.f32 [%rd1+0], %f3;
+exit;
+$LDWend__Z12reallySimplePff:
+} 
+.entry _Z15usesThreadBlockPff (
+.param .u64 __cudaparm__Z15usesThreadBlockPff_pi,
+.param .f32 __cudaparm__Z15usesThreadBlockPff_c)
+{
+.reg .u32 %r<3>;
+.reg .u64 %rd<6>;
+.reg .f32 %f<5>;
+$LDWbegin__Z15usesThreadBlockPff:
+ld.param.u64 %rd1, [__cudaparm__Z15usesThreadBlockPff_pi];
+cvt.s32.u16 %r1, %tid.x;
+cvt.s64.s32 %rd2, %r1;
+mul.wide.s32 %rd3, %r1, 4;
+add.u64 %rd4, %rd1, %rd3;
+ld.global.f32 %f1, [%rd4+0];
+ld.param.f32 %f2, [__cudaparm__Z15usesThreadBlockPff_c];
+add.f32 %f3, %f1, %f2;
+st.global.f32 [%rd4+0], %f3;
+exit;
+$LDWend__Z15usesThreadBlockPff:
+} 
+.entry _Z18usesGridsAndBlocksPff (
+.param .u64 __cudaparm__Z18usesGridsAndBlocksPff_pi,
+.param .f32 __cudaparm__Z18usesGridsAndBlocksPff_c)
+{
+.reg .u16 %rh<4>;
+.reg .u32 %r<5>;
+.reg .u64 %rd<6>;
+.reg .f32 %f<5>;
+$LDWbegin__Z18usesGridsAndBlocksPff:
+ld.param.u64 %rd1, [__cudaparm__Z18usesGridsAndBlocksPff_pi];
+cvt.u32.u16 %r1, %tid.x;
+mov.u16 %rh1, %ctaid.x;
+mov.u16 %rh2, %ntid.x;
+mul.wide.u16 %r2, %rh1, %rh2;
+add.u32 %r3, %r1, %r2;
+cvt.s64.s32 %rd2, %r3;
+mul.wide.s32 %rd3, %r3, 4;
+add.u64 %rd4, %rd1, %rd3;
+ld.global.f32 %f1, [%rd4+0];
+ld.param.f32 %f2, [__cudaparm__Z18usesGridsAndBlocksPff_c];
+add.f32 %f3, %f1, %f2;
+st.global.f32 [%rd4+0], %f3;
+exit;
+$LDWend__Z18usesGridsAndBlocksPff:
+} 
+.entry _Z16includeArraySizePffi (
+.param .u64 __cudaparm__Z16includeArraySizePffi_pi,
+.param .f32 __cudaparm__Z16includeArraySizePffi_c,
+.param .s32 __cudaparm__Z16includeArraySizePffi_s)
+{
+.reg .u16 %rh<4>;
+.reg .u32 %r<6>;
+.reg .u64 %rd<6>;
+.reg .f32 %f<5>;
+.reg .pred %p<3>;
+$LDWbegin__Z16includeArraySizePffi:
+mov.u16 %rh1, %ctaid.x;
+mov.u16 %rh2, %ntid.x;
+mul.wide.u16 %r1, %rh1, %rh2;
+cvt.u32.u16 %r2, %tid.x;
+add.u32 %r3, %r2, %r1;
+ld.param.s32 %r4, [__cudaparm__Z16includeArraySizePffi_s];
+setp.le.s32 %p1, %r4, %r3;
+@%p1 bra $Lt_3_1026;
+ld.param.u64 %rd1, [__cudaparm__Z16includeArraySizePffi_pi];
+cvt.s64.s32 %rd2, %r3;
+mul.wide.s32 %rd3, %r3, 4;
+add.u64 %rd4, %rd1, %rd3;
+ld.global.f32 %f1, [%rd4+0];
+ld.param.f32 %f2, [__cudaparm__Z16includeArraySizePffi_c];
+add.f32 %f3, %f1, %f2;
+st.global.f32 [%rd4+0], %f3;
+$Lt_3_1026:
+exit;
+$LDWend__Z16includeArraySizePffi:
+} 

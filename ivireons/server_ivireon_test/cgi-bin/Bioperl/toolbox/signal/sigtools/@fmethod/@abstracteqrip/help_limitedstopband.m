@@ -1,0 +1,19 @@
+function help_limitedstopband(this)
+%HELP_LIMITEDSTOPBAND   
+
+%   Author(s): J. Schickler
+%   Copyright 2005 The MathWorks, Inc.
+%   $Revision: 1.1.6.1 $  $Date: 2005/06/16 08:42:50 $
+
+stopband_str = sprintf('%s\n%s\n%s\n\n%s\n%s\n%s', ...
+    '    HD = DESIGN(..., ''StopbandShape'', SHAPE) designs a filter whose stopband', ...
+    '    has the shape defined by SHAPE.  SHAPE can be ''flat'', or ''linear''.', ...
+    '    SHAPE is ''flat'' by default.', ...
+    '    HD = DESIGN(..., ''StopbandDecay'', DECAY) specifies the decay to use when', ...
+    '    ''StopbandShape'' is not set to ''flat''.  When shaped is ''linear'' this', ...
+    '    specifies the slope of the stopband in dB/rad/s.');
+
+disp(stopband_str);
+disp(' ');
+
+% [EOF]

@@ -1,0 +1,121 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>連続時間モデルの作成</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="GSCreatingModelsCT.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit GSCreatingModelsCT">エディターで GSCreatingModelsCT.m を開く</a></div><div class="right"><a href="matlab:echodemo GSCreatingModelsCT">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>連続時間モデルの作成</h1><!--introduction--><p>このデモでは、<tt>tf</tt>、<tt>zpk</tt>、<tt>ss</tt>、および <tt>frd</tt> の各コマンドを使用して連続時間線形モデルを作成する方法を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">LTI モデルのタイプ</a></li><li><a href="#2">伝達関数モデルの作成</a></li><li><a href="#4">零点-極-ゲイン モデルの作成</a></li><li><a href="#6">状態空間モデルの作成</a></li><li><a href="#7">周波数応答データ モデルの作成</a></li><li><a href="#9">MIMO モデルの作成</a></li><li><a href="#10">LTI モデルの解析</a></li></ul></div><h2>LTI モデルのタイプ<a name="1"></a></h2><p>Control System Toolbox™ には、線形時不変 (LTI) モデルの 4 つの基本的表現を作成する関数が用意されています。</p><div><ul><li>伝達関数 (TF) モデル</li><li>零点-極-ゲイン (ZPK) モデル</li><li>状態空間 (SS) モデル</li><li>周波数応答データ (FRD) モデル</li></ul></div><p>これらの関数は、モデル データを入力として、このデータを単一の MATLAB&reg; 変数に組み込むオブジェクトを作成します。</p><h2>伝達関数モデルの作成<a name="2"></a></h2><p>伝達関数 (TF) は LTI システムの周波数領域表現です。SISO 伝達関数は多項式の比です。</p><p><img src="../GSCreatingModelsCT_eq03717.png" alt="$$ H(s) = \frac{A(s)}{B(s)} = \frac{a_{1} s^{n} + a_{2} s^{n-1} + \ldots + a_{n+1}}{b_{1}
+s^{m} + b_{2} s^{m-1} + \ldots + b_{m+1}} $$"></p><p>伝達関数は、その分子多項式 <tt>A(s)</tt> と分母多項式 <tt>B(s)</tt> によって指定されます。MATLAB では、多項式はその係数のベクトルによって表現されます。たとえば、多項式</p><p><img src="../GSCreatingModelsCT_eq71836.png" alt="$$  s^{2} + 2 s + 10 $$"></p><p>は、<tt>[1 2 10]</tt> として指定されます。</p><p>伝達関数</p><p><img src="../GSCreatingModelsCT_eq95668.png" alt="$$ H(s) = \frac{s}{s^2+2s+10}  $$"></p><p>を表現する TF オブジェクトを作成するには、分子多項式と分母多項式を指定し、<tt>tf</tt> を使用します。</p><pre class="codeinput">num = [ 1  0 ];       <span class="comment">% Numerator:s</span>
+den = [ 1  2  10 ];   <span class="comment">% Denominator:s^2 + 2 s + 10</span>
+H = tf(num,den)
+</pre><pre class="codeoutput"> 
+Transfer function:
+      s
+--------------
+s^2 + 2 s + 10
+ 
+</pre><p>別の方法として、このモデルをラプラス変数 <tt>s</tt> の有理式として指定することもできます。</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);        <span class="comment">% Create Laplace variable</span>
+H = s / (s^2 + 2*s + 10)
+</pre><pre class="codeoutput"> 
+Transfer function:
+      s
+--------------
+s^2 + 2 s + 10
+ 
+</pre><h2>零点-極-ゲイン モデルの作成<a name="4"></a></h2><p>零点-極-ゲイン (ZPK) モデルは因数分解型の伝達関数です。</p><p><img src="../GSCreatingModelsCT_eq46140.png" alt="$$ H(s) = k \frac{( s - z_{1} ) \ldots ( s - z_{n} )}{( s - p_{1} ) \ldots
+( s - p_{m} )} $$"></p><p>このようなモデルは、分子 (零点) の根 <tt>z</tt> と分母 (極) の根 <tt>p</tt> を明示します。スカラー係数 <tt>k</tt> はゲインと呼ばれます。</p><p>ZPK モデル</p><p><img src="../GSCreatingModelsCT_eq71626.png" alt="$$ H(s) = \frac{-2 s}{( s - 2 ) ( s^2 - 2 s + 2 )} $$"></p><p>を作成するには、極、零点、およびゲイン <tt>k</tt> のベクトルを指定します。</p><pre class="codeinput">z = 0;                   <span class="comment">% Zeros</span>
+p = [ 2  1+i  1-i ];     <span class="comment">% Poles</span>
+k = -2;                  <span class="comment">% Gain</span>
+H = zpk(z,p,k)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+        -2 s
+--------------------
+(s-2) (s^2 - 2s + 2)
+ 
+</pre><p>TF モデルに関しては、このモデルを <tt>s</tt> の有理式として指定できます。</p><pre class="codeinput">s = zpk(<span class="string">'s'</span>);
+H = -2*s / (s - 2) / (s^2 - 2*s + 2)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain:
+        -2 s
+--------------------
+(s-2) (s^2 - 2s + 2)
+ 
+</pre><h2>状態空間モデルの作成<a name="6"></a></h2><p>状態空間 (SS) モデルは LTI システムの時間領域表現です。</p><p><img src="../GSCreatingModelsCT_eq43691.png" alt="$$ \frac{dx}{dt} = A x(t) + B u(t) $$"></p><p><img src="../GSCreatingModelsCT_eq13622.png" alt="$$ y(t) = Cx(t) + Du(t) $$"></p><p><tt>x(t)</tt> は状態ベクトル、<tt>u(t)</tt> は入力ベクトル、<tt>y(t)</tt> は出力軌道です。</p><p>状態空間モデルは、システム ダイナミクスを記述する微分方程式から導出されます。たとえば、単純な電気モーターの 2 次 ODE を考えます。</p><p><img src="../GSCreatingModelsCT_eq88228.png" alt="$$ \frac{d^2\theta}{dt^2} + 2\frac{d\theta}{dt} + 5\theta = 3I $$"></p><p><tt>I</tt> は駆動電流 (入力)、<tt>theta</tt> は回転子の角変位 (出力) です。この ODE は、状態空間表現で書き換えることができます。</p><p><img src="../GSCreatingModelsCT_eq02653.png" alt="$$ \frac{dx}{dt} = Ax + BI~~~~~~~A = \left[\matrix{0 &amp; 1 \cr
+-5 &amp; -2 }\right] ~~~~~~~  B=\left[\matrix{0 \cr 3 }\right]~~~~~~~
+x=\left[\matrix{\theta \cr \frac{d\theta}{dt} }\right] $$"></p><p><img src="../GSCreatingModelsCT_eq96982.png" alt="$$ \theta = Cx + DI~~~~~~~C=[1~~0]~~~~~~~D = [0] $$"></p><p>このモデルを作成するには、状態空間行列 <tt>A, B, C, D</tt> を指定し、<tt>ss</tt> を使用して SS オブジェクトを作成します。</p><pre class="codeinput">A = [ 0  1 ; -5  -2 ];
+B = [ 0 ; 3 ];
+C = [ 1  0 ];
+D = 0;
+H = ss(A,B,C,D)
+</pre><pre class="codeoutput"> 
+a = 
+       x1  x2
+   x1   0   1
+   x2  -5  -2
+ 
+b = 
+       u1
+   x1   0
+   x2   3
+ 
+c = 
+       x1  x2
+   y1   1   0
+ 
+d = 
+       u1
+   y1   0
+ 
+Continuous-time model.
+</pre><h2>周波数応答データ モデルの作成<a name="7"></a></h2><p>周波数応答データ (FRD) モデルを使用すると、システムの測定済みまたはシミュレート済みの複雑な周波数応答を LTI オブジェクトに保存できます。次に、このデータを、周波数領域の解析と設計のための代わりのモデルとして使用できます。</p><p>たとえば、周波数アナライザーから以下のデータが得られると仮定します。</p><div><ul><li>周波数 (Hz): 10, 30, 50, 100, 50010, 30, 50, 100, 500</li><li>Response:0.0021+0.0009i, 0.0027+0.0029i, 0.0044+0.0052i, 0.0200-0.0040i, 0.0001-0.0021i</li></ul></div><p>以下を使用して、このデータを含む FRD オブジェクトを作成できます。</p><pre class="codeinput">freq = [10, 30, 50, 100, 500];
+resp = [0.0021+0.0009i, 0.0027+0.0029i, 0.0044+0.0052i, 0.0200-0.0040i, 0.0001-0.0021i];
+H = frd(resp,freq,<span class="string">'Units'</span>,<span class="string">'Hz'</span>)
+</pre><pre class="codeoutput"> 
+  Frequency(Hz)            Response        
+  -------------            --------        
+        10         2.100e-003 + 9.000e-004i
+        30         2.700e-003 + 2.900e-003i
+        50         4.400e-003 + 5.200e-003i
+       100         2.000e-002 - 4.000e-003i
+       500         1.000e-004 - 2.100e-003i
+ 
+Continuous-time frequency response.
+</pre><p><tt>Units</tt> をヘルツと指定しなければ、周波数値が rad/s と見なされることに注意してください。</p><h2>MIMO モデルの作成<a name="9"></a></h2><p><tt>tf</tt>、<tt>zpk</tt>、<tt>ss</tt>、および <tt>frd</tt> の各コマンドを使用すると、SISO と MIMO の両モデルを作成できます。TF モデルまたは ZPK モデルの場合は通常、単純な SISO モデルを連結することで MIMO モデルを作成するという方法が便利です。たとえば、2x2 MIMO 伝達関数</p><p><img src="../GSCreatingModelsCT_eq56639.png" alt="$$ H(s) = \left[ \begin{array}{cc} {1\over s+1} &amp; 0 \\ &amp; \\ {s+1 \over s^2+s+3}
+&amp; {-4s \over s+2} \end{array} \right] $$"></p><p>を作成するには、以下を使用します。</p><pre class="codeinput">s = tf(<span class="string">'s'</span>);
+H = [ 1/(s+1) , 0 ; (s+1)/(s^2+s+3) , -4*s/(s+2) ]
+</pre><pre class="codeoutput"> 
+Transfer function from input 1 to output...
+        1
+ #1:  -----
+      s + 1
+ 
+         s + 1
+ #2:  -----------
+      s^2 + s + 3
+ 
+Transfer function from input 2 to output...
+ #1:  0
+ 
+      -4 s
+ #2:  -----
+      s + 2
+ 
+</pre><h2>LTI モデルの解析<a name="10"></a></h2><p>Control System Toolbox には、LTI モデルを解析するための広範な関数が用意されています。これらの関数は、I/O のサイズおよび次数に関する簡単なクエリから、高度な時間応答および周波数応答の解析まで多岐にわたります。</p><p>たとえば、上で指定した MIMO 伝達関数 <tt>H</tt> のサイズ情報を取得するには、以下のように入力します。</p><pre class="codeinput">size(H)
+</pre><pre class="codeoutput">Transfer function with 2 outputs and 2 inputs.
+</pre><p>極を計算するには、以下のようにします。</p><pre class="codeinput">pole(H)
+</pre><pre class="codeoutput">
+ans =
+
+  -1.0000          
+  -0.5000 + 1.6583i
+  -0.5000 - 1.6583i
+  -2.0000          
+
+</pre><p>このシステムが安定しているかどうかを尋ねるには、以下のようにします。</p><pre class="codeinput">isstable(H)
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><p>最後に、以下のように入力して、ステップ応答をプロットできます。</p><pre class="codeinput">step(H)
+</pre><img vspace="5" hspace="5" src="../GSCreatingModelsCT_01.png" alt=""> <p>詳細は、<b>「モデル解析」</b>デモを参照してください。</p><p class="footer">Copyright 1986-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Creating Continuous-Time Models % This demo shows how to create continuous-time linear models using the % |tf|, |zpk|, |ss|, and |frd| commands.  %   Copyright 1986-2007 The MathWorks, Inc. %   $Revision: 1.1.4.9.2.1 $  $Date: 2010/07/29 21:28:40 $    %% LTI Model Types % Control System Toolbox(TM) provides functions for creating four basic % representations of linear time-invariant (LTI) models: % % * Transfer function (TF) models  % * Zero-pole-gain (ZPK) models  % * State-space (SS) models  % * Frequency response data (FRD) models  % % These functions take model data as input and create objects that embody % this data in a single MATLAB(R) variable.   %% Creating Transfer Function Models % Transfer functions (TF) are frequency-domain representations of LTI systems. % A SISO transfer function is a ratio of polynomials: %  % $$ H(s) = \frac{A(s)}{B(s)} = \frac{a_{1} s^{n} + a_{2} s^{n-1} + \ldots + a_{n+1}}{b_{1} % s^{m} + b_{2} s^{m-1} + \ldots + b_{m+1}} $$ % % Transfer functions are specified by their numerator and denominator % polynomials |A(s)| and |B(s)|. In MATLAB, a polynomial is represented by % the vector of its coefficients, for example, the polynomial %         % $$  s^{2} + 2 s + 10 $$ % % is specified as |[1 2 10]|. % % To create a TF object representing the transfer function: % % $$ H(s) = \frac{s}{s^2+2s+10}  $$ % % specify the numerator and denominator polynomials and use |tf| to % construct the TF object: num = [ 1  0 ];       % Numerator: s den = [ 1  2  10 ];   % Denominator: s^2 + 2 s + 10 H = tf(num,den)  %% % Alternatively, you can specify this model as a rational expression of the  % Laplace variable |s|: s = tf('s');        % Create Laplace variable H = s / (s^2 + 2*s + 10)  %% Creating Zero-Pole-Gain Models % Zero-pole-gain (ZPK) models are the factored form of transfer functions: % % $$ H(s) = k \frac{( s - z_{1} ) \ldots ( s - z_{n} )}{( s - p_{1} ) \ldots % ( s - p_{m} )} $$ % % Such models expose the roots |z| of the numerator (the zeros) and the % roots |p| of the denominator (the poles). The scalar coefficient |k| is % called the gain. %  % To create the ZPK model: % % $$ H(s) = \frac{-2 s}{( s - 2 ) ( s^2 - 2 s + 2 )} $$ % % specify the vectors of poles and zeros and the gain |k|: z = 0;                   % Zeros p = [ 2  1+i  1-i ];     % Poles k = -2;                  % Gain H = zpk(z,p,k)  %% % As for TF models, you can also specify this model as a rational expression of |s|: s = zpk('s'); H = -2*s / (s - 2) / (s^2 - 2*s + 2)    %% Creating State-Space Models % State-space (SS) models are time-domain representations of LTI systems: % % $$ \frac{dx}{dt} = A x(t) + B u(t) $$ % % $$ y(t) = Cx(t) + Du(t) $$ % % where |x(t)| is the state vector, |u(t)| is input vector, and  % |y(t)| is the output trajectory.  % % State-space models are derived from the differential equations  % describing the system dynamics. For example, consider the  % second-order ODE for a simple electric motor: % % $$ \frac{d^2\theta}{dt^2} + 2\frac{d\theta}{dt} + 5\theta = 3I $$ % % where |I| is the driving current (input) and |theta| is the angular % displacement of the rotor (output). This ODE can be rewritten in % state-space form as: % % $$ \frac{dx}{dt} = Ax + BI~~~~~~~A = \left[\matrix{0 & 1 \cr % -5 & -2 }\right] ~~~~~~~  B=\left[\matrix{0 \cr 3 }\right]~~~~~~~ % x=\left[\matrix{\theta \cr \frac{d\theta}{dt} }\right] $$ % % $$ \theta = Cx + DI~~~~~~~C=[1~~0]~~~~~~~D = [0] $$ % % To create this model, specify the state-space matrices |A, B, C, D| and % use |ss| to construct the SS object:  A = [ 0  1 ; -5  -2 ]; B = [ 0 ; 3 ]; C = [ 1  0 ]; D = 0; H = ss(A,B,C,D)  %% Creating Frequency Response Data Models % Frequency response data (FRD) models let you store the measured % or simulated complex frequency response of a system in an LTI object. You % can then use this data as a surrogate model for frequency-domain analysis  % and design purposes. %  % For example, suppose you get the following data out of a frequency % analyzer: % % * Frequency (Hz): 10, 30, 50, 100, 500 % * Response:  0.0021+0.0009i, 0.0027+0.0029i, 0.0044+0.0052i, 0.0200-0.0040i, 0.0001-0.0021i % % You can create an FRD object containing this data using: freq = [10, 30, 50, 100, 500]; resp = [0.0021+0.0009i, 0.0027+0.0029i, 0.0044+0.0052i, 0.0200-0.0040i, 0.0001-0.0021i]; H = frd(resp,freq,'Units','Hz')  %% % Note that frequency values are assumed to be in rad/s unless you specify the % |Units| to be Hertz.   %% Creating MIMO Models % The |tf|, |zpk|, |ss|, and |frd| commands let you construct both SISO and % MIMO models. For TF or ZPK models, it is often convenient to % construct MIMO models by concatenating simpler SISO models. For example, % you can create the 2x2 MIMO transfer function: % % $$ H(s) = \left[ \begin{array}{cc} {1\over s+1} & 0 \\ & \\ {s+1 \over s^2+s+3} % & {-4s \over s+2} \end{array} \right] $$ % % using: s = tf('s'); H = [ 1/(s+1) , 0 ; (s+1)/(s^2+s+3) , -4*s/(s+2) ]  %% Analyzing LTI Models % Control System Toolbox provides an extensive set of functions for % analyzing LTI models. These functions range from simple queries about I/O size and order to % sophisticated time and frequency response analysis.  % % For example, you can obtain size information for the MIMO transfer % function |H| specified above by typing: size(H)  %% % You can compute the poles using: pole(H)  %% % You can ask whether this system is stable using: isstable(H)  %%  % Finally, you can plot the step response by typing: step(H)  %% % See the *Model Analysis* demos for more details.  displayEndOfDemoMessage(mfilename)   ##### SOURCE END ##### --></body></html>

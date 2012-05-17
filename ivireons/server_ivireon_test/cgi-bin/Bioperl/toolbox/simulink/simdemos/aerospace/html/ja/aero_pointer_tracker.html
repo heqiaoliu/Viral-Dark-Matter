@@ -1,0 +1,146 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   <!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>可視光像の生成</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="aero_pointer_tracker.m"><link rel="stylesheet" type="text/css" href="../../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit aero_pointer_tracker">エディターで aero_pointer_tracker.m を開く</a></div><div class="right"><a href="matlab:echodemo aero_pointer_tracker">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>可視光像の生成</h1><!--introduction--><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">シミュレートした移動データから可視光像を生成</a></li><li><a href="#2">ターゲットの生成とその動きの定義</a></li><li><a href="#3">背景とターゲットの統合イメージの作成</a></li><li><a href="#4">トラッカーの回転振動のシミュレーション</a></li><li><a href="#5">背景、ターゲット、ジッターからのモーション エフェクトのシミュレーション</a></li><li><a href="#6">光学系を通じてイメージを渡す -- ガウス &quot;開口関数&quot; の使用</a></li><li><a href="#7">MATLAB&reg; ムービーの生成と再生</a></li><li><a href="#8">オプション:  ムービーを .mat ファイルとして保存</a></li></ul></div><h2>シミュレートした移動データから可視光像を生成<a name="1"></a></h2><p>このスクリプト (aero_pointer_tracker.m) では、64 フレームでフレーム サイズが 64 x 64 ピクセル (毎秒 10 フレーム) のムービーが生成されます。  このムービーには、構造化背景 (これ自体も動いている) の中を動いているターゲットのシミュレーションが含まれています。  ランダムな振動によるジッターの動きも (Simulink&reg; モデル &quot;aero_vibrati&quot; で) 生成され、ジッターの動きはセンサー全体の動きに加えられます。 最後に、ガウス光学点像分布関数を通じてイメージにブラーが加えられます。</p><p>メモ: ここでデルタを変更する場合、Simulink モデル &quot;vibration&quot; のパラメーター設定ダイアログ ボックスでも変更が必要です。</p><pre class="codeinput">delt = 0.1;      <span class="comment">% Sample time of the generated sequence</span>
+num_frames= 64;  <span class="comment">% Number of frames to generate</span>
+framesize = 64;  <span class="comment">% Square frame size in pixels</span>
+
+out = zeros(framesize,framesize,num_frames);    <span class="comment">% Initialize movie storage as a 3D Array</span>
+</pre><h2>ターゲットの生成とその動きの定義<a name="2"></a></h2><p>第 1 段階として、ターゲット オブジェクトの形状と動きを定義します。選択した形状は大きな正符号であり、イメージは、各ピクセル位置でのイメージ強度を表す行列によって定義されます。 このターゲットは、イメージの中央から右下へ移動するように定義されています。</p><pre class="codeinput">target = [zeros(3,11)
+          zeros(1,5) 6 zeros(1,5)
+          zeros(1,5) 6 zeros(1,5)
+          zeros(1,3) 6 6 6 6 6 zeros(1,3) <span class="comment">% Target is a plus sign 5 by 5 pixels across</span>
+          zeros(1,5) 6 zeros(1,5)         <span class="comment">%  with an intensity of 6 (S/N ratio is ~4).</span>
+          zeros(1,5) 6 zeros(1,5)         <span class="comment">% The total target image is made on an 11x11 grid to</span>
+          zeros(3,11)];                   <span class="comment">%  allow the image to be interpolated without error.</span>
+
+target_velx = 1;                 <span class="comment">% target velocity in x direction in pixels per second</span>
+target_vely = 1;                 <span class="comment">% target velocity in y direction in pixels per second</span>
+target_x_initially = framesize/2; <span class="comment">% the target is initially in the center of the frame in x</span>
+target_y_initially = framesize/2; <span class="comment">% and in y</span>
+
+figure(1);
+colormap(<span class="string">'gray'</span>);
+image(target*32);
+title(<span class="string">'Target Image'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_pointer_tracker_01.png" alt=""> <h2>背景とターゲットの統合イメージの作成<a name="3"></a></h2><p>正弦関数的に相関する背景を生成し、ドリフトの動きを与えます。 次に、ターゲットを背景イメージに重ね合わせます。</p><pre class="codeinput">backsize = framesize+36;  <span class="comment">% Make the background bigger than the frame so when it</span>
+                          <span class="comment">% drifts there are new pixels available to drift into.</span>
+xygrid = (1:backsize)/backsize;
+B=2*sin(2*pi*xygrid).^2'*cos(2*pi*xygrid).^2;
+
+psd = fft2(B);
+psd = real(psd.*conj(psd));
+
+background = B + 0.5*randn(backsize);    <span class="comment">% Add a specular Gaussian white</span>
+					 <span class="comment">% sequence to the structure with</span>
+					 <span class="comment">% variance of 0.25  (sigma of 0.5).</span>
+
+xoff = 10;
+yoff = 10;     <span class="comment">% Sensor location is offset from the 0,0 of the background</span>
+driftx = 1;
+drifty = 1;    <span class="comment">% drift rate of the background in a and y directions pix/sec.</span>
+
+minout = min(min(min(background)));
+maxout = max(max(max(background)));
+colormap(<span class="string">'gray'</span>);
+image((background-minout)*64/(maxout-minout))
+title(<span class="string">'Background image with additive white specular noise'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_pointer_tracker_02.png" alt=""> <h2>トラッカーの回転振動のシミュレーション<a name="4"></a></h2><p>トラッカーの回転振動は、モデル aero_vibrati を使用してシミュレートされます。 トラッカーの振動のシミュレーションに必要なデータは、Simulink モデル &quot;aero_vibrati&quot; を実行することによって生成されます。</p><p>sim コマンドを使用して Simulink 振動モデルを実行します (デルタを 0.1 秒から変更した場合は、Simulink モデルも変更することにより、振動のサンプル時間がこのトラッカー イメージ モデルのサンプル時間に一致するようにしなければなりません)。</p><p>結果として得られるランダムな回転を図 1 に示します。</p><pre class="codeinput">omega = 2*pi*5;       <span class="comment">% The structural frequencies are 5, 10 and 15 Hz in the model.</span>
+zeta  = 0.01;         <span class="comment">% Damping ratio for all modes</span>
+
+open_system(<span class="string">'aero_vibrati'</span>)
+simout = sim(<span class="string">'aero_vibrati'</span>,<span class="string">'SrcWorkspace'</span>,<span class="string">'current'</span>);
+
+vibdat = simout.get(<span class="string">'vibdat'</span>);          <span class="comment">% The Simulink model &quot;aero_vibrati&quot;</span>
+                                        <span class="comment">% generates the vibration data at</span>
+                                        <span class="comment">% a sample time of 0.01 sec.</span>
+vibx = vibdat(1:10:1000);               <span class="comment">% The output of simulation is</span>
+                                        <span class="comment">% returned as the variable simout</span>
+                                        <span class="comment">% The variable simout contains</span>
+viby = vibdat(1001:10:2000);            <span class="comment">% the in array vibdat that contains</span>
+                                        <span class="comment">% the vibration data</span>
+
+levarmx = 10;   <span class="comment">% Rotational lever arm for vibration noise in x</span>
+levarmy = 10;   <span class="comment">%  and in y.</span>
+
+subplot(211);
+plot(0.01*(1:10:1000),vibx);grid;
+title(<span class="string">'Time history of the random Tracker rotations'</span>)
+xlabel(<span class="string">'Time'</span>);ylabel(<span class="string">'x direction'</span>)
+
+subplot(212);
+plot(0.01*(1:10:1000),viby);grid;
+xlabel(<span class="string">'Time'</span>);ylabel(<span class="string">'y direction'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_pointer_tracker_03.png" alt=""> <img vspace="5" hspace="5" src="../aero_pointer_tracker_04.png" alt=""> <h2>背景、ターゲット、ジッターからのモーション エフェクトのシミュレーション<a name="5"></a></h2><p>ムービーを構成することになるフレームは、多次元配列で作成、保存されるようになっています。  各フレームの背景とターゲットは、ターゲットの動き、背景のドリフト、およびトラッカーの振動のため、位置が異なります。 ムービーの最初のフレームを図 1 に示します。</p><pre class="codeinput">clf; drawnow;
+
+<span class="keyword">for</span> t = 1:num_frames
+
+  <span class="comment">% Drift the Background at the rate driftx and drifty</span>
+  <span class="comment">% (in pixels/second) and add in the vibration:</span>
+  xshift = driftx*delt*t+levarmx*vibx(t,1);
+  yshift = drifty*delt*t+levarmy*viby(t,1);
+
+  <span class="comment">% Interpolate the 2D image using the MATLAB(R) function interp2:</span>
+  [xgrid, ygrid]   = meshgrid(1:backsize);
+  [xindex, yindex] = meshgrid(xshift:1:xshift+backsize,yshift:1:yshift+backsize);
+  outtemp = interp2(xgrid,ygrid,background,xindex,yindex);
+
+  <span class="comment">% Truncate the drifted image down from backsize to framesize:</span>
+  out(:,:,t) = outtemp(xoff:xoff+framesize-1,xoff:xoff+framesize-1);
+
+  <span class="comment">% Now let the target move also:</span>
+  tpixinx = floor(target_velx*delt*t);
+  tpixiny = floor(target_vely*delt*t);  <span class="comment">% Before interpolating extract the number of pixels moved</span>
+  txi = target_velx*delt*t - tpixinx;
+  tyi = target_vely*delt*t - tpixiny;   <span class="comment">% Interpolate on sub-pixels around the origin only</span>
+  [txgrid tygrid] = meshgrid(1:11);     <span class="comment">% meshgrid here generates a matrix of grid elements</span>
+  [txi tyi] = meshgrid(txi+1:txi+11,tyi+1:tyi+11); <span class="comment">% meshgrid generates 2 matrices with the x and y grids</span>
+
+  <span class="comment">% Interpolate the intensity values first using interp2 -- a built in MATLAB command</span>
+  temp = interp2(txgrid,tygrid,target,txi,tyi);
+
+  <span class="comment">% Insert the target at the location determined by the initial offset, and the number of whole pixels moved</span>
+  tx = tpixinx + target_x_initially-1;
+  ty = tpixiny + target_y_initially-1;
+  out(tx:tx+6,ty:ty+6,t) = temp(9:-1:3,9:-1:3) + out(tx:tx+6,ty:ty+6,t);
+
+<span class="keyword">end</span>
+
+minout = min(min(min(out)));
+maxout = max(max(max(out)));
+colormap(<span class="string">'gray'</span>);
+image((out(:,:,1)-minout)*64/(maxout-minout));
+title(<span class="string">'First frame of combined target and background image.'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_pointer_tracker_05.png" alt=""> <h2>光学系を通じてイメージを渡す -- ガウス &quot;開口関数&quot; の使用<a name="6"></a></h2><p>このコード セグメントでは、実測開口関数も簡単に使用できます。次の 5 行を &quot;load measured_aperture&quot; で置換するだけです。measured_aperture は ASCII に保存されている実測関数であり、ファイル measured_aperture.mat に保存されているデータは、行列 apfunctionを含んでいる MATLAB&reg; .mat ファイルです。 (MATLAB .mat ファイルの読み書き方法を示す C および Fortran コードを読み込んで表示する方法を参照するには、MATLAB で &quot;help load&quot; と入力してください。)</p><p>(メモ: 点像分布関数がガウスの場合は、開口関数もガウスです。)</p><p>トラッカー光学系の効果をシミュレートするために、ムービーの各フレームには 2-D FFT (高速フーリエ変換) でブラーが加えられています。  結果として得られるイメージの最初のフレームを図 1 に示します。</p><pre class="codeinput">x = 1:framesize;
+y = 1:framesize;
+sigma      = 120;
+apfunction = exp(-(x-framesize/2).^2/(2*sigma))' * exp(-(y-framesize/2).^2/(2*sigma));
+apfunction = fftshift(apfunction);      <span class="comment">% Rotate so it conforms with FFT convention</span>
+
+<span class="keyword">for</span> j = 1:num_frames
+  out(:,:,j) = real(ifft2(apfunction.*fft2(out(:,:,j))));
+<span class="keyword">end</span>
+
+minout = min(min(min(out)));
+maxout = max(max(max(out)));
+colormap(<span class="string">'gray'</span>);
+image((out(:,:,1)-minout)*64/(maxout-minout));
+title(<span class="string">'First frame of blurred image.'</span>)
+</pre><img vspace="5" hspace="5" src="../aero_pointer_tracker_06.png" alt=""> <h2>MATLAB&reg; ムービーの生成と再生<a name="7"></a></h2><p>ムービー フレームを最小値から最大値まで 64 の強度値を持つようにスケーリングした後、イメージとしての結果を表示します。  moviein と getframe の仕組みの説明は、MATLAB のヘルプを参照してください。</p><pre class="codeinput">minout = min(min(min(out)));
+maxout = max(max(max(out)));
+
+M = moviein(num_frames);
+<span class="keyword">for</span> j = 1:num_frames
+  image((out(:,:,j)-minout)*64/(maxout-minout))
+  drawnow
+  M(:,j) = getframe;
+<span class="keyword">end</span>
+
+colormap(<span class="string">'gray'</span>)
+movie(M);
+</pre><img vspace="5" hspace="5" src="../aero_pointer_tracker_07.png" alt=""> <h2>オプション:  ムービーを .mat ファイルとして保存<a name="8"></a></h2><p>生成されたトラッカー ムービーをオプションで mat ファイルとして保存できます。また、背景の PSD も、後でムービーと共に使用するために保存できます。</p><pre> <pre> save trackerimage out
+ save psdback psd
+ save moviedat M</pre><pre class="codeinput">bdclose(<span class="string">'aero_vibrati'</span>);
+</pre><p class="footer">Copyright 1990-2010 The MathWorks, Inc.<br> Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Optical Sensor Image Generation %  % Copyright 1990-2010 The MathWorks, Inc. % $Revision: 1.1.4.10.2.1 $ $Date: 2010/07/29 21:29:07 $   %% Generating an Optical Sensor Image From Simulated Movement Data % % This script (aero_pointer_tracker.m) generates a movie with 64 % frames and a frame size of 64 by 64 pixels (at 10 frames % per second).  The movie contains a simulation of a moving target % that is moving through a structured background that is itself % moving.  A jitter motion caused by random vibration is also % generated (in a Simulink(R) model called "aero_vibrati") and the jitter % motion is added into the overall sensor motion. Finally, the image is % blurred through a Gaussian optical point spread function. %  % Note: Changing delt here also requires a change in the parameters set-up %       dialog box in the Simulink model "vibration".  delt = 0.1;      % Sample time of the generated sequence num_frames= 64;  % Number of frames to generate framesize = 64;  % Square frame size in pixels  out = zeros(framesize,framesize,num_frames);    % Initialize movie storage as a 3D Array   %% Generate a Target and Define Its Motion % % The first stage is to define the shape and motion of the target % object.The shape chosen is a large plus sign, and the image % is defined by a matrix representing the image intensity at % each pixel position. The Target is defined to be traveling % from center to bottom right of the image. %   target = [zeros(3,11)           zeros(1,5) 6 zeros(1,5)           zeros(1,5) 6 zeros(1,5)           zeros(1,3) 6 6 6 6 6 zeros(1,3) % Target is a plus sign 5 by 5 pixels across           zeros(1,5) 6 zeros(1,5)         %  with an intensity of 6 (S/N ratio is ~4).           zeros(1,5) 6 zeros(1,5)         % The total target image is made on an 11x11 grid to           zeros(3,11)];                   %  allow the image to be interpolated without error.  target_velx = 1;                 % target velocity in x direction in pixels per second target_vely = 1;                 % target velocity in y direction in pixels per second target_x_initially = framesize/2; % the target is initially in the center of the frame in x target_y_initially = framesize/2; % and in y  figure(1); colormap('gray'); image(target*32); title('Target Image')   %% Build Background and Target Composite Image % % Generate a sinusoidally correlated background and give it a drift motion. % Then, overlay the target onto the background image. %  backsize = framesize+36;  % Make the background bigger than the frame so when it                           % drifts there are new pixels available to drift into. xygrid = (1:backsize)/backsize; B=2*sin(2*pi*xygrid).^2'*cos(2*pi*xygrid).^2;  psd = fft2(B); psd = real(psd.*conj(psd));  background = B + 0.5*randn(backsize);    % Add a specular Gaussian white  					 % sequence to the structure with  					 % variance of 0.25  (sigma of 0.5).  xoff = 10; yoff = 10;     % Sensor location is offset from the 0,0 of the background driftx = 1; drifty = 1;    % drift rate of the background in a and y directions pix/sec.  minout = min(min(min(background))); maxout = max(max(max(background))); colormap('gray'); image((background-minout)*64/(maxout-minout)) title('Background image with additive white specular noise')   %% Simulate the Tracker's Rotational Vibration % % Rotational vibration of the tracker is simulated using model aero_vibrati.  % The data required to simulate the vibration of the tracker is generated  % by running the Simulink model "aero_vibrati".  % % Run Simulink vibration model using sim command (Note REPLACE_WITH_DASH_DASH if the delt is changed % from 0.1 seconds, the Simulink model must be changed also to ensure that the % sample time for the vibration match the sample time in this tracker image  % model. % % The resulting random rotations are shown in Figure 1. %  omega = 2*pi*5;       % The structural frequencies are 5, 10 and 15 Hz in the model. zeta  = 0.01;         % Damping ratio for all modes  open_system('aero_vibrati') simout = sim('aero_vibrati','SrcWorkspace','current');  vibdat = simout.get('vibdat');          % The Simulink model "aero_vibrati"                                         % generates the vibration data at                                         % a sample time of 0.01 sec. vibx = vibdat(1:10:1000);               % The output of simulation is                                         % returned as the variable simout                                         % The variable simout contains  viby = vibdat(1001:10:2000);            % the in array vibdat that contains                                         % the vibration data  levarmx = 10;   % Rotational lever arm for vibration noise in x levarmy = 10;   %  and in y.  subplot(211); plot(0.01*(1:10:1000),vibx);grid; title('Time history of the random Tracker rotations') xlabel('Time');ylabel('x direction')  subplot(212); plot(0.01*(1:10:1000),viby);grid; xlabel('Time');ylabel('y direction')   %% Simulate the Motion Effects From the Background, Target, and Jitter %   % The frames that will make up the movie are now created and  % stored in a multidimensional array (out).  Each frame has  % the background and target at differing positions due to the % target motion, background drift, and tracker vibration. The % first frame of the movie will be shown in Figure 1. %   clf; drawnow;  for t = 1:num_frames    % Drift the Background at the rate driftx and drifty    % (in pixels/second) and add in the vibration:   xshift = driftx*delt*t+levarmx*vibx(t,1);   yshift = drifty*delt*t+levarmy*viby(t,1);      % Interpolate the 2D image using the MATLAB(R) function interp2:   [xgrid, ygrid]   = meshgrid(1:backsize);   [xindex, yindex] = meshgrid(xshift:1:xshift+backsize,yshift:1:yshift+backsize);   outtemp = interp2(xgrid,ygrid,background,xindex,yindex);      % Truncate the drifted image down from backsize to framesize:   out(:,:,t) = outtemp(xoff:xoff+framesize-1,xoff:xoff+framesize-1);      % Now let the target move also:   tpixinx = floor(target_velx*delt*t);   tpixiny = floor(target_vely*delt*t);  % Before interpolating extract the number of pixels moved   txi = target_velx*delt*t - tpixinx;   tyi = target_vely*delt*t - tpixiny;   % Interpolate on sub-pixels around the origin only   [txgrid tygrid] = meshgrid(1:11);     % meshgrid here generates a matrix of grid elements   [txi tyi] = meshgrid(txi+1:txi+11,tyi+1:tyi+11); % meshgrid generates 2 matrices with the x and y grids    % Interpolate the intensity values first using interp2 REPLACE_WITH_DASH_DASH a built in MATLAB command   temp = interp2(txgrid,tygrid,target,txi,tyi);    % Insert the target at the location determined by the initial offset, and the number of whole pixels moved   tx = tpixinx + target_x_initially-1;   ty = tpixiny + target_y_initially-1;   out(tx:tx+6,ty:ty+6,t) = temp(9:-1:3,9:-1:3) + out(tx:tx+6,ty:ty+6,t);    end  minout = min(min(min(out))); maxout = max(max(max(out))); colormap('gray'); image((out(:,:,1)-minout) * 64/(maxout-minout)); title('First frame of combined target and background image.')   %% Pass the Images Through Optics REPLACE_WITH_DASH_DASH Use a Gaussian "Aperture Function" % % This code segment can use a measured aperture function just as easily - simply % replace the next five lines by "load measured_aperture" where measured_aperture % is the measured function stored in ASCII and the data stored in the file % measured_aperture.mat is a MATLAB(R) .mat file that contains the matrix apfunction. % (in MATLAB type "help load" for how to use load and look at the c and fortran code % that shows how to read and write MATLAB .mat files). % % (Note: When the Point Spread Function is Gaussian, then so is the Aperture function) % % To simulate the effect of the tracker optics, each of the  % movie frames is now blurred using a 2-D FFT (Fast Fourier  % Transform).  The first frame of the resulting image is shown % in Figure 1. %    x = 1:framesize; y = 1:framesize; sigma      = 120; apfunction = exp(-(x-framesize/2).^2/(2*sigma))' * exp(-(y-framesize/2).^2/(2*sigma)); apfunction = fftshift(apfunction);      % Rotate so it conforms with FFT convention  for j = 1:num_frames   out(:,:,j) = real(ifft2(apfunction.*fft2(out(:,:,j)))); end  minout = min(min(min(out))); maxout = max(max(max(out))); colormap('gray'); image((out(:,:,1)-minout)*64/(maxout-minout)); title('First frame of blurred image.')   %% Generate the MATLAB(R) Movie and Play It Back % % Scale the movie frame so that is has 64 intensity values from the min % to the max and then show the result as an image.  See MATLAB help % for how the moviein and getframe work. %  minout = min(min(min(out))); maxout = max(max(max(out)));  M = moviein(num_frames); for j = 1:num_frames   image((out(:,:,j)-minout)*64/(maxout-minout))   drawnow   M(:,j) = getframe; end  colormap('gray') movie(M);  %% OPTIONAL:  Save the Movie in a .mat File % % You can optionally save the generated tracker movie in a mat file % and also save the psd of the background for later use with the movie. % %   save trackerimage out %   save psdback psd %   save moviedat M  bdclose('aero_vibrati');  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

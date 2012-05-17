@@ -1,0 +1,527 @@
+<HTML>
+<HEAD>
+<!-- Inserted by TRADOS: --><META HTTP-EQUIV="content-type" CONTENT="text/html; charset=Shift_JIS">
+
+<TITLE>RTW レポート - fi_mdl_radix2fft_withscaling.c </TITLE>
+<STYLE> .LineNumber { font-style: italic; color: #888888 } </STYLE>
+<STYLE> .Comment { font-style: italic; color: #117755 } </STYLE>
+<STYLE> .PreProcessor { font-style: bold;   color: #992211 } </STYLE>
+<STYLE> .Keyword { font-style: bold;   color: #112266 } </STYLE>
+<STYLE> .Datatype { font-style: bold;   color: #112266 } </STYLE>
+</HEAD>
+<BODY BGCOLOR="#eeeeee" TEXT=#1122aa>
+<P>
+<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="6" WIDTH="100%" HEIGHT="100%"><TR><TD WIDTH="100%" VALIGN="top" BGCOLOR="#ffffff">
+<PRE>
+<SPAN class="LineNumber">    1   </SPAN><SPAN class="Comment">/*
+<SPAN class="LineNumber">    2   </SPAN> * fi_mdl_radix2fft_withscaling.c
+<SPAN class="LineNumber">    3   </SPAN> * 
+<SPAN class="LineNumber">    4   </SPAN> * Real-Time Workshop code generation for Simulink model &quot;fi_mdl_radix2fft_withscaling.mdl&quot;.
+<SPAN class="LineNumber">    5   </SPAN> *
+<SPAN class="LineNumber">    6   </SPAN> * Model Version              : 1.12
+<SPAN class="LineNumber">    7   </SPAN> * Real-Time Workshop version :6.1  (R14SP2)  01-Nov-2004
+<SPAN class="LineNumber">    8   </SPAN> * C source code generated on :Tue Dec  7 16:22:22 2004
+<SPAN class="LineNumber">    9   </SPAN> */</SPAN>
+<SPAN class="LineNumber">   10   </SPAN>
+<SPAN class="LineNumber">   11   </SPAN><FONT COLOR=#992211>#</FONT><SPAN class="PreProcessor">include</SPAN> <FONT COLOR=#992211>&quot;fi_mdl_radix2fft_withscaling.h&quot;</FONT>
+<SPAN class="LineNumber">   12   </SPAN><FONT COLOR=#992211>#</FONT><SPAN class="PreProcessor">include</SPAN> <FONT COLOR=#992211>&quot;fi_mdl_radix2fft_withscaling_private.h&quot;</FONT>
+<SPAN class="LineNumber">   13   </SPAN>
+<SPAN class="LineNumber">  14   </SPAN><SPAN class="Comment">/* Block states (auto storage) */</SPAN>
+<SPAN class="LineNumber">   15   </SPAN><A HREF=fi_mdl_radix2fft_withscaling_h.html#type_D_Work_fi_mdl_radix2fft_withscaling TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">D_Work_fi_mdl_radix2fft_withscaling</FONT></A> fi_mdl_radix2fft_withscaling_DWork;
+<SPAN class="LineNumber">   16   </SPAN>
+<SPAN class="LineNumber">   17   </SPAN><SPAN class="Comment">/* Real-time model */</SPAN>
+<SPAN class="LineNumber">   18   </SPAN><A HREF=fi_mdl_radix2fft_withscaling_types_h.html#type_rtModel_fi_mdl_radix2fft_withscaling TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtModel_fi_mdl_radix2fft_withscaling</FONT></A> fi_mdl_radix2fft_withscaling_M_;
+<SPAN class="LineNumber">   19   </SPAN><A HREF=fi_mdl_radix2fft_withscaling_types_h.html#type_rtModel_fi_mdl_radix2fft_withscaling TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtModel_fi_mdl_radix2fft_withscaling</FONT></A> *fi_mdl_radix2fft_withscaling_M =
+<SPAN class="LineNumber">   20   </SPAN>  &amp;fi_mdl_radix2fft_withscaling_M_;
+<SPAN class="LineNumber">   21   </SPAN>
+<SPAN class="LineNumber">   22   </SPAN><SPAN class="Comment">/* Model output function */</SPAN>
+<SPAN class="LineNumber">   23   </SPAN><SPAN class="Datatype">static</SPAN> <SPAN class="Datatype">void</SPAN> <A NAME=fcn_fi_mdl_radix2fft_withscaling_output>fi_mdl_radix2fft_withscaling_output</A>(int_T tid)
+<SPAN class="LineNumber">   24   </SPAN><B>{</B>
+<SPAN class="LineNumber">   25   </SPAN>
+<SPAN class="LineNumber">   26   </SPAN>  <SPAN class="Comment">/* local block i/o variables */</SPAN>
+<SPAN class="LineNumber">   27   </SPAN>
+<SPAN class="LineNumber">   28   </SPAN>  cint16_T rtb_FFT[64];
+<SPAN class="LineNumber">   29   </SPAN>  int16_T rtb_FromWorkspace[64];
+<SPAN class="LineNumber">   30   </SPAN>
+<SPAN class="LineNumber">   31   </SPAN>  <SPAN class="Comment">/* FromWorkspace:'&lt;Root&gt;/From Workspace' */</SPAN>
+<SPAN class="LineNumber">   32   </SPAN>  <B>{</B>
+<SPAN class="LineNumber">   33   </SPAN>    real_T t = fi_mdl_radix2fft_withscaling_M-&gt;Timing.t[0];
+<SPAN class="LineNumber">   34   </SPAN>    real_T *pTimeValues = (real_T *)
+<SPAN class="LineNumber">   35   </SPAN>      fi_mdl_radix2fft_withscaling_DWork.FromWorkspace_PWORK.TimePtr;
+<SPAN class="LineNumber">   36   </SPAN>    int16_T *pDataValues = (int16_T *)
+<SPAN class="LineNumber">   37   </SPAN>      fi_mdl_radix2fft_withscaling_DWork.FromWorkspace_PWORK.DataPtr;
+<SPAN class="LineNumber">   38   </SPAN>    <SPAN class="Keyword">if</SPAN> (t &lt; pTimeValues[0]) <B>{</B>
+<SPAN class="LineNumber">   39   </SPAN>      <B>{</B>
+<SPAN class="LineNumber">   40   </SPAN>        int_T i1;
+<SPAN class="LineNumber">   41   </SPAN>
+<SPAN class="LineNumber">   42   </SPAN>        int16_T *y0 = rtb_FromWorkspace;
+<SPAN class="LineNumber">   43   </SPAN>
+<SPAN class="LineNumber">   44   </SPAN>        <SPAN class="Keyword">for</SPAN> (i1=0; i1 &lt; 64; i1++) <B>{</B>
+<SPAN class="LineNumber">   45   </SPAN>          y0[i1] = 0;
+<SPAN class="LineNumber">   46   </SPAN>        <B>}</B>
+<SPAN class="LineNumber">   47   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">   48   </SPAN>    <B>}</B> <SPAN class="Keyword">else</SPAN> <SPAN class="Keyword">if</SPAN> (t == pTimeValues[0]) <B>{</B>
+<SPAN class="LineNumber">   49   </SPAN>      <B>{</B>
+<SPAN class="LineNumber">   50   </SPAN>        int_T i1;
+<SPAN class="LineNumber">   51   </SPAN>
+<SPAN class="LineNumber">   52   </SPAN>        int16_T *y0 = rtb_FromWorkspace;
+<SPAN class="LineNumber">   53   </SPAN>
+<SPAN class="LineNumber">   54   </SPAN>        <SPAN class="Keyword">for</SPAN> (i1=0; i1 &lt; 64; i1++) <B>{</B>
+<SPAN class="LineNumber">   55   </SPAN>          y0[i1] = pDataValues[0];
+<SPAN class="LineNumber">   56   </SPAN>          pDataValues += 1;
+<SPAN class="LineNumber">   57   </SPAN>        <B>}</B>
+<SPAN class="LineNumber">   58   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">   59   </SPAN>    <B>}</B> <SPAN class="Keyword">else</SPAN> <SPAN class="Keyword">if</SPAN> (t &gt; pTimeValues[0]) <B>{</B>
+<SPAN class="LineNumber">   60   </SPAN>      <B>{</B>
+<SPAN class="LineNumber">   61   </SPAN>        int_T i1;
+<SPAN class="LineNumber">   62   </SPAN>
+<SPAN class="LineNumber">   63   </SPAN>        int16_T *y0 = rtb_FromWorkspace;
+<SPAN class="LineNumber">   64   </SPAN>
+<SPAN class="LineNumber">   65   </SPAN>        <SPAN class="Keyword">for</SPAN> (i1=0; i1 &lt; 64; i1++) <B>{</B>
+<SPAN class="LineNumber">   66   </SPAN>          y0[i1] = 0;
+<SPAN class="LineNumber">   67   </SPAN>        <B>}</B>
+<SPAN class="LineNumber">   68   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">   69   </SPAN>    <B>}</B> <SPAN class="Keyword">else</SPAN> <B>{</B>
+<SPAN class="LineNumber">   70   </SPAN>      int_T currTimeIndex =
+<SPAN class="LineNumber">   71   </SPAN>        fi_mdl_radix2fft_withscaling_DWork.FromWorkspace_IWORK.PrevIndex;
+<SPAN class="LineNumber">   72   </SPAN>      <SPAN class="Keyword">if</SPAN> (t &lt; pTimeValues[currTimeIndex]) <B>{</B>
+<SPAN class="LineNumber">   73   </SPAN>        <SPAN class="Keyword">while</SPAN> (t &lt; pTimeValues[currTimeIndex]) <B>{</B>
+<SPAN class="LineNumber">   74   </SPAN>          currTimeIndex--;
+<SPAN class="LineNumber">   75   </SPAN>        <B>}</B>
+<SPAN class="LineNumber">   76   </SPAN>      <B>}</B> <SPAN class="Keyword">else</SPAN> <B>{</B>
+<SPAN class="LineNumber">   77   </SPAN>        <SPAN class="Keyword">while</SPAN> (t &gt;= pTimeValues[currTimeIndex + 1]) <B>{</B>
+<SPAN class="LineNumber">   78   </SPAN>          currTimeIndex++;
+<SPAN class="LineNumber">   79   </SPAN>        <B>}</B>
+<SPAN class="LineNumber">   80   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">   81   </SPAN>      <B>{</B>
+<SPAN class="LineNumber">   82   </SPAN>        int_T i1;
+<SPAN class="LineNumber">   83   </SPAN>
+<SPAN class="LineNumber">   84   </SPAN>        int16_T *y0 = rtb_FromWorkspace;
+<SPAN class="LineNumber">   85   </SPAN>
+<SPAN class="LineNumber">   86   </SPAN>        <SPAN class="Keyword">for</SPAN> (i1=0; i1 &lt; 64; i1++) <B>{</B>
+<SPAN class="LineNumber">   87   </SPAN>          y0[i1] = pDataValues[currTimeIndex];
+<SPAN class="LineNumber">   88   </SPAN>          pDataValues += 1;
+<SPAN class="LineNumber">   89   </SPAN>        <B>}</B>
+<SPAN class="LineNumber">   90   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">   91   </SPAN>      fi_mdl_radix2fft_withscaling_DWork.FromWorkspace_IWORK.PrevIndex =
+<SPAN class="LineNumber">   92   </SPAN>        currTimeIndex;
+<SPAN class="LineNumber">   93   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">   94   </SPAN>  <B>}</B>
+<SPAN class="LineNumber">   95   </SPAN>
+<SPAN class="LineNumber">   96   </SPAN>  <SPAN class="Comment">/* DSP Blockset FFT (sdspfft2) - '&lt;Root&gt;/FFT' */</SPAN>
+<SPAN class="LineNumber">   97   </SPAN>  <SPAN class="Comment">/* Real input, 1 channels, 64 rows, linear output order */</SPAN>
+<SPAN class="LineNumber">   98   </SPAN>  <B>{</B>                                     <SPAN class="Comment">/* Bit reverse scramble and copy from input buffer to output */</SPAN>
+<SPAN class="LineNumber">   99   </SPAN>    int_T j=0, i=0;
+<SPAN class="LineNumber">  100   </SPAN>    <SPAN class="Keyword">for</SPAN> (;i&lt;63; i++) <B>{</B>
+<SPAN class="LineNumber">  101   </SPAN>      rtb_FFT[j].re = rtb_FromWorkspace[i];
+<SPAN class="LineNumber">  102   </SPAN>      rtb_FFT[j].im = 0;
+<SPAN class="LineNumber">  103   </SPAN>      <B>{</B>
+<SPAN class="LineNumber">  104   </SPAN>        int_T bit = 64;
+<SPAN class="LineNumber">  105   </SPAN>        <SPAN class="Keyword">do</SPAN> <B>{</B> bit&gt;&gt;=1; j^=bit; <B>}</B> <SPAN class="Keyword">while</SPAN> (!(j &amp; bit));
+<SPAN class="LineNumber">  106   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">  107   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">  108   </SPAN>    rtb_FFT[j].re = rtb_FromWorkspace[i];
+<SPAN class="LineNumber">  109   </SPAN>    rtb_FFT[j].im = 0;
+<SPAN class="LineNumber">  110   </SPAN>  <B>}</B>
+<SPAN class="LineNumber">  111   </SPAN>  <B>{</B>                                     <SPAN class="Comment">/* Decimation in time FFT */</SPAN>
+<SPAN class="LineNumber">  112   </SPAN>    int32_T accum;
+<SPAN class="LineNumber">  113   </SPAN>    int32_T prod;
+<SPAN class="LineNumber">  114   </SPAN>    cint16_T ctemp, ctemp2;
+<SPAN class="LineNumber">  115   </SPAN>    int_T i;
+<SPAN class="LineNumber">  116   </SPAN>    <SPAN class="Comment">/* Remove trivial multiplies for first stage */</SPAN>
+<SPAN class="LineNumber">  117   </SPAN>    <SPAN class="Keyword">for</SPAN> (i=0; i&lt;63; i+=2) <B>{</B>
+<SPAN class="LineNumber">  118   </SPAN>      <SPAN class="Comment">/* CTEMP = y[i] - y[i+1]; */</SPAN>
+<SPAN class="LineNumber">  119   </SPAN>
+<SPAN class="LineNumber">  120   </SPAN>      accum = LSL_S32(15,((int32_T)rtb_FFT[i].re));
+<SPAN class="LineNumber">  121   </SPAN>
+<SPAN class="LineNumber">  122   </SPAN>      accum -= LSL_S32(15,((int32_T)rtb_FFT[i+1].re));
+<SPAN class="LineNumber">  123   </SPAN>
+<SPAN class="LineNumber">  124   </SPAN>      accum = ASR(1,accum);
+<SPAN class="LineNumber">  125   </SPAN>
+<SPAN class="LineNumber">  126   </SPAN>      ctemp.re = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  127   </SPAN>
+<SPAN class="LineNumber">  128   </SPAN>      accum = LSL_S32(15,((int32_T)rtb_FFT[i].im));
+<SPAN class="LineNumber">  129   </SPAN>
+<SPAN class="LineNumber">  130   </SPAN>      accum -= LSL_S32(15,((int32_T)rtb_FFT[i+1].im));
+<SPAN class="LineNumber">  131   </SPAN>
+<SPAN class="LineNumber">  132   </SPAN>      accum = ASR(1,accum);
+<SPAN class="LineNumber">  133   </SPAN>
+<SPAN class="LineNumber">  134   </SPAN>      ctemp.im = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  135   </SPAN>      <SPAN class="Comment">/* y[i] = y[i] + y[i+1]; */</SPAN>
+<SPAN class="LineNumber">  136   </SPAN>
+<SPAN class="LineNumber">  137   </SPAN>      accum = LSL_S32(15,((int32_T)rtb_FFT[i].re));
+<SPAN class="LineNumber">  138   </SPAN>
+<SPAN class="LineNumber">  139   </SPAN>      accum += LSL_S32(15,((int32_T)rtb_FFT[i+1].re));
+<SPAN class="LineNumber">  140   </SPAN>
+<SPAN class="LineNumber">  141   </SPAN>      accum = ASR(1,accum);
+<SPAN class="LineNumber">  142   </SPAN>
+<SPAN class="LineNumber">  143   </SPAN>      rtb_FFT[i].re = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  144   </SPAN>
+<SPAN class="LineNumber">  145   </SPAN>      accum = LSL_S32(15,((int32_T)rtb_FFT[i].im));
+<SPAN class="LineNumber">  146   </SPAN>
+<SPAN class="LineNumber">  147   </SPAN>      accum += LSL_S32(15,((int32_T)rtb_FFT[i+1].im));
+<SPAN class="LineNumber">  148   </SPAN>
+<SPAN class="LineNumber">  149   </SPAN>      accum = ASR(1,accum);
+<SPAN class="LineNumber">  150   </SPAN>
+<SPAN class="LineNumber">  151   </SPAN>      rtb_FFT[i].im = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  152   </SPAN>      <SPAN class="Comment">/* y[i+1] = CTEMP; */</SPAN>
+<SPAN class="LineNumber">  153   </SPAN>      rtb_FFT[i+1].re = ctemp.re;
+<SPAN class="LineNumber">  154   </SPAN>      rtb_FFT[i+1].im = ctemp.im;
+<SPAN class="LineNumber">  155   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">  156   </SPAN>    <B>{</B>
+<SPAN class="LineNumber">  157   </SPAN>      int_T idelta=2;
+<SPAN class="LineNumber">  158   </SPAN>      int_T k = 16;
+<SPAN class="LineNumber">  159   </SPAN>      int_T kratio = 16;
+<SPAN class="LineNumber">  160   </SPAN>      <SPAN class="Keyword">while</SPAN> (k &gt; 0) <B>{</B>
+<SPAN class="LineNumber">  161   </SPAN>        int_T istart = 0;
+<SPAN class="LineNumber">  162   </SPAN>        int_T i2;
+<SPAN class="LineNumber">  163   </SPAN>        int_T j=kratio;
+<SPAN class="LineNumber">  164   </SPAN>        int_T i1=istart;
+<SPAN class="LineNumber">  165   </SPAN>        <SPAN class="Comment">/* Remove trivial multiplies for first butterfly in remaining stages */</SPAN>
+<SPAN class="LineNumber">  166   </SPAN>        <SPAN class="Keyword">for</SPAN> (i=0; i&lt;k; i++) <B>{</B>
+<SPAN class="LineNumber">  167   </SPAN>          i2 = i1 + idelta;
+<SPAN class="LineNumber">  168   </SPAN>          <SPAN class="Comment">/* CTEMP = y[0] - y[idelta]; */</SPAN>
+<SPAN class="LineNumber">  169   </SPAN>
+<SPAN class="LineNumber">  170   </SPAN>          accum = LSL_S32(15,((int32_T)rtb_FFT[i1].re));
+<SPAN class="LineNumber">  171   </SPAN>
+<SPAN class="LineNumber">  172   </SPAN>          accum -= LSL_S32(15,((int32_T)rtb_FFT[i2].re));
+<SPAN class="LineNumber">  173   </SPAN>
+<SPAN class="LineNumber">  174   </SPAN>          accum = ASR(1,accum);
+<SPAN class="LineNumber">  175   </SPAN>
+<SPAN class="LineNumber">  176   </SPAN>          ctemp.re = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  177   </SPAN>
+<SPAN class="LineNumber">  178   </SPAN>          accum = LSL_S32(15,((int32_T)rtb_FFT[i1].im));
+<SPAN class="LineNumber">  179   </SPAN>
+<SPAN class="LineNumber">  180   </SPAN>          accum -= LSL_S32(15,((int32_T)rtb_FFT[i2].im));
+<SPAN class="LineNumber">  181   </SPAN>
+<SPAN class="LineNumber">  182   </SPAN>          accum = ASR(1,accum);
+<SPAN class="LineNumber">  183   </SPAN>
+<SPAN class="LineNumber">  184   </SPAN>          ctemp.im = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  185   </SPAN>          <SPAN class="Comment">/* y[0] = y[0] + y[idelta]; */</SPAN>
+<SPAN class="LineNumber">  186   </SPAN>
+<SPAN class="LineNumber">  187   </SPAN>          accum = LSL_S32(15,((int32_T)rtb_FFT[i1].re));
+<SPAN class="LineNumber">  188   </SPAN>
+<SPAN class="LineNumber">  189   </SPAN>          accum += LSL_S32(15,((int32_T)rtb_FFT[i2].re));
+<SPAN class="LineNumber">  190   </SPAN>
+<SPAN class="LineNumber">  191   </SPAN>          accum = ASR(1,accum);
+<SPAN class="LineNumber">  192   </SPAN>
+<SPAN class="LineNumber">  193   </SPAN>          rtb_FFT[i1].re = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  194   </SPAN>
+<SPAN class="LineNumber">  195   </SPAN>          accum = LSL_S32(15,((int32_T)rtb_FFT[i1].im));
+<SPAN class="LineNumber">  196   </SPAN>
+<SPAN class="LineNumber">  197   </SPAN>          accum += LSL_S32(15,((int32_T)rtb_FFT[i2].im));
+<SPAN class="LineNumber">  198   </SPAN>
+<SPAN class="LineNumber">  199   </SPAN>          accum = ASR(1,accum);
+<SPAN class="LineNumber">  200   </SPAN>
+<SPAN class="LineNumber">  201   </SPAN>          rtb_FFT[i1].im = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  202   </SPAN>          <SPAN class="Comment">/* y[idelta] = CTEMP */</SPAN>
+<SPAN class="LineNumber">  203   </SPAN>          rtb_FFT[i2].re = ctemp.re;
+<SPAN class="LineNumber">  204   </SPAN>          rtb_FFT[i2].im = ctemp.im;
+<SPAN class="LineNumber">  205   </SPAN>          i1 += (idelta&lt;&lt;1);
+<SPAN class="LineNumber">  206   </SPAN>        <B>}</B>
+<SPAN class="LineNumber">  207   </SPAN>        istart++;
+<SPAN class="LineNumber">  208   </SPAN>        <SPAN class="Keyword">for</SPAN> (; j&lt;32; j+= kratio) <B>{</B>
+<SPAN class="LineNumber">  209   </SPAN>          int_T i1=istart;
+<SPAN class="LineNumber">  210   </SPAN>          <SPAN class="Keyword">for</SPAN> (i=0; i&lt;k; i++) <B>{</B>
+<SPAN class="LineNumber">  211   </SPAN>            i2 = i1 + idelta;
+<SPAN class="LineNumber">  212   </SPAN>            <SPAN class="Comment">/* Compute ctemp = W * y[i2] */</SPAN>
+<SPAN class="LineNumber">  213   </SPAN>            MUL_S32_S16_S16(prod,rtb_FFT[i2].re,(fi_mdl_radix2fft_withscaling_P.FFT_TwiddleTable[j+16]));
+<SPAN class="LineNumber">  214   </SPAN>            accum = prod;
+<SPAN class="LineNumber">  215   </SPAN>            MUL_S32_S16_S16(prod,rtb_FFT[i2].im,(fi_mdl_radix2fft_withscaling_P.FFT_TwiddleTable[j+32]));
+<SPAN class="LineNumber">  216   </SPAN>            accum -= prod;
+<SPAN class="LineNumber">  217   </SPAN>
+<SPAN class="LineNumber">  218   </SPAN>            ctemp.re = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  219   </SPAN>            MUL_S32_S16_S16(prod,rtb_FFT[i2].re,(fi_mdl_radix2fft_withscaling_P.FFT_TwiddleTable[j+32]));
+<SPAN class="LineNumber">  220   </SPAN>            accum = prod;
+<SPAN class="LineNumber">  221   </SPAN>            MUL_S32_S16_S16(prod,rtb_FFT[i2].im,(fi_mdl_radix2fft_withscaling_P.FFT_TwiddleTable[j+16]));
+<SPAN class="LineNumber">  222   </SPAN>            accum += prod;
+<SPAN class="LineNumber">  223   </SPAN>
+<SPAN class="LineNumber">  224   </SPAN>            ctemp.im = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  225   </SPAN>            <SPAN class="Comment">/* Compute ctemp2 = y[i1] + ctemp */</SPAN>
+<SPAN class="LineNumber">  226   </SPAN>
+<SPAN class="LineNumber">  227   </SPAN>            accum = LSL_S32(15,((int32_T)rtb_FFT[i1].re));
+<SPAN class="LineNumber">  228   </SPAN>
+<SPAN class="LineNumber">  229   </SPAN>            accum += LSL_S32(15,((int32_T)ctemp.re));
+<SPAN class="LineNumber">  230   </SPAN>
+<SPAN class="LineNumber">  231   </SPAN>            accum = ASR(1,accum);
+<SPAN class="LineNumber">  232   </SPAN>
+<SPAN class="LineNumber">  233   </SPAN>            ctemp2.re = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  234   </SPAN>
+<SPAN class="LineNumber">  235   </SPAN>            accum = LSL_S32(15,((int32_T)rtb_FFT[i1].im));
+<SPAN class="LineNumber">  236   </SPAN>
+<SPAN class="LineNumber">  237   </SPAN>            accum += LSL_S32(15,((int32_T)ctemp.im));
+<SPAN class="LineNumber">  238   </SPAN>
+<SPAN class="LineNumber">  239   </SPAN>            accum = ASR(1,accum);
+<SPAN class="LineNumber">  240   </SPAN>
+<SPAN class="LineNumber">  241   </SPAN>            ctemp2.im = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  242   </SPAN>            <SPAN class="Comment">/* Compute y[i2] = y[i1] - ctemp */</SPAN>
+<SPAN class="LineNumber">  243   </SPAN>
+<SPAN class="LineNumber">  244   </SPAN>            accum = LSL_S32(15,((int32_T)rtb_FFT[i1].re));
+<SPAN class="LineNumber">  245   </SPAN>
+<SPAN class="LineNumber">  246   </SPAN>            accum -= LSL_S32(15,((int32_T)ctemp.re));
+<SPAN class="LineNumber">  247   </SPAN>
+<SPAN class="LineNumber">  248   </SPAN>            accum = ASR(1,accum);
+<SPAN class="LineNumber">  249   </SPAN>
+<SPAN class="LineNumber">  250   </SPAN>            rtb_FFT[i2].re = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  251   </SPAN>
+<SPAN class="LineNumber">  252   </SPAN>            accum = LSL_S32(15,((int32_T)rtb_FFT[i1].im));
+<SPAN class="LineNumber">  253   </SPAN>
+<SPAN class="LineNumber">  254   </SPAN>            accum -= LSL_S32(15,((int32_T)ctemp.im));
+<SPAN class="LineNumber">  255   </SPAN>
+<SPAN class="LineNumber">  256   </SPAN>            accum = ASR(1,accum);
+<SPAN class="LineNumber">  257   </SPAN>
+<SPAN class="LineNumber">  258   </SPAN>            rtb_FFT[i2].im = ((int16_T)ASR(15,accum));
+<SPAN class="LineNumber">  259   </SPAN>            <SPAN class="Comment">/* y[i1] = ctemp2 */</SPAN>
+<SPAN class="LineNumber">  260   </SPAN>            rtb_FFT[i1].re = ctemp2.re;
+<SPAN class="LineNumber">  261   </SPAN>            rtb_FFT[i1].im = ctemp2.im;
+<SPAN class="LineNumber">  262   </SPAN>            i1 += (idelta&lt;&lt;1);
+<SPAN class="LineNumber">  263   </SPAN>          <B>}</B>
+<SPAN class="LineNumber">  264   </SPAN>          istart++;
+<SPAN class="LineNumber">  265   </SPAN>        <B>}</B>
+<SPAN class="LineNumber">  266   </SPAN>        idelta &lt;&lt;= 1;
+<SPAN class="LineNumber">  267   </SPAN>        k &gt;&gt;= 1;
+<SPAN class="LineNumber">  268   </SPAN>        kratio&gt;&gt;=1;
+<SPAN class="LineNumber">  269   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">  270   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">  271   </SPAN>  <B>}</B>
+<SPAN class="LineNumber">  272   </SPAN>
+<SPAN class="LineNumber">  273   </SPAN>  <SPAN class="Comment">/* ToWorkspace:'&lt;Root&gt;/To Workspace' */</SPAN>
+<SPAN class="LineNumber">  274   </SPAN>
+<SPAN class="LineNumber">  275   </SPAN>  <B>{</B>
+<SPAN class="LineNumber">  276   </SPAN>    creal_T u[64];
+<SPAN class="LineNumber">  277   </SPAN>
+<SPAN class="LineNumber">  278   </SPAN>    <B>{</B>
+<SPAN class="LineNumber">  279   </SPAN>      int_T i1;
+<SPAN class="LineNumber">  280   </SPAN>
+<SPAN class="LineNumber">  281   </SPAN>      <SPAN class="Datatype">const</SPAN> cint16_T *u0 = rtb_FFT;
+<SPAN class="LineNumber">  282   </SPAN>
+<SPAN class="LineNumber">  283   </SPAN>      <SPAN class="Keyword">for</SPAN> (i1=0; i1 &lt; 64; i1++) <B>{</B>
+<SPAN class="LineNumber">  284   </SPAN>        u[i1].re = ldexp((<SPAN class="Datatype">double</SPAN>)u0[i1].re, -14);
+<SPAN class="LineNumber">  285   </SPAN>        u[i1].im = ldexp((<SPAN class="Datatype">double</SPAN>)u0[i1].im, -14);
+<SPAN class="LineNumber">  286   </SPAN>      <B>}</B>
+<SPAN class="LineNumber">  287   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">  288   </SPAN>
+<SPAN class="LineNumber">  289   </SPAN>    rt_UpdateLogVar((LogVar*)fi_mdl_radix2fft_withscaling_DWork.ToWorkspace_PWORK.LoggedData,
+<SPAN class="LineNumber">  290   </SPAN>     u);
+<SPAN class="LineNumber">  291   </SPAN>  <B>}</B>
+<SPAN class="LineNumber">  292   </SPAN><B>}</B>
+<SPAN class="LineNumber">  293   </SPAN>
+<SPAN class="LineNumber">  294   </SPAN><SPAN class="Comment">/* Model update function */</SPAN>
+<SPAN class="LineNumber">  295   </SPAN><SPAN class="Datatype">static</SPAN> <SPAN class="Datatype">void</SPAN> <A NAME=fcn_fi_mdl_radix2fft_withscaling_update>fi_mdl_radix2fft_withscaling_update</A>(int_T tid)
+<SPAN class="LineNumber">  296   </SPAN><B>{</B>
+<SPAN class="LineNumber">  297   </SPAN>
+<SPAN class="LineNumber">  298   </SPAN>  <SPAN class="Comment">/* Update absolute time for base rate */</SPAN>
+<SPAN class="LineNumber">  299   </SPAN>
+<SPAN class="LineNumber">  300   </SPAN>  <SPAN class="Keyword">if</SPAN>(!(++fi_mdl_radix2fft_withscaling_M-&gt;Timing.clockTick0))
+<SPAN class="LineNumber">  301   </SPAN>  ++fi_mdl_radix2fft_withscaling_M-&gt;Timing.clockTickH0;
+<SPAN class="LineNumber">  302   </SPAN>  fi_mdl_radix2fft_withscaling_M-&gt;Timing.t[0] =
+<SPAN class="LineNumber">  303   </SPAN>    fi_mdl_radix2fft_withscaling_M-&gt;Timing.clockTick0 *
+<SPAN class="LineNumber">  304   </SPAN>    fi_mdl_radix2fft_withscaling_M-&gt;Timing.stepSize0 +
+<SPAN class="LineNumber">  305   </SPAN>    fi_mdl_radix2fft_withscaling_M-&gt;Timing.clockTickH0 *
+<SPAN class="LineNumber">  306   </SPAN>    fi_mdl_radix2fft_withscaling_M-&gt;Timing.stepSize0 * 4294967296.0;
+<SPAN class="LineNumber">  307   </SPAN><B>}</B>
+<SPAN class="LineNumber">  308   </SPAN>
+<SPAN class="LineNumber">  309   </SPAN><SPAN class="Comment">/* Model initialize function */</SPAN>
+<SPAN class="LineNumber">  310   </SPAN><SPAN class="Datatype">void</SPAN> <A NAME=fcn_fi_mdl_radix2fft_withscaling_initialize>fi_mdl_radix2fft_withscaling_initialize</A>(boolean_T firstTime)
+<SPAN class="LineNumber">  311   </SPAN><B>{</B>
+<SPAN class="LineNumber">  312   </SPAN>
+<SPAN class="LineNumber">  313   </SPAN>  <SPAN class="Keyword">if</SPAN> (firstTime) <B>{</B>
+<SPAN class="LineNumber">  314   </SPAN>    <SPAN class="Comment">/* registration code */</SPAN>
+<SPAN class="LineNumber">  315   </SPAN>    <SPAN class="Comment">/* initialize real-time model */</SPAN>
+<SPAN class="LineNumber">  316   </SPAN>    (<SPAN class="Datatype">void</SPAN>)memset((char_T *)fi_mdl_radix2fft_withscaling_M, 0,
+<SPAN class="LineNumber">  317   </SPAN>     <SPAN class="Keyword">sizeof</SPAN>(<A HREF=fi_mdl_radix2fft_withscaling_types_h.html#type_rtModel_fi_mdl_radix2fft_withscaling TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtModel_fi_mdl_radix2fft_withscaling</FONT></A>));
+<SPAN class="LineNumber">  318   </SPAN>
+<SPAN class="LineNumber">  319   </SPAN>    <SPAN class="Comment">/* Initialize timing info */</SPAN>
+<SPAN class="LineNumber">  320   </SPAN>    <B>{</B>
+<SPAN class="LineNumber">  321   </SPAN>      int_T *mdlTsMap =
+<SPAN class="LineNumber">  322   </SPAN>        fi_mdl_radix2fft_withscaling_M-&gt;Timing.sampleTimeTaskIDArray;
+<SPAN class="LineNumber">  323   </SPAN>      mdlTsMap[0] = 0;
+<SPAN class="LineNumber">  324   </SPAN>      fi_mdl_radix2fft_withscaling_M-&gt;Timing.sampleTimeTaskIDPtr =
+<SPAN class="LineNumber">  325   </SPAN>        (&amp;mdlTsMap[0]);
+<SPAN class="LineNumber">  326   </SPAN>      fi_mdl_radix2fft_withscaling_M-&gt;Timing.sampleTimes =
+<SPAN class="LineNumber">  327   </SPAN>        (&amp;fi_mdl_radix2fft_withscaling_M-&gt;Timing.sampleTimesArray[0]);
+<SPAN class="LineNumber">  328   </SPAN>      fi_mdl_radix2fft_withscaling_M-&gt;Timing.offsetTimes =
+<SPAN class="LineNumber">  329   </SPAN>        (&amp;fi_mdl_radix2fft_withscaling_M-&gt;Timing.offsetTimesArray[0]);
+<SPAN class="LineNumber">  330   </SPAN>      <SPAN class="Comment">/* task periods */</SPAN>
+<SPAN class="LineNumber">  331   </SPAN>      fi_mdl_radix2fft_withscaling_M-&gt;Timing.sampleTimes[0] = (0.25);
+<SPAN class="LineNumber">  332   </SPAN>
+<SPAN class="LineNumber">  333   </SPAN>      <SPAN class="Comment">/* task offsets */</SPAN>
+<SPAN class="LineNumber">  334   </SPAN>      fi_mdl_radix2fft_withscaling_M-&gt;Timing.offsetTimes[0] = (0.0);
+<SPAN class="LineNumber">  335   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">  336   </SPAN>
+<SPAN class="LineNumber">  337   </SPAN>    rtmSetTPtr(fi_mdl_radix2fft_withscaling_M,
+<SPAN class="LineNumber">  338   </SPAN>     &amp;fi_mdl_radix2fft_withscaling_M-&gt;Timing.tArray[0]);
+<SPAN class="LineNumber">  339   </SPAN>
+<SPAN class="LineNumber">  340   </SPAN>    <B>{</B>
+<SPAN class="LineNumber">  341   </SPAN>      int_T *mdlSampleHits =
+<SPAN class="LineNumber">  342   </SPAN>        fi_mdl_radix2fft_withscaling_M-&gt;Timing.sampleHitArray;
+<SPAN class="LineNumber">  343   </SPAN>      mdlSampleHits[0] = 1;
+<SPAN class="LineNumber">  344   </SPAN>      fi_mdl_radix2fft_withscaling_M-&gt;Timing.sampleHits = (&amp;mdlSampleHits[0]);
+<SPAN class="LineNumber">  345   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">  346   </SPAN>
+<SPAN class="LineNumber">  347   </SPAN>    rtmSetTFinal(fi_mdl_radix2fft_withscaling_M, 0.0);
+<SPAN class="LineNumber">  348   </SPAN>    fi_mdl_radix2fft_withscaling_M-&gt;Timing.stepSize0 = 0.25;
+<SPAN class="LineNumber">  349   </SPAN>
+<SPAN class="LineNumber">  350   </SPAN>    <SPAN class="Comment">/* Setup for data logging */</SPAN>
+<SPAN class="LineNumber">  351   </SPAN>    <B>{</B>
+<SPAN class="LineNumber">  352   </SPAN>      <SPAN class="Datatype">static</SPAN> RTWLogInfo rt_DataLoggingInfo;
+<SPAN class="LineNumber">  353   </SPAN>
+<SPAN class="LineNumber">  354   </SPAN>      fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo = &amp;rt_DataLoggingInfo;
+<SPAN class="LineNumber">  355   </SPAN>
+<SPAN class="LineNumber">  356   </SPAN>      rtliSetLogFormat(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, 0);
+<SPAN class="LineNumber">  357   </SPAN>
+<SPAN class="LineNumber">  358   </SPAN>      rtliSetLogMaxRows(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, 1000);
+<SPAN class="LineNumber">  359   </SPAN>
+<SPAN class="LineNumber">  360   </SPAN>      rtliSetLogDecimation(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, 1);
+<SPAN class="LineNumber">  361   </SPAN>
+<SPAN class="LineNumber">  362   </SPAN>      rtliSetLogVarNameModifier(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo,
+<SPAN class="LineNumber">  363   </SPAN>       <FONT COLOR=#1122ff>&quot;rt_&quot;</FONT>);
+<SPAN class="LineNumber">  364   </SPAN>
+<SPAN class="LineNumber">  365   </SPAN>      rtliSetLogT(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, <FONT COLOR=#1122ff>&quot;tout&quot;</FONT>);
+<SPAN class="LineNumber">  366   </SPAN>
+<SPAN class="LineNumber">  367   </SPAN>      rtliSetLogX(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, <FONT COLOR=#1122ff>&quot;&quot;</FONT>);
+<SPAN class="LineNumber">  368   </SPAN>
+<SPAN class="LineNumber">  369   </SPAN>      rtliSetLogXFinal(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, <FONT COLOR=#1122ff>&quot;&quot;</FONT>);
+<SPAN class="LineNumber">  370   </SPAN>
+<SPAN class="LineNumber">  371   </SPAN>      rtliSetSigLog(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, <FONT COLOR=#1122ff>&quot;&quot;</FONT>);
+<SPAN class="LineNumber">  372   </SPAN>
+<SPAN class="LineNumber">  373   </SPAN>      rtliSetLogXSignalInfo(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, NULL);
+<SPAN class="LineNumber">  374   </SPAN>
+<SPAN class="LineNumber">  375   </SPAN>      rtliSetLogXSignalPtrs(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, NULL);
+<SPAN class="LineNumber">  376   </SPAN>
+<SPAN class="LineNumber">  377   </SPAN>      rtliSetLogY(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, <FONT COLOR=#1122ff>&quot;&quot;</FONT>);
+<SPAN class="LineNumber">  378   </SPAN>
+<SPAN class="LineNumber">  379   </SPAN>      rtliSetLogYSignalInfo(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, NULL);
+<SPAN class="LineNumber">  380   </SPAN>
+<SPAN class="LineNumber">  381   </SPAN>      rtliSetLogYSignalPtrs(fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo, NULL);
+<SPAN class="LineNumber">  382   </SPAN>    <B>}</B>
+<SPAN class="LineNumber">  383   </SPAN>
+<SPAN class="LineNumber">  384   </SPAN>    fi_mdl_radix2fft_withscaling_M-&gt;solverInfoPtr =
+<SPAN class="LineNumber">  385   </SPAN>      (&amp;fi_mdl_radix2fft_withscaling_M-&gt;solverInfo);
+<SPAN class="LineNumber">  386   </SPAN>    fi_mdl_radix2fft_withscaling_M-&gt;Timing.stepSize = (0.25);
+<SPAN class="LineNumber">  387   </SPAN>    rtsiSetFixedStepSize(&amp;fi_mdl_radix2fft_withscaling_M-&gt;solverInfo, 0.25);
+<SPAN class="LineNumber">  388   </SPAN>    rtsiSetSolverMode(&amp;fi_mdl_radix2fft_withscaling_M-&gt;solverInfo,
+<SPAN class="LineNumber">  389   </SPAN>     SOLVER_MODE_SINGLETASKING);
+<SPAN class="LineNumber">  390   </SPAN>
+<SPAN class="LineNumber">  391   </SPAN>    <SPAN class="Comment">/* parameters */</SPAN>
+<SPAN class="LineNumber">  392   </SPAN>    fi_mdl_radix2fft_withscaling_M-&gt;ModelData.defaultParam = ((real_T *)
+<SPAN class="LineNumber">  393   </SPAN>      &amp;fi_mdl_radix2fft_withscaling_P);
+<SPAN class="LineNumber">  394   </SPAN>
+<SPAN class="LineNumber">  395   </SPAN>    <SPAN class="Comment">/* data type work */</SPAN>
+<SPAN class="LineNumber">  396   </SPAN>    fi_mdl_radix2fft_withscaling_M-&gt;Work.dwork = ((<SPAN class="Datatype">void</SPAN> *)
+<SPAN class="LineNumber">  397   </SPAN>      &amp;fi_mdl_radix2fft_withscaling_DWork);
+<SPAN class="LineNumber">  398   </SPAN>    (<SPAN class="Datatype">void</SPAN>)memset((char_T *) &amp;fi_mdl_radix2fft_withscaling_DWork, 0,
+<SPAN class="LineNumber">  399   </SPAN>     <SPAN class="Keyword">sizeof</SPAN>(<A HREF=fi_mdl_radix2fft_withscaling_h.html#type_D_Work_fi_mdl_radix2fft_withscaling TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">D_Work_fi_mdl_radix2fft_withscaling</FONT></A>));
+<SPAN class="LineNumber">  400   </SPAN>
+<SPAN class="LineNumber">  401   </SPAN>    <SPAN class="Comment">/* initialize non-finites */</SPAN>
+<SPAN class="LineNumber">  402   </SPAN>    <A HREF=rt_nonfinite_c.html#fcn_rt_InitInfAndNaN TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rt_InitInfAndNaN</FONT></A>(<SPAN class="Keyword">sizeof</SPAN>(real_T));
+<SPAN class="LineNumber">  403   </SPAN>  <B>}</B>
+<SPAN class="LineNumber">  404   </SPAN><B>}</B>
+<SPAN class="LineNumber">  405   </SPAN>
+<SPAN class="LineNumber">  406   </SPAN><SPAN class="Comment">/* Model terminate function */</SPAN>
+<SPAN class="LineNumber">  407   </SPAN><SPAN class="Datatype">void</SPAN> <A NAME=fcn_fi_mdl_radix2fft_withscaling_terminate>fi_mdl_radix2fft_withscaling_terminate</A>(<SPAN class="Datatype">void</SPAN>)
+<SPAN class="LineNumber">  408   </SPAN><B>{</B>
+<SPAN class="LineNumber">  409   </SPAN><B>}</B>
+<SPAN class="LineNumber">  410   </SPAN>
+<SPAN class="LineNumber">  411   </SPAN><SPAN class="Comment">/*========================================================================*
+<SPAN class="LineNumber">  412   </SPAN> * Start of GRT compatible call interface                                 *
+<SPAN class="LineNumber">  413   </SPAN> *========================================================================*/</SPAN>
+<SPAN class="LineNumber">  414   </SPAN>
+<SPAN class="LineNumber">  415   </SPAN><SPAN class="Datatype">void</SPAN> <A NAME=fcn_MdlOutputs>MdlOutputs</A>(int_T tid) <B>{</B>
+<SPAN class="LineNumber">  416   </SPAN>
+<SPAN class="LineNumber">  417   </SPAN>  <A HREF=fi_mdl_radix2fft_withscaling_c.html#fcn_fi_mdl_radix2fft_withscaling_output TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">fi_mdl_radix2fft_withscaling_output</FONT></A>(tid);
+<SPAN class="LineNumber">  418   </SPAN><B>}</B>
+<SPAN class="LineNumber">  419   </SPAN>
+<SPAN class="LineNumber">  420   </SPAN><SPAN class="Datatype">void</SPAN> <A NAME=fcn_MdlUpdate>MdlUpdate</A>(int_T tid) <B>{</B>
+<SPAN class="LineNumber">  421   </SPAN>
+<SPAN class="LineNumber">  422   </SPAN>  <A HREF=fi_mdl_radix2fft_withscaling_c.html#fcn_fi_mdl_radix2fft_withscaling_update TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">fi_mdl_radix2fft_withscaling_update</FONT></A>(tid);
+<SPAN class="LineNumber">  423   </SPAN><B>}</B>
+<SPAN class="LineNumber">  424   </SPAN>
+<SPAN class="LineNumber">  425   </SPAN><SPAN class="Datatype">void</SPAN> <A NAME=fcn_MdlInitializeSizes>MdlInitializeSizes</A>(<SPAN class="Datatype">void</SPAN>) <B>{</B>
+<SPAN class="LineNumber">  426   </SPAN>  fi_mdl_radix2fft_withscaling_M-&gt;Sizes.numContStates = (0); <SPAN class="Comment">/* Number of continuous states */</SPAN>
+<SPAN class="LineNumber">  427   </SPAN>  fi_mdl_radix2fft_withscaling_M-&gt;Sizes.numY = (0); <SPAN class="Comment">/* Number of model outputs */</SPAN>
+<SPAN class="LineNumber">  428   </SPAN>  fi_mdl_radix2fft_withscaling_M-&gt;Sizes.numU = (0); <SPAN class="Comment">/* Number of model inputs */</SPAN>
+<SPAN class="LineNumber">  429   </SPAN>  fi_mdl_radix2fft_withscaling_M-&gt;Sizes.sysDirFeedThru = (0); <SPAN class="Comment">/* The model is not direct feedthrough */</SPAN>
+<SPAN class="LineNumber">  430   </SPAN>  fi_mdl_radix2fft_withscaling_M-&gt;Sizes.numSampTimes = (1); <SPAN class="Comment">/* Number of sample times */</SPAN>
+<SPAN class="LineNumber">  431   </SPAN>  fi_mdl_radix2fft_withscaling_M-&gt;Sizes.numBlocks = (3); <SPAN class="Comment">/* Number of blocks */</SPAN>
+<SPAN class="LineNumber">  432   </SPAN>  fi_mdl_radix2fft_withscaling_M-&gt;Sizes.numBlockIO = (0); <SPAN class="Comment">/* Number of block outputs */</SPAN>
+<SPAN class="LineNumber">  433   </SPAN>  fi_mdl_radix2fft_withscaling_M-&gt;Sizes.numBlockPrms = (64); <SPAN class="Comment">/* Sum of parameter &quot;widths&quot; */</SPAN>
+<SPAN class="LineNumber">  434   </SPAN><B>}</B>
+<SPAN class="LineNumber">  435   </SPAN>
+<SPAN class="LineNumber">  436   </SPAN><SPAN class="Datatype">void</SPAN> <A NAME=fcn_MdlInitializeSampleTimes>MdlInitializeSampleTimes</A>(<SPAN class="Datatype">void</SPAN>) <B>{</B>
+<SPAN class="LineNumber">  437   </SPAN><B>}</B>
+<SPAN class="LineNumber">  438   </SPAN>
+<SPAN class="LineNumber">  439   </SPAN><SPAN class="Datatype">void</SPAN> <A NAME=fcn_MdlInitialize>MdlInitialize</A>(<SPAN class="Datatype">void</SPAN>) <B>{</B>
+<SPAN class="LineNumber">  440   </SPAN><B>}</B>
+<SPAN class="LineNumber">  441   </SPAN>
+<SPAN class="LineNumber">  442   </SPAN><SPAN class="Datatype">void</SPAN> <A NAME=fcn_MdlStart>MdlStart</A>(<SPAN class="Datatype">void</SPAN>) <B>{</B>
+<SPAN class="LineNumber">  443   </SPAN>
+<SPAN class="LineNumber">  444   </SPAN>  <SPAN class="Comment">/* FromWorkspace Block:&lt;Root&gt;/From Workspace */</SPAN>
+<SPAN class="LineNumber">  445   </SPAN>  <B>{</B>
+<SPAN class="LineNumber">  446   </SPAN>
+<SPAN class="LineNumber">  447   </SPAN>    <SPAN class="Datatype">static</SPAN> real_T pTimeValues[] = <B>{</B> 0.0 <B>}</B>;
+<SPAN class="LineNumber">  448   </SPAN>
+<SPAN class="LineNumber">  449   </SPAN>    <SPAN class="Datatype">static</SPAN> int16_T pDataValues[] = <B>{</B> 24576, 21375, 13255, 3838, -3129, -5793,
+<SPAN class="LineNumber">  450   </SPAN>      -5063, -3838, -5063, -9789, -16384, -21375, -21447, -15423, -5063, 5793,
+<SPAN class="LineNumber">  451   </SPAN>      13255, 15423, 13255, 9789, 8192, 9789, 13255, 15423, 13255, 5793, -5063,
+<SPAN class="LineNumber">  452   </SPAN>      -15423, -21447, -21375, -16384, -9789, -5063, -3838, -5063, -5793, -3129,
+<SPAN class="LineNumber">  453   </SPAN>      3838, 13255, 21375, 24576, 21375, 13255, 3838, -3129, -5793, -5063, -3838,
+<SPAN class="LineNumber">  454   </SPAN>      -5063, -9789, -16384, -21375, -21447, -15423, -5063, 5793, 13255, 15423,
+<SPAN class="LineNumber">  455   </SPAN>      13255, 9789, 8192, 9789, 13255, 15423 <B>}</B>;
+<SPAN class="LineNumber">  456   </SPAN>
+<SPAN class="LineNumber">  457   </SPAN>    fi_mdl_radix2fft_withscaling_DWork.FromWorkspace_PWORK.TimePtr = (<SPAN class="Datatype">void</SPAN> *)
+<SPAN class="LineNumber">  458   </SPAN>      pTimeValues;
+<SPAN class="LineNumber">  459   </SPAN>    fi_mdl_radix2fft_withscaling_DWork.FromWorkspace_PWORK.DataPtr = (<SPAN class="Datatype">void</SPAN> *)
+<SPAN class="LineNumber">  460   </SPAN>      pDataValues;
+<SPAN class="LineNumber">  461   </SPAN>
+<SPAN class="LineNumber">  462   </SPAN>    fi_mdl_radix2fft_withscaling_DWork.FromWorkspace_IWORK.PrevIndex = 0;
+<SPAN class="LineNumber">  463   </SPAN>  <B>}</B>
+<SPAN class="LineNumber">  464   </SPAN>
+<SPAN class="LineNumber">  465   </SPAN>  <SPAN class="Comment">/* ToWorkspace Block:&lt;Root&gt;/To Workspace */</SPAN>
+<SPAN class="LineNumber">  466   </SPAN>  <B>{</B>
+<SPAN class="LineNumber">  467   </SPAN>    int_T dimensions[2] = <B>{</B>1, 64<B>}</B>;
+<SPAN class="LineNumber">  468   </SPAN>
+<SPAN class="LineNumber">  469   </SPAN>    fi_mdl_radix2fft_withscaling_DWork.ToWorkspace_PWORK.LoggedData =
+<SPAN class="LineNumber">  470   </SPAN>      rt_CreateLogVar(
+<SPAN class="LineNumber">  471   </SPAN>      fi_mdl_radix2fft_withscaling_M-&gt;rtwLogInfo,
+<SPAN class="LineNumber">  472   </SPAN>     rtmGetTFinal(fi_mdl_radix2fft_withscaling_M),
+<SPAN class="LineNumber">  473   </SPAN>     fi_mdl_radix2fft_withscaling_M-&gt;Timing.stepSize0,
+<SPAN class="LineNumber">  474   </SPAN>     &amp;(rtmGetErrorStatus(fi_mdl_radix2fft_withscaling_M)),
+<SPAN class="LineNumber">  475   </SPAN>     <FONT COLOR=#1122ff>&quot;y_sim&quot;</FONT>,
+<SPAN class="LineNumber">  476   </SPAN>     SS_DOUBLE,
+<SPAN class="LineNumber">  477   </SPAN>     0,
+<SPAN class="LineNumber">  478   </SPAN>     1,
+<SPAN class="LineNumber">  479   </SPAN>     0,
+<SPAN class="LineNumber">  480   </SPAN>     64,
+<SPAN class="LineNumber">  481   </SPAN>     2,
+<SPAN class="LineNumber">  482   </SPAN>     dimensions,
+<SPAN class="LineNumber">  483   </SPAN>     0,
+<SPAN class="LineNumber">  484   </SPAN>     1,
+<SPAN class="LineNumber">  485   </SPAN>     0.25,
+<SPAN class="LineNumber">  486   </SPAN>     1);
+<SPAN class="LineNumber">  487   </SPAN>
+<SPAN class="LineNumber">  488   </SPAN>    <SPAN class="Keyword">if</SPAN> (fi_mdl_radix2fft_withscaling_DWork.ToWorkspace_PWORK.LoggedData == NULL)
+<SPAN class="LineNumber">  489   </SPAN>    <SPAN class="Keyword">return</SPAN>;
+<SPAN class="LineNumber">  490   </SPAN>  <B>}</B>
+<SPAN class="LineNumber">  491   </SPAN>
+<SPAN class="LineNumber">  492   </SPAN>  <A HREF=fi_mdl_radix2fft_withscaling_c.html#fcn_MdlInitialize TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">MdlInitialize</FONT></A>();
+<SPAN class="LineNumber">  493   </SPAN><B>}</B>
+<SPAN class="LineNumber">  494   </SPAN>
+<SPAN class="LineNumber">  495   </SPAN><A HREF=fi_mdl_radix2fft_withscaling_types_h.html#type_rtModel_fi_mdl_radix2fft_withscaling TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">rtModel_fi_mdl_radix2fft_withscaling</FONT></A> *fi_mdl_radix2fft_withscaling(<SPAN class="Datatype">void</SPAN>) <B>{</B>
+<SPAN class="LineNumber">  496   </SPAN>  <A HREF=fi_mdl_radix2fft_withscaling_c.html#fcn_fi_mdl_radix2fft_withscaling_initialize TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">fi_mdl_radix2fft_withscaling_initialize</FONT></A>(1);
+<SPAN class="LineNumber">  497   </SPAN>  <SPAN class="Keyword">return</SPAN> fi_mdl_radix2fft_withscaling_M;
+<SPAN class="LineNumber">  498   </SPAN><B>}</B>
+<SPAN class="LineNumber">  499   </SPAN>
+<SPAN class="LineNumber">  500   </SPAN><SPAN class="Datatype">void</SPAN> MdlTerminate(<SPAN class="Datatype">void</SPAN>) <B>{</B>
+<SPAN class="LineNumber">  501   </SPAN>  <A HREF=fi_mdl_radix2fft_withscaling_c.html#fcn_fi_mdl_radix2fft_withscaling_terminate TARGET="rtwreport_document_frame"><FONT COLOR="#1122aa">fi_mdl_radix2fft_withscaling_terminate</FONT></A>();
+<SPAN class="LineNumber">  502   </SPAN><B>}</B>
+<SPAN class="LineNumber">  503   </SPAN>
+<SPAN class="LineNumber">  504   </SPAN><SPAN class="Comment">/*========================================================================*
+<SPAN class="LineNumber">  505   </SPAN> * End of GRT compatible call interface                                   *
+<SPAN class="LineNumber">  506   </SPAN> *========================================================================*/</SPAN>
+<SPAN class="LineNumber">  507   </SPAN>
+</PRE>
+</TD></TR></TABLE>
+<P>
+</BODY>
+</HTML>

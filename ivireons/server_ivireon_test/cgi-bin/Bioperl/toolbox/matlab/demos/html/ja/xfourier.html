@@ -1,0 +1,25 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>正弦波から矩形波へ</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="xfourier.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit xfourier">エディターで xfourier.m を開く</a></div><div class="right"><a href="matlab:echodemo xfourier">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>正弦波から矩形波へ</h1><!--introduction--><p>矩形波に対するフーリエ級数展開は、奇数の高調波の和から構成されます。MATLAB&reg; を使用してこれをグラフィカルに示します。</p><!--/introduction--><p>0.1 刻みの 0 から 10 までの時間ベクトルを作り、すべての点の正弦を求めます。この基本周波数をプロットします。</p><pre class="codeinput">t = 0:.1:10;
+y = sin(t);
+plot(t,y);
+</pre><img vspace="5" hspace="5" src="../xfourier_01.png" alt=""> <p>第 3 高調波を基本波に加えてプロットします。</p><pre class="codeinput">y = sin(t) + sin(3*t)/3;
+plot(t,y);
+</pre><img vspace="5" hspace="5" src="../xfourier_02.png" alt=""> <p>第 1、第 3、第 5、第 7、第 9 高調波を使います。</p><pre class="codeinput">y = sin(t) + sin(3*t)/3 + sin(5*t)/5 + sin(7*t)/7 + sin(9*t)/9;
+plot(t,y);
+</pre><img vspace="5" hspace="5" src="../xfourier_03.png" alt=""> <p>最後に、より多くの高調波のベクトルを連続して作成し、行列の行としてすべての中間過程を保存しながら、基本波から第 19 高調波までの処理を行います。</p><p>これらのベクトルは、矩形波の展開を示すために同じ Figure 上にプロットされています。ギブスの現象により、完璧な矩形波は得られないということに注意してください。</p><pre class="codeinput">t = 0:.02:3.14;
+y = zeros(10,length(t));
+x = zeros(size(t));
+<span class="keyword">for</span> k=1:2:19
+    x = x + sin(k*t)/k;
+    y((k+1)/2,:) = x;
+<span class="keyword">end</span>
+plot(y(1:2:9,:)')
+title(<span class="string">'The building of a square wave: Gibbs'' effect'</span>)
+</pre><img vspace="5" hspace="5" src="../xfourier_04.png" alt=""> <p>正弦波から矩形波への段階的な変換を示す 3 次元の表面です。</p><pre class="codeinput">surf(y);
+shading <span class="string">interp</span>
+axis <span class="string">off</span> <span class="string">ij</span>
+</pre><img vspace="5" hspace="5" src="../xfourier_05.png" alt=""> <p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Square Wave from Sine Waves % The Fourier series expansion for a square-wave is made up of a sum of odd % harmonics.  We show this graphically using MATLAB(R). % % Copyright 1984-2007 The MathWorks, Inc. % $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:28:55 $  %% % We start by forming a time vector running from 0 to 10 in steps of 0.1, and % take the sine of all the points.  Let's plot this fundamental frequency.  t = 0:.1:10; y = sin(t); plot(t,y);  %% % Now add the third harmonic to the fundamental, and plot it.  y = sin(t) + sin(3*t)/3; plot(t,y);  %% % Now use the first, third, fifth, seventh, and ninth harmonics.  y = sin(t) + sin(3*t)/3 + sin(5*t)/5 + sin(7*t)/7 + sin(9*t)/9; plot(t,y);  %% % For a finale, we will go from the fundamental to the 19th harmonic, creating % vectors of successively more harmonics, and saving all intermediate steps as % the rows of a matrix. % % These vectors are plotted on the same figure to show the evolution of the % square wave.  Note that Gibbs' effect says that it will never really get % there.  t = 0:.02:3.14; y = zeros(10,length(t));  x = zeros(size(t)); for k=1:2:19     x = x + sin(k*t)/k;     y((k+1)/2,:) = x; end plot(y(1:2:9,:)') title('The building of a square wave: Gibbs'' effect')  %% % Here is a 3-D surface representing the gradual transformation of a sine wave % into a square wave.  surf(y); shading interp axis off ij   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

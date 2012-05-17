@@ -1,0 +1,97 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Magnetic Levitation Model for Real-Time Windows Target&#8482;</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="vrmaglev_rtwin.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">vrmaglev_rtwin.mdl</div><div class="right"><a href="matlab:vrmaglev_rtwin">Open this model</a></div></div><div class="content"><h1>Magnetic Levitation Model for Real-Time Windows Target&#8482;</h1><p>In addition to the vrmaglev example, the vrmaglev_rtwin example works directly with the actual CE 152 scale model hardware in real time. We created this model to work with Real Time Workshop&reg;, Real-Time Windows Target, and the HUMUSOFT&reg; MF 624 multifunction I/O board. However, you can adapt this model for other targets and acquisition boards.</p><p>A digital IIR filter, from Signal Processing Toolbox&#8482;, filters the physical system output. You can bypass the physical system by using the built-in plant model.</p><p>Running this model in real time is an example showing the capabilities of Simulink&reg; in control systems design and rapid prototyping. When you push the real ball up or down against the coil force, the position of the virtual ball changes in the virtual world. If you remove the ball from the real system, the ball also disappears from the virtual world. The changes to the real system are reflected in real time in its virtual reality representation.</p><p>Note that after enabling the remote view in the VR Sink block dialog box, you can visualize the Simulink model even at a remote client computer. This can be useful for distributing the computing power between a real-time Simulink model running on one machine and the rendering of a virtual reality world on another machine.</p><p>Note: This demo requires the following software and hardware components:</p><pre>   * Real Time Workshop
+   * Real-Time Windows Target(TM)
+   * Signal Processing Toolbox
+   * Signal Processing Blockset(TM)
+   * CE 152 Magnetic Levitation scale model (optional).</pre><p>More information on the scale model hardware can be found at: <a href="http://www.humusoft.com/link/models">http://www.humusoft.com/link/models</a></p><img vspace="5" hspace="5" src="vrmaglev_rtwin_01.png" alt=""> <img vspace="5" hspace="5" src="vrmaglev_rtwin_02.png" alt=""> <img vspace="5" hspace="5" src="vrmaglev_rtwin_03.png" alt=""> <p class="footer">Copyright 1998-2009 HUMUSOFT s.r.o. and The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Magnetic Levitation Model for Real-Time Windows Target(TM)
+% 
+% In addition to the vrmaglev example, the vrmaglev_rtwin example works directly 
+% with the actual CE 152 scale model hardware in real time. We created this model 
+% to work with Real Time Workshop(R), Real-Time Windows Target, 
+% and the HUMUSOFT(R) MF 624 multifunction I/O board. However, you can adapt 
+% this model for other targets and acquisition boards. 
+% 
+% A digital IIR filter, from Signal Processing Toolbox(TM), filters the physical system output. 
+% You can bypass the physical system by using the built-in plant model.
+% 
+% Running this model in real time is an example showing the capabilities of Simulink(R) 
+% in control systems design and rapid prototyping. When you push the real ball up or down 
+% against the coil force, the position of the virtual ball changes in the virtual world. 
+% If you remove the ball from the real system, the ball also disappears from the virtual world. 
+% The changes to the real system are reflected in real time in its virtual reality representation.
+% 
+% Note that after enabling the remote view in the VR Sink block dialog box, you can visualize 
+% the Simulink model even at a remote client computer. This can be useful for distributing 
+% the computing power between a real-time Simulink model running on one machine and 
+% the rendering of a virtual reality world on another machine.
+% 
+% Note: This demo requires the following software and hardware components:
+% 
+%     * Real Time Workshop
+%     * Real-Time Windows Target(TM)
+%     * Signal Processing Toolbox
+%     * Signal Processing Blockset(TM)
+%     * CE 152 Magnetic Levitation scale model (optional).
+% 
+% More information on the scale model hardware can be found at:
+% http://www.humusoft.com/link/models
+
+% the above text is taken from the "Description" property of the model
+% when the property is updated, this text should be updated as well
+
+%   Copyright 1998-2009 HUMUSOFT s.r.o. and The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2009/07/06 20:59:29 $  $Author: batserve $
+
+
+% clean up
+clear all
+close all
+bdclose all
+
+% BaT machines don't have the board referred to in the model installed
+% - turn off the warning
+warning('off', 'RTWIN:boardnotonlist');
+
+% open the model
+mdl = 'vrmaglev_rtwin';
+open_system(mdl);
+
+% switch the controller input to plant model input 
+% replace Analog Input block by Constant
+% replace Analog Output block by Terminator
+% preserve masks for correct screenshot
+switchname = [mdl '/Analog Input // Model Output'];
+aiblkname = [mdl '/Analog Input'];
+aoblkname = [mdl '/Analog Output'];
+
+aimaskdisp = get_param(aiblkname, 'MaskDisplay');
+aomaskdisp = get_param(aoblkname, 'MaskDisplay');
+
+set_param(switchname,'sw','0');
+
+replace_block(mdl,'Name','Analog Input','built-in/Constant','noprompt');
+replace_block(mdl,'Name','Analog Output','built-in/Terminator','noprompt');
+
+set_param(aiblkname, 'Value','0', 'MaskDisplay', aimaskdisp);
+set_param(aoblkname, 'MaskDisplay', aomaskdisp);
+
+% set simulation parameters
+set_param(mdl, 'SimulationMode', 'normal');
+
+% simulate the model
+sim(mdl, [0 5]);
+vrdrawnow;
+set(vrgcf, 'WindowCommand', 'raise');
+
+##### SOURCE END #####
+--></body></html>

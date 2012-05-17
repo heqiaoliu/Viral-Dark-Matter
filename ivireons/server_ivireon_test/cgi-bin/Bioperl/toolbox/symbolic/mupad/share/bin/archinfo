@@ -1,0 +1,62 @@
+#!/bin/sh
+#
+# get some information about the system 
+
+SHARE_BIN=`dirname $0`
+
+if test `basename $SHARE_BIN` = bin  ; then
+  SHARE=`dirname $SHARE_BIN`
+  if test `basename $SHARE` = share ; then
+    MuPAD_ROOT_PATH=`dirname $SHARE`
+  else
+    MuPAD_ROOT_PATH=..
+  fi
+else
+  MuPAD_ROOT_PATH=../..
+fi
+export MuPAD_ROOT_PATH
+
+SYSINFO=`$MuPAD_ROOT_PATH/share/bin/sysinfo`
+
+LD_LIBRARY_PATH="${MuPAD_ROOT_PATH}/${SYSINFO}/lib":$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
+
+
+echo "System information" 
+echo "=================="
+echo                                           
+echo "Which Linux?"                            
+echo "---------------------"                      
+(cd /etc; ls *_version *-release; cat *_version *-release) 2> /dev/null
+echo                               
+echo "Output of 'uname -a':"        
+echo "---------------------"       
+uname -a                          
+echo                              
+echo                              
+echo "Output of 'ldd -v mupad':"
+echo "--------------------------------"
+ldd -v $MuPAD_ROOT_PATH/$SYSINFO/bin/mupad 
+echo           
+echo          
+echo "ls -l on libraries:" 
+echo "-------------------" 
+ls -l `ldd $MuPAD_ROOT_PATH/$SYSINFO/bin/mupad | awk -F"=> " '{print $2}' | awk -F'(' '{print $1}'` > /tmp/MuPADInfoTempFile
+awk -F'-> ' '{print $2}' /tmp/MuPADInfoTempFile | sort | uniq
+rm /tmp/MuPADInfoTempFile
+echo           
+echo          
+if [ `which 3Ddiag > /dev/null; echo $?` -eq 0 ] ; then
+    echo "Output of 3Ddiag:" 
+    echo "------------------" 
+    3Ddiag
+    echo
+fi
+echo "Output of glxinfo:" 
+echo "------------------" 
+glxinfo
+echo           
+echo          
+echo "Output of xdpyinfo:" 
+echo "------------------" 
+xdpyinfo -ext all

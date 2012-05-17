@@ -1,0 +1,48 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>グレースケール イメージ内の領域の測定</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipexprops.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexprops">エディターで ipexprops.m を開く</a></div><div class="right"><a href="matlab:echodemo ipexprops">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>グレースケール イメージ内の領域の測定</h1><!--introduction--><p>関数 <tt>regionprops</tt> は、バイナリ イメージ内のオブジェクトの特性を測定するのに役立ちます。ドキュメンテーションの例にもありますが、このことを行う方法を示すデモがあります。</p><p>しかし、時々、&quot;オリジナルの&quot; グレースケール イメージ内のピクセル値を処理する必要があります。すなわち、手順は以下のようになると仮定します。</p><p>1. オブジェクトのバイナリ イメージを取得するために、グレースケール イメージを区分化します。</p><p>2. オリジナルのグレースケールのピクセル値は、バイナリ イメージ内の各オブジェクトに対応します。</p><p>このデモは、<tt>regionprops</tt> を使用して、このワークフローを行う方法を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">手順 1:合成イメージの作成</a></li><li><a href="#2">手順 2:バイナリ イメージの作成</a></li><li><a href="#3">手順 3:グレースケール イメージのピクセル値を使用したオブジェクト プロパティの計算</a></li><li><a href="#5">手順 4:カスタム ピクセル値ベースのプロパティの計算</a></li></ul></div><h2>手順 1:合成イメージの作成<a name="1"></a></h2><p>いくつかの分離領域を含むグレースケール イメージを作成します。</p><pre class="codeinput">I = propsSynthesizeImage;
+imshow(I)
+title(<span class="string">'Synthetic Image'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexprops_01.png" alt=""> <h2>手順 2:バイナリ イメージの作成<a name="2"></a></h2><p>イメージ内にオブジェクトを含んでいるバイナリ イメージを作成することによって、グレースケール イメージを分割します。</p><pre class="codeinput">BW = I &gt; 0;
+imshow(BW)
+title(<span class="string">'Binary Image'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexprops_02.png" alt=""> <h2>手順 3:グレースケール イメージのピクセル値を使用したオブジェクト プロパティの計算<a name="3"></a></h2><p>関数 <tt>regionprops</tt> は、'WeightedCentroid'、'MeanIntensity'、'MinIntensity'、'MaxIntensity' など、グレースケール イメージと共に使用できるいくつかのプロパティをサポートしています。これらのプロパティでは、計算にオブジェクトの元のピクセル値を使用します。</p><p>たとえば、<tt>regionprops</tt> を使用して、イメージのオブジェクトの中心と重み付き中心の両方を計算できます。オブジェクトと元のグレースケール イメージ (<tt>I</tt>) を含んでいるバイナリ イメージ (<tt>BW</tt>) を、引数として <tt>regionprops</tt> に渡す方法に注目します。</p><pre class="codeinput">s = regionprops(BW, I, {<span class="string">'Centroid'</span>,<span class="string">'WeightedCentroid'</span>});
+</pre><p>重み付き中心の位置と、重みのない中心位置を比較するには、元のイメージを表示したら、関数 <tt>hold</tt> および <tt>plot</tt> を使用してイメージの中心に重ね合わせます。</p><pre class="codeinput">imshow(I)
+title(<span class="string">'Weighted (red) and Unweighted (blue) Centroid Locations'</span>);
+hold <span class="string">on</span>
+numObj = numel(s);
+<span class="keyword">for</span> k = 1 :numObj
+    plot(s(k).WeightedCentroid(1), s(k).WeightedCentroid(2), <span class="string">'r*'</span>);
+    plot(s(k).Centroid(1), s(k).Centroid(2), <span class="string">'bo'</span>);
+<span class="keyword">end</span>
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="../ipexprops_03.png" alt=""> <h2>手順 4:カスタム ピクセル値ベースのプロパティの計算<a name="5"></a></h2><p>'PixelValues' プロパティを使用して、元のグレースケール イメージのピクセル値に基づいたカスタム計算を行うことができます。'PixelValues' プロパティは、領域内のピクセルのグレースケール値を含むベクトルを返します。</p><p>例として、各領域の標準偏差を計算します。</p><pre class="codeinput">s = regionprops(BW, I, {<span class="string">'Centroid'</span>,<span class="string">'PixelValues'</span>,<span class="string">'BoundingBox'</span>});
+imshow(I);
+title(<span class="string">'Standard Deviation of Regions'</span>);
+hold <span class="string">on</span>
+<span class="keyword">for</span> k = 1 : numObj
+    s(k).StandardDeviation = std(double(s(k).PixelValues));
+    text(s(k).Centroid(1),s(k).Centroid(2), <span class="keyword">...</span>
+        sprintf(<span class="string">'%2.1f'</span>, s(k).StandardDeviation), <span class="keyword">...</span>
+        <span class="string">'EdgeColor'</span>,<span class="string">'b'</span>,<span class="string">'Color'</span>,<span class="string">'r'</span>);
+<span class="keyword">end</span>
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="../ipexprops_04.png" alt=""> <p>次の図は、イメージ内の各オブジェクトに重ね書きされた標準偏差測定を示しています。ラベル番号ごとに標準偏差を示すバー プロットなど、その他の方法でも結果を表示できます。</p><pre class="codeinput">figure
+bar(1:numObj,[s.StandardDeviation]);
+xlabel(<span class="string">'Region Label Number'</span>);
+ylabel(<span class="string">'Standard Deviation'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexprops_05.png" alt=""> <p>プロットを使用して、データを分割する方法を決定します。たとえば、以下のコードは 50 より小さい標準偏差を持つオブジェクトを識別します。</p><pre class="codeinput">sStd = [s.StandardDeviation];
+lowStd = find(sStd &lt; 50);
+
+imshow(I);
+title(<span class="string">'Objects Having Standard Deviation &lt; 50'</span>);
+hold <span class="string">on</span>;
+<span class="keyword">for</span> k = 1 : length(lowStd)
+    rectangle(<span class="string">'Position'</span>, s(lowStd(k)).BoundingBox, <span class="keyword">...</span>
+        <span class="string">'EdgeColor'</span>,<span class="string">'y'</span>);
+<span class="keyword">end</span>
+hold <span class="string">off</span>;
+</pre><img vspace="5" hspace="5" src="../ipexprops_06.png" alt=""> <p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Measuring Regions in Grayscale Images % The function |regionprops| is very useful for measuring the properties of % objects in a binary image.  There are documentation examples and product % demos showing how to do this. % % But sometimes you need to process pixel values in the "original" % grayscale image.  In other words, suppose your process is something like % this: % % 1. Segment grayscale image to get a binary image of objects. % % 2. Analyze the original grayscale pixel values corresponding to each % object in the binary image. % % This demo shows you how to accomplish this workflow using |regionprops|. % % Copyright 2007-2009 The MathWorks, Inc.  %% Step 1: Create Synthetic Image % Create a grayscale image that contains some distinct regions.  I = propsSynthesizeImage; imshow(I) title('Synthetic Image')  %% Step 2: Create a Binary Image % Segment the grayscale image by creating a binary image containing the % objects in the image.   BW = I > 0; imshow(BW) title('Binary Image')  %% Step 3: Calculate Object Properties Using Pixel Values of Grayscale Image % The |regionprops| function supports several properties that can be used % with grayscale images, including 'WeightedCentroid', 'MeanIntensity', % 'MinIntensity', and 'MaxIntensity'.  These properties use the original % pixel values of the objects for their calculations.   % % For example, you can use |regionprops| to calculate both the centroid and % weighted centroid of objects in the image. Note how you pass in the % binary image (|BW|) containing your objects and the original grayscale % image (|I|) as arguments into |regionprops|.  s = regionprops(BW, I, {'Centroid','WeightedCentroid'});  %% % To compare the weighted centroid locations with the unweighted centroid % locations, display the original image and then, using the |hold| and % |plot| functions, superimpose the centroids on the image.   imshow(I) title('Weighted (red) and Unweighted (blue) Centroid Locations');  hold on numObj = numel(s); for k = 1 : numObj     plot(s(k).WeightedCentroid(1), s(k).WeightedCentroid(2), 'r*');     plot(s(k).Centroid(1), s(k).Centroid(2), 'bo'); end hold off  %% Step 4: Calculate Custom Pixel Value-Based Properties % You can use the 'PixelValues' property to do custom calculations based on % the pixel values of the original grayscale image. The 'PixelValues' % property returns a vector containing the grayscale values of pixels in a % region. % % As an example, calculate the standard deviation of each region.  s = regionprops(BW, I, {'Centroid','PixelValues','BoundingBox'}); imshow(I); title('Standard Deviation of Regions'); hold on for k = 1 : numObj     s(k).StandardDeviation = std(double(s(k).PixelValues));     text(s(k).Centroid(1),s(k).Centroid(2), ...         sprintf('%2.1f', s(k).StandardDeviation), ...         'EdgeColor','b','Color','r'); end hold off  %% % This figure shows the standard deviation measurement superimposed on each % object in the image. You can also view the results in other ways, % for example as a bar plot showing the standard deviation by label number.   figure bar(1:numObj,[s.StandardDeviation]); xlabel('Region Label Number'); ylabel('Standard Deviation');  %% % You can use the plot to determine how to partition the data. For example, % the following code identifies objects with a standard deviation lower % than 50.  sStd = [s.StandardDeviation]; lowStd = find(sStd < 50);  imshow(I); title('Objects Having Standard Deviation < 50'); hold on; for k = 1 : length(lowStd)     rectangle('Position', s(lowStd(k)).BoundingBox, ...         'EdgeColor','y'); end hold off;  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

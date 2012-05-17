@@ -1,0 +1,225 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Speeding Up Frequency Response Estimation Using Parallel Computing</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-08-21"><meta name="m-file" content="scdparforpad"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdparforpad">Open scdparforpad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdparforpad">Run in the Command Window</a></div></div><div class="content"><h1>Speeding Up Frequency Response Estimation Using Parallel Computing</h1><!--introduction--><p>This demo illustrates how to use parallel computing for speeding up frequency response estimation of Simulink&reg; models. In some scenarios, the command FRESTIMATE performs multiple Simulink&reg; simulations to estimate the frequency response of a Simulink&reg; model. You can distribute these simulations to a pool of MATLAB&reg; workers by using Parallel Computing Toolbox&#8482;.</p><p>This demo requires Parallel Computing Toolbox&#8482;. You can optionally use MATLAB Distributed Computing Server&#8482; to run simulations on a computer cluster. This demo uses the local worker functionality available in Parallel Computing Toolbox&#8482;.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Speeding up Simulink&reg; Simulations Performed by FRESTIMATE</a></li><li><a href="#2">Configuring a MATLAB&reg; Pool</a></li><li><a href="#3">Distributing Simulink&reg; Simulations for Each Frequency in Sinestream Input</a></li><li><a href="#6">Distributing Simulink&reg; Simulations for Input Channels</a></li></ul></div><h2>Speeding up Simulink&reg; Simulations Performed by FRESTIMATE<a name="1"></a></h2><p>When you compute frequency response using the FRESTIMATE command, the majority of computation time is usually spent in Simulink&reg; simulations. To reduce the total simulation time, you can:</p><p><b>1.</b> Use rapid accelerator mode. See the <a href="scdskyhoggpad.html">"linearization validation demonstration"</a> as an example of using rapid accelerator mode with the FRESTIMATE command. Use this method when FRESTIMATE performs only one Simulink&reg; simulation.</p><p><b>2.</b> Distribute simulations among workers in a MATLAB&reg; pool. Use this method when FRESTIMATE performs multiple Simulink&reg; simulations. FRESTIMATE performs more than one Simulink&reg; simulation when you specify the following:</p><div><ul><li>A Sinestream input signal with "SimulationOrder" parameter set to "OneAtATime". In this case, each frequency in the Sinestream signal is simulated separately.</li></ul></div><div><ul><li>Linearization I/O points with more than one input point or a non-scalar input point. In this case, each linearization input point or each channel in a non-scalar linearization input point yields a separate Simulink&reg; simulation.</li></ul></div><p>Note that FRESTIMATE command using parallel computing option also supports normal, accelerator and rapid accelerator modes.</p><h2>Configuring a MATLAB&reg; Pool<a name="2"></a></h2><p>To use parallel computing to speed up frequency response estimation, configure and start a pool of MATLAB&reg; workers before you run the FRESTIMATE command.</p><p>Use the <tt>matlabpool</tt> command to check if a MATLAB&reg; pool is open, and then open a local pool on your multicore desktop. This requires Parallel Computing Toolbox&#8482;.</p><pre class="codeinput"><span class="keyword">if</span> matlabpool(<span class="string">'size'</span>) == 0
+   <span class="comment">%The matlabpool is not open, so open one</span>
+   matlabpool <span class="string">open</span> <span class="string">local</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Starting matlabpool using the 'local' configuration ... connected to 8 labs.
+</pre><h2>Distributing Simulink&reg; Simulations for Each Frequency in Sinestream Input<a name="3"></a></h2><p>When you use a Sinestream input signal with FRESTIMATE command and you set the "SimulationOrder" parameter to "OneAtATime", each frequency in the Sinestream signal simulates in a separate Simulink&reg; simulation. If you enable the parallel computing option, the simulations corresponding to individual frequencies are distributed among workers in the MATLAB&reg; pool.</p><pre class="codeinput">scdengine
+mdl = <span class="string">'scdengine'</span>;
+io = getlinio(mdl);
+in = frest.Sinestream(<span class="string">'Frequency'</span>,logspace(-1,1,50),<span class="string">'Amplitude'</span>,1e-3,<span class="keyword">...</span>
+    <span class="string">'SimulationOrder'</span>,<span class="string">'OneAtATime'</span>);
+</pre><img vspace="5" hspace="5" src="scdparforpad_01.png" alt=""> <p>In the engine model above, there is a single linearization input point and a single linearization output point. There are 50 frequencies in the Sinestream signal and the FRESTIMATE command performs 50 separate Simulink&reg; simulations, because the "SimulationOrder" parameter is set to "OneAtATime". To enable the parallel computing option for FRESTIMATE to distribute these simulations among workers, create a frequency response estimation options object using the command <tt>frestimateOptions</tt> and set the "UseParallel" parameter to "on". Use this object as input argument for FRESTIMATE.</p><pre class="codeinput">opt = frestimateOptions(<span class="string">'UseParallel'</span>,<span class="string">'on'</span>);
+sysest = frestimate(mdl,io,in,opt);
+bode(sysest,<span class="string">'r*'</span>)
+</pre><img vspace="5" hspace="5" src="scdparforpad_02.png" alt=""> <p>The time it takes for the FRESTIMATE command to run to completion with and without parallel computing option enabled is shown below. A PC with Intel&reg; Core(TM)2 Quad 2.4GHz processor and 4GB of RAM is used.</p><p>
+<table border=1><tr BGCOLOR="#CCCCCC"><td>Parallel Computing Option</td><td>Time(secs)</td><td>Speedup</td></tr>
+<tr><td>Disabled</td><td align="center">43.69</td><td align="center">1</td></tr>
+<tr><td>Enabled with 2 workers</td><td align="center">25.34</td><td align="center">1.72</td></tr>
+<tr><td>Enabled with 3 workers</td><td align="center">15.46</td><td align="center">2.83</td></tr>
+<tr><td>Enabled with 4 workers</td><td align="center">11.52</td><td align="center">3.79</td></tr>
+</table>
+</p><p>Parallel computing significantly speeds up the frequency response estimation. The imperfect speedup can be caused by various factors including the overhead from data and code transfer between client and workers and resource competition between worker processes and OS processes. For first simulation (i.e. immediately after opening the pool of MATLAB&reg; workers), Simulink&reg; start-up time can add to the overhead.</p><pre class="codeinput">bdclose(mdl);
+</pre><h2>Distributing Simulink&reg; Simulations for Input Channels<a name="6"></a></h2><p>When the number of linearization input points or the number of channels in a linearization input point is greater than one, the FRESTIMATE command distributes individual Simulink&reg; simulations corresponding to these input channels among workers in the MATLAB&reg; pool.</p><pre class="codeinput">scdmechconveyor
+mdl = <span class="string">'scdmechconveyor'</span>;
+
+io(1) = linio(<span class="string">'scdmechconveyor/Constant'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'scdmechconveyor/Position Controller'</span>,1,<span class="string">'in'</span>);
+io(3) = linio(<span class="string">'scdmechconveyor/Joint Sensor'</span>,1,<span class="string">'out'</span>);
+
+<span class="comment">% Find the steady state operating point</span>
+op = findop(mdl,20);
+<span class="comment">% Linearize the system and create input signal using linearization result</span>
+sys = linearize(mdl,io,op);
+in = frest.Sinestream(sys);
+</pre><img vspace="5" hspace="5" src="scdparforpad_03.png" alt=""> <p>With the <tt>linio</tt> commands, you specify two linearization input points, which are both located on scalar Simulink&reg; signals. If you run the FRESTIMATE command to estimate the frequency response for this model, two Simulink&reg; simulations occur, one for each input. If you enable the parallel computing option, the simulations are distributed among workers. Run FRESTIMATE command with parallel computing option enabled and plot the estimation result against analytical linearization:</p><pre class="codeinput">opt = frestimateOptions(<span class="string">'UseParallel'</span>,<span class="string">'on'</span>);
+sysest = frestimate(mdl,io,in,op,opt);
+bodeopts = bodeoptions;
+bodeopts.PhaseMatching = <span class="string">'on'</span>;
+bodeplot(sys,sysest,<span class="string">'r*'</span>,bodeopts)
+</pre><img vspace="5" hspace="5" src="scdparforpad_04.png" alt=""> <p>The time it takes for the FRESTIMATE command to run to completion with and without parallel computing option enabled is shown below. A PC with Intel&reg; Core(TM)2 Quad 2.4GHz processor and 4GB of RAM is used.</p><p>
+<table border=1><tr BGCOLOR="#CCCCCC"><td>Parallel Computing Option</td><td>Time(secs)</td><td>Speedup</td></tr>
+<tr><td>Disabled</td><td align="center">56.99</td><td align="center">1</td></tr>
+<tr><td>Enabled with 2 workers</td><td align="center">31.94</td><td align="center">1.78</td></tr>
+</table>
+</p><p>As in the case of distributing simulations for frequencies, the table shows nearly a two-fold speedup with the parallel computing option enabled. As mentioned before, several factors may contribute to imperfect speedup including data and code transfer between client and workers and resource competition between worker processes and OS processes.</p><p>Close the model and the MATLAB&reg; pool:</p><pre class="codeinput">bdclose(mdl);
+matlabpool <span class="string">close</span>;
+</pre><pre class="codeoutput">Sending a stop signal to all the labs ... stopped.
+</pre><p class="footer">Copyright 2005-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Speeding Up Frequency Response Estimation Using Parallel Computing
+% Copyright 2005-2009 The MathWorks, Inc.
+% $Revision: 1.1.8.3 $ $Date: 2010/03/22 04:25:53 $
+%
+% This demo illustrates how to use parallel computing for speeding up frequency
+% response estimation of Simulink(R) models. In some scenarios, the command 
+% FRESTIMATE performs multiple Simulink(R) simulations to estimate the
+% frequency response of a Simulink(R) model. You can
+% distribute these simulations to a pool of MATLAB(R) workers by
+% using Parallel Computing Toolbox(TM).
+%
+% This demo requires Parallel Computing Toolbox(TM). You can optionally use
+% MATLAB Distributed Computing Server(TM) to run simulations on a computer
+% cluster. This demo uses the local worker functionality available in
+% Parallel Computing Toolbox(TM).
+
+%% Speeding up Simulink(R) Simulations Performed by FRESTIMATE
+% When you compute frequency response using the FRESTIMATE
+% command, the majority of computation time is usually spent in Simulink(R) simulations. To
+% reduce the total simulation time, you can:
+%
+% *1.* Use rapid accelerator mode. See the <scdskyhoggpad.html
+% "linearization validation demonstration"> as an example of using rapid
+% accelerator mode with the FRESTIMATE command. Use this method when
+% FRESTIMATE performs only one Simulink(R) simulation.
+%
+% *2.* Distribute simulations among workers in a MATLAB(R) pool. Use
+% this method when FRESTIMATE performs multiple Simulink(R) simulations.
+% FRESTIMATE performs more than one Simulink(R) simulation when you specify
+% the following:
+%
+% * A Sinestream input signal with "SimulationOrder" parameter set to
+% "OneAtATime". In this case, each frequency in the Sinestream signal is
+% simulated separately.
+%
+% * Linearization I/O points with more than one input point or a non-scalar input
+% point. In this case, each linearization input point or each channel in a
+% non-scalar linearization input point yields a separate Simulink(R)
+% simulation.
+%
+% Note that FRESTIMATE command using parallel computing option also supports
+% normal, accelerator and rapid accelerator modes.
+
+
+
+%% Configuring a MATLAB(R) Pool
+% To use parallel computing to speed up frequency response estimation,
+% configure and start a pool of MATLAB(R) workers before you run the FRESTIMATE command.
+%
+% Use the |matlabpool| command to check if a MATLAB(R)
+% pool is open, and then open a local pool on your multicore desktop. This
+% requires Parallel Computing Toolbox(TM).
+
+if matlabpool('size') == 0
+   %The matlabpool is not open, so open one
+   matlabpool open local
+end
+
+%% Distributing Simulink(R) Simulations for Each Frequency in Sinestream Input
+% When you use a Sinestream input signal with FRESTIMATE command and you
+% set the "SimulationOrder" parameter to "OneAtATime", each
+% frequency in the Sinestream signal simulates in a separate
+% Simulink(R) simulation. If you enable the parallel computing option, the simulations
+% corresponding to individual frequencies are distributed among workers in
+% the MATLAB(R) pool. 
+
+scdengine
+mdl = 'scdengine';
+io = getlinio(mdl);
+in = frest.Sinestream('Frequency',logspace(-1,1,50),'Amplitude',1e-3,...
+    'SimulationOrder','OneAtATime');
+
+%%
+% In the engine model above, there is a single linearization input point and
+% a single linearization output point. There are 50
+% frequencies in the Sinestream signal and the FRESTIMATE command performs
+% 50 separate Simulink(R) simulations, because the "SimulationOrder" parameter is
+% set to "OneAtATime". To enable the parallel computing option for FRESTIMATE to
+% distribute these simulations among workers, create a frequency
+% response estimation options object using the command |frestimateOptions|
+% and set the "UseParallel" parameter to "on". Use this object as input
+% argument for FRESTIMATE.
+
+opt = frestimateOptions('UseParallel','on');
+sysest = frestimate(mdl,io,in,opt);
+bode(sysest,'r*')
+
+%%
+% The time it takes for the FRESTIMATE command to run to completion with
+% and without parallel computing option enabled is shown below. A PC with
+% Intel(R) Core(TM)2 Quad 2.4GHz processor and 4GB of RAM is used.
+%
+% <html>
+% <table border=1><tr BGCOLOR="#CCCCCC"><td>Parallel Computing Option</td><td>Time(secs)</td><td>Speedup</td></tr>
+% <tr><td>Disabled</td><td align="center">43.69</td><td align="center">1</td></tr>
+% <tr><td>Enabled with 2 workers</td><td align="center">25.34</td><td align="center">1.72</td></tr>
+% <tr><td>Enabled with 3 workers</td><td align="center">15.46</td><td align="center">2.83</td></tr>
+% <tr><td>Enabled with 4 workers</td><td align="center">11.52</td><td align="center">3.79</td></tr>
+% </table>
+% </html>
+% 
+% Parallel computing significantly speeds up the frequency response
+% estimation. The imperfect speedup can be caused by various factors
+% including the overhead from data and code transfer between client and
+% workers and resource competition between worker processes and OS
+% processes. For first simulation (i.e. immediately after opening the pool
+% of MATLAB(R) workers), Simulink(R) start-up time can add to the overhead.
+
+bdclose(mdl);
+
+%% Distributing Simulink(R) Simulations for Input Channels
+% When the number of linearization input points or the number of channels
+% in a linearization input point is greater than one, the FRESTIMATE command distributes
+% individual Simulink(R) simulations corresponding to these input channels
+% among workers in the MATLAB(R) pool.
+scdmechconveyor
+mdl = 'scdmechconveyor';
+
+io(1) = linio('scdmechconveyor/Constant',1,'in');
+io(2) = linio('scdmechconveyor/Position Controller',1,'in');
+io(3) = linio('scdmechconveyor/Joint Sensor',1,'out');
+
+% Find the steady state operating point
+op = findop(mdl,20);
+% Linearize the system and create input signal using linearization result
+sys = linearize(mdl,io,op);
+in = frest.Sinestream(sys);
+
+%%
+% With the |linio| commands, you specify two linearization input
+% points, which are both located on scalar Simulink(R) signals. If you
+% run the FRESTIMATE command to estimate the frequency response for this
+% model, two Simulink(R) simulations occur, one for each input. If you
+% enable the parallel computing option, the simulations are distributed among
+% workers. Run FRESTIMATE command with parallel computing option enabled and
+% plot the estimation result against analytical linearization:
+opt = frestimateOptions('UseParallel','on');
+sysest = frestimate(mdl,io,in,op,opt);
+bodeopts = bodeoptions;
+bodeopts.PhaseMatching = 'on';
+bodeplot(sys,sysest,'r*',bodeopts)
+
+
+%%
+% The time it takes for the FRESTIMATE command to run to completion with
+% and without parallel computing option enabled is shown below. A PC with
+% Intel(R) Core(TM)2 Quad 2.4GHz processor and 4GB of RAM is used.
+%
+% <html>
+% <table border=1><tr BGCOLOR="#CCCCCC"><td>Parallel Computing Option</td><td>Time(secs)</td><td>Speedup</td></tr>
+% <tr><td>Disabled</td><td align="center">56.99</td><td align="center">1</td></tr>
+% <tr><td>Enabled with 2 workers</td><td align="center">31.94</td><td align="center">1.78</td></tr>
+% </table>
+% </html>
+%
+% As in the case of distributing simulations for frequencies, the table
+% shows nearly a two-fold speedup with the parallel computing option
+% enabled. As mentioned before, several factors may contribute to imperfect
+% speedup including data and code transfer between client and workers and
+% resource competition between worker processes and OS processes.
+
+%%
+% Close the model and the MATLAB(R) pool:
+bdclose(mdl);
+matlabpool close;
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,245 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Adaptive Noise Cancellation</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="noisedm.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit noisedm">Open noisedm.m in the Editor</a></div><div class="right"><a href="matlab:echodemo noisedm">Run in the Command Window</a></div></div><div class="content"><h1>Adaptive Noise Cancellation</h1><!--introduction--><p>This is a demonstration of adaptive nonlinear noise cancellation using the Fuzzy Logic Toolbox&#8482; functions ANFIS and GENFIS1.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Signal and Noise</a></li><li><a href="#6">Building the ANFIS Model</a></li></ul></div><h2>Signal and Noise<a name="1"></a></h2><p>Defined below is a hypothetical information signal x sampled at 100Hz over 6 seconds.</p><pre class="codeinput">time = (0:0.01:6)';
+x = sin(40./(time+0.01));
+plot(time, x)
+title(<span class="string">'Information Signal x'</span>)
+xlabel(<span class="string">'time'</span>)
+ylabel(<span class="string">'x'</span>)
+</pre><img vspace="5" hspace="5" src="noisedm_01.png" alt=""> <p>Unfortunately, the information signal x cannot be measured without an interference signal n2, which is generated from another noise source n1 via a certain unknown nonlinear process.</p><p>The plot below shows the noise source n1.</p><pre class="codeinput">n1 = randn(size(time));
+plot(time, n1)
+title(<span class="string">'Noise Source n1'</span>)
+xlabel(<span class="string">'time'</span>)
+ylabel(<span class="string">'n1'</span>)
+</pre><img vspace="5" hspace="5" src="noisedm_02.png" alt=""> <p>The interference signal n2 that appears in the measured signal is assumed to be generated via an unknown nonlinear equation:</p><pre>n2(k) = 4*sin(n1(k))*n1(k-1)/(1+n1(k-1)^2)</pre><p>This nonlinear characteristic is shown as a surface in the window.</p><pre class="codeinput">domain = linspace(min(n1), max(n1), 20);
+[xx, yy] = meshgrid(domain, domain);
+zz = 4*sin(xx).*yy./(1+yy.^2);
+
+surf(xx, yy, zz);
+xlabel(<span class="string">'n1(k)'</span>);
+ylabel(<span class="string">'n1(k-1)'</span>);
+zlabel(<span class="string">'n2(k)'</span>);
+title(<span class="string">'Unknown Channel Characteristics That Generate Interference'</span>);
+</pre><img vspace="5" hspace="5" src="noisedm_03.png" alt=""> <p>The noise source n1 and interference n2 are shown together. Note that n2 is related to n1 via the highly nonlinear process shown previously; it is hard to see if these two signals are correlated in any way.</p><pre class="codeinput">n1d0 = n1;                            <span class="comment">% n1 delay 0</span>
+n1d1 = [0; n1d0(1:length(n1d0)-1)];   <span class="comment">% n1 delay 1</span>
+n2 = 4*sin(n1d0).*n1d1./(1+n1d1.^2);  <span class="comment">% interference</span>
+
+subplot(2,1,1)
+plot(time, n1);
+ylabel(<span class="string">'noise n1'</span>);
+subplot(2,1,2)
+plot(time, n2);
+ylabel(<span class="string">'interference n2'</span>);
+</pre><img vspace="5" hspace="5" src="noisedm_04.png" alt=""> <p>The measured signal m is the sum of the original information signal x and the interference n2. However, we do not  know n2. The only signals available to us are the noise signal n1 and the measured signal m, and our task is to recover the original information signal x. In the demo window is the measured signal m that combines x and n2.</p><pre class="codeinput">m = x + n2;             <span class="comment">% measured signal</span>
+subplot(1,1,1)
+plot(time, m)
+title(<span class="string">'Measured Signal'</span>)
+xlabel(<span class="string">'time'</span>)
+ylabel(<span class="string">'m'</span>)
+</pre><img vspace="5" hspace="5" src="noisedm_05.png" alt=""> <h2>Building the ANFIS Model<a name="6"></a></h2><p>We will use the function ANFIS to identify the nonlinear relationship between n1 and n2. Though n2 is not directly available, we can take m as a "contaminated" version of n2 for training.  Thus x is treated as "noise" in this kind of nonlinear fitting.</p><p>Here we assume the order of the nonlinear channel is known (in this case, 2), so we can use 2-input ANFIS for training. We assign two membership functions to each input, so the total number of fuzzy rules for learning is 4. Also we set the step size equal to 0.2. You should be able to see all the training information in the MATLAB&reg; command window.</p><pre class="codeinput">delayed_n1 = [0; n1(1:length(n1)-1)];
+trn_data = [delayed_n1 n1 m];
+
+<span class="comment">% Generating the initial FIS</span>
+mf_n = 2;
+ss = 0.2;
+in_fismat=genfis1(trn_data, mf_n);
+<span class="comment">% Using ANFIS to finetune the initial FIS</span>
+out_fismat = anfis(trn_data, in_fismat, [nan nan ss]);
+<span class="comment">% Testing the tuned model with training data</span>
+estimated_n2 = evalfis(trn_data(:, 1:2), out_fismat);
+estimated_x = m - estimated_n2;
+</pre><pre class="codeoutput">
+ANFIS info: 
+	Number of nodes: 21
+	Number of linear parameters: 12
+	Number of nonlinear parameters: 12
+	Total number of parameters: 24
+	Number of training data pairs: 601
+	Number of checking data pairs: 0
+	Number of fuzzy rules: 4
+
+
+Start training ANFIS ...
+
+   1 	 0.737955
+   2 	 0.726454
+   3 	 0.718352
+   4 	 0.713803
+   5 	 0.711315
+Step size increases to 0.220000 after epoch 5.
+   6 	 0.70904
+   7 	 0.707269
+   8 	 0.70685
+   9 	 0.70593
+Step size increases to 0.242000 after epoch 9.
+  10 	 0.705693
+
+Designated epoch number reached --&gt; ANFIS training completed at epoch 10.
+
+</pre><p>After training, the estimated n2 is calculated using the command EVALFIS. The original n2 and estimated n2 (output of ANFIS) are shown above. (Note that n2 is unknown.)</p><pre class="codeinput">subplot(2,1,1)
+plot(time, n2)
+ylabel(<span class="string">'n2 (unknown)'</span>);
+
+subplot(2,1,2)
+plot(time, estimated_n2)
+ylabel(<span class="string">'estimated_n2'</span>);
+</pre><img vspace="5" hspace="5" src="noisedm_06.png" alt=""> <p>The estimated information signal x is equal to the difference between the measured signal m and the estimated interference (that is, ANFIS output).</p><p>The original information signal x and the estimated x by ANFIS are plotted. Without extensive training, the ANFIS can already do a fairly good job.</p><pre class="codeinput">subplot(2,1,1)
+plot(time, x)
+ylabel(<span class="string">'x (unknown) '</span>);
+subplot(2,1,2)
+plot(time, estimated_x)
+ylabel(<span class="string">'estimated\_x'</span>)
+</pre><img vspace="5" hspace="5" src="noisedm_07.png" alt=""> <p class="footer">Copyright 1994-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Adaptive Noise Cancellation
+% This is a demonstration of adaptive nonlinear noise cancellation using
+% the Fuzzy Logic Toolbox(TM) functions ANFIS and GENFIS1.
+% 
+%   Copyright 1994-2007 The MathWorks, Inc.
+%   $Revision: 1.13.2.5 $ $Date: 2007/11/09 20:08:29 $
+
+%% Signal and Noise
+% Defined below is a hypothetical information signal x sampled
+% at 100Hz over 6 seconds.
+
+time = (0:0.01:6)';
+x = sin(40./(time+0.01));
+plot(time, x)
+title('Information Signal x')
+xlabel('time')
+ylabel('x')
+
+%%
+% Unfortunately, the information signal x cannot be measured
+% without an interference signal n2, which is generated from
+% another noise source n1 via a certain unknown nonlinear
+% process.
+% 
+% The plot below shows the noise source n1.
+
+n1 = randn(size(time));
+plot(time, n1)
+title('Noise Source n1')
+xlabel('time')
+ylabel('n1')
+
+%%
+% The interference signal n2 that appears in the measured
+% signal is assumed to be generated via an unknown nonlinear
+% equation:
+% 
+%  n2(k) = 4*sin(n1(k))*n1(k-1)/(1+n1(k-1)^2)
+% 
+% This nonlinear characteristic is shown as a surface in the
+% window.
+
+domain = linspace(min(n1), max(n1), 20);
+[xx, yy] = meshgrid(domain, domain);
+zz = 4*sin(xx).*yy./(1+yy.^2);
+
+surf(xx, yy, zz);
+xlabel('n1(k)');
+ylabel('n1(k-1)');
+zlabel('n2(k)');
+title('Unknown Channel Characteristics That Generate Interference');
+
+%%
+% The noise source n1 and interference n2 are shown together.
+% Note that n2 is related to n1 via the highly nonlinear process
+% shown previously; it is hard to see if these two signals are
+% correlated in any way.
+
+n1d0 = n1;                            % n1 delay 0
+n1d1 = [0; n1d0(1:length(n1d0)-1)];   % n1 delay 1
+n2 = 4*sin(n1d0).*n1d1./(1+n1d1.^2);  % interference
+
+subplot(2,1,1)
+plot(time, n1);
+ylabel('noise n1');
+subplot(2,1,2)
+plot(time, n2);
+ylabel('interference n2');
+
+%%
+% The measured signal m is the sum of the original information
+% signal x and the interference n2. However, we do not  know
+% n2. The only signals available to us are the noise signal n1
+% and the measured signal m, and our task is to recover the
+% original information signal x. In the demo window is the
+% measured signal m that combines x and n2.
+
+m = x + n2;             % measured signal
+subplot(1,1,1)
+plot(time, m)
+title('Measured Signal')
+xlabel('time')
+ylabel('m')
+
+%% Building the ANFIS Model
+% We will use the function ANFIS to identify the nonlinear
+% relationship between n1 and n2. Though n2 is not directly
+% available, we can take m as a "contaminated" version of n2
+% for training.  Thus x is treated as "noise" in this kind of
+% nonlinear fitting.
+% 
+% Here we assume the order of the nonlinear channel is known
+% (in this case, 2), so we can use 2-input ANFIS for training.
+% We assign two membership functions to each input, so the
+% total number of fuzzy rules for learning is 4. Also we set the
+% step size equal to 0.2. You should be able to see all the
+% training information in the MATLAB(R) command window.
+
+delayed_n1 = [0; n1(1:length(n1)-1)];
+trn_data = [delayed_n1 n1 m];
+
+% Generating the initial FIS
+mf_n = 2;
+ss = 0.2;
+in_fismat=genfis1(trn_data, mf_n);
+% Using ANFIS to finetune the initial FIS
+out_fismat = anfis(trn_data, in_fismat, [nan nan ss]);
+% Testing the tuned model with training data
+estimated_n2 = evalfis(trn_data(:, 1:2), out_fismat);
+estimated_x = m - estimated_n2;
+
+%%
+% After training, the estimated n2 is calculated using the
+% command EVALFIS. The original n2 and estimated n2
+% (output of ANFIS) are shown above. (Note that n2 is unknown.)
+
+subplot(2,1,1)
+plot(time, n2)
+ylabel('n2 (unknown)'); 
+
+subplot(2,1,2)
+plot(time, estimated_n2)
+ylabel('estimated_n2'); 
+
+%%
+% The estimated information signal x is equal to the difference
+% between the measured signal m and the estimated
+% interference (that is, ANFIS output).
+% 
+% The original information signal x and the estimated x by
+% ANFIS are plotted. Without extensive training, the ANFIS
+% can already do a fairly good job.
+
+subplot(2,1,1)
+plot(time, x)
+ylabel('x (unknown) '); 
+subplot(2,1,2)
+plot(time, estimated_x)
+ylabel('estimated\_x')
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,167 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Computing Multiple Linearizations of Models with Block Variations More Efficiently</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdlinlftdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdlinlftdemo">Open scdlinlftdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdlinlftdemo">Run in the Command Window</a></div></div><div class="content"><h1>Computing Multiple Linearizations of Models with Block Variations More Efficiently</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#2">Linearizing the Full Simulink Model 20 Times using LINEARIZE</a></li><li><a href="#7">Linearizing the Simulink Model 20 Times using LINLFT</a></li><li><a href="#10">Comparing the Results</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>This demonstration illustrates how to use the command <tt>LINLFT</tt> to speed up the linearization of a class of Simulink&reg; models where a set of block parameters vary over a number of linearizations.  The variation of parameters can either be inside of a <tt>FOR</tt> or a numerical optimization loop. This approach works best for larger models where the linearization of a number of blocks vary.  The best improvements in the overall linearization time are for models with large model update times. To run this demo, you need Aerospace Blockset&#8482;.</p><h2>Linearizing the Full Simulink Model 20 Times using LINEARIZE<a name="2"></a></h2><p>In this example, you linearize a model of a lightweight airplane while varying the gain of the altitude and pitch controllers by +/- 10%. Open the Simulink&reg; model for lightweight airplane. You can find more information on this model in the demonstration <a href="../../../aeroblks/aerodemos/html/asbSkyHogg.html">"Lightweight Airplane Design"</a> in Aerospace Blockset demos.</p><pre class="codeinput">mdl = <span class="string">'scdskyhogg'</span>;
+open_system(mdl);
+io = getlinio(mdl);
+op = operpoint(mdl);
+</pre><img vspace="5" hspace="5" src="scdlinlftdemo_01.png" alt=""> <p>Initialize the gain of the controllers to vary with MATLAB workspace parameters k1 and k2:</p><pre class="codeinput">open_system(<span class="string">'scdskyhogg/Vehicle System Model/Avionics/Autopilot'</span>)
+blks = {<span class="string">'scdskyhogg/Vehicle System Model/Avionics/Autopilot/Alt Controller'</span>;<span class="keyword">...</span>
+        <span class="string">'scdskyhogg/Vehicle System Model/Avionics/Autopilot/Theta Controller'</span>};
+set_param(blks{1},<span class="string">'Gain'</span>,<span class="string">'0.0337283240400683*k1'</span>)
+set_param(blks{2},<span class="string">'Gain'</span>,<span class="string">'-261.8699347622*k2'</span>)
+</pre><img vspace="5" hspace="5" src="scdlinlftdemo_02.png" alt=""> <p>Compute 20 linearizations:</p><pre class="codeinput">t = cputime;
+<span class="keyword">for</span> ct = 20:-1:1
+    k1 = 1+(ct-10)/100;
+    k2 = 1+(ct-10)/100;
+    sys_full(:,:,ct) = linearize(mdl,op,io);
+<span class="keyword">end</span>
+</pre><p>View the total time to compute the 20 linearizations in seconds:</p><pre class="codeinput">dt_full = cputime - t
+</pre><pre class="codeoutput">
+dt_full =
+
+   36.2813
+
+</pre><p>A factor that impacts this time is the total time it takes to compile and evaluate block masks and resolve workspace parameters.  The MATLAB Profiler is a recommended tool that you can use to identify bottlenecks in this compilation process.</p><h2>Linearizing the Simulink Model 20 Times using LINLFT<a name="7"></a></h2><p>In this model, only the two controller blocks vary.  You can use the command <tt>LINLFT</tt> to linearize the Simulink model with the controller blocks removed.  You need to linearize this portion of the model once.</p><pre class="codeinput">t = cputime;
+sys_fixed = linlft(mdl,io,blks);
+k1_0 = 0.0337283240400683;
+k2_0 = -261.8699347622;
+Alt = zpk([0.998853192323097;0.977076159863424],<span class="keyword">...</span>
+             [1;0.920841826994512],k1_0,1/60);
+Theta = zpk(0.999268009521977,1,k2_0,1/60);
+BlockSubs(1) = struct(<span class="string">'Name'</span>,blks{1},<span class="keyword">...</span>
+                    <span class="string">'Value'</span>, Alt);
+BlockSubs(2) = struct(<span class="string">'Name'</span>,blks{2},<span class="keyword">...</span>
+                    <span class="string">'Value'</span>, Theta);
+</pre><p>You can combine the varied block linearizations using the command <tt>LINLFTFOLD</tt>.  Compute the 20 linearizations:</p><pre class="codeinput"><span class="keyword">for</span> ct = 20:-1:1
+    <span class="comment">% Specify new values for the blocks</span>
+    BlockSubs(1).Value.k = k1_0*(1+(ct-10)/100);
+    BlockSubs(2).Value.k = k2_0*(1+(ct-10)/100);
+    sys_by_parts(:,:,ct) = linlftfold(sys_fixed,BlockSubs);
+<span class="keyword">end</span>
+</pre><p>View the total time to compute the 20 linearizations using <tt>LINLFT</tt> in seconds</p><pre class="codeinput">dt_by_parts = cputime - t
+</pre><pre class="codeoutput">
+dt_by_parts =
+
+    4.5000
+
+</pre><h2>Comparing the Results<a name="10"></a></h2><p>In this example, the gain of the controllers does not have any impact on the operating point of the Simulink model. The linearizations using both approaches are equivalent.</p><pre class="codeinput">bode(sys_full(:,:,1),sys_by_parts(:,:,1))
+legend(<span class="string">'Linearization of Full Model'</span>,<span class="string">'Linearization using LINLFT'</span>)
+</pre><img vspace="5" hspace="5" src="scdlinlftdemo_03.png" alt=""> <p>Calculate the resulting time improvement ratio:</p><pre class="codeinput">ratio = dt_full/dt_by_parts
+</pre><pre class="codeoutput">
+ratio =
+
+    8.0625
+
+</pre><p>Close the Simulink model</p><pre class="codeinput">bdclose(mdl);
+</pre><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Computing Multiple Linearizations of Models with Block Variations More Efficiently 
+%   Copyright 2009 The MathWorks, Inc.
+% $Revision: 1.1.8.3 $ $Date: 2009/11/09 16:35:40 $
+
+%% Introduction 
+% This demonstration illustrates how to use the command |LINLFT| to speed
+% up the linearization of a class of Simulink(R) models where a set of block
+% parameters vary over a number of linearizations.  The variation of
+% parameters can either be inside of a |FOR| or a numerical optimization
+% loop. This approach works best for larger models where the
+% linearization of a number of blocks vary.  The best improvements in the
+% overall linearization time are for models with large model update times.
+% To run this demo, you need Aerospace Blockset(TM).
+
+%% Linearizing the Full Simulink Model 20 Times using LINEARIZE
+% In this example, you linearize a model of a lightweight airplane 
+% while varying the gain of the altitude and pitch controllers by +/- 10%.
+% Open the Simulink(R) model for lightweight airplane. You can find more
+% information on this model in the demonstration
+% <../../../aeroblks/aerodemos/html/asbSkyHogg.html "Lightweight Airplane Design">
+% in Aerospace Blockset demos.
+mdl = 'scdskyhogg';
+open_system(mdl);
+io = getlinio(mdl);
+op = operpoint(mdl);
+
+%%
+% Initialize the gain of the controllers to vary with MATLAB
+% workspace parameters k1 and k2:
+open_system('scdskyhogg/Vehicle System Model/Avionics/Autopilot')
+blks = {'scdskyhogg/Vehicle System Model/Avionics/Autopilot/Alt Controller';...
+        'scdskyhogg/Vehicle System Model/Avionics/Autopilot/Theta Controller'};
+set_param(blks{1},'Gain','0.0337283240400683*k1')
+set_param(blks{2},'Gain','-261.8699347622*k2')
+
+%%
+% Compute 20 linearizations:
+t = cputime;
+for ct = 20:-1:1
+    k1 = 1+(ct-10)/100;
+    k2 = 1+(ct-10)/100;
+    sys_full(:,:,ct) = linearize(mdl,op,io);
+end
+
+%%
+% View the total time to compute the 20 linearizations in seconds:
+dt_full = cputime - t
+
+%%
+% A factor that impacts this time is the total time it takes to compile and
+% evaluate block masks and resolve workspace parameters.  The MATLAB
+% Profiler is a recommended tool that you can use to identify bottlenecks
+% in this compilation process.
+
+%% Linearizing the Simulink Model 20 Times using LINLFT
+% In this model, only the two controller blocks vary.  You can use the
+% command |LINLFT| to linearize the Simulink model with the controller
+% blocks removed.  You need to linearize this portion of the
+% model once.
+t = cputime;
+sys_fixed = linlft(mdl,io,blks);
+k1_0 = 0.0337283240400683;
+k2_0 = -261.8699347622;
+Alt = zpk([0.998853192323097;0.977076159863424],...
+             [1;0.920841826994512],k1_0,1/60);
+Theta = zpk(0.999268009521977,1,k2_0,1/60);
+BlockSubs(1) = struct('Name',blks{1},...
+                    'Value', Alt);
+BlockSubs(2) = struct('Name',blks{2},...
+                    'Value', Theta);
+                
+%% 
+% You can combine the varied block linearizations using the
+% command |LINLFTFOLD|.  Compute the 20 linearizations:
+for ct = 20:-1:1
+    % Specify new values for the blocks
+    BlockSubs(1).Value.k = k1_0*(1+(ct-10)/100);
+    BlockSubs(2).Value.k = k2_0*(1+(ct-10)/100);
+    sys_by_parts(:,:,ct) = linlftfold(sys_fixed,BlockSubs);
+end
+
+%%
+% View the total time to compute the 20 linearizations using |LINLFT| in
+% seconds
+dt_by_parts = cputime - t
+
+%% Comparing the Results
+% In this example, the gain of the controllers does not have any impact on
+% the operating point of the Simulink model. The linearizations
+% using both approaches are equivalent.
+bode(sys_full(:,:,1),sys_by_parts(:,:,1))
+legend('Linearization of Full Model','Linearization using LINLFT')
+
+%%
+% Calculate the resulting time improvement ratio:
+ratio = dt_full/dt_by_parts
+
+%%
+% Close the Simulink model
+bdclose(mdl);
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

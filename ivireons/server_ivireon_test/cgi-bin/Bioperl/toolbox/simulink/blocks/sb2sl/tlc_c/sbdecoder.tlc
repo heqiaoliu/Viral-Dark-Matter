@@ -1,0 +1,115 @@
+%% File: sbdecoder.tlc
+%% Abstract:
+%% The decoder block takes a decimal number and converts it to its binary representation.
+%% Multiple input words are supported with the number of bits specified for each.
+%%
+
+%%
+%% Initial coding by A S Bozin
+%% Copyright 1997-2010 The MathWorks, Inc.
+%% $Revision: 1.1.6.1 $ $Date: 2010/02/08 22:56:25 $
+%%
+%implements sbdecoder "C"
+
+%% Function: Start ============================================================
+%% Abstract:
+%%
+%function Start(block, system) Output
+  %assign sfcnName = ParamSettings.FunctionName
+  /* Decimal to binary conversion Block */
+  /* %<Type> Block: (%<sfcnName>): %<LibParentMaskBlockName(block)> */
+  %assign numbits = LibBlockDWork(NumBits, "", "", 0)
+  /*
+  * Initialize working vectors
+  */
+  %<numbits> = sizeof(uint32_T) << 3;
+%endfunction  %% Outputs
+
+%% Function: Outputs ==========================================================
+%% Abstract:
+%%
+%function Outputs(block, system) Output
+  %assign sfcnName = ParamSettings.FunctionName
+  /* Decimal to binary conversion Block */
+  /* %<Type> Block: (%<sfcnName>): %<LibParentMaskBlockName(block)> */
+  {
+    %assign up  = LibBlockDWork(Channels, "0", "", "")
+    %assign numbits = LibBlockDWork(NumBits, "", "", 0)
+    %assign binnumb = LibBlockDWork(BinNumber, "", "", 0)
+    %assign minip = LibBlockParameterAddr(MinimumInput,"0", "", "")
+    %assign maxip = LibBlockParameterAddr(MaximumInput,"0", "", "")
+    %assign res = LibBlockParameterAddr(ChannelResolution,"0", "", "")
+    %assign nbp  = LibBlockParameterAddr(NumBitsPerChannel,"0", "", "")
+    %assign nlp  = LibBlockParameterAddr(NumLocationsPerChannel,"0", "", "")
+    %assign y = LibBlockOutputSignalAddr(0, "", "", 0)
+    %assign nch = LibBlockInputSignalWidth(0)
+    real_T const       *up;
+    real_T             *y = %<y>;
+    int_T               bsize = %<numbits>;
+    real_T const       *minip = %<minip>;
+    real_T const       *maxip = %<maxip>;
+    real_T const       *res = %<res>;
+    int_T const        *nbp = %<nbp>;
+    int_T const        *nlp = %<nlp>;
+    real_T              mini, maxi;
+    real_T              u, uf;
+    int_T               kc, kl;
+    int_T               nb, nl;
+    int_T               nch = %<nch>;
+    real_T              scal = %<LibGenSharedMathFcnCall("ldexp",tSS_DOUBLE, "1.0", "bsize")>;
+    uint_T              msb = 1 << (bsize - 1), mask;
+    uint_T             *bn = (uint_T *) &%<binnumb>;
+    %if (block.Connections.InputPortContiguous[0] == "yes")
+      %assign ui = LibBlockInputSignalAddr(0, "", "", 0)
+      up = %<ui>;
+    %else
+      up = &%<up>;
+      %assign rollVars = ["U", "<dwork>/Channels"]
+      %roll idx = RollRegions, lcv = RollThreshold, block, "FlatRoller", rollVars
+        %if lcv == ""
+	  %assign ui = LibBlockInputSignal(0, "", lcv, idx)
+	  %assign ri = LibBlockDWork(Channels, "", lcv, idx)
+	  %<ri> = %<ui>;
+        %else
+	  %assign ui = LibBlockInputSignalAddr(0, "", "", idx)
+	  %assign ri = LibBlockDWork(Channels, "", "", idx)
+	  %assign dt = LibBlockInputSignalDataTypeName(0, "")
+	  (void) %<LibGenMemFcnCall("memcpy","&%<ri>", "%<ui>", "%<ROLL_ITERATIONS()> * sizeof(%<dt>)")>;
+        %endif
+      %endroll
+    %endif
+    /*
+     * For each input channel do
+     */
+    for (kc = 0; kc < nch; kc++) {
+	u = up[kc];
+	mini = *minip++;
+	maxi = *maxip++;
+	uf = %<LibGenMathFcnCall("floor",tSS_DOUBLE,"((u < mini ? mini : maxi < u ? maxi : u) - mini) / (*res++)","")>;
+	nl = *nlp++;
+	nb = *nbp++;
+	/*
+	 * Get a binary representation of the input signal
+	 */
+	for (kl = nl; kl >= 0; kl--) {
+	    bn[kl] = (uint_T)%<LibGenMathFcnCall("fmod",tSS_DOUBLE,"uf", "scal")>;
+	    uf =  %<LibGenSharedMathFcnCall("ldexp",tSS_DOUBLE,"uf", "-bsize")>;
+	}
+	/*
+	 * Extract bits from the binary number
+	 */
+	mask = 1 << ((nb - 1) % bsize);
+	for (kl = 0; kl <= nl; kl++) {
+	    uint_T              bnkl = bn[kl];
+
+	    while (mask) {
+		*y++ = bnkl & mask ? 1.0 : 0.0;
+		mask >>= 1;
+	    }
+	    mask = msb;					   /* Reinitialize mask */
+	}
+    }
+  }
+%endfunction  %% Outputs
+
+%% [EOF] sbdecoder.tlc

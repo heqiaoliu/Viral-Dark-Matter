@@ -1,0 +1,202 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Exploring Variable-Step Solvers Using a Stiff Model</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_solvers.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_solvers.mdl</div><div class="right"><a href="matlab:sldemo_solvers">Open this model</a></div></div><div class="content"><h1>Exploring Variable-Step Solvers Using a Stiff Model</h1><!--introduction--><p>This demo explores the behaviour of variable-step solvers in a Foucault pendulum model. Simulink&reg; solvers <tt>ode45</tt>, <tt>ode15s</tt>, <tt>ode23</tt>, and <tt>ode23t</tt> are used as test cases. Stiff differential equations are used to solve this problem. There is no exact definition of stiffness for equations.  Some numerical methods are unstable when used to solve stiff equations and very small step-sizes are required to obtain a numerically stable solution to a stiff problem. A stiff problem may have a fast changing component and a slow changing component.</p><p>Foucault pendulum is an example of a stiff problem. The pendulum completes an oscillation in a few seconds (fast changing component) whereas the Earth completes a rotation about its axis in a day (slow changing component). The oscillation plane of the pendulum slowly rotates because of Earth's axial rotation. Read more about the physics of a Foucault pendulum in the "Modelling a Foucault Pendulum" <a href="matlab:showdemo('sldemo_foucault')">demo</a>.</p><p>The simulation calculates the position of the pendulum bob in the x-y plane as viewed by an observer on the surface of Earth.  The total energy of the pendulum is then calculated and used to assess the performance of various Simulink solvers.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Foucault Pendulum Model</a></li><li><a href="#3">Variable Step Solvers</a></li><li><a href="#4">Assessing Solver Performance</a></li><li><a href="#5">Total Energy Conservation</a></li><li><a href="#8">Conclusions</a></li></ul></div><h2>Foucault Pendulum Model<a name="1"></a></h2><p>The Foucault pendulum is described by the system of coupled differential equations given below. Friction and air drag are not taken into consideration (this greatly simplifies the equations). A full derivation of these equations is given in the Foucault Pendulum <a href="matlab:showdemo('sldemo_foucault')">demo</a>.</p><p><img src="sldemo_solvers_eq81196.png" alt="$$&#xA;\ddot{x} = 2\Omega \sin{\lambda} \dot{y} - \frac{g}{L} x&#xA;$$"></p><p><img src="sldemo_solvers_eq79643.png" alt="$$&#xA;\ddot{y} = - 2\Omega\sin{\lambda} \dot{x} - \frac{g}{L} y&#xA;$$"></p><p><img src="sldemo_solvers_eq16903.png" alt="$$\Omega = \mbox{ Earth's angular velocity of rotation around its axis}$$"></p><p><img src="sldemo_solvers_eq73584.png" alt="$$\lambda = \mbox{ geographic latitude}$$"></p><p><img src="sldemo_solvers_eq91180.png" alt="$$g = \mbox{ acceleration of gravity}$$"></p><p><img src="sldemo_solvers_eq37375.png" alt="$$x \mbox{ and } y = \mbox{ coordinates of the pendulum bob}$$"></p><p>The model shown in Figure 1 is used to solve the differential equations describing a Foucault pendulum. Type <tt>sldemo_solvers</tt> in MATLAB&reg; Command Window to open the model. The demo simulates a Foucault pendulum for 86400 seconds. The constants and initial conditions are saved the model workspace.</p><img vspace="5" hspace="5" src="sldemo_solvers_01.png" alt=""> <p><b>Figure 1:</b> Foucault pendulum model used top assess solver performance</p><h2>Variable Step Solvers<a name="3"></a></h2><p>This demo investigates the performance of <tt>ode45</tt>, <tt>ode15s</tt>, <tt>ode23</tt>, and <tt>ode23t</tt> variable-step solvers. To read more about a particular solver, for example <tt>ode45</tt>, type <tt>help ode45</tt> in MATLAB Command Window.</p><p><b>Table 1:</b> List of variable-step solvers available in Simulink</p><p><img vspace="5" hspace="5" src="sldemo_solvers_figure1.png" alt=""> </p><h2>Assessing Solver Performance<a name="4"></a></h2><p>There a different ways to assess the performance of a solver. If a problem has a closed form solution, you could compare the solver results with the expected theoretical result. You could also monitor the time it takes to simulate a model using a particular solver.</p><p>Unfortunately there is no exact theoretical solution for the Foucault Pendulum problem. There is an approximate closed form solution, however it cannot be used to assess solver performance (see the Foucault pendulum <a href="matlab:showdemo('sldemo_foucault')">demo</a>).</p><h2>Total Energy Conservation<a name="5"></a></h2><p>This demo assesses solver performance by verifying the energy conservation law. In a frictionless environment, the total energy of the pendulum must remain constant. The calculated energy of the pendulum, however, will not remain constant as a result of limited numeric accuracy.</p><p>This demo calculates the normalized total energy of the pendulum at every time-step. The relative error in energy equals the change in total energy over the course of the simulation. Ideally, the relative error in energy must be zero because energy is conserved. Total energy is the sum of potential and kinetic energy.  "NormalizeEnergy" block calculates normalized pendulum energy using the expressions given below.</p><p><img src="sldemo_solvers_eq44465.png" alt="$$ E = \frac{v_x^2 + v_y^2}{2} + g( L - \sqrt{L^2 - x^2 - y^2} ) $$"></p><p><img src="sldemo_solvers_eq49680.png" alt="$$E_{normalized}(t) = \frac{E(t)}{E(0)}$$"></p><p><img src="sldemo_solvers_eq34741.png" alt="$$E(0) = \mbox{ initial total energy}$$"></p><img vspace="5" hspace="5" src="sldemo_solvers_02.png" alt=""> <p><b>Figure 3:</b> Normalized energy versus time</p><p>Figure 3 shows a plot of normalized energy versus time as calculated using <tt>ode23</tt> and <tt>ode23t</tt>. It is clear that in this particular problem <tt>ode23t</tt> is much more accurate than <tt>ode23</tt>. In the simulation that used <tt>ode23</tt>, the normalized pendulum energy decreased by more than 60%. A pendulum with lower energy has a lower oscillation amplitude. You can see this effect in Figure 4, where the amplitude of the pendulum calculated by <tt>ode23</tt> decreases as the oscillation plane rotates.</p><p><img vspace="5" hspace="5" src="sldemo_solvers_figure2.png" alt=""> </p><p><b>Figure 4:</b> Pendulum position as calculated using <tt>ode23</tt> and <tt>ode23t</tt></p><p>Figure 4 illustrates the difference between a stiff and a non-stiff solver. Each plot shows the position of the pendulum bob throughout a day (every 15th data point is plotted as a blue point). The black dot marks the initial position of the pendulum bob and the black line marks the initial pendulum oscillation plane. The gray dot marks the final position of the pendulum bob and the gray line indicates the oscillation plane after a day. The blue line shows the oscillation plane at some intermediate point in time. Note that the oscillation plane of the pendulum does not complete a full rotation within a day. How fast the oscillation plane rotates depends on the geographical latitude (see details in the Foucault pendulum <a href="matlab:showdemo('sldemo_foucault')">demo</a> ). Observe that the pendulum amplitude in the left plot decreases whereas the amplitude in the right plot remains constant. For the same relative tolerance, <tt>RelTol=1e-5</tt>, the stiff solver gives a more accurate result, but requires more execution time.</p><p>Figure 5 shows a more detailed performance study of Simulink solvers. Four solvers were chosen to illustrate how relative error and simulation execution time vary as a function of relative tolerance. You can use the <tt>sldemo_solvers_mcode.m</tt> script for more extensive solver tests (see <a href="matlab:edit('sldemo_solvers_mcode')">this file</a>). This script generates C code from the model to speed up the simulations. Note that the script can take several minutes to execute.</p><p><img vspace="5" hspace="5" src="sldemo_solvers_figure3.png" alt=""> </p><p><b>Figure 5:</b> Relative error and execution time for various solver settings</p><p>Observe that in this example relative error does not decrease for relative tolerances below 1e-6. This is a numeric solver limitation that depends on the particular model. Reducing the solver relative tolerance does not necessarily improve accuracy. You need to estimate the minimal accuracy that is required for your problem and choose the solver accordingly to minimize simulation costs. For example you may want to know the position of the Foucault pendulum bob within a few centimeters.  It is unnecessary to calculate the position of a pendulum within a few microns because you cannot measure the position that accurately.</p><h2>Conclusions<a name="8"></a></h2><p>The numeric results of a simulation can behave differently depending on solver settings. This is crucial in the case of stiff problems. When working with stiff models, choose a solver that will give an accurate result at a minimal price. The relative tolerance (variable-step solvers) or step size (fixed-step solvers) have to be small enough that the result is numerically stable. Although some solvers are more efficient than others, stiff solvers are better suited for solving stiff problems. Variable step solvers are more robust than fixed-step solvers.</p><p class="footer">Copyright 2006-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Exploring Variable-Step Solvers Using a Stiff Model
+%
+% This demo explores the behaviour of variable-step solvers in a Foucault
+% pendulum model. Simulink(R) solvers |ode45|, |ode15s|, |ode23|, and |ode23t| are
+% used as test cases. Stiff differential equations are used to solve this
+% problem. There is no exact definition of stiffness for equations.  Some
+% numerical methods are unstable when used to solve stiff equations and very
+% small step-sizes are required to obtain a numerically stable solution to a
+% stiff problem. A stiff problem may have a fast changing component and a slow
+% changing component.
+%
+% Foucault pendulum is an example of a stiff problem. The pendulum completes an
+% oscillation in a few seconds (fast changing component) whereas the Earth
+% completes a rotation about its axis in a day (slow changing component). The
+% oscillation plane of the pendulum slowly rotates because of Earth's axial
+% rotation. Read more about the physics of a Foucault pendulum in the "Modelling
+% a Foucault Pendulum" <matlab:showdemo('sldemo_foucault') demo>.
+%
+% The simulation calculates the position of the pendulum bob in the x-y plane as
+% viewed by an observer on the surface of Earth.  The total energy of the
+% pendulum is then calculated and used to assess the performance of various
+% Simulink solvers.
+
+% Copyright 2006-2008 The MathWorks, Inc.
+
+%% Foucault Pendulum Model
+%
+% The Foucault pendulum is described by the system of coupled differential
+% equations given below. Friction and air drag are not taken into consideration
+% (this greatly simplifies the equations). A full derivation of these equations
+% is given in the Foucault Pendulum <matlab:showdemo('sldemo_foucault') demo>.
+%
+% $$
+% \ddot{x} = 2\Omega \sin{\lambda} \dot{y} - \frac{g}{L} x
+% $$
+%
+% $$
+% \ddot{y} = - 2\Omega\sin{\lambda} \dot{x} - \frac{g}{L} y
+% $$
+%
+% $$\Omega = \mbox{ Earth's angular velocity of rotation around its axis}$$
+%
+% $$\lambda = \mbox{ geographic latitude}$$
+%
+% $$g = \mbox{ acceleration of gravity}$$
+%
+% $$x \mbox{ and } y = \mbox{ coordinates of the pendulum bob}$$
+%
+% The model shown in Figure 1 is used to solve the differential equations
+% describing a Foucault pendulum. Type |sldemo_solvers| in MATLAB(R) Command Window
+% to open the model. The demo simulates a Foucault pendulum for 86400
+% seconds. The constants and initial conditions are saved the model workspace.
+
+open_system('sldemo_solvers');
+
+%%
+% 
+% *Figure 1:* Foucault pendulum model used top assess solver performance
+
+%% Variable Step Solvers
+%
+% This demo investigates the performance of |ode45|, |ode15s|, |ode23|, and
+% |ode23t| variable-step solvers. To read more about a particular solver, for
+% example |ode45|, type |help ode45| in MATLAB Command Window.
+%
+% *Table 1:* List of variable-step solvers available in Simulink
+%
+% <<sldemo_solvers_figure1.png>>
+
+%% Assessing Solver Performance
+%
+% There a different ways to assess the performance of a solver. If a problem has
+% a closed form solution, you could compare the solver results with the expected
+% theoretical result. You could also monitor the time it takes to simulate a
+% model using a particular solver.
+%
+% Unfortunately there is no exact theoretical solution for the Foucault Pendulum
+% problem. There is an approximate closed form solution, however it cannot be
+% used to assess solver performance (see the Foucault pendulum
+% <matlab:showdemo('sldemo_foucault') demo>).
+%
+
+%% Total Energy Conservation
+%
+% This demo assesses solver performance by verifying the energy conservation
+% law. In a frictionless environment, the total energy of the pendulum must
+% remain constant. The calculated energy of the pendulum, however, will not
+% remain constant as a result of limited numeric accuracy.
+%
+% This demo calculates the normalized total energy of the pendulum at every
+% time-step. The relative error in energy equals the change in total energy over
+% the course of the simulation. Ideally, the relative error in energy must be
+% zero because energy is conserved. Total energy is the sum of potential and
+% kinetic energy.  "NormalizeEnergy" block calculates normalized pendulum energy
+% using the expressions given below.
+% 
+% $$ E = \frac{v_x^2 + v_y^2}{2} + g( L - \sqrt{L^2 - x^2 - y^2} ) $$
+% 
+% $$E_{normalized}(t) = \frac{E(t)}{E(0)}$$
+%
+% $$E(0) = \mbox{ initial total energy}$$
+
+% Run the simulation with ode23 and ode23t and compare results
+H = get_param('sldemo_solvers','Handle');
+set(H,'SolverName','ode23','RelTol','1e-5','StopTime','86400');
+evalc('sim(''sldemo_solvers'')');
+NormEnergy.ode23 = E;
+set(H,'SolverName','ode23t','RelTol','1e-5','StopTime','86400');
+evalc('sim(''sldemo_solvers'')');
+NormEnergy.ode23t = E;
+
+figure('Tag','CloseMe','units','pixels','position',[100 100 600 300]);
+plot(NormEnergy.ode23.time, NormEnergy.ode23.signals.values,...
+     NormEnergy.ode23t.time, NormEnergy.ode23t.signals.values);
+axis([0 86400 0 1.1]);
+legend('ode23','ode23t','Location','SW');
+ylabel('Normalized Energy');
+xlabel('Time (sec)');
+title('Comparing Solver Performance at RelTol=''1e-5''');
+
+%%
+%
+% *Figure 3:* Normalized energy versus time
+%
+% Figure 3 shows a plot of normalized energy versus time as calculated using
+% |ode23| and |ode23t|. It is clear that in this particular problem |ode23t| is
+% much more accurate than |ode23|. In the simulation that used |ode23|, the
+% normalized pendulum energy decreased by more than 60%. A
+% pendulum with lower energy has a lower oscillation amplitude. You can see this
+% effect in Figure 4, where the amplitude of the pendulum calculated by |ode23|
+% decreases as the oscillation plane rotates.
+%
+% <<sldemo_solvers_figure2.png>>
+%
+% *Figure 4:* Pendulum position as calculated using |ode23| and |ode23t|
+%
+% Figure 4 illustrates the difference between a stiff and a non-stiff
+% solver. Each plot shows the position of the pendulum bob throughout a day
+% (every 15th data point is plotted as a blue point). The black dot marks the
+% initial position of the pendulum bob and the black line marks the initial
+% pendulum oscillation plane. The gray dot marks the final position of the
+% pendulum bob and the gray line indicates the oscillation plane after a
+% day. The blue line shows the oscillation plane at some intermediate point in
+% time. Note that the oscillation plane of the pendulum does not complete a full
+% rotation within a day. How fast the oscillation plane rotates depends on the
+% geographical latitude (see details in the Foucault pendulum
+% <matlab:showdemo('sldemo_foucault') demo> ). Observe that the pendulum
+% amplitude in the left plot decreases whereas the amplitude in the right plot
+% remains constant. For the same relative tolerance, |RelTol=1e-5|, the stiff
+% solver gives a more accurate result, but requires more execution time.
+
+close_system('sldemo_solvers',0);
+close(findobj(0,'Tag','CloseMe')); % close created figures
+
+%%
+% 
+% Figure 5 shows a more detailed performance study of Simulink solvers. Four
+% solvers were chosen to illustrate how relative error and simulation execution
+% time vary as a function of relative tolerance. You can use the
+% |sldemo_solvers_mcode.m| script for more extensive solver tests (see
+% <matlab:edit('sldemo_solvers_mcode') this file>). This script generates C code
+% from the model to speed up the simulations. Note that the script can take
+% several minutes to execute.
+%
+% <<sldemo_solvers_figure3.png>>
+%
+% *Figure 5:* Relative error and execution time for various solver settings
+%
+% Observe that in this example relative error does not decrease for relative
+% tolerances below 1e-6. This is a numeric solver limitation that depends on the
+% particular model. Reducing the solver relative tolerance does not necessarily
+% improve accuracy. You need to estimate the minimal accuracy that is required
+% for your problem and choose the solver accordingly to minimize simulation
+% costs. For example you may want to know the position of the Foucault pendulum
+% bob within a few centimeters.  It is unnecessary to calculate the position of
+% a pendulum within a few microns because you cannot measure the position that
+% accurately.
+
+%% Conclusions
+%
+% The numeric results of a simulation can behave differently depending on solver
+% settings. This is crucial in the case of stiff problems. When working with
+% stiff models, choose a solver that will give an accurate result at a minimal
+% price. The relative tolerance (variable-step solvers) or step size (fixed-step
+% solvers) have to be small enough that the result is numerically
+% stable. Although some solvers are more efficient than others, stiff solvers
+% are better suited for solving stiff problems. Variable step solvers are more
+% robust than fixed-step solvers.
+
+##### SOURCE END #####
+--></body></html>

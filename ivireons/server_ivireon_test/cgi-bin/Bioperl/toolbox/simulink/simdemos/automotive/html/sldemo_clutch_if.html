@@ -1,0 +1,148 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling Clutch Lock-Up Using If Blocks</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_clutch_if.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_clutch_if.mdl</div><div class="right"><a href="matlab:sldemo_clutch_if">Open this model</a></div></div><div class="content"><h1>Modeling Clutch Lock-Up Using If Blocks</h1><!--introduction--><p>This demonstration shows how to use If/Else subsystems to build a clutch model. An 'If' subsystem models the clutch dynamics in the locked position while an 'Else' subsystem models the unlocked position. One or the other is enabled using the 'If' block. The dot-dashed lines from the 'If' block denote control signals, which are used to enable If/Else (or other conditional) subsystems.</p><p>This is an alternative to the clutch model with enabled subsystems - <tt>sldemo_clutch.mdl</tt> (<a href="matlab:open_system('sldemo_clutch')">open the other clutch model</a>).</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analysis and Physics</a></li><li><a href="#2">Modeling</a></li><li><a href="#3">Opening the Model and Running the Simulation</a></li><li><a href="#6">The 'If' Block</a></li><li><a href="#9">Other Blocks and Subsystems</a></li><li><a href="#10">Results</a></li><li><a href="#12">Closing Model</a></li><li><a href="#13">Conclusions</a></li></ul></div><h2>Analysis and Physics<a name="1"></a></h2><p>The clutch system in this example consists of two plates that transmit torque between the engine and transmission. There are two distinct modes of operation:</p><p>1) slipping - the two plates have differing angular velocities</p><p>2) lockup - the two plates rotate together.</p><p>Handling the transition between these two modes presents a modeling challenge. As the system loses a degree of freedom upon lockup, the transmitted torque goes through a step discontinuity. The magnitude of the torque drops from the maximum value supported by the friction capacity to a value that is necessary to keep the two halves of the system spinning at the same rate. The reverse transition, break-apart, is likewise challenging, as the torque transmitted by the clutch plates exceeds the friction capacity.</p><div><ul><li>Note: You can find a detailed analysis of this system, including equations and diagrams, in the demo for the clutch model with enabled subsystems.</li></ul></div><h2>Modeling<a name="2"></a></h2><p>You can use the following two methods for solving this problem:</p><p>1) Compute the clutch torque transmitted at all times, and employ this value directly in the model</p><p>2) Use two different dynamic models and switch between them at the appropriate times</p><p>Simulink&reg; can model either method. In this example, we describe a simulation for the second method. Switching between two dynamic models must be performed with care to ensure that the initialized states of the new model match the state values immediately prior to the switch. In either approach, Simulink facilitates accurate simulation due to its ability to recognize the precise moments at which transitions between lockup and slipping occur.</p><h2>Opening the Model and Running the Simulation<a name="3"></a></h2><p>To <a href="matlab:open_system('sldemo_clutch_if')">open this model</a> type <tt>sldemo_clutch_if</tt> in MATLAB&reg; terminal (click on the hyperlink if you are using MATLAB Help).</p><p>When the model is open, press the "Play" button on the model toolbar to run the simulation.</p><img vspace="5" hspace="5" src="sldemo_clutch_if_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_clutch_if_02.png" alt=""> <p><b>Figure 1:</b> Top level diagram for the clutch model</p><div><ul><li>Note: The model logs relevant data to MATLAB workspace in a structure called <tt>sldemo_clutch_if_output</tt>. Logged signals have a blue indicator (<a href="matlab:open_system('sldemo_clutch_if')">see the model</a>). Read more about Signal Logging in Simulink Help.</li></ul></div><h2>The 'If' Block<a name="6"></a></h2><p>The 'If' block uses the <tt>LockedFlag</tt> signal to switch between the 'Locked' and 'Unlocked' subsystems. Double click on the 'If' block it in the model to set its parameters (see Figure 2). <tt>LockedFlag</tt> represents the status of the clutch. <tt>LockedFlag = 1</tt> if the clutch is locked and <tt>LockedFlag = 0</tt> if the clutch is unlocked.</p><p><img vspace="5" hspace="5" src="sldemo_clutch_if_figure1.png" alt=""> </p><p><b>Figure 2:</b> Setting 'If' block parameters</p><h2>Other Blocks and Subsystems<a name="9"></a></h2><p>The other components of this model are similar to those used in the clutch model with enabled subsystems (<a href="matlab:open_system('sldemo_clutch')">open the other clutch model</a>). See a detailed description in Building a Clutch Lock-Up Model demo.</p><h2>Results<a name="10"></a></h2><p>The inputs for this model are the same as for the model that uses enabled subsystems (<tt>sldemo_clutch.mdl</tt>). System velocities behave as shown in Figure 3 below.  As expected, the results obtained from <tt>sldemo_clutch.mdl</tt> and <tt>sldemo_clutch_if.mdl</tt> are identical.</p><img vspace="5" hspace="5" src="sldemo_clutch_if_03.png" alt=""> <p><b>Figure 3:</b> Angular velocities of the engine, vehicle and shaft for default inputs</p><h2>Closing Model<a name="12"></a></h2><p>Close the model. Clear generated data.</p><h2>Conclusions<a name="13"></a></h2><p>This example shows how to use 'If' blocks in Simulink to model a system with topological discontinuities. This is an alternative to using enabled subsystems.</p><p class="footer">Copyright 1984-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling Clutch Lock-Up Using If Blocks
+%
+% This demonstration shows how to use If/Else subsystems to build a clutch
+% model. An 'If' subsystem models the clutch dynamics in the locked position
+% while an 'Else' subsystem models the unlocked position. One or the other is
+% enabled using the 'If' block. The dot-dashed lines from the 'If' block denote
+% control signals, which are used to enable If/Else (or other conditional)
+% subsystems.
+%
+% This is an alternative to the clutch model with enabled subsystems -
+% |sldemo_clutch.mdl| (<matlab:open_system('sldemo_clutch') open the other
+% clutch model>).
+
+% Copyright 1984-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.4 $  $Date: 2009/12/07 20:47:18 $
+
+%% Analysis and Physics
+%
+% The clutch system in this example consists of two plates that transmit torque
+% between the engine and transmission. There are two distinct modes of
+% operation:
+%
+% 1) slipping - the two plates have differing angular velocities 
+%
+% 2) lockup - the two plates rotate together. 
+%
+% Handling the transition between these two modes presents
+% a modeling challenge. As the system loses a degree of freedom upon
+% lockup, the transmitted torque goes through a step discontinuity. The
+% magnitude of the torque drops from the maximum value supported by the
+% friction capacity to a value that is necessary to keep the two halves of
+% the system spinning at the same rate. The reverse transition,
+% break-apart, is likewise challenging, as the torque transmitted by the
+% clutch plates exceeds the friction capacity. 
+%
+% * Note: You can find a detailed analysis of this system, including
+% equations and diagrams, in the demo for the clutch model with enabled subsystems. 
+
+%% Modeling 
+% 
+% You can use the following two methods for solving this problem:
+% 
+% 1) Compute the clutch torque transmitted at all times, and employ this value directly 
+% in the model 
+%
+% 2) Use two different dynamic models and switch between them at the appropriate times
+% 
+% Simulink(R) can model either method. In this example, we describe a simulation for 
+% the second method. Switching between two dynamic 
+% models must be performed with care to ensure that the initialized states of the new 
+% model match the state values immediately prior to the switch. In either approach, 
+% Simulink facilitates accurate simulation due to its ability to recognize the precise 
+% moments at which transitions between lockup and slipping occur.
+% 
+ 
+%% Opening the Model and Running the Simulation
+%
+% To <matlab:open_system('sldemo_clutch_if') open this model> type
+% |sldemo_clutch_if| in MATLAB(R) terminal (click on the hyperlink if you are
+% using MATLAB Help).
+%
+% When the model is open, press the "Play" button on the model toolbar to
+% run the simulation.
+
+open_system('sldemo_clutch_if');    % code does not appear in the demo HTML
+evalc('sim(''sldemo_clutch_if'')'); %simulate and don't display output
+
+%%
+% *Figure 1:* Top level diagram for the clutch model 
+
+%%
+% * Note: The model logs relevant data to MATLAB
+% workspace in a structure called |sldemo_clutch_if_output|. Logged signals
+% have a blue indicator (<matlab:open_system('sldemo_clutch_if') see the model>). 
+% Read more about Signal Logging in Simulink Help.
+% 
+
+%% The 'If' Block
+%
+% The 'If' block uses the |LockedFlag| signal to switch between the 'Locked' and
+% 'Unlocked' subsystems. Double click on the 'If' block it in the model to set
+% its parameters (see Figure 2). |LockedFlag| represents the status of the
+% clutch. |LockedFlag = 1| if the clutch is locked and |LockedFlag = 0| if the
+% clutch is unlocked.
+
+%%
+%
+% <<sldemo_clutch_if_figure1.png>>
+
+%%
+%
+% *Figure 2:* Setting 'If' block parameters
+
+%% Other Blocks and Subsystems
+%
+% The other components of this model are similar to those used in the clutch
+% model with enabled subsystems (<matlab:open_system('sldemo_clutch') open the
+% other clutch model>). See a detailed description in Building a Clutch Lock-Up
+% Model demo.
+
+%% Results
+%
+% The inputs for this model are the same as for the model that uses enabled
+% subsystems (|sldemo_clutch.mdl|). System velocities behave as shown in
+% Figure 3 below.  As expected, the results obtained from |sldemo_clutch.mdl|
+% and |sldemo_clutch_if.mdl| are identical.
+
+clear class;
+plot(sldemo_clutch_if_output.EngineSpeed.Time,  sldemo_clutch_if_output.EngineSpeed.Data,  'r', ...
+     sldemo_clutch_if_output.VehicleSpeed.Time, sldemo_clutch_if_output.VehicleSpeed.Data, 'b', ...
+     sldemo_clutch_if_output.ShaftSpeed.Time,   sldemo_clutch_if_output.ShaftSpeed.Data,   'g'  );
+xlabel('Time (sec)');
+ylabel('Angular Speed (rad/sec)');
+legend('\omega_e - Engine Speed', '\omega_v - Vehicle Speed', '\omega - Shaft Speed');
+title('Angular Velocities for Default Inputs');
+
+%%
+% *Figure 3:* Angular velocities of the engine, vehicle and shaft for default inputs
+
+%% Closing Model  
+%
+% Close the model. Clear generated data.
+
+close_system('sldemo_clutch_if',0); % close without saving the model
+clear sldemo_clutch_if_output;
+
+
+%% Conclusions
+%
+% This example shows how to use 'If' blocks in Simulink to
+% model a system with topological discontinuities.
+% This is an alternative to using enabled subsystems.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

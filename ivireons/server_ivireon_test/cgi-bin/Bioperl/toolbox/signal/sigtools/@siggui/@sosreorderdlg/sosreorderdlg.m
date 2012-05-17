@@ -1,0 +1,39 @@
+function this = sosreorderdlg(Hd)
+%SOSREORDERDLG   Construct a SOSREORDERDLG object.
+
+%   Author(s): J. Schickler
+%   Copyright 1988-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.8 $  $Date: 2009/05/23 08:17:04 $
+
+error(nargchk(1,1,nargin,'struct'));
+
+this = siggui.sosreorderdlg;
+
+labels = {...
+    fdatoolmessage('NoneLabel'), ...
+    fdatoolmessage('AutoLabel'), ...
+    fdatoolmessage('LeastToMostSelectiveSection'), ...
+    fdatoolmessage('MostToLeastSelectiveSection'), ...
+    fdatoolmessage('CustomReordering')};
+ho = siggui.selector('', set(this, 'ReorderType'), labels);
+hc = siggui.soscustomreorder;
+
+settag(ho, 'overall');
+settag(hc, 'custom');
+
+addcomponent(this, [ho hc]);
+
+set(this, 'Filter', Hd);
+
+l = [ ...
+        handle.listener(ho, 'NewSelection', @objchanged_listener); ...
+        handle.listener(hc, 'UserModifiedSpecs', @objchanged_listener); ...
+        handle.listener(this, [this.findprop('scale') this.findprop('pnorm') ...
+        this.findprop('maxnumerator') this.findprop('numeratorconstraint') ...
+        this.findprop('overflowmode') this.findprop('scalevalueconstraint') ...
+        this.findprop('maxscalevalue')], 'PropertyPostSet', @objchanged_listener); ...
+    ];
+set(l, 'CallbackTarget', this);
+set(this, 'PropListener', l, 'isApplied', true);
+
+% [EOF]

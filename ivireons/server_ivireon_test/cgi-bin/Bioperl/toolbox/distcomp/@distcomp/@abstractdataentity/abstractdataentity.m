@@ -1,0 +1,16 @@
+function obj = abstractdataentity(obj, proxy)
+; %#ok Undocumented
+%ABSTRACTDATAENTITY abstract constructor for this class
+%
+%  OBJ = ABSTRACTDATAENTITY(OBJ, GROUP, LOCATION)
+
+%  Copyright 2000-2006 The MathWorks, Inc.
+
+%  $Revision: 1.1.10.5 $    $Date: 2008/06/24 17:00:38 $
+
+set(obj, ...
+    'Serializer', handle(proxy.getSerializer), ...
+    'Location', char(proxy.getEntityLocation), ...
+    'UUID', proxy.getID, ...
+    'IsBeingConstructed', true, ...
+    'ID', double(proxy.getEntityID));

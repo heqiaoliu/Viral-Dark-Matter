@@ -1,0 +1,205 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Import and Export an AUTOSAR Software Component</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_autosar_roundtrip_script.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_autosar_roundtrip_script">Open rtwdemo_autosar_roundtrip_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_autosar_roundtrip_script">Run in the Command Window</a></div></div><div class="content"><h1>Import and Export an AUTOSAR Software Component</h1><!--introduction--><p>This demonstration shows you how to use an AUTOSAR authoring tool with Simulink&reg; to develop AUTOSAR software components. This demo addresses the following tasks:</p><div><ol><li>Design the software component interfaces in an AUTOSAR authoring tool and import this information into Simulink.</li><li>Export the completed software component from Simulink and merge this information back into an AUTOSAR authoring tool.</li></ol></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Overview of the AUTOSAR Software Component Description Files</a></li><li><a href="#2">Design the Software Component Interfaces</a></li><li><a href="#3">Create arxml.importer Objects for the AUTOSAR Software Component Description Files</a></li><li><a href="#5">Create the Simulink Model Skeletons</a></li><li><a href="#6">Implement the Functionality Within the Simulink Model Skeletons</a></li><li><a href="#7">Create a Suitable Test Harness</a></li><li><a href="#8">Export and Generate Code for the AUTOSAR Software Components</a></li><li><a href="#9">Merge into the Authoring Tool</a></li><li><a href="#10">Further Information</a></li></ul></div><h2>Overview of the AUTOSAR Software Component Description Files<a name="1"></a></h2><p>You can distribute the artifacts that constitute an AUTOSAR software component among multiple XML files. You can create the files with an AUTOSAR authoring tool or Simulink&reg;.</p><h2>Design the Software Component Interfaces<a name="2"></a></h2><p>You can use an AUTOSAR authoring tool to define the following information for the software component:</p><div><ul><li>Data types</li><li>Sender-receiver, client-server, calibration interfaces</li><li>Software components and their respective ports, which are typed by the above interfaces</li></ul></div><p>This demonstration includes two sets of software component interface XML files for the purpose of this demonstration.</p><p>An AUTOSAR view of the two software components is shown below:</p><p><img vspace="5" hspace="5" src="AutosarComposition.jpg" alt=""> </p><h2>Create arxml.importer Objects for the AUTOSAR Software Component Description Files<a name="3"></a></h2><p>Each software component requires an <tt>arxml.importer</tt> object. For each <tt>arxml.importer</tt> object, you need to specify the file that contains the software component of interest.</p><pre class="codeinput">preprocessingFileName = fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>, <span class="keyword">...</span>
+    <span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_autosar_preprocessing.arxml'</span>);
+controlSystemFileName = fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>, <span class="keyword">...</span>
+    <span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_autosar_control_system_component.arxml'</span>);
+
+preprocessingImporter = arxml.importer( preprocessingFileName );
+controlSystemImporter = arxml.importer( controlSystemFileName );
+</pre><p>Now specify the additional files containing the information that completes the software component description (e.g., data types, interfaces).</p><pre class="codeinput">controlSystemFileNameDep1 = fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>, <span class="keyword">...</span>
+    <span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_autosar_control_system_datatype.arxml'</span>);
+controlSystemFileNameDep2 = fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>, <span class="keyword">...</span>
+    <span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_autosar_control_system_interface.arxml'</span>);
+controlSystemImporter.setDependencies( { controlSystemFileNameDep1, <span class="keyword">...</span>
+    controlSystemFileNameDep2 } );
+</pre><h2>Create the Simulink Model Skeletons<a name="5"></a></h2><p>Using the two import objects, you can now create the skeleton Simulink models and associated data types. After you create the skeleton files, you can see that the preprocessing skeleton model has two inports corresponding to the two data elements of the AUTOSAR port "in". These inports have bus objects associated with them that correspond to the C structure data type used to define the data elements. The fault inport is composed of a bus object that contains two Boolean elements, primary and secondary. The value inport is composed of a bus object that contains two elements of type double, primary and secondary.</p><pre class="codeinput"><span class="comment">% Create the Simulink model skeletons</span>
+preprocessingImporter.createComponentAsModel( <span class="string">'/ComponentType/preprocessing'</span> );
+controlSystemImporter.createComponentAsModel( <span class="string">'/ComponentType/controlSystem'</span> );
+
+<span class="comment">% View all the imported AUTOSAR data types that you have imported</span>
+who
+</pre><pre class="codeoutput">
+Your variables are:
+
+Boolean                    UInt8                      
+Boolean_pair               ans                        
+Double                     controlSystemFileName      
+Double_pair                controlSystemFileNameDep1  
+Float                      controlSystemFileNameDep2  
+SInt16                     controlSystemImporter      
+SInt32                     preprocessingFileName      
+SInt8                      preprocessingImporter      
+UInt16                     
+UInt32                     
+
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_roundtrip_script_01.png" alt=""> <img vspace="5" hspace="5" src="rtwdemo_autosar_roundtrip_script_02.png" alt=""> <h2>Implement the Functionality Within the Simulink Model Skeletons<a name="6"></a></h2><p>Typically, the control engineer would now fill in the implementation for the two Simulink models. For this demo, you can open completed models:</p><pre class="codeinput"><span class="comment">% open the completed models</span>
+open_system( fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>, <span class="keyword">...</span>
+    <span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_autosar_preprocessing'</span> ) );
+open_system( fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>, <span class="keyword">...</span>
+    <span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_autosar_control_system'</span> ) );
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_roundtrip_script_03.png" alt=""> <img vspace="5" hspace="5" src="rtwdemo_autosar_roundtrip_script_04.png" alt=""> <h2>Create a Suitable Test Harness<a name="7"></a></h2><p>It is good practice to construct a test harness for controller functionality. You should click the <b>Run</b> button and view the scope after you open the model, using the following commands:</p><pre class="codeinput">testHarnessFileName = fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'rtw'</span>, <span class="keyword">...</span>
+    <span class="string">'rtwdemos'</span>,<span class="string">'rtwdemo_autosar_testharness'</span>);
+open_system( testHarnessFileName );
+sim( testHarnessFileName );
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_roundtrip_script_05.png" alt=""> <img vspace="5" hspace="5" src="rtwdemo_autosar_roundtrip_script_06.png" alt=""> <h2>Export and Generate Code for the AUTOSAR Software Components<a name="8"></a></h2><p>After you verify the output of the test harness, export the AUTOSAR software component files with the C code implementation. All the software component XML files are exported during code generation.</p><pre class="codeinput">rtwbuild( <span class="string">'rtwdemo_autosar_preprocessing'</span> );
+rtwbuild( <span class="string">'rtwdemo_autosar_control_system'</span> );
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model: rtwdemo_autosar_preprocessing
+### Generating XML files description for model: rtwdemo_autosar_preprocessing
+### Successful completion of Real-Time Workshop code generation for model: rtwdemo_autosar_preprocessing
+### Starting Real-Time Workshop build procedure for model: rtwdemo_autosar_control_system
+### Generating XML files description for model: rtwdemo_autosar_control_system
+### Successful completion of Real-Time Workshop code generation for model: rtwdemo_autosar_control_system
+</pre><h2>Merge into the Authoring Tool<a name="9"></a></h2><p>You can now merge the generated AUTOSAR software component files into an AUTOSAR authoring tool for further refinement or sign off. To facilitate merging, the software component information is in separate files, for example, one for data types and one for internal behavior. This partitioning minimizes the number of merges you need to do. In general, the data type file does not need to be merged into the authoring tool because data types are usually defined early in the design process.  You must, however, merge the internal behavior file because this information is part of the model implementation.</p><p><a href="matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'autosar_export_details')">Further details of exported files</a></p><p>For example, to merge the generated AUTOSAR software component files into DaVinci System Architect (<a href="matlab:web('http://www.vector-worldwide.com')">Vector Informatik GmbH</a>).</p><div><ol><li>Run DaVinci System Architect (2.3 or higher).</li><li>Either open an existing workspace, or create a new one: Select <tt>File</tt> &gt; <tt>New Workspace</tt>, Enter a workspace name such as <tt>Simulink_Demonstration</tt>. Click <tt>Open</tt>.</li><li>Select <tt>File</tt> &gt; <tt>Import XML File</tt> &gt; <tt>Add</tt>.</li><li>Locate all of the generated XML files in the model build directory.</li><li>Click <tt>Okay</tt>.</li><li>Accept any further dialogs.</li></ol></div><p>You have now successfully merged the software component, which includes a complete internal behavior description. You can verify the results by navigating to the implementation tab of the software component and viewing the number of runnable entities.</p><h2>Further Information<a name="10"></a></h2><p><a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_autosar')">AUTOSAR Target documentation</a></p><p class="footer">Copyright 1990-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Import and Export an AUTOSAR Software Component
+% This demonstration shows you how to use an AUTOSAR authoring tool with
+% Simulink(R) to develop AUTOSAR software components. This demo addresses the
+% following tasks:
+%
+% # Design the software component interfaces in an AUTOSAR authoring tool and import this information into Simulink.
+% # Export the completed software component from Simulink and merge this information back into an AUTOSAR authoring tool.
+%
+
+%   Copyright 1990-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.6 $  $Date: 2009/07/27 20:24:15 $
+
+
+%% Overview of the AUTOSAR Software Component Description Files
+% You can distribute the artifacts that constitute an AUTOSAR software
+% component among multiple XML files. You can create the files with an
+% AUTOSAR authoring tool or Simulink(R).
+%
+
+%% Design the Software Component Interfaces
+% You can use an AUTOSAR authoring tool to define the following information for
+% the software component:
+%
+% * Data types
+% * Sender-receiver, client-server, calibration interfaces
+% * Software components and their respective ports, which are typed by the above interfaces
+%
+% This demonstration includes two sets of software component interface XML files for the purpose of this demonstration.
+%
+% An AUTOSAR view of the two software components is shown below:
+%
+% <<AutosarComposition.jpg>>
+%
+%
+
+%% Create arxml.importer Objects for the AUTOSAR Software Component Description Files
+% Each software component requires an |arxml.importer| object. For each
+% |arxml.importer| object, you need to specify the file that contains the software
+% component of interest.
+
+preprocessingFileName = fullfile(matlabroot,'toolbox','rtw', ...
+    'rtwdemos','rtwdemo_autosar_preprocessing.arxml');
+controlSystemFileName = fullfile(matlabroot,'toolbox','rtw', ...
+    'rtwdemos','rtwdemo_autosar_control_system_component.arxml');
+
+preprocessingImporter = arxml.importer( preprocessingFileName );
+controlSystemImporter = arxml.importer( controlSystemFileName );
+
+%%
+% Now specify the additional files containing the information that
+% completes the software component description (e.g., data types, 
+% interfaces).
+%
+
+controlSystemFileNameDep1 = fullfile(matlabroot,'toolbox','rtw', ...
+    'rtwdemos','rtwdemo_autosar_control_system_datatype.arxml');
+controlSystemFileNameDep2 = fullfile(matlabroot,'toolbox','rtw', ...
+    'rtwdemos','rtwdemo_autosar_control_system_interface.arxml');
+controlSystemImporter.setDependencies( { controlSystemFileNameDep1, ...
+    controlSystemFileNameDep2 } );
+
+%% Create the Simulink Model Skeletons
+% Using the two import objects, you can now create the
+% skeleton Simulink models and associated data types. After you create
+% the skeleton files, you can see that the preprocessing skeleton model 
+% has two inports corresponding to the two data elements of the
+% AUTOSAR port "in". These inports have bus objects associated with
+% them that correspond to the C structure data type used to define the data
+% elements. The fault inport is composed of a bus object that contains two
+% Boolean elements, primary and secondary. The value inport is composed of
+% a bus object that contains two elements of type double, primary and
+% secondary.
+
+% Create the Simulink model skeletons
+preprocessingImporter.createComponentAsModel( '/ComponentType/preprocessing' );
+controlSystemImporter.createComponentAsModel( '/ComponentType/controlSystem' );
+
+% View all the imported AUTOSAR data types that you have imported 
+who
+
+%% Implement the Functionality Within the Simulink Model Skeletons
+% Typically, the control engineer would now fill in the implementation for
+% the two Simulink models. For this demo, you can open completed models:
+
+% open the completed models
+open_system( fullfile(matlabroot,'toolbox','rtw', ...
+    'rtwdemos','rtwdemo_autosar_preprocessing' ) );
+open_system( fullfile(matlabroot,'toolbox','rtw', ...
+    'rtwdemos','rtwdemo_autosar_control_system' ) );
+
+%% Create a Suitable Test Harness
+% It is good practice to construct a test harness for controller functionality.
+% You should click the *Run* button and view the scope after you open the
+% model, using the following commands:
+%
+
+testHarnessFileName = fullfile(matlabroot,'toolbox','rtw', ...
+    'rtwdemos','rtwdemo_autosar_testharness');
+open_system( testHarnessFileName );
+sim( testHarnessFileName );
+
+%% Export and Generate Code for the AUTOSAR Software Components
+% After you verify the output of the test harness, export the AUTOSAR
+% software component files with the C code implementation.
+% All the software component XML files are exported during code generation.
+
+rtwbuild( 'rtwdemo_autosar_preprocessing' );
+rtwbuild( 'rtwdemo_autosar_control_system' );
+
+%% Merge into the Authoring Tool
+% You can now merge the generated AUTOSAR software component files into an
+% AUTOSAR authoring tool for further refinement or sign off. To facilitate
+% merging, the software component information is in separate files, for example,
+% one for data types and one for internal behavior. This partitioning minimizes
+% the number of merges you need to do. In general, the data type file does not
+% need to be merged into the authoring tool because data types are usually
+% defined early in the design process.  You must, however, merge the internal
+% behavior file because this information is part of the model implementation.
+%
+% <matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'autosar_export_details') Further details of exported files>
+% 
+% For example, to merge the generated AUTOSAR software component files into
+% DaVinci System Architect (<matlab:web('http://www.vector-worldwide.com')
+% Vector Informatik GmbH>).
+%
+% # Run DaVinci System Architect (2.3 or higher).
+% # Either open an existing workspace, or create a new one: Select |File| > |New Workspace|, Enter a workspace name such as |Simulink_Demonstration|. Click |Open|.
+% # Select |File| > |Import XML File| > |Add|.
+% # Locate all of the generated XML files in the model build directory.
+% # Click |Okay|.
+% # Accept any further dialogs.
+% 
+% You have now successfully merged the software component, which includes a
+% complete internal behavior description. You can verify the results by navigating to
+% the implementation tab of the software component and viewing the number of runnable entities.
+
+%% Further Information
+%
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_autosar') AUTOSAR Target documentation>
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

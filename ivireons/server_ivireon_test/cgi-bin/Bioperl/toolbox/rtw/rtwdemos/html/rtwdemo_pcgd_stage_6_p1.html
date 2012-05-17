@@ -1,0 +1,411 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Testing the Generated Code</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_pcgd_stage_6_p1.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_pcgd_stage_6_p1">Open rtwdemo_pcgd_stage_6_p1.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_pcgd_stage_6_p1">Run in the Command Window</a></div></div><div class="content"><h1>Testing the Generated Code</h1><!--introduction--><p><b>Overview:</b> Shows two approaches for validating the generated code: the use of system-level S-functions and running code in an external environment.</p><p><b>Time</b>: 45 minutes</p><p><b>Goals</b></p><p>Understand...</p><div><ul><li>Different methods available for testing generated code</li><li>How to test generated code in Simulink&reg;</li><li>How to test generated code outside of Simulink</li></ul></div><p><a href="matlab:RTWDemos.pcgd_open_pcg_model(6,0);"><b>Task:</b> Open the model.</a></p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Validation Methods for Generated Code</a></li><li><a href="#2">Reusing Test Data: Test Vector Import/Export</a></li><li><a href="#3">Testing via Software-in-the-Loop (Model Block SIL)</a></li><li><a href="#4">Configuring the System for Testing via Test Vector Import/Export</a></li><li><a href="#5">Testing via Test Vector Import/Export (Eclipse Environment)</a></li></ul></div><h2>Validation Methods for Generated Code<a name="1"></a></h2><p>Simulink supports multiple system testing methods for validating the behavior of generated code.</p><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b>Test Method</b></td>
+            <td align = "center"><b>Description</b></td>
+            <td align = "center"><b>Pros</b></td>
+            <td align = "center"><b>Cons</b></td>
+        </tr>
+        <tr valign = "top">
+            <td>Windows run-time executable</td>
+            <td align = "left">Generate a Microsoft Windows based executable and run the executable from the command prompt.</td>
+            <td align = "left"><ul>
+                                 <li>Easy to create
+                                 <li>Can use C debugger to evaluate code
+                               </ul></td>
+            <td align = "left"><ul>
+                                 <li>Partial emulation of target hardware
+                               </ul></td>
+        </tr>
+        <tr valign = "top">
+            <td>Software-in-the-loop (SIL)</td>
+            <td align = "left">Use an S-function wrapper to include the generated code back into the Simulink model.</td>
+            <td align = "left"><ul>
+                                <li>Easy to create
+                                <li>Allows you to reuse the Simulink test environment
+                                <li>Can use C debugger to evaluate code
+                              </ul></td>
+            <td align = "left"><ul>
+                                 <li>Partial emulation of target hardware
+                               </ul></td>
+        </tr>
+        <tr valign = "top">
+            <td>Processor in the loop (PIL)</td>
+            <td align = "left">Run a non-real-time cosimulation with Simulink executing a portion of the model (e.g. Plant Model), and the target processor running a portion of the model (e.g. Controller). Code is downloaded to the target processor, and processor-in-the-loop handles the communication of signals between Simulink and the target during cosimulation.</td>
+            <td align = "left"><ul>
+                                 <li>Allows you to reuse the Simulink test environment
+                                 <li>Can use C debugger with the simulation
+                                 <li>Actual processor is used
+                               </ul></td>
+            <td align = "left"><ul>
+                                 <li>Requires additional steps to set up test environment
+                                 <li>Processor does not run in real time
+                               </ul></td>
+        </tr>
+        <tr valign = "top">
+            <td>On-target rapid prototyping</td>
+            <td align = "left">Run generated code on the target processor as part of the full system.</td>
+            <td align = "left"><ul>
+                                 <li>Can determine actual hardware constraints
+                                 <li>Allows testing of component within the full system
+                                 <li>Processor runs in real time
+                               </ul></td>
+            <td align = "left"><ul>
+                                 <li>Requires hardware
+                                 <li>Requires additional steps to set up test environment
+                               </ul></td>
+        </tr>
+        <tr valign = "top">
+            <td>External Mode</td>
+            <td align = "left">Run generated code on the target processor as part of the full system.</td>
+            <td align = "left"><ul>
+                                 <li>Can determine actual hardware constraints
+                                 <li>Allows testing of component within the full system
+                               </ul></td>
+            <td align = "left"><ul>
+                                 <li>Requires hardware
+                                 <li>Requires additional steps to set up test environment
+                               </ul></td>
+        </tr>
+    </table>
+</p><h2>Reusing Test Data: Test Vector Import/Export<a name="2"></a></h2><p>In this demo, the same test data has been used by previous modules. While the unit under test was in Simulink this was easy to achieve.  The test data can be reused outside of the Simulink environment. To accomplish this task:</p><div><ul><li>Save the Simulink data into a file.</li><li>Format the data in a way that the system code can access.</li><li>Read the data file as part of the system code procedures.</li></ul></div><p>Likewise, the test environment can be reused provided that the data from the external environment is saved in a format that MATLAB&reg; can read.  In this example, the file <tt>hardwareInputs.c</tt> contains the output data from the Signal Builder block in the test harness model.</p><p><img vspace="5" hspace="5" src="Test_Impor_Output_Data.jpg"></p><h2>Testing via Software-in-the-Loop (Model Block SIL)<a name="3"></a></h2><p><b>Creating the Model Block and Configuring it for SIL</b></p><p>Simulink can generate code from a Model block, wrap it into an S-Function, and bring the resultant S-Function back into the model for Software-in-the-loop testing.</p><p><a href="matlab:rtwdemo_PCGEvalHarnessHTGTSIL"><b>Task:</b> Open the test harness model.</a></p><p>The test harness uses a Model block to access the model we want run software-in-the-loop test on.</p><p>
+<ol>
+  <li> Right-click on the Model block and select <b>ModelReference
+  Parameters</b>.
+  <li> In the <b>Model name</b> field, enter the name of the model to be
+  tested like in the dialog view below.
+  <li> In the <b>Simulation mode</b> field, select
+  <b>Software-in-the-loop (SIL)</b> like in the following dialog view:
+</ol>
+</p><p><img vspace="5" hspace="5" src="Model_Block_SIL.jpg"></p><p>After you create the Model block and configure it for SIL operation, the block will have a <b>(SIL)</b> tag attached to it:</p><p><img vspace="5" hspace="5" src="Model_Block_SIL2.jpg"></p><p><b>Configuring the Model Block model for SIL</b></p><p>Next, you need to configure several settings in the Model block model.</p><p><a href="matlab:RTWDemos.pcgd_open_pcg_model(6,0);"><b>Task:</b> Open the Model block model.</a></p><p>
+<ol>
+  <li> Open the Model Explorer and navigate to the Model block model.
+  <li> Click <b>Configuration</b> in the <b>Model Hierarchy</b> pane.
+  <li> Click <b>Hardware Implementation</b> in the <b>Contents</b> pane.
+  <li> Select <b>Generic</b> in the Device vendor field and <b>32-bit x86
+  compatible</b> in the Device type field.
+  <img vspace="5" hspace="5" src="Model_Block_SIL_hardware.jpg">
+</ol>
+</p><p>We are now ready to start the simulation.</p><p><b>Running the Model Block SIL</b></p><p>The test harness model is reused with a modification; the Model block has been configured for SIL as you did in the previous steps.</p><p><a href="matlab:rtwdemo_PCGEvalHarnessHTGTSIL"><b>Task:</b> Open the test harness.</a></p><p><a href="matlab:sim('rtwdemo_PCGEvalHarnessHTGTSIL')"><b>Task:</b> Run the test harness.</a></p><p>Again, the results from running the generated code are the same as the simulation results.</p><p><img vspace="5" hspace="5" src="FirstPassTest.jpg"></p><h2>Configuring the System for Testing via Test Vector Import/Export<a name="4"></a></h2><p>This module extends the integration example in <b>Integrating the Generated Code into the External Environment</b>.  In this case <tt>example_main.c</tt> has simulated hardware I/O.</p><p>The augmented <tt>example_main.c</tt> file now has the following order of execution:</p><p>
+  <ol>
+    <li> Initialize data (one time)<br>
+    <tt>while < endTime</tt>
+    <li> Read simulated hardware inputs
+    <li> <tt>PI_cnrl_1</tt>
+    <li> <tt>PI_ctrl_2</tt>
+    <li> <tt>Pos_Command_Arbitration</tt>
+    <li> Write simulated hardware outputs
+    <tt>end while</tt>
+  </ol>
+</p><p><a href="matlab:edit(fullfile(matlabroot,'toolbox','rtw','rtwdemos','EmbeddedCoderOverview','stage_6_files','example_main.c'))"><b>Task:</b> View <tt>example_main.c</tt>.</a></p><p>The input test data is supplied by two functions, <tt>plant</tt> and <tt>hardwareInputs</tt>.</p><p>
+    <table border = "1">
+        <tr valign = "top">
+            <td align = "center"><b>File Name</b></td>
+            <td align = "center"><b>Function Signature</b></td>
+            <td align = "center"><b>Comments</b></td>
+        </tr>
+            <tr valign = "top">
+            <td align="left"><tt>Plant.c</tt></td>
+            <td align="left"><tt>void Plant(void)</tt></td>
+            <td align="left">
+            Code generated from the plant section of the test harness. Simulates
+            the throttle body response to throttle commands.</td>
+        </tr>
+        <tr valign = "top">
+            <td align="left"><tt>HardwareInputs.c</tt></td>
+            <td align="left"><tt>void hardwareInputs(void)</tt></td>
+            <td align="left">
+            Provides the <tt>pos_req</tt> signal and adds noise from the
+            <tt>Input_Signal_Scaling</tt> subsystems into the plant feedback signal.</td>
+        </tr>
+    </table>
+</p><p>Data logging is provided by the hand-coded function <tt>WriteDataForEval.c</tt>. The function is executed once the test is complete.  The test data is written to the file <tt>PCG_Eval_ExternSimData.m</tt>.  You can load the MATLAB program into the MATLAB environment and compare it to the simulated data.</p><p>To enable these additional files add them to the <b>Real-Time Workshop &gt; Custom Code &gt; Include list of additional: &gt; Source files</b> dialog.</p><p><img vspace="5" hspace="5" src="customCode.jpg"></p><h2>Testing via Test Vector Import/Export (Eclipse Environment)<a name="5"></a></h2><p>Before building an executable in the Eclipse environment, regenerate the code without the S-function interface.</p><p><a href="matlab:RTWDemos.pcgd_buildDemo(6,0)"><b>Task:</b> Build C code for integration.</a></p><p>Instructions on how to install and use Eclipse and GCC appear in <b>Installing and Using Cygwin and Eclipse</b>.</p><p>To install the files for this module automatically, do the following:</p><p><a href="matlab:RTWDemos.pcgd_autoSetup(6)"><b>Task:</b> Automatically set up the build directory.</a></p><p>To manually install the files, do the following:</p><p>
+       <ol>
+          <li>Create a build directory (<tt>Eclipse_Build_P6</tt>).
+          <li>Unzip the file <tt>rtwdemo_PCG_Eval_P6.zip</tt> into your build directory.
+          <li>Delete these files, which are replaced by <tt>example_main.c.</tt>
+             <ul>
+                <li><tt>rtwdemo_PCG_Eval_P6.c</tt>
+                <li><tt>ert_main.c</tt>
+                <li><tt>rt_logging.c</tt>
+            </ul>
+       </ol>
+</p><p>Running the control code in Eclipse generates the file <tt>eclipseData.m</tt>.  This file was generated by the file <tt>writeDataForEval.c</tt>. You can compare the data from the Eclipse run and the standard test harness by loading the data and then running the plot routine.</p><p class="footer">Copyright 2007-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Testing the Generated Code
+% *Overview:* Shows two approaches for validating the generated code: the
+% use of system-level S-functions and running code in an external
+% environment.
+%
+% *Time*: 45 minutes
+%
+% *Goals*
+% 
+% Understand...
+%
+% * Different methods available for testing generated code
+% * How to test generated code in Simulink(R)
+% * How to test generated code outside of Simulink
+%
+% <matlab:RTWDemos.pcgd_open_pcg_model(6,0); *Task:* Open the model.> 
+%% Validation Methods for Generated Code
+% Simulink supports multiple system testing methods for validating the
+% behavior 
+% of generated code.  
+%
+% <html>
+%     <table border = "1">
+%         <tr valign = "top">
+%             <td align = "center"><b>Test Method</b></td>
+%             <td align = "center"><b>Description</b></td>
+%             <td align = "center"><b>Pros</b></td>
+%             <td align = "center"><b>Cons</b></td>
+%         </tr>    
+%         <tr valign = "top">
+%             <td>Windows run-time executable</td>
+%             <td align = "left">Generate a Microsoft Windows based executable and run the executable from the command prompt.</td>
+%             <td align = "left"><ul>
+%                                  <li>Easy to create
+%                                  <li>Can use C debugger to evaluate code
+%                                </ul></td>
+%             <td align = "left"><ul>
+%                                  <li>Partial emulation of target hardware
+%                                </ul></td>
+%         </tr>
+%         <tr valign = "top">
+%             <td>Software-in-the-loop (SIL)</td>
+%             <td align = "left">Use an S-function wrapper to include the generated code back into the Simulink model.</td>
+%             <td align = "left"><ul>
+%                                 <li>Easy to create
+%                                 <li>Allows you to reuse the Simulink test environment
+%                                 <li>Can use C debugger to evaluate code
+%                               </ul></td>
+%             <td align = "left"><ul>
+%                                  <li>Partial emulation of target hardware
+%                                </ul></td>
+%         </tr>
+%         <tr valign = "top">
+%             <td>Processor in the loop (PIL)</td>
+%             <td align = "left">Run a non-real-time cosimulation with Simulink executing a portion of the model (e.g. Plant Model), and the target processor running a portion of the model (e.g. Controller). Code is downloaded to the target processor, and processor-in-the-loop handles the communication of signals between Simulink and the target during cosimulation.</td>
+%             <td align = "left"><ul>
+%                                  <li>Allows you to reuse the Simulink test environment
+%                                  <li>Can use C debugger with the simulation
+%                                  <li>Actual processor is used
+%                                </ul></td>
+%             <td align = "left"><ul>
+%                                  <li>Requires additional steps to set up test environment
+%                                  <li>Processor does not run in real time
+%                                </ul></td>
+%         </tr>
+%         <tr valign = "top">
+%             <td>On-target rapid prototyping</td>
+%             <td align = "left">Run generated code on the target processor as part of the full system.</td>
+%             <td align = "left"><ul>
+%                                  <li>Can determine actual hardware constraints
+%                                  <li>Allows testing of component within the full system
+%                                  <li>Processor runs in real time
+%                                </ul></td>
+%             <td align = "left"><ul>
+%                                  <li>Requires hardware
+%                                  <li>Requires additional steps to set up test environment
+%                                </ul></td>
+%         </tr>
+%         <tr valign = "top">
+%             <td>External Mode</td>
+%             <td align = "left">Run generated code on the target processor as part of the full system.</td>
+%             <td align = "left"><ul>
+%                                  <li>Can determine actual hardware constraints
+%                                  <li>Allows testing of component within the full system
+%                                </ul></td>
+%             <td align = "left"><ul>
+%                                  <li>Requires hardware
+%                                  <li>Requires additional steps to set up test environment
+%                                </ul></td>
+%         </tr>
+%     </table>
+% </html>
+%
+%% Reusing Test Data: Test Vector Import/Export
+% In this demo, the same test data has been used by previous modules.
+% While the unit under test was in Simulink this was easy to achieve.  The 
+% test data can be reused outside of the Simulink environment. To 
+% accomplish this task:
+%
+% * Save the Simulink data into a file.
+% * Format the data in a way that the system code can access.
+% * Read the data file as part of the system code procedures.
+%
+% Likewise, the test environment can be reused provided that the data from
+% the external environment is saved in a format that MATLAB(R) can read.  In 
+% this example, the file |hardwareInputs.c| contains the output data from
+% the Signal Builder block in the test harness model.
+%
+% <html><img vspace="5" hspace="5" src="Test_Impor_Output_Data.jpg"></html>
+%
+%% Testing via Software-in-the-Loop (Model Block SIL)
+% *Creating the Model Block and Configuring it for SIL*
+%
+% Simulink can generate code from a Model block, wrap it into an
+% S-Function, and bring the resultant S-Function back into the model for
+% Software-in-the-loop testing.
+% 
+% <matlab:rtwdemo_PCGEvalHarnessHTGTSIL *Task:* Open the test harness model.>
+% 
+% The test harness uses a Model block to access the model we want
+% run software-in-the-loop test on.
+% 
+% <html>
+% <ol>
+%   <li> Right-click on the Model block and select <b>ModelReference
+%   Parameters</b>.
+%   <li> In the <b>Model name</b> field, enter the name of the model to be
+%   tested like in the dialog view below.
+%   <li> In the <b>Simulation mode</b> field, select
+%   <b>Software-in-the-loop (SIL)</b> like in the following dialog view:
+% </ol> 
+% </html>
+%
+% <html><img vspace="5" hspace="5" src="Model_Block_SIL.jpg"></html>
+%
+% After you create the Model block and configure it for SIL operation, the
+% block will have a *(SIL)* tag attached to it:
+%
+% <html><img vspace="5" hspace="5" src="Model_Block_SIL2.jpg"></html>
+%
+% *Configuring the Model Block model for SIL*
+% 
+% Next, you need to configure several settings in the Model block model.
+% 
+% <matlab:RTWDemos.pcgd_open_pcg_model(6,0); *Task:* Open the Model block model.> 
+%
+% <html>
+% <ol>
+%   <li> Open the Model Explorer and navigate to the Model block model.
+%   <li> Click <b>Configuration</b> in the <b>Model Hierarchy</b> pane.
+%   <li> Click <b>Hardware Implementation</b> in the <b>Contents</b> pane.
+%   <li> Select <b>Generic</b> in the Device vendor field and <b>32-bit x86
+%   compatible</b> in the Device type field.
+%   <img vspace="5" hspace="5" src="Model_Block_SIL_hardware.jpg">
+% </ol> 
+% </html>
+% 
+% We are now ready to start the simulation.
+% 
+% *Running the Model Block SIL*
+% 
+% The test harness model is reused with a modification; the Model 
+% block has been configured for SIL as you did in the previous steps.
+%
+% <matlab:rtwdemo_PCGEvalHarnessHTGTSIL *Task:* Open the test harness.>
+%
+% <matlab:sim('rtwdemo_PCGEvalHarnessHTGTSIL') *Task:* Run the test harness.>
+%
+% Again, the results from running the generated code are the same as
+% the simulation results.
+% 
+% <html><img vspace="5" hspace="5" src="FirstPassTest.jpg"></html>
+%
+%% Configuring the System for Testing via Test Vector Import/Export
+% This module extends the integration example in *Integrating the Generated Code into the External Environment*.  In this case |example_main.c| has simulated hardware I/O. 
+%
+% The augmented |example_main.c| file now has the following order of execution:
+% 
+% <html>
+%   <ol>
+%     <li> Initialize data (one time)<br>
+%     <tt>while < endTime</tt>
+%     <li> Read simulated hardware inputs
+%     <li> <tt>PI_cnrl_1</tt>
+%     <li> <tt>PI_ctrl_2</tt>
+%     <li> <tt>Pos_Command_Arbitration</tt>
+%     <li> Write simulated hardware outputs
+%     <tt>end while</tt>
+%   </ol>
+% </html>
+% 
+% <matlab:edit(fullfile(matlabroot,'toolbox','rtw','rtwdemos','EmbeddedCoderOverview','stage_6_files','example_main.c')) *Task:* View |example_main.c|.>
+%
+% The input test data is supplied by two functions, |plant| and |hardwareInputs|.
+%
+% <html>
+%     <table border = "1">
+%         <tr valign = "top">
+%             <td align = "center"><b>File Name</b></td>
+%             <td align = "center"><b>Function Signature</b></td>
+%             <td align = "center"><b>Comments</b></td>
+%         </tr>
+%             <tr valign = "top">
+%             <td align="left"><tt>Plant.c</tt></td>
+%             <td align="left"><tt>void Plant(void)</tt></td>
+%             <td align="left">
+%             Code generated from the plant section of the test harness. Simulates
+%             the throttle body response to throttle commands.</td>
+%         </tr>
+%         <tr valign = "top">
+%             <td align="left"><tt>HardwareInputs.c</tt></td>
+%             <td align="left"><tt>void hardwareInputs(void)</tt></td>
+%             <td align="left">
+%             Provides the <tt>pos_req</tt> signal and adds noise from the
+%             <tt>Input_Signal_Scaling</tt> subsystems into the plant feedback signal.</td>
+%         </tr>
+%     </table>
+% </html>
+%
+% Data logging is provided by the hand-coded function |WriteDataForEval.c|.  
+% The function is executed once the test is complete.  The test data is 
+% written to the file |PCG_Eval_ExternSimData.m|.  You can load the MATLAB 
+% program into the MATLAB environment and compare it to the simulated data.
+%
+% To enable these additional files add them to the *Real-Time
+% Workshop > Custom Code > Include list of additional: > Source files*
+% dialog.
+%
+% <html><img vspace="5" hspace="5" src="customCode.jpg"></html>
+%% Testing via Test Vector Import/Export (Eclipse Environment)
+% Before building an executable in the Eclipse environment, regenerate the
+% code without the S-function interface.  
+%
+% <matlab:RTWDemos.pcgd_buildDemo(6,0) *Task:* Build C code for integration.>
+%
+% Instructions on how to install and use Eclipse and GCC appear in 
+% *Installing and Using Cygwin and Eclipse*.
+%
+% To install the files for this module automatically, do the following:
+%
+% <matlab:RTWDemos.pcgd_autoSetup(6) *Task:* Automatically set up the build directory.>
+% 
+% To manually install the files, do the following:
+% 
+% <html>
+%        <ol>
+%           <li>Create a build directory (<tt>Eclipse_Build_P6</tt>).
+%           <li>Unzip the file <tt>rtwdemo_PCG_Eval_P6.zip</tt> into your build directory.
+%           <li>Delete these files, which are replaced by <tt>example_main.c.</tt>
+%              <ul>
+%                 <li><tt>rtwdemo_PCG_Eval_P6.c</tt>
+%                 <li><tt>ert_main.c</tt>
+%                 <li><tt>rt_logging.c</tt>
+%             </ul>
+%        </ol>
+% </html> 
+%
+% Running the control code in Eclipse generates the file
+% |eclipseData.m|.  This file was generated by the file |writeDataForEval.c|.
+% You can compare the data from the Eclipse run and the standard test harness 
+% by loading the data and then running the plot routine.
+%
+%   Copyright 2007-2010 The MathWorks, Inc.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

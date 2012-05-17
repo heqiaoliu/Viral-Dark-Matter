@@ -1,0 +1,234 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Binary-Point Scaling</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="fiscalingdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit fiscalingdemo">Open fiscalingdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo fiscalingdemo">Run in the Command Window</a></div></div><div class="content"><h1>Binary-Point Scaling</h1><!--introduction--><p>This demo explains binary point scaling in FI.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">FI Construction</a></li><li><a href="#2">Fraction Length and the Position of the Binary Point</a></li><li><a href="#3">The Fraction Length is Positive and Less than the Word Length</a></li><li><a href="#4">The Fraction Length is Positive and Greater than the Word Length</a></li><li><a href="#5">The Fraction Length is a Negative Integer and Less than the Word Length</a></li><li><a href="#6">The Fraction Length is Set Automatically to the Best Precision Possible and is Negative</a></li><li><a href="#7">Interactive FI Binary Point Scaling Demo</a></li></ul></div><h2>FI Construction<a name="1"></a></h2><p><tt>a = fi(v,s,w,f)</tt> returns a <tt>fi</tt> with value <tt>v</tt>, signedness <tt>s</tt>, word length <tt>w</tt>, and fraction length <tt>f</tt>.</p><p>If <tt>s</tt> is true (signed) the leading or most significant bit (MSB) in the resulting fi is always the sign bit.</p><p>Fraction length <tt>f</tt> is the scaling <tt>2^(-f)</tt>.</p><p>For example, create a signed 8-bit long <tt>fi</tt> with a value of 0.5 and a scaling of 2^(-7):</p><pre class="codeinput">a = fi(0.5,true,8,7)
+</pre><pre class="codeoutput"> 
+a =
+ 
+                       0.5
+
+          DataTypeMode: Fixed-point: binary point scaling
+            Signedness: Signed
+            WordLength: 8
+        FractionLength: 7
+</pre><h2>Fraction Length and the Position of the Binary Point<a name="2"></a></h2><p>The fraction length or the scaling determines the position of the binary point in the <tt>fi</tt> object.</p><h2>The Fraction Length is Positive and Less than the Word Length<a name="3"></a></h2><p>When the fraction length <tt>f</tt> is positive and less than the word length, the binary point lies <tt>f</tt> places to the left of the least significant bit (LSB) and within the word.</p><p>For example, in a signed 3-bit <tt>fi</tt> with fraction length of 1 and value -0.5, the binary point lies 1 place to the left of the LSB. In this case each bit is set to <tt>1</tt> and the binary equivalent of the <tt>fi</tt> with its binary point is <tt>11.1</tt> .</p><p>The real world value of -0.5 is obtained by multiplying each bit by its scaling factor, starting with the LSB and working up to the signed MSB.</p><p><tt>(1*2^-1) + (1*2^0) +(-1*2^1) = -0.5</tt></p><p><tt>int(a)</tt> returns the stored signed, unscaled integer value <tt>-1</tt>.</p><p><tt>(1*2^0) + (1*2^1) +(-1*2^2) = -1</tt></p><pre class="codeinput">a = fi(-0.5,true,3,1)
+bin(a)
+int(a)
+</pre><pre class="codeoutput"> 
+a =
+ 
+                      -0.5
+
+          DataTypeMode: Fixed-point: binary point scaling
+            Signedness: Signed
+            WordLength: 3
+        FractionLength: 1
+
+ans =
+
+111
+
+
+ans =
+
+   -1
+
+</pre><h2>The Fraction Length is Positive and Greater than the Word Length<a name="4"></a></h2><p>When the fraction length <tt>f</tt> is positive and greater than the word length, the binary point lies <tt>f</tt> places to the left of the LSB and outside the word.</p><p>For example the binary equivalent of a signed 3-bit word with fraction length of 4 and value of -0.0625 is <tt>._111</tt> Here <tt>_</tt> in the <tt>._111</tt> denotes an unused bit that is not a part of the 3-bit word. The first <tt>1</tt> after the <tt>_</tt> is the MSB or the sign bit.</p><p>The real world value of -0.0625 is computed as follows (LSB to MSB).</p><p><tt>(1*2^-4) + (1*2^-3) + (-1*2^-2) = -0.0625</tt></p><p>bin(b) will return <tt>111</tt> at the MATLAB&reg; prompt and <tt>int(b) = -1</tt></p><pre class="codeinput">b = fi(-0.0625,true,3,4)
+bin(b)
+int(b)
+</pre><pre class="codeoutput"> 
+b =
+ 
+                   -0.0625
+
+          DataTypeMode: Fixed-point: binary point scaling
+            Signedness: Signed
+            WordLength: 3
+        FractionLength: 4
+
+ans =
+
+111
+
+
+ans =
+
+   -1
+
+</pre><h2>The Fraction Length is a Negative Integer and Less than the Word Length<a name="5"></a></h2><p>When the fraction length <tt>f</tt> is negative the binary point lies <tt>f</tt> places to the right of LSB and is outside the physical word.</p><p>For instance in <tt>c = fi(-4,true,3,-2)</tt> the binary point lies 2 places to the right of the LSB <tt>111__.</tt>. Here the two right most spaces are unused bits that are not part of the 3-bit word. The right most <tt>1</tt> is the LSB and the leading <tt>1</tt> is the sign bit.</p><p>The real world value of -4 is obtained by multiplying each bit by its scaling factor <tt>2^(-f)</tt>,  i.e. <tt>2(-(-2)) = 2^(2)</tt> for the LSB, and then adding the products together.</p><p><tt>(1*2^2) + (1*2^3) +(-1*2^4) = -4</tt></p><p><tt>bin(c)</tt> and <tt>int(c)</tt> will still give <tt>111</tt> and <tt>-1</tt> as in the previous two examples.</p><pre class="codeinput">c = fi(-4,true,3,-2)
+bin(c)
+int(c)
+</pre><pre class="codeoutput"> 
+c =
+ 
+    -4
+
+          DataTypeMode: Fixed-point: binary point scaling
+            Signedness: Signed
+            WordLength: 3
+        FractionLength: -2
+
+ans =
+
+111
+
+
+ans =
+
+   -1
+
+</pre><h2>The Fraction Length is Set Automatically to the Best Precision Possible and is Negative<a name="6"></a></h2><p>In this example we create a signed 3-bit <tt>fi</tt> where the fraction length is set automatically depending on the value that the <tt>fi</tt> is supposed to contain. The resulting <tt>fi</tt> has a value of 6, with a wordlength of 3 bits and a fraction length of -1. Here the binary point is 1 place to the right of the LSB: <tt>011_.</tt>. The <tt>_</tt> is again an unused bit and the first <tt>1</tt> before the <tt>_</tt> is the LSB. The leading <tt>1</tt> is the sign bit.</p><p>The real world value (6) is obtained as follows:</p><p><tt>(1*2^1) + (1*2^2) + (-0*2^3) = 6</tt></p><p><tt>bin(d)</tt> and <tt>int(d)</tt> will give <tt>011</tt> and <tt>3</tt> respectively.</p><pre class="codeinput">d = fi(5,true,3)
+bin(d)
+int(d)
+</pre><pre class="codeoutput"> 
+d =
+ 
+     6
+
+          DataTypeMode: Fixed-point: binary point scaling
+            Signedness: Signed
+            WordLength: 3
+        FractionLength: -1
+
+ans =
+
+011
+
+
+ans =
+
+    3
+
+</pre><h2>Interactive FI Binary Point Scaling Demo<a name="7"></a></h2><p>This is an interactive demo that allows the user to change the fraction length of a 3-bit fixed-point number by moving the binary point using a slider. The fraction length can be varied from -3 to 5 and the user can change the value of the 3 bits to '0' or '1' for either signed or unsigned numbers.</p><p>The "Scaling factors" above the 3 bits display the scaling or weight that each bit is given for the specified signedness and fraction length. The <tt>fi</tt> code, the double precision real-world value and the fixed-point attributes are also displayed.</p><p>Type fibinscaling at the MATLAB prompt to run this demo.</p><p class="footer">Copyright 1999-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Binary-Point Scaling
+% This demo explains binary point scaling in FI.
+%
+% Copyright 1999-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.7 $
+
+%% FI Construction
+% |a = fi(v,s,w,f)| returns a |fi| with value |v|, signedness |s|, word length |w|,
+% and fraction length |f|.
+%
+% If |s| is true (signed) the leading or most significant bit (MSB) in the
+% resulting fi is always the sign bit.
+%
+% Fraction length |f| is the scaling |2^(-f)|.
+%
+% For example, create a signed 8-bit long |fi| with a value of 0.5 and a
+% scaling of 2^(-7):
+%
+a = fi(0.5,true,8,7)
+
+%% Fraction Length and the Position of the Binary Point
+% The fraction length or the scaling determines the position of the binary
+% point in the |fi| object.
+
+%% The Fraction Length is Positive and Less than the Word Length
+% When the fraction length |f| is positive and less than the word length, the
+% binary point lies |f| places to the left of the least significant bit (LSB)
+% and within the word.
+%
+% For example, in a signed 3-bit |fi| with fraction length of 1 and value
+% -0.5, the binary point lies 1 place to the left of the LSB. In this case
+% each bit is set to |1| and the binary equivalent of the |fi| with its binary
+% point is |11.1| .
+%
+% The real world value of -0.5 is obtained by multiplying each bit by its 
+% scaling factor, starting with the LSB and working up to the signed MSB.
+%
+% |(1*2^-1) + (1*2^0) +(-1*2^1) = -0.5|
+%
+% |int(a)| returns the stored signed, unscaled integer value |-1|.
+%
+% |(1*2^0) + (1*2^1) +(-1*2^2) = -1|
+%
+a = fi(-0.5,true,3,1)
+bin(a)
+int(a)
+
+%% The Fraction Length is Positive and Greater than the Word Length
+% When the fraction length |f| is positive and greater than the word
+% length, the binary point lies |f| places to the left of the LSB and outside
+% the word.
+%
+% For example the binary equivalent of a signed 3-bit word with fraction
+% length of 4 and value of -0.0625 is |._111|
+% Here |_| in the |._111| denotes an unused bit that is not a part of the
+% 3-bit word. The first |1| after the |_| is the MSB or the sign bit.
+%
+% The real world value of -0.0625 is computed as follows (LSB to MSB).
+%
+% |(1*2^-4) + (1*2^-3) + (-1*2^-2) = -0.0625|
+%
+% bin(b) will return |111| at the MATLAB(R) prompt and |int(b) = -1|
+
+b = fi(-0.0625,true,3,4)
+bin(b)
+int(b)
+
+%% The Fraction Length is a Negative Integer and Less than the Word Length
+% When the fraction length |f| is negative the binary point lies |f| places to
+% the right of LSB and is outside the physical word.
+%
+% For instance in |c = fi(-4,true,3,-2)| the binary point lies 2 places to
+% the right of the LSB |111__.|. Here the two right most spaces are unused bits
+% that are not part of the 3-bit word. The right most |1| is the LSB and the 
+% leading |1| is the sign bit.
+%
+% The real world value of -4 is obtained by multiplying each bit by its
+% scaling factor |2^(-f)|,  i.e. |2(-(-2)) = 2^(2)| for the LSB, and then
+% adding the products together.
+%
+% |(1*2^2) + (1*2^3) +(-1*2^4) = -4|
+%
+% |bin(c)| and |int(c)| will still give |111| and |-1| as in the previous two
+% examples.
+
+c = fi(-4,true,3,-2)
+bin(c)
+int(c)
+
+%% The Fraction Length is Set Automatically to the Best Precision Possible and is Negative
+% In this example we create a signed 3-bit |fi| where the fraction length is set automatically
+% depending on the value that the |fi| is supposed to contain. The resulting |fi| has a
+% value of 6, with a wordlength of 3 bits and a fraction length of -1.
+% Here the binary point is 1 place to the right of the LSB: |011_.|.
+% The |_| is again an unused bit and the first |1| before the |_| is the
+% LSB. The leading |1| is the sign bit.
+%
+% The real world value (6) is obtained as follows:
+%
+% |(1*2^1) + (1*2^2) + (-0*2^3) = 6|
+%
+% |bin(d)| and |int(d)| will give |011| and |3| respectively.
+
+d = fi(5,true,3)
+bin(d)
+int(d)
+
+%% Interactive FI Binary Point Scaling Demo
+% This is an interactive demo that allows the user to change the fraction
+% length of a 3-bit fixed-point number by moving the binary point using a
+% slider. The fraction length can be varied from -3 to 5 and the user can 
+% change the value of the 3 bits to '0' or '1' for either signed or
+% unsigned numbers.
+%
+% The "Scaling factors" above the 3 bits display the scaling or weight that
+% each bit is given for the specified signedness and fraction length.
+% The |fi| code, the double precision real-world value and the fixed-point
+% attributes are also displayed.
+%
+% Type fibinscaling at the MATLAB prompt to run this demo.
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

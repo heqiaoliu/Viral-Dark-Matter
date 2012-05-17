@@ -1,0 +1,121 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>多次元配列の操作</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="nddemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit nddemo">エディターで nddemo.m を開く</a></div><div class="right"><a href="matlab:echodemo nddemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>多次元配列の操作</h1><!--introduction--><p>MATLAB&reg; は 2 次元よりも大きい配列をサポートします。多次元配列は数値、文字、セル、構造体の配列にすることができます。</p><p>多次元配列は、多変量データを表すために使うことが可能です。MATLAB では、多次元配列を直接サポートする多数の関数を用意しています。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">多次元配列の作成</a></li><li><a href="#4">次元の検出</a></li><li><a href="#5">要素へのアクセス</a></li><li><a href="#6">多次元配列の操作</a></li><li><a href="#7">多次元配列から 2 次元行列を選択</a></li></ul></div><h2>多次元配列の作成<a name="1"></a></h2><p>MATLAB の多次元配列は、2 次元配列と同じ方法で作成されます。たとえば、まず 3 行 3 列の行列を定義し、3 番目の次元を加えます。</p><pre class="codeinput">A = [5 7 8;
+    0 1 9;
+    4 3 6];
+A(:,:,2) = [1 0 4;
+            3 5 6;
+            9 8 7]
+</pre><pre class="codeoutput">
+A(:,:,1) =
+
+     5     7     8
+     0     1     9
+     4     3     6
+
+
+A(:,:,2) =
+
+     1     0     4
+     3     5     6
+     9     8     7
+
+</pre><p>関数 CAT は多次元配列の作成に便利なツールです。B = cat(DIM,A1,A2,...) は、次元 DIM に沿って A1、A2 ... を結合することで多次元配列を構築します。</p><pre class="codeinput">B = cat( 3, [2 8; 0 5], [1 3; 7 9], [2 3; 4 6])
+</pre><pre class="codeoutput">
+B(:,:,1) =
+
+     2     8
+     0     5
+
+
+B(:,:,2) =
+
+     1     3
+     7     9
+
+
+B(:,:,3) =
+
+     2     3
+     4     6
+
+</pre><p>CAT の呼び出しは入れ子にできます。</p><pre class="codeinput">A = cat(3,[9 2; 6 5], [7 1; 8 4]);
+B = cat(3,[3 5; 0 1], [5 6; 2 1]);
+C = cat(4,A,B,cat(3,[1 2; 3 4], [4 3; 2 1]));
+</pre><h2>次元の検出<a name="4"></a></h2><p>SIZE や NDIMS は、行列のサイズや次元数を返します。</p><pre class="codeinput">SzA   = size(A)
+DimsA = ndims(A)
+SzC   = size(C)
+DimsC = ndims(C)
+</pre><pre class="codeoutput">
+SzA =
+
+     2     2     2
+
+
+DimsA =
+
+     3
+
+
+SzC =
+
+     2     2     2     3
+
+
+DimsC =
+
+     4
+
+</pre><h2>要素へのアクセス<a name="5"></a></h2><p>多次元配列の 1 つの要素にアクセスするには、整数の添字を使います。たとえば、前のスライドで定義した D を使って D(1,2,2,22) とすると、6 を返します。</p><p>配列の添字は、ベクトルにすることもできます。以下に例を示します。</p><pre class="codeinput">K = C(:,:,1,[1 3])
+</pre><pre class="codeoutput">
+K(:,:,1,1) =
+
+     9     2
+     6     5
+
+
+K(:,:,1,2) =
+
+     1     2
+     3     4
+
+</pre><h2>多次元配列の操作<a name="6"></a></h2><p>RESHAPE、PERMUTE、SQUEEZE は、n 次元配列を操作するために使用されます。RESHAPE は、2 次元配列の場合と同じように動作します。PERMUTE の処理を以下に示します。</p><p>A を 3 x 3 x 2 の配列とします。PERMUTE(A,[2 1 3]) は (次元 1 は行で、次元 2 は列、次元 3 は深さ・・・として) 行と列の添字を反対にした配列を返します。同様に、PERMUTE(A,[3,2,1]) は、1 番目と 3 番目の添字を入れ替えた配列を返します。</p><pre class="codeinput">A = rand(3,3,2);
+B = permute(A, [2 1 3]);
+C = permute(A, [3 2 1]);
+</pre><h2>多次元配列から 2 次元行列を選択<a name="7"></a></h2><p>平面や 2 次元行列上で機能する EIG のような関数は、引数として多次元配列を受け入れません。そのような関数を多次元配列のさまざまな平面に適用するには、インデックスまたは FOR ループを使用します。以下に例を示します。</p><pre class="codeinput">A = cat( 3, [1 2 3; 9 8 7; 4 6 5], [0 3 2; 8 8 4; 5 3 5], <span class="keyword">...</span>
+                 [6 4 7; 6 8 5; 5 4 3]);
+<span class="comment">% The EIG function is applied to each of the horizontal 'slices' of A.</span>
+<span class="keyword">for</span> i = 1:3
+    eig(squeeze(A(i,:,:)))
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">
+ans =
+
+   10.3589
+   -1.0000
+    1.6411
+
+
+ans =
+
+  21.2293          
+   0.3854 + 1.5778i
+   0.3854 - 1.5778i
+
+
+ans =
+
+  13.3706          
+  -1.6853 + 0.4757i
+  -1.6853 - 0.4757i
+
+</pre><p>INTERP3、INTERPN、NDGRID は、特に多次元データに対して機能する内挿やデータのグリッドを行う関数の例です。NDGRID を N 次元行列に適用する例を示します。</p><pre class="codeinput">x1 = -2*pi:pi/10:0;
+x2 = 2*pi:pi/10:4*pi;
+x3 = 0:pi/10:2*pi;
+[x1,x2,x3] = ndgrid(x1,x2,x3);
+z = x1 + exp(cos(2*x2.^2)) + sin(x3.^3);
+slice(z,[5 10 15], 10, [5 12]); axis <span class="string">tight</span>;
+</pre><img vspace="5" hspace="5" src="../nddemo_01.png" alt=""> <p>多次元のセル配列と多次元の構造体配列を作成することができます。また、多次元の数値配列とセル配列間の変換を行うことも可能です。</p><p>詳細は、MATLAB のマニュアルや、HELPDESK の多次元配列についての項目を参照してください。</p><p class="footer">Copyright 1984-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Manipulating Multidimensional Arrays % MATLAB(R) supports arrays with more than two dimensions.  Multidimensional arrays % can be numeric, character, cell, or structure arrays. %  % Multidimensional arrays can be used to represent multivariate data.  MATLAB % provides a number of functions that directly support multidimensional arrays. % % Copyright 1984-2008 The MathWorks, Inc. % $Revision: 1.1.4.8.2.1 $ $Date: 2010/07/29 21:28:52 $  %% Creating Multi-Dimensional Arrays % Multidimensional arrays in MATLAB are created the same way as two-dimensional % arrays.  For example, first define the 3 by 3 matrix, and then add a third % dimension.  A = [5 7 8;      0 1 9;      4 3 6]; A(:,:,2) = [1 0 4;              3 5 6;              9 8 7]  %%  % The CAT function is a useful tool for building multidimensional arrays.  B = % cat(DIM,A1,A2,...) builds a multidimensional array by concatenating A1, A2 % ... along the dimension DIM.  B = cat( 3, [2 8; 0 5], [1 3; 7 9], [2 3; 4 6])  %%  % Calls to CAT can be nested.  A = cat(3,[9 2; 6 5], [7 1; 8 4]); B = cat(3,[3 5; 0 1], [5 6; 2 1]); C = cat(4,A,B,cat(3,[1 2; 3 4], [4 3; 2 1]));  %% Finding the Dimensions  % SIZE and NDIMS return the size and number of dimensions of matrices.  SzA   = size(A) DimsA = ndims(A) SzC   = size(C) DimsC = ndims(C)  %% Accessing Elements % To access a single element of a multidimensional array, use integer % subscripts.  For example D(1,2,2,22), using D defined in the previous slide, % returns 6. %  % Array subscripts can also be vectors.  For example:  K = C(:,:,1,[1 3])  %% Manipulating Multi-Dimensional Arrays % RESHAPE, PERMUTE, and SQUEEZE are used to manipulate n-dimensional arrays. % RESHAPE behaves as it does for 2D arrays.  The operation of PERMUTE is % illustrated below. %  % Let A be a 3 by 3 by 2 array.  PERMUTE(A,[2 1 3]) returns an array with the % row and column subscripts reversed (dimension 1 is the row, dimension 2 is the % column, dimension 3 is the depth and so on).  Similarly, PERMUTE(A,[3,2,1]) % returns an array with the first and third subscripts interchanged.  A = rand(3,3,2); B = permute(A, [2 1 3]); C = permute(A, [3 2 1]);  %% Selecting 2D Matrices From Multi-Dimensional Arrays % Functions like EIG that operate on planes or 2D matrices do not accept  % multi-dimensional arrays as arguments.  To apply such functions to different % planes of the multidimensional arrays, use indexing or FOR loops.  For % example:  A = cat( 3, [1 2 3; 9 8 7; 4 6 5], [0 3 2; 8 8 4; 5 3 5], ...                  [6 4 7; 6 8 5; 5 4 3]); % The EIG function is applied to each of the horizontal 'slices' of A. for i = 1:3     eig(squeeze(A(i,:,:))) end  %%  % INTERP3, INTERPN, and NDGRID are examples of interpolation and data gridding % functions that operate specifically on multidimensional data.  Here is an % example of NDGRID applied to an N-dimensional matrix.  x1 = -2*pi:pi/10:0;         x2 = 2*pi:pi/10:4*pi;       x3 = 0:pi/10:2*pi; [x1,x2,x3] = ndgrid(x1,x2,x3); z = x1 + exp(cos(2*x2.^2)) + sin(x3.^3); slice(z,[5 10 15], 10, [5 12]); axis tight;  %% % You can build multidimensional cell arrays and multidimensional structure % arrays, and can also convert between multidimensional numeric and cell arrays. %  % To find out more, consult the MATLAB manual or HELPDESK on multidimensional % arrays.   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

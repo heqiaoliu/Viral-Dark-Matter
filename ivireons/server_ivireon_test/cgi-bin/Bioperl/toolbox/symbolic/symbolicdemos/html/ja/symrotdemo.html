@@ -1,0 +1,86 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>平面回転</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="symrotdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit symrotdemo">エディターで symrotdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo symrotdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>平面回転</h1><!--introduction--><!--/introduction--><p>シンボリック変数 t を作成します。</p><pre class="codeinput">t = sym(<span class="string">'t'</span>)
+</pre><pre class="codeoutput"> 
+t =
+ 
+t
+ 
+</pre><p>角度 t の平面回転を表す 2 行 2 列の行列を作成します。</p><pre class="codeinput">G = [ cos(t) sin(t); -sin(t) cos(t)]
+</pre><pre class="codeoutput"> 
+G =
+ 
+[  cos(t), sin(t)]
+[ -sin(t), cos(t)]
+ 
+</pre><p>G と G との行列積を計算します。</p><pre class="codeinput">G*G
+</pre><pre class="codeoutput"> 
+ans =
+ 
+[ cos(t)^2 - sin(t)^2,     2*cos(t)*sin(t)]
+[    -2*cos(t)*sin(t), cos(t)^2 - sin(t)^2]
+ 
+</pre><p>これは、角度 2*t の回転を表します。2*t の回転となっていることを確かめるには、simple 関数の実行必要です。</p><pre class="codeinput">ans = simple(ans)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+[  cos(2*t), sin(2*t)]
+[ -sin(2*t), cos(2*t)]
+ 
+</pre><p>G は直交行列で、この転置行列が逆行列になります。</p><pre class="codeinput">G.'*G
+
+ans = simple(ans)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+[ cos(t)^2 + sin(t)^2,                   0]
+[                   0, cos(t)^2 + sin(t)^2]
+ 
+ 
+ans =
+ 
+[ 1, 0]
+[ 0, 1]
+ 
+</pre><p>G の固有値はどのようになるでしょうか。</p><pre class="codeinput">e = eig(G)
+</pre><pre class="codeoutput"> 
+e =
+ 
+ cos(t) - sin(t)*i
+ cos(t) + sin(t)*i
+ 
+</pre><p>単純化ルールを繰り返し適用します。</p><pre class="codeinput">e, <span class="keyword">for</span> k = 1:4, e = simple(e), <span class="keyword">end</span>
+</pre><pre class="codeoutput"> 
+e =
+ 
+ cos(t) - sin(t)*i
+ cos(t) + sin(t)*i
+ 
+ 
+e =
+ 
+ 1/exp(t*i)
+   exp(t*i)
+ 
+ 
+e =
+ 
+ 1/exp(t*i)
+   exp(t*i)
+ 
+ 
+e =
+ 
+ 1/exp(t*i)
+   exp(t*i)
+ 
+ 
+e =
+ 
+ 1/exp(t*i)
+   exp(t*i)
+ 
+</pre><p class="footer">Copyright 1993-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Plane Rotations  %  Copyright 1993-2009 The MathWorks, Inc. %  $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:29:30 $  %% % Create a symbolic variable named t.  t = sym('t')  %% % Create a 2-by-2 matrix representing a plane rotation through an angle t.  G = [ cos(t) sin(t); -sin(t) cos(t)]  %% % Compute the matrix product of G with itself.  G*G  %% % This should represent a rotation through an angle of 2*t. % Simplification using trigonometric identities is necessary.  ans = simple(ans)  %% % G is an orthogonal matrix; its transpose is its inverse.  G.'*G  ans = simple(ans)  %% % What are the eigenvalues of G?  e = eig(G)  %% % Repeatedly apply the simplification rules.  e, for k = 1:4, e = simple(e), end   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

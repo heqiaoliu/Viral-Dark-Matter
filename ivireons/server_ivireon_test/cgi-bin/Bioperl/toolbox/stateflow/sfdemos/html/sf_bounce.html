@@ -1,0 +1,82 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling a Bouncing Ball</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_bounce.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_bounce.mdl</div><div class="right"><a href="matlab:sf_bounce">Open this model</a></div></div><div class="content"><h1>Modeling a Bouncing Ball</h1><p>This model demonstrates how to define continuous time state variables and their derivatives in Stateflow&reg;. The dynamics of a bouncing ball can be defined in terms of two continuous time variables, namely the position and the velocity of the ball.</p><img vspace="5" hspace="5" src="sf_bounce_01.png" alt=""> <p>In order to model this in Stateflow, you first need to create a chart whose "Update Method" is "continuous" and which has "Enable zero-crossing detection" option checked.</p><p>Once this is done, you can create local variables whos "Update Method" is "continuous". For this model, we create two local variables <tt>p</tt> and <tt>v</tt> whose update method is "continuous".</p><p>When you create a "continuous" local variable, you can also define its time-derivative by using the notation <i>varname</i><tt>_dot</tt> where <i>varname</i> is the name of the continuous variable. Thus the variable <tt>p_dot</tt> refers to the time derivative of the position variable <tt>p</tt>. You should <i>not</i> attempt to create a variable with this name in the chart. You <i>automatically</i> get access to this variable once you declare <tt>p</tt> to have "continuous" update.</p><p>Using this convention, the bouncing ball can be modeled using the following Stateflow chart:</p><img vspace="5" hspace="5" src="sf_bounce_02.png" alt=""> <p>For most of the time, the ball is just freely falling under the influence of gravity. The dynamics in this "mode" are specified in the "during" section of the "Falling" state. The sudden resets in position and velocity which occurs when the ball bounces are modeled using a self-transition with a condition action which performs the state reset.</p><p>When this model is simulated, we get the familiar bouncing trajectory of the ball:</p><img vspace="5" hspace="5" src="sf_bounce_03.png" alt=""> <p>The top axis represents the position and the bottom axis of the scope represents the velocity.</p><p class="footer">Copyright 2007-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling a Bouncing Ball
+% 
+% This model demonstrates how to define continuous time state variables and
+% their derivatives in Stateflow(R). The dynamics of a bouncing ball can be
+% defined in terms of two continuous time variables, namely the position
+% and the velocity of the ball. 
+%
+
+%   Copyright 2007-2008 The MathWorks, Inc.
+
+mdl = 'sf_bounce';
+open_system(mdl);
+close_system([mdl, '/Scope']);
+r = sfroot;
+m = r.find('-isa', 'Stateflow.Machine', 'Name', mdl);
+c = m.find('-isa', 'Stateflow.Chart', 'Name', 'BouncingBall');
+c.Visible = 0;
+
+%%
+% In order to model this in Stateflow, you first need to
+% create a chart whose "Update Method" is "continuous" and which has
+% "Enable zero-crossing detection" option checked. 
+
+sf('Private', 'dlg_open', c.Id);
+
+%% 
+% 
+% Once this is done, you can create local variables whos "Update Method"
+% is "continuous". For this model, we create two local variables |p| and
+% |v| whose update method is "continuous".
+
+d = c.find('-isa', 'Stateflow.Data', 'Name', 'p');
+sf('Private', 'dlg_open', d.Id);
+
+%%
+% 
+% When you create a "continuous" local variable, you can also define its
+% time-derivative by using the notation _varname_|_dot| where _varname_ is
+% the name of the continuous variable. Thus the variable |p_dot| refers to
+% the time derivative of the position variable |p|. You should _not_
+% attempt to create a variable with this name in the chart. You
+% _automatically_ get access to this variable once you declare |p| to have
+% "continuous" update.
+%
+% Using this convention, the bouncing ball can be modeled using the
+% following Stateflow chart:
+
+% make the chart visible.
+c.Visible = 1;
+
+%% 
+%
+% For most of the time, the ball is just freely falling under the influence
+% of gravity. The dynamics in this "mode" are specified in the "during"
+% section of the "Falling" state. The sudden resets in position and
+% velocity which occurs when the ball bounces are modeled using a
+% self-transition with a condition action which performs the state reset.
+%
+% When this model is simulated, we get the familiar bouncing trajectory of
+% the ball:
+
+evalc('sim(mdl)');
+open_system([mdl, '/Scope']);
+
+%%
+%
+% The top axis represents the position and the bottom axis of the scope
+% represents the velocity.
+
+##### SOURCE END #####
+--></body></html>

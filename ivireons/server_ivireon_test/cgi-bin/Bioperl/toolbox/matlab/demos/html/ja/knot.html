@@ -1,0 +1,82 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   <!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>3 次元の結び目</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="knot.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit knot">エディターで knot.m を開く</a></div><div class="right"><a href="matlab:echodemo knot">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>3 次元の結び目</h1><!--introduction--><p>チューブ状の表面のパラメトリックな表現を計算し、SURF を使用してチューブを表示します。</p><p>Rouben Rostamian によるオリジナル コード、1991 年 3 月。Cleve Moler による Titan MATLAB&reg; から MATLAB&reg; V4.0 への修正、1991 年 9 月。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">パラメーターの設定</a></li><li><a href="#2">生成関数の指定</a></li><li><a href="#3">表面の生成</a></li><li><a href="#14">表面のプロット</a></li></ul></div><h2>パラメーターの設定<a name="1"></a></h2><pre class="codeinput"><span class="comment">% Number of grid points in each (circular) section of the tube.</span>
+m = 20;
+<span class="comment">% Number of sections along the tube.</span>
+n = 60;
+<span class="comment">% Radius of the tube.</span>
+R = 0.75;
+<span class="comment">% Symmetry index.Try q=floor(n/3) (symmetric) or q=floor(n/4)</span>
+q = floor(n/3);
+
+<span class="comment">% Do not change this!</span>
+t = (0:n)/n;
+</pre><h2>生成関数の指定<a name="2"></a></h2><p>生成関数 f0 は、1 周期でなければなりません。f1 と f2 は、f0 の 1 次および 2 次導関数です。</p><pre class="codeinput">a = 2; b = 3; c = 1.5;
+q1=2; q2=4;
+f0 = sin(q1*pi*t) + a*sin(q2*pi*t) - <span class="keyword">...</span>
+    b*cos(4*pi*t)/2 + c*sin(6*pi*t);
+f1 = (q1*pi)*cos(q1*pi*t) + a*(q2*pi)*cos(q2*pi*t) + <span class="keyword">...</span>
+    b*(4*pi)*sin(4*pi*t)/2 + c*(6*pi)*cos(6*pi*t);
+f2 = -(q1*pi)^2*sin(q1*pi*t) - a*(q2*pi)^2*sin(q2*pi*t) + <span class="keyword">...</span>
+    b*(4*pi)^2*cos(4*pi*t)/2 - c*(6*pi)^2*sin(6*pi*t);
+plot3(f0,f1,f2)
+</pre><img vspace="5" hspace="5" src="../knot_01.png" alt=""> <h2>表面の生成<a name="3"></a></h2><p>2 周期の区間に f を周期的に拡張することから開始:</p><pre class="codeinput">f0 = [ f0(1:n) f0(1:n) ];
+f1 = [ f1(1:n) f1(1:n) ];
+f2 = [ f2(1:n) f2(1:n) ];
+</pre><p>[x10;x20;x30] は、チューブの中心線のパラメトリックな表現です。</p><pre class="codeinput">x10 = f0(1:n+1);
+x20 = f0(q+1:q+n+1);
+x30 = f0(2*q+1:2*q+n+1);
+clf
+plot3(x10,x20,x30)
+</pre><img vspace="5" hspace="5" src="../knot_02.png" alt=""> <p>[x11;x21;x31] は、速度 (正接と同じ) ベクトルです。</p><pre class="codeinput">x11 = f1(1:n+1);
+x21 = f1(q+1:q+n+1);
+x31 = f1(2*q+1:2*q+n+1);
+plot3(x11,x21,x31)
+</pre><img vspace="5" hspace="5" src="../knot_03.png" alt=""> <p>[x12;x22;x32] は、加速度ベクトルです。</p><pre class="codeinput">x12 = f2(1:n+1);
+x22 = f2(q+1:q+n+1);
+x32 = f2(2*q+1:2*q+n+1);
+plot3(x12,x22,x32)
+</pre><img vspace="5" hspace="5" src="../knot_04.png" alt=""> <p>スピードの計算:</p><pre class="codeinput">speed = sqrt(x11.^2 + x21.^2 + x31.^2);
+plot(speed)
+</pre><img vspace="5" hspace="5" src="../knot_05.png" alt=""> <p>これは、速度と加速度ベクトルの内積です。</p><pre class="codeinput">velacc = x11.*x12 + x21.*x22 + x31.*x32;
+plot(velacc)
+</pre><img vspace="5" hspace="5" src="../knot_06.png" alt=""> <p>正規化した法線ベクトルを計算します。</p><pre class="codeinput"><span class="comment">% Here is the normal vector:</span>
+nrml1 = speed.^2 .* x12 - velacc.*x11;
+nrml2 = speed.^2 .* x22 - velacc.*x21;
+nrml3 = speed.^2 .* x32 - velacc.*x31;
+normallength = sqrt(nrml1.^2 + nrml2.^2 + nrml3.^2);
+
+<span class="comment">% And here is the normalized normal vector:</span>
+unitnormal1 = nrml1 ./ normallength;
+unitnormal2 = nrml2 ./ normallength;
+unitnormal3 = nrml3 ./ normallength;
+
+plot3(unitnormal1,unitnormal2,unitnormal3)
+</pre><img vspace="5" hspace="5" src="../knot_07.png" alt=""> <p>従法線ベクトル ( B = T x N )</p><pre class="codeinput">binormal1 = (x21.*unitnormal3 - x31.*unitnormal2) ./ speed;
+binormal2 = (x31.*unitnormal1 - x11.*unitnormal3) ./ speed;
+binormal3 = (x11.*unitnormal2 - x21.*unitnormal1) ./ speed;
+
+plot3(binormal1,binormal2,binormal3)
+</pre><img vspace="5" hspace="5" src="../knot_08.png" alt=""> <p>s は、チューブの循環的な断面に沿った座標です。</p><pre class="codeinput">s = (0:m)';
+s = (2*pi/m)*s;
+</pre><p>x1、x2、x3 はそれぞれ (m+1) 行 (n+1) 列の行列です。行は、チューブに沿った座標を表します。列は、チューブの各 (循環的な) 断面の座標を表します。</p><pre class="codeinput">xa1 = ones(m+1,1)*x10;
+xb1 = (cos(s)*unitnormal1 + sin(s)*binormal1);
+xa2 = ones(m+1,1)*x20;
+xb2 = (cos(s)*unitnormal2 + sin(s)*binormal2);
+xa3 = ones(m+1,1)*x30;
+xb3 = (cos(s)*unitnormal3 + sin(s)*binormal3);
+</pre><p>最終的な表面を計算します。</p><pre class="codeinput">x1 = xa1 + R*xb1;
+x2 = xa2 + R*xb2;
+x3 = xa3 + R*xb3;
+color = ones(m+1,1)*((0:n)*2/n-1);
+</pre><h2>表面のプロット<a name="14"></a></h2><pre class="codeinput">surf(x1,x2,x3,color);
+shading <span class="string">interp</span>;
+light
+lighting <span class="string">gouraud</span> <span class="comment">% 'lighting phong' will use zbuffer, slower</span>
+view(2)
+axis <span class="string">equal</span> <span class="string">off</span>
+axis <span class="string">vis3d</span> <span class="comment">% for smooth rotate3d</span>
+</pre><img vspace="5" hspace="5" src="../knot_09.png" alt=""> <p class="footer">Copyright 1984-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Three-Dimensional Knot % Compute the parametric representation of tube-like surfaces and display % the tube with SURF. % % Original code by Rouben Rostamian, March 1991.  Modified from Titan % MATLAB(R) to MATLAB(R) V4.0 by Cleve Moler, September 1991.  % Copyright 1984-2007 The MathWorks, Inc. % $Revision: 1.1.4.8.2.1 $  $Date: 2010/07/29 21:28:52 $  %% Set the Parameters  % Number of grid points in each (circular) section of the tube. m = 20; % Number of sections along the tube. n = 60; % Radius of the tube. R = 0.75; % Symmetry index.  Try q=floor(n/3) (symmetric) or q=floor(n/4) q = floor(n/3);  % Do not change this! t = (0:n)/n;   %% Specify the Generating Function % The generating function f0 must be 1-periodic. % f1 and f2 are the first and second derivatives of f0.  a = 2; b = 3; c = 1.5; q1=2; q2=4; f0 = sin(q1*pi*t) + a*sin(q2*pi*t) - ...     b*cos(4*pi*t)/2 + c*sin(6*pi*t); f1 = (q1*pi)*cos(q1*pi*t) + a*(q2*pi)*cos(q2*pi*t) + ...     b*(4*pi)*sin(4*pi*t)/2 + c*(6*pi)*cos(6*pi*t); f2 = -(q1*pi)^2*sin(q1*pi*t) - a*(q2*pi)^2*sin(q2*pi*t) + ...     b*(4*pi)^2*cos(4*pi*t)/2 - c*(6*pi)^2*sin(6*pi*t); plot3(f0,f1,f2)  %% Generate the Surface % Start by extending f periodically to 2 period-intervals: f0 = [ f0(1:n) f0(1:n) ]; f1 = [ f1(1:n) f1(1:n) ]; f2 = [ f2(1:n) f2(1:n) ];  %% % [x10;x20;x30] is the parametric representation of % the center-line of the tube: x10 = f0(1:n+1); x20 = f0(q+1:q+n+1); x30 = f0(2*q+1:2*q+n+1); clf plot3(x10,x20,x30)  %% % [x11;x21;x31] is velocity (same as tangent) vector: x11 = f1(1:n+1); x21 = f1(q+1:q+n+1); x31 = f1(2*q+1:2*q+n+1); plot3(x11,x21,x31)  %% % [x12;x22;x32] is acceleration vector: x12 = f2(1:n+1); x22 = f2(q+1:q+n+1); x32 = f2(2*q+1:2*q+n+1); plot3(x12,x22,x32)  %% % Calculate the speed: speed = sqrt(x11.^2 + x21.^2 + x31.^2); plot(speed)  %% % This is the dot-product of the velocity and acceleration vectors: velacc = x11.*x12 + x21.*x22 + x31.*x32; plot(velacc)  %% % Compute the normalized normal vector.  % Here is the normal vector: nrml1 = speed.^2 .* x12 - velacc.*x11; nrml2 = speed.^2 .* x22 - velacc.*x21; nrml3 = speed.^2 .* x32 - velacc.*x31; normallength = sqrt(nrml1.^2 + nrml2.^2 + nrml3.^2);  % And here is the normalized normal vector: unitnormal1 = nrml1 ./ normallength; unitnormal2 = nrml2 ./ normallength; unitnormal3 = nrml3 ./ normallength;  plot3(unitnormal1,unitnormal2,unitnormal3)  %% % And the binormal vector ( B = T x N ) binormal1 = (x21.*unitnormal3 - x31.*unitnormal2) ./ speed; binormal2 = (x31.*unitnormal1 - x11.*unitnormal3) ./ speed; binormal3 = (x11.*unitnormal2 - x21.*unitnormal1) ./ speed;  plot3(binormal1,binormal2,binormal3)  %% % s is the coordinate along the circular cross-sections of the tube: s = (0:m)'; s = (2*pi/m)*s;  %% % Each of x1, x2, x3 is an (m+1)x(n+1) matrix. % Rows represent coordinates along the tube.  Columns represent coordinates % in each (circular) cross-section of the tube.  xa1 = ones(m+1,1)*x10; xb1 = (cos(s)*unitnormal1 + sin(s)*binormal1); xa2 = ones(m+1,1)*x20; xb2 = (cos(s)*unitnormal2 + sin(s)*binormal2); xa3 = ones(m+1,1)*x30; xb3 = (cos(s)*unitnormal3 + sin(s)*binormal3);  %% % Compute the final surface.  x1 = xa1 + R*xb1; x2 = xa2 + R*xb2; x3 = xa3 + R*xb3; color = ones(m+1,1)*((0:n)*2/n-1);   %% Plot the Surface  surf(x1,x2,x3,color); shading interp; light lighting gouraud % 'lighting phong' will use zbuffer, slower  view(2) axis equal off axis vis3d % for smooth rotate3d   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

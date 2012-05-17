@@ -1,0 +1,81 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>大規模な制約付き線形最小二乗法</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="optdeblur.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit optdeblur">エディターで optdeblur.m を開く</a></div><div class="right"><a href="matlab:echodemo optdeblur">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>大規模な制約付き線形最小二乗法</h1><!--introduction--><p>このデモでは、不明瞭なイメージの修正で、大規模な制約付き線形最小二乗最適化問題を解くために、Optimization Toolbox™ がどのように使用されるかを示します。</p><!--/introduction--><p>Joe の車に座っている Mary Ann と Matthew の写真に、動きによるブレを追加した後、元の写真の復元を試みます。元の画像は、m 行 n 列の行列 P からなる白黒画像です。行列の各要素は、黒 (0) と白 (1) の間のグレーの強度を示します。</p><pre class="codeinput">load <span class="string">optdeblur</span> <span class="string">P</span>
+[m,n] = size(P);
+mn = m*n;
+imagesc(P);
+colormap(gray);
+axis <span class="string">off</span> <span class="string">image</span>;
+title([int2str(m) <span class="string">' x '</span> int2str(n) <span class="string">' ('</span> int2str(mn) <span class="string">') pixels'</span>])
+</pre><img vspace="5" hspace="5" src="../optdeblur_01.png" alt=""> <p>上下 5 ピクセル分の各ピクセルを平均することで、垂直方向の動きによるブレの影響をシミュレートできます。単一の行列乗算によってこれを行うスパース行列 D を作成します。</p><pre class="codeinput"><span class="comment">% Create D.</span>
+blur = 5;  mindex = 1:mn;  nindex = 1:mn;
+<span class="keyword">for</span> i = 1:blur
+  mindex=[mindex i+1:mn 1:mn-i];
+  nindex=[nindex 1:mn-i i+1:mn];
+<span class="keyword">end</span>
+D = sparse(mindex,nindex,1/(2*blur+1));
+
+<span class="comment">% Draw a picture of D.</span>
+cla
+axis <span class="string">off</span> <span class="string">ij</span>
+xs = 25;
+ys = 15;
+xlim([0,xs+1]);
+ylim([0,ys+1]);
+[ix,iy] = meshgrid(1:(xs-1),1:(ys-1));
+l = abs(ix-iy)&lt;=5;
+text(ix(l),iy(l),<span class="string">'x'</span>)
+text(ix(~l),iy(~l),<span class="string">'0'</span>)
+text(xs*ones(ys,1),1:ys,<span class="string">'...'</span>);
+text(1:xs,ys*ones(xs,1),<span class="string">'...'</span>);
+title(<span class="string">'Blurring Operator D ( x = 1/11)'</span>)
+</pre><img vspace="5" hspace="5" src="../optdeblur_02.png" alt=""> <p>この演算子とイメージを乗算して、不鮮明なイメージを作成します。P は元のイメージ、D は演算子、G は不鮮明なイメージです。</p><pre class="codeinput">G = D*P(:);
+imagesc(reshape(G,m,n));
+axis <span class="string">off</span> <span class="string">image</span>;
+</pre><img vspace="5" hspace="5" src="../optdeblur_03.png" alt=""> <p>動いているエレベーターから、この不鮮明な写真 G を Joe が撮影したとしましょう。エレベーターの速度がわかっているため、不鮮明にする演算子 D がわかっていると仮定します。どの程度、ブレを取り除くことができて、元のイメージ P に戻せるでしょうか。</p><p>最も簡単な方法は、以下の最小二乗問題を解くことです。</p><pre>  min( || D*P(:) - G||^2 )</pre><pre class="codeinput">subplot(1,2,1);
+imagesc(reshape(G(:),m,n)); axis <span class="string">off</span> <span class="string">image</span>;
+title(<span class="string">'G, the blurred image'</span>);
+subplot(1,2,2);
+imagesc(reshape(P(:),m,n)); axis <span class="string">off</span> <span class="string">image</span>;
+title(<span class="string">'P, the original image'</span>);
+</pre><img vspace="5" hspace="5" src="../optdeblur_04.png" alt=""> <p>実際には、この簡単な方法によって得られる結果にノイズが含まれることが多いです。これを補うために、正規化項が追加されます。</p><pre>     0.0004*|| L*P ||^2</pre><p>L は、各ピクセルを、それを取り囲むピクセルに関連付ける離散ラプラシアンです。グレー強度が必要なことがわかっているため、P の要素が 0 ～ 1 の範囲に収まらなければならないという制約も課します。</p><pre class="codeinput"><span class="comment">% Create L.</span>
+L = sparse( [1:mn,2:mn,1:mn-1],  [1:mn,1:mn-1,2:mn], <span class="keyword">...</span>
+   [4*ones(1,mn) -1*ones(1,2*(mn-1))]  );
+
+<span class="comment">% Draw a picture of L.</span>
+subplot(1,1,1) ;
+delete(gca);
+axis <span class="string">ij</span>
+axis <span class="string">off</span>;
+xs=11;
+ys=11;
+xlim([0,xs+1]);
+ylim([0,ys+1]);
+[ix,iy]=meshgrid(1:(xs-1),1:(ys-1));
+four=(ix==iy);
+one=(abs(ix-iy)==1);
+text(ix(one),iy(one),<span class="string">'-1'</span>)
+text(ix(four),iy(four),<span class="string">'+4'</span>)
+text(ix(~four &amp; ~one),iy(~four &amp; ~one),<span class="string">' 0'</span>)
+text(xs*ones(ys,1),1:ys,<span class="string">'...'</span>);
+text(1:xs,ys*ones(xs,1),<span class="string">'...'</span>);
+title(<span class="string">'L, The Discrete Laplacian'</span>)
+</pre><img vspace="5" hspace="5" src="../optdeblur_05.png" alt=""> <p>ブレが除去された写真を得るために、P について解きたいと思います。</p><pre>  min( || D*P(:) - G(:) ||^2 + 0.0004*|| L*P(:) ||^2 )</pre><p>A と b を定義することで、この式を簡略化できます。</p><pre>  A = [D ; 0.02*L]; b = [ G(:) ; zeros(mn,1) ];</pre><p>これにより、上記の方程式は以下のように変更されます。</p><pre>  min( || A*P(:) - b ||^2 )</pre><p>これは、0&lt;=P&lt;=1 という制約に従います。行列 D と L の両方が各ピクセルを、その隣の少数のピクセルに関連付けます。これにより、A が、構造化されたスパース行列になります。</p><pre class="codeinput">A = [D ; 0.02*L]; b = [ G(:) ; zeros(mn,1) ];
+spy(A');
+axis <span class="string">equal</span> <span class="string">tight</span>
+title(<span class="string">'Structure of Matrix A'''</span>);
+</pre><img vspace="5" hspace="5" src="../optdeblur_06.png" alt=""> <p>A はスパース行列であるため、大規模なアルゴリズムを使用してこの線形最小二乗最適化問題を解くことができます。A、b、下限、上限、およびオプションを設定して、LSQLIN を呼び出します。</p><pre class="codeinput">options = optimset(<span class="string">'LargeScale'</span>, <span class="string">'on'</span>,<span class="string">'Display'</span>, <span class="string">'off'</span> );
+x = lsqlin(A, b, [], [], [], [], zeros(mn,1), ones(mn,1), [], options);
+imagesc(reshape(x,m,n))
+axis <span class="string">off</span> <span class="string">image</span>
+</pre><img vspace="5" hspace="5" src="../optdeblur_07.png" alt=""> <p>不鮮明な写真とブレが除去された写真を比べてみましょう。</p><pre class="codeinput">subplot(1,2,1);
+imagesc(reshape(G,m,n)); axis <span class="string">image</span>; axis <span class="string">off</span>;
+title(<span class="string">'Blurred'</span>);
+
+subplot(1,2,2);
+imagesc(reshape(x,m,n)); axis <span class="string">image</span>; axis <span class="string">off</span>;
+title(<span class="string">'De-Blurred'</span>);
+</pre><img vspace="5" hspace="5" src="../optdeblur_08.png" alt=""> <p class="footer">Copyright 1990-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Large-Scale Constrained Linear Least-Squares % This demo shows how the Optimization Toolbox(TM) can be used to solve a % large-scale constrained linear least-squares optimization problem to recover a % blurred image.  % Copyright 1990-2008 The MathWorks, Inc. % $Revision: 1.1.4.12.2.1 $ $Date: 2010/07/29 21:28:56 $  %% % We will add motion blur to a photo of Mary Ann and Matthew sitting in Joe's % car, then try to restore the original.  Our starting image is this black and % white image, contained the m x n matrix P.  Each element in the matrix % represents a pixel's gray intensity between black and white (0 and 1).  load optdeblur P [m,n] = size(P); mn = m*n; imagesc(P); colormap(gray); axis off image; title([int2str(m) ' x ' int2str(n) ' (' int2str(mn) ') pixels'])   %% % We can simulate the effect of vertical motion blurring by averaging each pixel % with the 5 pixels above and below.  We construct a sparse matrix D, that will  % do this with a single matrix multiply.  % Create D. blur = 5;  mindex = 1:mn;  nindex = 1:mn; for i = 1:blur   mindex=[mindex i+1:mn 1:mn-i];   nindex=[nindex 1:mn-i i+1:mn]; end D = sparse(mindex,nindex,1/(2*blur+1));  % Draw a picture of D. cla axis off ij xs = 25; ys = 15; xlim([0,xs+1]); ylim([0,ys+1]); [ix,iy] = meshgrid(1:(xs-1),1:(ys-1)); l = abs(ix-iy)<=5; text(ix(l),iy(l),'x') text(ix(~l),iy(~l),'0') text(xs*ones(ys,1),1:ys,'...'); text(1:xs,ys*ones(xs,1),'...'); title('Blurring Operator D ( x = 1/11)')  %% % We multiply the image by this operator to create the blurred image.  P is the % original image, D is the operator, and G is the blurred image.  G = D*P(:); imagesc(reshape(G,m,n)); axis off image;  %% % Now, let's pretend Joe took this blurred picture G from a moving elevator. % Assume we know how fast the elevator is moving, so we know the blurring % operator D.  How well can we remove the blur and recover the original image P? %  % The simplest approach is to solve the least squares problem: %  %    min( || D*P(:) - G||^2 )  subplot(1,2,1); imagesc(reshape(G(:),m,n)); axis off image; title('G, the blurred image'); subplot(1,2,2); imagesc(reshape(P(:),m,n)); axis off image; title('P, the original image');  %% % In practice the results obtained with this simple approach tend to be noisy. % To compensate for this, a regularization term is added: % %       0.0004*|| L*P ||^2 % % L is the discrete Laplacian, which relates each pixel to those surrounding it.   % Since we know we are looking for a gray intensity, we also impose the constraint  % that the elements of P must fall between 0 and 1.  % Create L. L = sparse( [1:mn,2:mn,1:mn-1],  [1:mn,1:mn-1,2:mn], ...    [4*ones(1,mn) -1*ones(1,2*(mn-1))]  );  % Draw a picture of L. subplot(1,1,1) ; delete(gca); axis ij axis off; xs=11; ys=11; xlim([0,xs+1]); ylim([0,ys+1]); [ix,iy]=meshgrid(1:(xs-1),1:(ys-1)); four=(ix==iy); one=(abs(ix-iy)==1); text(ix(one),iy(one),'-1') text(ix(four),iy(four),'+4') text(ix(~four & ~one),iy(~four & ~one),' 0') text(xs*ones(ys,1),1:ys,'...'); text(1:xs,ys*ones(xs,1),'...'); title('L, The Discrete Laplacian')  %% % To obtain the deblurred picture we want to solve for P: % %    min( || D*P(:) - G(:) ||^2 + 0.0004*|| L*P(:) ||^2 ) % % We can simplify this expression by defining A and b: % %    A = [D ; 0.02*L]; b = [ G(:) ; zeros(mn,1) ]; % % which changes the last equation to: % %    min( || A*P(:) - b ||^2 ) % % subject to 0<=P<=1.  Both matrices D and L relate each pixel to a few of its % neighbors.  This makes A structured and sparse.  A = [D ; 0.02*L]; b = [ G(:) ; zeros(mn,1) ]; spy(A'); axis equal tight title('Structure of Matrix A''');  %% % Because A is sparse, we can use a large-scale algorithm to solve this linear % least squares optimization problem.  We call LSQLIN with A, b, lower bounds, % upper bounds, and options.  options = optimset('LargeScale', 'on','Display', 'off' ); x = lsqlin(A, b, [], [], [], [], zeros(mn,1), ones(mn,1), [], options); imagesc(reshape(x,m,n)) axis off image  %% % Let's compare the blurred and deblurred pictures.  subplot(1,2,1); imagesc(reshape(G,m,n)); axis image; axis off; title('Blurred');  subplot(1,2,2); imagesc(reshape(x,m,n)); axis image; axis off; title('De-Blurred');   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,127 @@
+%%
+%% $Revision: 1.1.10.1 $ 
+%% $RCSfile: osektask.tlc,v $
+%%
+%% Abstract:
+%%      TLC file for the OSEK Task Block.
+%%
+%% Copyright 2002-2006 The MathWorks, Inc.
+
+%implements "osektask" "C"
+
+%include "oseklib.tlc"
+
+%% Function: BlockTypeSetup ===================================================
+%% Abstract:
+%%      Add OSEK API headers for the selected implementation to the generated
+%%      model.c file as this block will generate OSEK API calls in model.c.
+%%
+%function BlockTypeSetup(block, system) void
+  %<LibAddToCommonIncludes("myosek.h")>
+%endfunction
+
+%% Function: BlockInstanceSetup ===============================================
+%% Abstract:
+%%      Find the function-call subsystems that are attached to the task
+%%      block and
+%%
+%%      o Add a Task to the OIL file definitions and generated C code
+%%        The task is defined with the parameters specified in the block.
+%%
+%function BlockInstanceSetup(block, system) void
+  
+  %% Assume there is no Alarm block driving this block
+  %% If there is, Alarm block will reset this flag to TLC_FALSE
+  %addtorecord block AsyncCallerGenCode TLC_TRUE
+  
+  %% Allow Alarm block to easily get the TaskName
+  %assign TaskName = SFcnParamSettings.TaskName
+  %assign system = system + TaskName
+  
+  %assign sysIdx = system.CallSites[0][2]
+  %assign blkIdx = system.CallSites[0][3]
+  %assign taskBlock = CompiledModel.System[sysIdx].Block[blkIdx]
+  %assign sourceType = IDNUM(taskBlock.ControlInputPort.SignalSrc[0])
+  
+  %% Determine masked block name for error reporting
+  %assign sysId = %<SYSNAME(taskBlock.Name)>[0]
+  %assign idIdx = %<IDNUM(sysId)>[1] - 1
+  %assign parentName = CompiledModel.Subsystem[idIdx].Name
+  %assign taskBlockName = STRING(LibUnmangledPathName(parentName))
+  %assign block = block + taskBlockName
+
+  %% The input to the task block is unconnected
+  %if sourceType[0]  == "G"
+    %assign wrnTxt = "The input for OSEK Task block '%<taskBlockName>' is " ...
+      "unconnected."
+    %<LibReportWarning(wrnTxt)>
+  %endif
+
+  %% Get downstream block if there is one
+  %if LibIsEqual(SFcnSystemOutputCall[0].BlockToCall, "unconnected")
+    %assign wrnTxt = "The output for OSEK Task block '%<taskBlockName>' is " ...
+      "unconnected.  No code will be generated for this block."
+    %<LibReportWarning(wrnTxt)>
+  %else
+    %% Find the downstream function-call subsystem.
+    %% Simulink will have already verified that, if connected at all,  it is 
+    %% a function-call subsystem and that it is the only destination.  The 
+    %% remaining test is whether the destination has other function-call 
+    %% sources besides this Task block which is not supported.
+    
+    %% Get downstream block
+    %assign ssBlock = LibGetFcnCallBlock(block,0)
+    %assign block = block + ssBlock
+    %% Check to see if this is a direct connection
+    %if (LibGetRecordWidth(ssBlock.ControlInputPort) != 1)
+      %assign errTxt = "The OSEK Task block '%<taskBlockName>' " ...
+	"output must be directly connected to one function-call subsystem. " ...
+	"Also, no other block can drive the function-call subsystem."
+      %<LibReportError(errTxt)>
+    %endif    
+  %endif
+%endfunction
+  
+%function Outputs(block, system) Output
+  %if EXISTS("ssBlock")
+    %if !ISFIELD(block, "BuffersAdded") || BuffersAdded != TLC_TRUE
+      %% Create the task in osek_main.c
+      %openfile buffer
+      /* Explicit Task: %<SFcnParamSettings.TaskName>, with priority: %<SFcnParamSettings.Priority> */
+      /* Defined by block: %<taskBlockName> */
+      TASK(%<SFcnParamSettings.TaskName>)
+      {
+        %assign tidVal  = ParamSettings.SampleTimesToSet[0][1]
+        %<LibExecuteFcnCall(ssBlock, SFcnSystemOutputCall[0].FcnPortElement, tidVal)>\
+        TerminateTask();
+      }
+      %closefile buffer
+      %% Declare the osek main file and add the buffer
+      %assign cFile = OSLibOSEKDeclareOSEKMain()
+      %<LibSetSourceFileSection(cFile, "Functions", buffer)>
+      
+      %% Define the task in the oil file
+      %openfile buffer
+      TASK %<SFcnParamSettings.TaskName> {
+        APPMODE = mode0;
+        SCHEDULE = %<SFcnParamSettings.TaskSchedule>;
+        PRIORITY = %<CAST("Number", SFcnParamSettings.Priority)>;
+        ACTIVATION = 1;
+        AUTOSTART = FALSE;
+        STACKSIZE = %<CAST("Number", SFcnParamSettings.StackSize)>;
+        %<OSLibOSEKImplDeclareFPU()>
+      };
+      %closefile buffer
+      %<OSLibOSEKAddTaskToOil(buffer)>
+      %addtorecord block BuffersAdded TLC_TRUE
+    %endif
+
+    %if AsyncCallerGenCode == TLC_TRUE
+      %% Activate the task at run time
+      /* Activate the OSEK Task: %<SFcnParamSettings.TaskName> */
+      ActivateTask(%<SFcnParamSettings.TaskName>);
+    %endif
+  %endif
+%endfunction
+	
+%% [EOF] osektask.tlc

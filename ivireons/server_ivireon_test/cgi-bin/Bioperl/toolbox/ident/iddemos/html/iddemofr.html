@@ -1,0 +1,475 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Frequency Domain Identification: Estimating Models Using Frequency Domain Data</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="iddemofr.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit iddemofr">Open iddemofr.m in the Editor</a></div><div class="right"><a href="matlab:echodemo iddemofr">Run in the Command Window</a></div></div><div class="content"><h1>Frequency Domain Identification: Estimating Models Using Frequency Domain Data</h1><!--introduction--><p>This demo illustrates the use of frequency domain data in System Identification Toolbox&#8482;. Estimation and validation of models in the toolbox using frequency domain data work the same way as they do with time domain data. This provides users a great amount of flexibility in estimation and analysis of models using time and frequency domain as well as spectral (FRF) data. A user may simultaneously estimate models using data in both domains, compare and combine these models. A model estimated using time domain data may be validated using spectral data or vice-versa.</p><p>Note that frequency domain data can not be used for estimation or validation of nonlinear models.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#2">Inspecting Frequency Domain Data</a></li><li><a href="#6">Estimating Models Using Frequency Response (FRF) Data</a></li><li><a href="#9">Condensing Data Using SPAFDR</a></li><li><a href="#11">Estimation Using Frequency-Domain I/O Data</a></li><li><a href="#14">Transformations Between Data Representations (Time <a href="-">-</a> Frequency)</a></li><li><a href="#18">Using Continuous-time Frequency-domain Data to Estimate Continuous-time Models</a></li><li><a href="#27">Conclusions</a></li><li><a href="#28">Additional Information</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>Frequency domain experimental data are common in many applications. It could be that the data was collected as frequency response data (frequency functions: FRF) from the process using a frequency analyzer. It could also be that it is more practical to work with the input's and output's Fourier transforms (fft of time-domain data), for example to handle periodic or band-limited data. (A band-limited continuous time signal has no frequency components above the Nyquist frequency). In System Identification Toolbox, frequency domain I/O data are represented the same way as time-domain data, i.e., using <tt>iddata</tt> objects. The 'domain' property of the object must be set to 'Frequency'. Frequency response data are represented as complex vectors or as magnitude/phase vectors as a function of frequency. IDFRD objects in the toolbox are used to encapsulate FRFs, where a user specifies the complex response data and a frequency vector. Such IDDATA or IDFRD objects may be used seamlessly with any estimation routine (such as <tt>pem</tt>, <tt>idproc</tt> etc).</p><h2>Inspecting Frequency Domain Data<a name="2"></a></h2><p>Let us begin this demo by loading some frequency domain data:</p><pre class="codeinput">load <span class="string">demofr</span>
+</pre><p>This MAT-file contains frequency response data at frequencies <tt>W</tt>, with the amplitude response <tt>AMP</tt> and the phase response <tt>PHA</tt>. Let us first have a look at the data:</p><pre class="codeinput">subplot(211), loglog(W,AMP),title(<span class="string">'Amplitude Response'</span>)
+subplot(212), semilogx(W,PHA),title(<span class="string">'Phase Response'</span>)
+</pre><img vspace="5" hspace="5" src="iddemofr_01.png" alt=""> <p>This experimental data will now be stored as an IDFRD object. First transform amplitude and phase to a complex valued response:</p><pre class="codeinput">zfr = AMP.*exp(i*PHA*pi/180);
+Ts = 0.1;
+gfr = idfrd(zfr,W,Ts);
+</pre><p><tt>Ts</tt> is the sampling interval of the underlying data. If the data corresponds to continuous time, for example since the input has been band-limited, use Ts = 0.</p><p>Note: If you have the Control System Toolbox&#8482;, you could use an FRD object instead of the IDFRD object. IDFRD has options for more information, like disturbance spectra and uncertainty measures which are not available in FRD objects.</p><p>The IDFRD object <tt>gfr</tt> now contains the data, and it can be plotted and analyzed in different ways. (See HELP IDFRD and IDPROPS IDFRD for complete lists of properties). To view the data, we may use <tt>plot</tt> or <tt>bode</tt>:</p><pre class="codeinput">bode(gfr), legend(<span class="string">'gfr'</span>)
+</pre><img vspace="5" hspace="5" src="iddemofr_02.png" alt=""> <h2>Estimating Models Using Frequency Response (FRF) Data<a name="6"></a></h2><p>To estimate models, you can now use <tt>gfr</tt> as a data set with all the commands of the toolbox in a transparent fashion. The only restriction is that noise models cannot be built. This means that for polynomial models only OE (output-error models) apply, and for state-space models, you have to fix <tt>K = 0</tt>.</p><pre class="codeinput">m1 = oe(gfr,[2 2 1]) <span class="comment">% Discrete-time Output error (transfer function) model</span>
+ms = pem(gfr) <span class="comment">% Discrete-time state-space model with default choice of order</span>
+mproc = pem(gfr,<span class="string">'p2uzd'</span>,<span class="string">'Td'</span>,{<span class="string">'max'</span>,10}) <span class="comment">% 2nd-order, continuous-time model with underdamped poles</span>
+compare(gfr,m1,ms,mproc)
+</pre><pre class="codeoutput">Discrete-time IDPOLY model: y(t) = [B(q)/F(q)]u(t) + e(t)
+B(q) = 0.9982 q^-1 + 0.4974 q^-2                         
+                                                         
+F(q) = 1 - 1.499 q^-1 + 0.6998 q^-2                      
+                                                         
+Estimated using OE on data set gfr                       
+Loss function 0.249152 and FPE 0.250148                  
+Sampling interval: 0.1 s                                 
+                                                         
+State-space model:  x(t+Ts) = A x(t) + B u(t) + K e(t)
+                       y(t) = C x(t) + D u(t) + e(t)
+ 
+A = 
+                        x1           x2
+           x1      0.81907     -0.53501
+           x2       0.2669      0.68006
+ 
+ 
+B = 
+                        u1
+           x1       3.8574
+           x2      -1.9209
+ 
+ 
+C = 
+                        x1           x2
+           y1      0.50943      0.50335
+ 
+ 
+D = 
+                        u1
+           y1            0
+ 
+ 
+K = 
+                        y1
+           x1            0
+           x2            0
+ 
+ 
+x(0) = 
+                          
+           x1            0
+           x2            0
+ 
+Estimated using PEM using SearchMethod = Auto from data set gfr
+Loss function 0.248653 and FPE 0.249648                        
+Sampling interval: 0.1 s                                       
+                                                               
+Process model with transfer function                           
+                   1+Tz*s                                      
+G(s) = Kp * ---------------------- * exp(-Td*s)                
+            1+2*Zeta*Tw*s+(Tw*s)^2                             
+                                                               
+                                                               
+with   Kp = 7.4612                                             
+       Tw = 0.20262                                            
+     Zeta = 0.3621                                             
+       Td = 0                                                  
+       Tz = 0.013666                                           
+                                                               
+Estimated using PEM using SearchMethod = Auto from data set gfr
+Loss function 0.249213 and FPE 0.250459                        
+                                                               
+</pre><img vspace="5" hspace="5" src="iddemofr_03.png" alt=""> <p>As demonstrated above a variety of linear model types may be estimated in both continuous and discrete time domains, using spectral data. These models may be validated using, time-domain data. The time-domain I/O data set <tt>ztime</tt>, for example, is collected from the same system, and can be used for validation of <tt>m1</tt>, <tt>ms</tt> and <tt>mproc</tt>:</p><pre class="codeinput">compare(ztime,m1,ms,mproc) <span class="comment">%validation in a different domain</span>
+</pre><img vspace="5" hspace="5" src="iddemofr_04.png" alt=""> <p>We may also look at the residuals to affirm the quality of the model using the validation data <tt>ztime</tt>. As observed, the residuals are almost white:</p><pre class="codeinput">resid(mproc,ztime) <span class="comment">% Residuals plot</span>
+</pre><img vspace="5" hspace="5" src="iddemofr_05.png" alt=""> <h2>Condensing Data Using SPAFDR<a name="9"></a></h2><p>An important reason to work with frequency response data is that it is easy to condense the information with little loss. The command SPAFDR allows you to compute smoothed response data over limited frequencies, for example with logarithmic spacing. Here is an example where the <tt>gfr</tt> data is condensed to 100 logarithmically spaced frequency values. With a similar technique, also the original time domain data can be condensed:</p><pre class="codeinput">sgfr = spafdr(gfr) <span class="comment">% spectral estimation with frequency-dependent resolution</span>
+sz = spafdr(ztime); <span class="comment">% spectral estimation using time-domain data</span>
+bode(gfr,sgfr,sz), legend(<span class="string">'gfr (raw data)'</span>,<span class="string">'sgfr'</span>,<span class="string">'sz'</span>,<span class="string">'location'</span>,<span class="string">'southwest'</span>)
+</pre><pre class="codeoutput">IDFRD model sgfr.                                                      
+  Contains Frequency Response Data for 1 output and 1 input            
+  and SpectrumData for disturbances at 1 output                        
+  at 100 frequency points, ranging from 0.031416 rad/s to 31.416 rad/s.
+  Output Channels: y1                                                  
+  Input Channels:  u1                                                  
+  Sampling time:   0.1                                                 
+  Estimated from data set gfr using SPAFDR.                            
+</pre><img vspace="5" hspace="5" src="iddemofr_06.png" alt=""> <p>The Bode plots show that the information in the smoothed data has been taken well care of. Now, these data records with 100 points can very well be used for model estimation. For example:</p><pre class="codeinput">msm = oe(sgfr,[2 2 1]);
+compare(ztime,msm,m1) <span class="comment">% msm has the same accuracy as M1 (based on 1000 points)</span>
+</pre><img vspace="5" hspace="5" src="iddemofr_07.png" alt=""> <h2>Estimation Using Frequency-Domain I/O Data<a name="11"></a></h2><p>It may be that the measurements are available as Fourier transforms of inputs and output. Such frequency domain data from the system are given as the signals Y and U. In loglog plots they look like</p><pre class="codeinput">Wfd = [0:500]'*10*pi/500;
+subplot(211),loglog(Wfd,abs(Y)),title(<span class="string">'The amplitude of the output'</span>)
+subplot(212),loglog(Wfd,abs(U)),title(<span class="string">'The amplitude of the input'</span>)
+</pre><img vspace="5" hspace="5" src="iddemofr_08.png" alt=""> <p>The frequency response data is essentially the ratio between <tt>Y</tt> and <tt>U</tt>. To collect the frequency domain data as an IDDATA object, do as follows:</p><pre class="codeinput">ZFD = iddata(Y,U,<span class="string">'ts'</span>,0.1,<span class="string">'Domain'</span>,<span class="string">'Frequency'</span>,<span class="string">'Freq'</span>,Wfd)
+</pre><pre class="codeoutput">
+Frequency domain data set with responses at 501 frequencies,
+ranging from 0 to 31.416 rad/s                               
+Sampling interval: 0.1                                       
+                                                             
+Outputs      Unit (if specified)                             
+   y1                                                        
+                                                             
+Inputs       Unit (if specified)                             
+   u1                                                        
+                                                             
+</pre><p>Now, again the frequency domain data set <tt>ZFD</tt> can be used as data in all estimation routines, just as time domain data and frequency response data:</p><pre class="codeinput">mf = pem(ZFD);
+compare(ztime,mf,m1)
+</pre><img vspace="5" hspace="5" src="iddemofr_09.png" alt=""> <h2>Transformations Between Data Representations (Time <a href="-">-</a> Frequency)<a name="14"></a></h2><p>Time and frequency domain input-output data sets can be transformed to either domain by using FFT and IFFT. These commands are adapted to IDDATA objects:</p><pre class="codeinput">dataf = fft(ztime)
+datat = ifft(dataf)
+</pre><pre class="codeoutput">
+Frequency domain data set with responses at 501 frequencies,
+ranging from 0 to 31.416 rad/s                               
+Sampling interval: 0.1                                       
+                                                             
+Outputs      Unit (if specified)                             
+   y1                                                        
+                                                             
+Inputs       Unit (if specified)                             
+   u1                                                        
+                                                             
+
+Time domain data set with 1000 samples.
+Sampling interval: 0.1                  
+                                        
+Outputs      Unit (if specified)        
+   y1                                   
+                                        
+Inputs       Unit (if specified)        
+   u1                                   
+                                        
+</pre><p>Time and frequency domain input-output data can be transformed to frequency response data by SPAFDR, SPA and ETFE:</p><pre class="codeinput">g1 = spafdr(ztime)
+g2 = spafdr(ZFD);
+bode(g1,g2)
+</pre><pre class="codeoutput">IDFRD model g1.                                                        
+  Contains Frequency Response Data for 1 output and 1 input            
+  and SpectrumData for disturbances at 1 output                        
+  at 100 frequency points, ranging from 0.062832 rad/s to 31.416 rad/s.
+  Output Channels: y1                                                  
+  Input Channels:  u1                                                  
+  Sampling time:   0.1                                                 
+  Estimated from data set ztime using SPAFDR.                          
+</pre><img vspace="5" hspace="5" src="iddemofr_10.png" alt=""> <p>Frequency response data can also be transformed to more smoothed data (less resolution and less data) by SPAFDR and SPA;</p><pre class="codeinput">g3 = spafdr(gfr);
+</pre><p>Frequency response data can be transformed to frequency domain input-output signals by the command IDDATA:</p><pre class="codeinput">gfd = iddata(g3)
+</pre><pre class="codeoutput">
+Frequency domain data set with responses at 100 frequencies,
+ranging from 0.031416 to 31.416 rad/s                        
+Sampling interval: 0.1 s                                     
+                                                             
+Outputs      Unit (if specified)                             
+   y1                                                        
+                                                             
+Inputs       Unit (if specified)                             
+   u1                                                        
+                                                             
+</pre><h2>Using Continuous-time Frequency-domain Data to Estimate Continuous-time Models<a name="18"></a></h2><p>Time domain data can naturally only be stored and dealt with as discrete-time, sampled data. Frequency domain data have the advantage that continuous time data can be represented correctly. Suppose that the underlying continuous time signals have no frequency information above the Nyquist frequency, e.g. because they are sampled fast, or the input has no frequency component above the Nyquist frequency. Then the Discrete Fourier transforms (DFT) of the data also are the Fourier transforms of the continuous time signals, at the chosen frequencies. They can therefore be used to directly fit continuous time models. In fact, this is the correct way of using band-limited data for model fit.</p><p>This will be illustrated by the following example.</p><p>Consider the continuous time system:</p><p><img src="iddemofr_eq93501.png" alt="$$ G(s) = \frac{1}{s^2+s+1} $$"></p><pre class="codeinput">m0 = idpoly(1,1,1,1,[1 1 1],<span class="string">'ts'</span>,0)
+</pre><pre class="codeoutput">Continuous-time IDPOLY model: y(t) = [B(s)/F(s)]u(t) + e(t)
+B(s) = 1                                                   
+                                                           
+F(s) = s^2 + s + 1                                         
+                                                           
+This model was not estimated from data.                    
+                                                           
+</pre><p>Choose an input with low frequency contents that is fast sampled:</p><pre class="codeinput">s = RandStream.create(<span class="string">'mt19937ar'</span>,<span class="string">'seed'</span>,235);
+RandStream.setDefaultStream(s)
+u = idinput(500,<span class="string">'sine'</span>,[0 0.2]);
+u = iddata([],u,0.1,<span class="string">'intersamp'</span>,<span class="string">'bl'</span>);
+</pre><p>0.1 is the sampling interval, and <tt>'bl'</tt> indicates that the input is band-limited, i.e. in continuous time it consists of sinusoids with frequencies below half the sampling frequency. Correct simulation of such a system should be done in the frequency domain:</p><pre class="codeinput">uf = fft(u);
+uf.ts = 0; <span class="comment">% Denoting that the data is continuous time</span>
+yf = sim(m0,uf);
+<span class="comment">%</span>
+<span class="comment">% Add some noise to the data:</span>
+yf.y = yf.y + 0.05*(randn(s,size(yf.y))+1i*randn(size(yf.y)));
+dataf = [yf uf] <span class="comment">% This is now a continuous time frequency domain data set.</span>
+</pre><pre class="codeoutput">
+Frequency domain data set with responses at 251 frequencies,
+ranging from 0 to 31.416 rad/s                               
+Sampling interval: 0                                         
+                                                             
+Outputs      Unit (if specified)                             
+   y1                                                        
+                                                             
+Inputs       Unit (if specified)                             
+   u1                                                        
+                                                             
+</pre><p>Look at the data:</p><pre class="codeinput">plot(dataf)
+</pre><img vspace="5" hspace="5" src="iddemofr_11.png" alt=""> <p>Using <tt>dataf</tt> for estimation will by default give continuous time models: State-space:</p><pre class="codeinput">m4 = pem(dataf,2); <span class="comment">%Second order continuous-time model</span>
+</pre><p>For a polynomial model with <tt>nb = 2</tt> numerator coefficient and <tt>nf = 2</tt> estimated denominator coefficients use:</p><pre class="codeinput">nb = 2;
+nf = 2;
+m5 = oe(dataf,[nb nf])
+</pre><pre class="codeoutput">Continuous-time IDPOLY model: y(t) = [B(s)/F(s)]u(t) + e(t)
+B(s) = -0.01761 s + 1                                      
+                                                           
+F(s) = s^2 + 0.9873 s + 0.9902                             
+                                                           
+Estimated using OE on data set dataf                       
+Loss function 0.00467031 and FPE 0.00481976                
+                                                           
+</pre><p>Compare step responses with uncertainty of the true system <tt>m0</tt> and the models <tt>m4</tt> and <tt>m5</tt>:</p><pre class="codeinput">step(m0,m4,m5,<span class="string">'sd'</span>,3)
+<span class="comment">% *Blue: m0, Green: m4, Red: m5.*</span>
+<span class="comment">% The confidence intervals are shown with dotted lines.</span>
+</pre><img vspace="5" hspace="5" src="iddemofr_12.png" alt=""> <p>Although it was not necessary in this case, it is generally advised to focus the fit to a limited frequency band (low pass filter the data) when estimating using continuous time data. The system has a bandwidth of about 3 rad/s, and was excited by sinusoids up to 6.2 rad/s. A reasonable frequency range to focus the fit to is then [0 7] rad/s:</p><pre class="codeinput">m6 = pem(dataf,2,<span class="string">'foc'</span>,[0 7]);
+m7 = oe(dataf,[1 2],<span class="string">'foc'</span>,[0 7]);
+step(m0,m6,m7,<span class="string">'sd'</span>,3)
+<span class="comment">% *Blue: m0, Green: m6, Red: m7.*</span>
+<span class="comment">% The confidence intervals are shown with dotted lines.</span>
+</pre><img vspace="5" hspace="5" src="iddemofr_13.png" alt=""> <h2>Conclusions<a name="27"></a></h2><p>We saw how time, frequency and spectral data can seamlessly be used to estimate a variety of linear models in both continuous and discrete time domains. The models may be validated and compared in domains different from the ones they were estimated in. The data formats (time, frequency and spectrum) are interconvertible, using methods such as <tt>fft</tt>, <tt>ifft</tt>, <tt>spafdr</tt> and <tt>spa</tt>. Furthermore, direct, continuous-time estimation is achievable by using IDPROC models or using continuous-time IDFRD (spectrum) data with any estimation routine. The seamless use of data in any domain for estimation and analysis is an important feature of System Identification Toolbox.</p><h2>Additional Information<a name="28"></a></h2><p>For more information on identification of dynamic systems with System Identification Toolbox visit the <a href="http://www.mathworks.com/products/sysid/">System Identification Toolbox</a> product information page.</p><p class="footer">Copyright 1986-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Frequency Domain Identification: Estimating Models Using Frequency Domain Data
+% This demo illustrates the use of frequency domain data in System Identification Toolbox(TM). 
+% Estimation and validation of models in the toolbox using frequency domain 
+% data work the same way as they do with time domain data. This provides 
+% users a great amount of flexibility in estimation and analysis of models 
+% using time and frequency domain as well as spectral (FRF) data. A user may 
+% simultaneously estimate models using data in both domains, compare and combine 
+% these models. A model estimated using time domain data may be validated using 
+% spectral data or vice-versa. 
+%
+% Note that frequency domain data can not be used for estimation or
+% validation of nonlinear models.
+
+%   Copyright 1986-2009 The MathWorks, Inc.
+%   $Revision: 1.5.4.10 $  $Date: 2009/11/09 16:23:28 $
+
+%% Introduction
+% Frequency domain experimental data are common in many applications. It 
+% could be that the data was collected as frequency response data
+% (frequency functions: FRF) from the process using a frequency analyzer. It
+% could also be that it is more practical to work with the input's and
+% output's Fourier transforms (fft of time-domain data), for example to
+% handle periodic or band-limited data. (A band-limited continuous time
+% signal has no frequency components above the Nyquist frequency). In
+% System Identification Toolbox, frequency domain I/O data are represented
+% the same way as time-domain data, i.e., using |iddata| objects. The
+% 'domain' property of the object must be set to 'Frequency'. Frequency
+% response data are represented as complex vectors or as magnitude/phase
+% vectors as a function of frequency. IDFRD objects in the toolbox are used
+% to encapsulate FRFs, where a user specifies the complex response data and
+% a frequency vector. Such IDDATA or IDFRD objects may be used
+% seamlessly with any estimation routine (such as |pem|, |idproc| etc).
+
+
+%% Inspecting Frequency Domain Data
+% Let us begin this demo by loading some frequency domain data:
+load demofr
+
+%%
+% This MAT-file contains frequency response data at frequencies |W|, with
+% the amplitude response |AMP| and the phase response |PHA|. Let us first
+% have a look at the data:
+subplot(211), loglog(W,AMP),title('Amplitude Response')
+subplot(212), semilogx(W,PHA),title('Phase Response')
+
+%%
+% This experimental data will now be stored as an IDFRD object. First
+% transform amplitude and phase to a complex valued response:
+
+zfr = AMP.*exp(i*PHA*pi/180);
+Ts = 0.1;
+gfr = idfrd(zfr,W,Ts);
+
+%%
+% |Ts| is the sampling interval of the underlying data. If the data
+% corresponds to continuous time, for example since the input has been
+% band-limited, use Ts = 0. 
+%
+% Note: If you have the Control System Toolbox(TM), you could use an FRD object
+% instead of the IDFRD object. IDFRD has options for more information, like
+% disturbance spectra and uncertainty measures which are not available in
+% FRD objects.
+%
+% The IDFRD object |gfr| now contains the data, and it can be plotted and
+% analyzed in different ways. (See HELP IDFRD and IDPROPS IDFRD for
+% complete lists of properties). To view the data, we may use |plot| or
+% |bode|:
+bode(gfr), legend('gfr')
+
+%% Estimating Models Using Frequency Response (FRF) Data
+% To estimate models, you can now use |gfr| as a data set with all the
+% commands of the toolbox in a transparent fashion. The only restriction
+% is that noise models cannot be built. This means that for polynomial
+% models only OE (output-error models) apply, and for state-space models,
+% you have to fix |K = 0|.
+m1 = oe(gfr,[2 2 1]) % Discrete-time Output error (transfer function) model
+ms = pem(gfr) % Discrete-time state-space model with default choice of order
+mproc = pem(gfr,'p2uzd','Td',{'max',10}) % 2nd-order, continuous-time model with underdamped poles 
+compare(gfr,m1,ms,mproc)
+
+%%
+% As demonstrated above a variety of linear model types may be estimated in both
+% continuous and discrete time domains, using spectral data. These models
+% may be validated using, time-domain data. The time-domain I/O data set
+% |ztime|, for example, is collected from the same system, and can be used
+% for validation of |m1|, |ms| and |mproc|:
+compare(ztime,m1,ms,mproc) %validation in a different domain
+
+%%
+% We may also look at the residuals to affirm the quality of the model
+% using the validation data |ztime|. As observed, the residuals are almost
+% white:
+resid(mproc,ztime) % Residuals plot
+
+%% Condensing Data Using SPAFDR
+% An important reason to work with frequency response data is that it is
+% easy to condense the information with little loss. The command SPAFDR
+% allows you to compute smoothed response data over limited frequencies,
+% for example with logarithmic spacing. Here is an example where the |gfr|
+% data is condensed to 100 logarithmically spaced frequency values. With
+% a similar technique, also the original time domain data can be
+% condensed:
+sgfr = spafdr(gfr) % spectral estimation with frequency-dependent resolution
+sz = spafdr(ztime); % spectral estimation using time-domain data 
+bode(gfr,sgfr,sz), legend('gfr (raw data)','sgfr','sz','location','southwest')
+
+%%
+% The Bode plots show that the information in the smoothed data has been 
+% taken well care of. Now, these data records with 100 points can very well 
+% be used for model estimation. For example:
+msm = oe(sgfr,[2 2 1]);
+compare(ztime,msm,m1) % msm has the same accuracy as M1 (based on 1000 points)
+
+%% Estimation Using Frequency-Domain I/O Data
+% It may be that the measurements are available as Fourier transforms of
+% inputs and output. Such frequency domain data from the system are given
+% as the signals Y and U. In loglog plots they look like
+Wfd = [0:500]'*10*pi/500;
+subplot(211),loglog(Wfd,abs(Y)),title('The amplitude of the output')
+subplot(212),loglog(Wfd,abs(U)),title('The amplitude of the input')
+
+%%
+% The frequency response data is essentially the ratio between |Y| and |U|.
+% To collect the frequency domain data as an IDDATA object, do as follows:
+ZFD = iddata(Y,U,'ts',0.1,'Domain','Frequency','Freq',Wfd)
+
+%%
+% Now, again the frequency domain data set |ZFD| can be used as data in all
+% estimation routines, just as time domain data and frequency response
+% data:
+mf = pem(ZFD);
+compare(ztime,mf,m1)
+
+%% Transformations Between Data Representations (Time <-> Frequency)
+% Time and frequency domain input-output data sets can be transformed to
+% either domain by using FFT and IFFT. These commands are adapted to 
+% IDDATA objects:
+dataf = fft(ztime)
+datat = ifft(dataf)
+
+%%
+% Time and frequency domain input-output data can be transformed to
+% frequency response data by SPAFDR, SPA and ETFE:
+g1 = spafdr(ztime)
+g2 = spafdr(ZFD);
+bode(g1,g2)
+
+%%
+% Frequency response data can also be transformed to more smoothed data
+% (less resolution and less data) by SPAFDR and SPA;
+g3 = spafdr(gfr);
+
+%%
+% Frequency response data can be transformed to frequency domain
+% input-output signals by the command IDDATA:
+gfd = iddata(g3)
+
+%% Using Continuous-time Frequency-domain Data to Estimate Continuous-time Models
+% Time domain data can naturally only be stored and dealt with as
+% discrete-time, sampled data. Frequency domain data have the advantage
+% that continuous time data can be represented correctly. Suppose that the
+% underlying continuous time signals have no frequency information above
+% the Nyquist frequency, e.g. because they are sampled fast, or the input
+% has no frequency component above the Nyquist frequency. Then the Discrete
+% Fourier transforms (DFT) of the data also are the Fourier transforms of
+% the continuous time signals, at the chosen frequencies. They can
+% therefore be used to directly fit continuous time models. In fact, this
+% is the correct way of using band-limited data for model fit. 
+%  
+% This will be illustrated by the following example.
+
+%%
+% Consider the continuous time system:
+%               
+% $$ G(s) = \frac{1}{s^2+s+1} $$
+%
+m0 = idpoly(1,1,1,1,[1 1 1],'ts',0)
+
+%%
+% Choose an input with low frequency contents that is fast sampled:
+s = RandStream.create('mt19937ar','seed',235);
+RandStream.setDefaultStream(s)
+u = idinput(500,'sine',[0 0.2]);
+u = iddata([],u,0.1,'intersamp','bl'); 
+
+%%
+% 0.1 is the sampling interval, and |'bl'| indicates that the input is
+% band-limited, i.e. in continuous time it consists of sinusoids
+% with frequencies below half the sampling frequency. Correct simulation of
+% such a system should be done in the frequency domain:
+uf = fft(u);
+uf.ts = 0; % Denoting that the data is continuous time
+yf = sim(m0,uf);
+%
+% Add some noise to the data:
+yf.y = yf.y + 0.05*(randn(s,size(yf.y))+1i*randn(size(yf.y)));
+dataf = [yf uf] % This is now a continuous time frequency domain data set.
+
+%%
+% Look at the data:
+plot(dataf)
+
+%%
+% Using |dataf| for estimation will by default give continuous time models:
+% State-space:
+
+m4 = pem(dataf,2); %Second order continuous-time model
+
+%%
+% For a polynomial model with |nb = 2| numerator coefficient and |nf = 2|
+% estimated denominator coefficients use:
+nb = 2;
+nf = 2;
+m5 = oe(dataf,[nb nf])
+
+
+%%
+% Compare step responses with uncertainty of the true system |m0| and the
+% models |m4| and |m5|:
+
+step(m0,m4,m5,'sd',3)
+% *Blue: m0, Green: m4, Red: m5.* 
+% The confidence intervals are shown with dotted lines.
+
+%%
+% Although it was not necessary in this case, it is generally advised to
+% focus the fit to a limited frequency band (low pass filter the data)
+% when estimating using continuous time data. The system has a bandwidth
+% of about 3 rad/s, and was excited by sinusoids up to 6.2 rad/s. 
+% A reasonable frequency range to focus the fit to is then [0 7] rad/s:
+%
+m6 = pem(dataf,2,'foc',[0 7]);
+m7 = oe(dataf,[1 2],'foc',[0 7]);
+step(m0,m6,m7,'sd',3)
+% *Blue: m0, Green: m6, Red: m7.* 
+% The confidence intervals are shown with dotted lines.
+
+%% Conclusions
+% We saw how time, frequency and spectral data can seamlessly be used to
+% estimate a variety of linear models in both continuous and discrete time
+% domains. The models may be validated and compared in domains different
+% from the ones they were estimated in. The data formats (time, frequency
+% and spectrum) are interconvertible, using methods such as |fft|, |ifft|,
+% |spafdr| and |spa|. Furthermore, direct, continuous-time estimation is
+% achievable by using IDPROC models or using continuous-time IDFRD
+% (spectrum) data with any estimation routine. The seamless use of data in
+% any domain for estimation and analysis is an important feature of System
+% Identification Toolbox. 
+
+%% Additional Information
+% For more information on identification of dynamic systems with System
+% Identification Toolbox visit the
+% <http://www.mathworks.com/products/sysid/ System Identification Toolbox> product
+% information page.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

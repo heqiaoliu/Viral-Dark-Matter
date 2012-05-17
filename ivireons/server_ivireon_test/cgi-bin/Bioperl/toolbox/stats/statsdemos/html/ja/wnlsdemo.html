@@ -1,0 +1,111 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>重み付き非線形回帰</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="wnlsdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit wnlsdemo">エディターで wnlsdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo wnlsdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>重み付き非線形回帰</h1><!--introduction--><p>Statistics Toolbox™ 関数 <tt>nlinfit</tt> で使用する非線形最小二乗アルゴリズムでは、測定誤差のすべてに同じ分散があると仮定します。その仮定が正しくない場合に重み付き近似が役に立ちます。このデモでは <tt>nlinfit</tt> を使用してそれを行う方法を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">近似のためのデータとモデル</a></li><li><a href="#7">重みを使用したモデルの近似</a></li><li><a href="#11">応答曲線の推定</a></li><li><a href="#14">残差解析</a></li><li><a href="#16">重みを使用しないモデルの近似</a></li></ul></div><h2>近似のためのデータとモデル<a name="1"></a></h2><p>収集したデータを使用して、産業廃棄物と家庭廃棄物に起因する水質汚染について研究します。これらのデータは、Box, G.P., W.G. Hunter, and J.S. Hunter, Statistics for Experimenters (Wiley, 1978, pp.483-487) で詳しく説明されています。応答変数は、生化学的酸素要求量 (mg/l) で、予想変数は培養時間 (日数) です。</p><pre class="codeinput">x = [1 2 3 5 7 10]';
+y = [109 149 149 191 213 224]';
+
+plot(x,y,<span class="string">'ko'</span>);
+xlabel(<span class="string">'Incubation (days), x'</span>); ylabel(<span class="string">'Biochemical oxygen demand (mg/l), y'</span>);
+</pre><img vspace="5" hspace="5" src="../wnlsdemo_01.png" alt=""> <p>最初 2 回の観測は、残りの観測よりも低い精度で行われたことがわかっていると仮定します。たとえば、異なる器具を使用して行った場合などです。データに重みを付けるもう 1 つの理由は、記録された各観測値が実際には同じ値 x を使用して行った複数の測定の平均であるためです。ここで使用するデータでは、最初の 2 つの値が 1 回の生の測定値を表し、残りの 4 つの値がそれぞれ 5 回の生の測定値の平均であるとします。すると、各観測で使用した測定回数によって重みを付けることが適切です。</p><pre class="codeinput">w = [1 1 5 5 5 5]';
+</pre><p>重みの絶対スケールは、実行する近似に実際には影響せず、相対的なサイズにのみ影響します。したがって、何らかの方法でそれらを正規化することができます。y における変動を推定する目的上、重み 1 を &quot;標準&quot; の測定精度と考えると効果的です。この例では、重みは、観測に影響する複数の生の測定値を表しますが、当然、重みに対する複数の異なるスケーリングがあります。その 1 つは、重みの和が生の観測値の合計になるようにすることです。これは生の観測値の平均値に基づく &quot;標準&quot; 観測値を 1 として定義します。</p><pre class="codeinput">mean(w)
+</pre><pre class="codeoutput">
+ans =
+
+    3.6667
+
+</pre><pre class="codeinput">w = w / mean(w)
+</pre><pre class="codeoutput">
+w =
+
+    0.2727
+    0.2727
+    1.3636
+    1.3636
+    1.3636
+    1.3636
+
+</pre><p>これらのデータに近似するモデルは、x が大きくなると共に平坦になるスケーリングされた指数曲線です。</p><pre class="codeinput">modelFun = @(b,x) b(1).*(1-exp(-b(2).*x));
+</pre><p>ラフな視覚的近似に基づくと、点間に描画された曲線は 240 ぐらいの値 (x = 15 付近) で平らになります。したがって、240 を b1 の開始値として使用し、e^(-.5*15) は 1 に比べて小さいので、5 を b2 の開始値として使用します。</p><pre class="codeinput">start = [240;0.5];
+</pre><h2>重みを使用したモデルの近似<a name="7"></a></h2><p>重み付き近似を行うには、データおよびモデル関数の &quot;重み付き&quot; バージョンを定義し、続いて非線形最小二乗を使用して近似を行います。これらの &quot;重み付き&quot; 入力により、<tt>nlinfit</tt> は重み付きパラメーター推定を計算します。</p><pre class="codeinput">yw = sqrt(w).*y;
+modelFunw = @(b,x) sqrt(w).*modelFun(b,x);
+[bFitw,rw,Jw,Sigmaw,msew] = nlinfit(x,yw,modelFunw,start);
+bFitw
+</pre><pre class="codeoutput">
+bFitw =
+
+  225.1719
+    0.4008
+
+</pre><p>この場合、推定母標準偏差は、重みまたは測定精度 1 の &quot;標準&quot; 観測値の平均誤差を示します。</p><pre class="codeinput">rmsew = sqrt(msew)
+</pre><pre class="codeoutput">
+rmsew =
+
+   12.5386
+
+</pre><p>どのような分析でも、モデル近似の精度の推定は重要な部分です。ここでは、パラメーターの信頼区間を計算し、推定値と共に表示できます。</p><pre class="codeinput">bCIw = nlparci(bFitw,rw,<span class="string">'cov'</span>,Sigmaw)
+</pre><pre class="codeoutput">
+bCIw =
+
+  195.4650  254.8788
+    0.2223    0.5793
+
+</pre><p>代わりに、パラメーター推定の近似共分散行列を使用して、パラメーターの推定標準誤差を直接計算することもできます。</p><pre class="codeinput">seFitw = sqrt(diag(Sigmaw))
+</pre><pre class="codeoutput">
+seFitw =
+
+   10.6996
+    0.0643
+
+</pre><h2>応答曲線の推定<a name="11"></a></h2><p>次に、近似した応答値、および信頼区間の半値幅を計算します。既定の設定では、それらの幅は推定される曲線の点単位の信頼限界のためのものですが、<tt>nlpredci</tt> でも同時区間を計算できます。</p><pre class="codeinput">xgrid = linspace(min(x),max(x),100)';
+[yFitw, deltaw] = nlpredci(modelFun,xgrid,bFitw,rw,<span class="string">'cov'</span>,Sigmaw);
+plot(x,y,<span class="string">'ko'</span>, xgrid,yFitw,<span class="string">'b-'</span>,xgrid,yFitw+deltaw,<span class="string">'b:'</span>,xgrid,yFitw-deltaw,<span class="string">'b:'</span>);
+xlabel(<span class="string">'x'</span>);ylabel(<span class="string">'y'</span>);
+legend({<span class="string">'Data'</span>, <span class="string">'Weighted fit'</span>, <span class="string">'95% Confidence Limits'</span>},<span class="string">'location'</span>,<span class="string">'SouthEast'</span>);
+</pre><img vspace="5" hspace="5" src="../wnlsdemo_02.png" alt=""> <p>曲部では、重みを減らした 2 つの点は、残りの点ほど正確に近似されないことに注意してください。つまり、重み付き近似には期待されるほどの効果がないということです。</p><p><tt>nlpredci</tt> を使用して、指定値 x で将来の観測の予測区間を推定することもできます。それらの区間では、重みまたは測定精度は 1 と見なされます。</p><pre class="codeinput">[yFitw, deltaw] = nlpredci(modelFun,xgrid,bFitw,rw,<span class="string">'cov'</span>,Sigmaw,<span class="string">'predopt'</span>,<span class="string">'observation'</span>);
+plot(x,y,<span class="string">'ko'</span>, xgrid,yFitw,<span class="string">'b-'</span>,xgrid,yFitw+deltaw,<span class="string">'b:'</span>,xgrid,yFitw-deltaw,<span class="string">'b:'</span>);
+xlabel(<span class="string">'x'</span>);ylabel(<span class="string">'y'</span>);
+legend({<span class="string">'Data'</span>, <span class="string">'Weighted fit'</span>, <span class="string">'95% Prediction Limits'</span>},<span class="string">'location'</span>,<span class="string">'SouthEast'</span>);
+</pre><img vspace="5" hspace="5" src="../wnlsdemo_03.png" alt=""> <p>これらの区間を使用した将来の観測の予測には、1 を &quot;標準&quot; 精度としてそれらの観測の測定精度を仮定することが必要になります。上図の予測区間幅は、異なる精度を考慮してスケーリングしなければなりません。たとえば、3 番目の観測の重複観測の予測区間は次のとおりです。</p><pre class="codeinput">[yFitw3, deltaw3] = nlpredci(modelFun,x(3),bFitw,rw,<span class="string">'cov'</span>,Sigmaw);
+predInt3 = yFitw3 + [-1 1] * deltaw3/sqrt(w(3))
+</pre><pre class="codeoutput">
+predInt3 =
+
+  138.3388  176.6801
+
+</pre><h2>残差解析<a name="14"></a></h2><p>データと近似のプロットに加え、予測子に対する近似からの残差もプロットし、モデルの問題を診断します。残差は、独立同一分布で表示されます。重みのため、プロットの解釈を簡単にするために残差をスケーリングしなければなりません。</p><pre class="codeinput">plot(x,rw.*sqrt(w),<span class="string">'b^'</span>);
+<span class="keyword">if</span> feature(<span class="string">'HGUsingMATLABClasses'</span>)
+    hy = specgraphhelper(<span class="string">'createConstantLineUsingMATLABClasses'</span>,<span class="keyword">...</span>
+        <span class="string">'LineStyle'</span>,<span class="string">':'</span>,<span class="string">'Color'</span>,[.5 .5 .5],<span class="string">'Parent'</span>,gca);
+    hy.Value = 0;
+<span class="keyword">else</span>
+    graph2d.constantline(0,<span class="string">'linestyle'</span>,<span class="string">':'</span>,<span class="string">'color'</span>,[.5 .5 .5]);
+<span class="keyword">end</span>
+xlabel(<span class="string">'x'</span>); ylabel(<span class="string">'Residuals, yFit - y'</span>);
+</pre><img vspace="5" hspace="5" src="../wnlsdemo_04.png" alt=""> <p>この残差プロットには、系統的なパターンが見られます。最後の 4 つの残差に線形の傾向があることに注意してください。この線形の傾向とは、モデルが x の増大するスピードほど速く増大しないことを示しています。さらに、残差の振幅は x の増大と共に減少します。これは、測定誤差が x によって異なる可能性があることを示しています。これらは、調査する価値がありますが、データ点が少なすぎるため、これらのパターンを重要視することは困難です。</p><h2>重みを使用しないモデルの近似<a name="16"></a></h2><p>重みの影響を確認するには、重みなしの近似と比較します。</p><pre class="codeinput">[bFit,r,J,Sigma,mse] = nlinfit(x,y,modelFun,start);
+[yFit,delta] = nlpredci(modelFun,xgrid,bFit,r,<span class="string">'cov'</span>,Sigma);
+
+plot(x,y,<span class="string">'ko'</span>, xgrid,yFitw,<span class="string">'b-'</span>,xgrid,yFit,<span class="string">'r-'</span>);
+legend({<span class="string">'Data'</span>, <span class="string">'Weighted fit'</span>, <span class="string">'Unweighted fit'</span>},<span class="string">'location'</span>,<span class="string">'SouthEast'</span>);
+xlabel(<span class="string">'x'</span>);ylabel(<span class="string">'y'</span>);
+</pre><img vspace="5" hspace="5" src="../wnlsdemo_05.png" alt=""> <p>重み付き近似は、それより小さい重みを持つ 2 点によって受ける影響が少なく、その結果として、残りの点の近似がより正確になります。これら 2 つの近似の違いは、推定された母標準偏差にも見られます。</p><pre class="codeinput">rmse = sqrt(mse);
+[rmse rmsew]
+</pre><pre class="codeoutput">
+ans =
+
+   17.0881   12.5386
+
+</pre><p>重み付き推定は約 25% 小さくなるので、重み付き近似の方が優れているかのように見えますが、2 つの推定には若干異なる解釈があります。両方の推定は、標準偏差に関連して &quot;代表的&quot; な測定の変動を表します。しかし、重み付き近似では、測定には異なる精度があります。精度の高い観測の標準偏差の推定は次のとおりです。</p><pre class="codeinput">rmsew/sqrt(w(3))
+</pre><pre class="codeoutput">
+ans =
+
+   10.7374
+
+</pre><p>これは、&quot;グローバル&quot; な重みなし標準偏差推定よりもはるかに小さくなります。一方、精度の低い観測の推定は次のとおりです。</p><pre class="codeinput">rmsew/sqrt(w(1))
+</pre><pre class="codeoutput">
+ans =
+
+   24.0096
+
+</pre><p>これは、重みなしの推定よりも大きくなります。</p><p>重みが正しい相対測定精度であることがわかっている場合は、これは理に適っています。重みがわかっていない場合、重み付き近似は、近似に対するそれらの 2 つの点の影響を確認するために役立つ練習になりますが、重みに対する正当な理由なしには、適切な近似として使用することはできないでしょう。</p><p class="footer">Copyright 2005-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Weighted Nonlinear Regression % The nonlinear least squares algorithm used by the Statistics Toolbox(TM) % function |nlinfit| assumes that measurement errors all have the same % variance.  When that assumption is not true, it's useful to be able to make % a weighted fit.  This demonstration shows how to do that using |nlinfit|.  %   Copyright 2005-2007 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:29:29 $  %% Data and Model for the Fit % We'll use data collected to study water pollution caused by industrial % and domestic waste.  These data are described in detail in Box, G.P., % W.G. Hunter, and J.S. Hunter, Statistics for Experimenters (Wiley, 1978, % pp. 483-487).  The response variable is biochemical oxygen demand in % mg/l, and the predictor variable is incubation time in days. x = [1 2 3 5 7 10]'; y = [109 149 149 191 213 224]';  plot(x,y,'ko'); xlabel('Incubation (days), x'); ylabel('Biochemical oxygen demand (mg/l), y');  %% % We'll assume that it is known that the first two observations were made % with less precision than the remaining observations.  They might, for % example, have been made with a different instrument.  Another common % reason to weight data is that each recorded observation is actually % the mean of several measurements taken at the same value of x.  In the % data here, suppose the first two values represent a single raw % measurement, while the remaining four are each the mean of 5 raw % measurements.  Then it would be appropriate to weight by the number of % measurements that went into each observation. w = [1 1 5 5 5 5]'; %% % The absolute scale of the weights actually doesn't affect the fit we will % make, only their relative sizes.  Thus, they could be normalized in some % way.  For the purposes of estimating the variability in y, it's useful % to think of a weight of 1 as representing a "standard" measurement % precision.  In this example, where the weights represent the number of % raw measurements contributing to an observation, several different scalings % for the weights might make sense.  One possibility is make the weights sum % to the total number of raw observations, which defines a "standard" observation % as one that's based on the average number of raw observations, in this case, mean(w) %% w = w / mean(w)  %% % The model we'll fit to these data is a scaled exponential curve that % becomes level as x becomes large. modelFun = @(b,x) b(1).*(1-exp(-b(2).*x));  %% % Just based on a rough visual fit, it appears that a curve drawn through % the points might level out at a value of around 240 somewhere in the % neighborhood of x = 15.  So we'll use 240 as the starting value for b1, % and since e^(-.5*15) is small compared to 1, we'll use .5 as the starting % value for b2. start = [240; .5];   %% Fit the Model with Weights % To make a weighted fit, we'll define "weighted" versions of the data and the % model function, then use nonlinear least squares to make the fit.   Given % these "weighted" inputs, |nlinfit| will compute weighted parameter % estimates. yw = sqrt(w).*y; modelFunw = @(b,x) sqrt(w).*modelFun(b,x); [bFitw,rw,Jw,Sigmaw,msew] = nlinfit(x,yw,modelFunw,start); bFitw %% % The estimated population standard deviation in this case describes the % average variation for a "standard" observation with a weight, or measurement % precision, of 1. rmsew = sqrt(msew)  %%  % An important part of any analysis is an estimate of the precision of the % model fit.  Here, we can compute confidence intervals for the parameters and % display them along with the estimates. bCIw = nlparci(bFitw,rw,'cov',Sigmaw)  %% % Alternatively, we can use the approximate covariance matrix of the parameter % estimates directly to compute estimated standard errors for the parameters. seFitw = sqrt(diag(Sigmaw))   %% Estimate the Response Curve % Next, we'll compute the fitted response values, and halfwidths for % confidence intervals.  By default, those widths are for pointwise confidence % bounds for the estimated curve, but |nlpredci| can also compute simultaneous % intervals. xgrid = linspace(min(x),max(x),100)'; [yFitw, deltaw] = nlpredci(modelFun,xgrid,bFitw,rw,'cov',Sigmaw); plot(x,y,'ko', xgrid,yFitw,'b-',xgrid,yFitw+deltaw,'b:',xgrid,yFitw-deltaw,'b:'); xlabel('x'); ylabel('y'); legend({'Data', 'Weighted fit', '95% Confidence Limits'},'location','SouthEast'); %% % Notice that the two downweighted points are not fit as well by the curve % as the remaining points.  That's as you would expect for a weighted fit. % % It's also possible to use |nlpredci| to estimate prediction intervals % for future observations at specified values of x.  Those intervals % will in effect assume a weight, or measurement precision, of 1. [yFitw, deltaw] = nlpredci(modelFun,xgrid,bFitw,rw,'cov',Sigmaw,'predopt','observation'); plot(x,y,'ko', xgrid,yFitw,'b-',xgrid,yFitw+deltaw,'b:',xgrid,yFitw-deltaw,'b:'); xlabel('x'); ylabel('y'); legend({'Data', 'Weighted fit', '95% Prediction Limits'},'location','SouthEast'); %% % Use of these intervals to predict future observations requires some % assumption about the measurement precision of those observations, relative % to the "standard" precision of 1.  The prediction interval widths in the % above figure must be scaled to account for a different precisions.  For % example, the prediction interval for a replicate of the third observation % is [yFitw3, deltaw3] = nlpredci(modelFun,x(3),bFitw,rw,'cov',Sigmaw); predInt3 = yFitw3 + [-1 1] * deltaw3/sqrt(w(3))   %% Residual Analysis % In addition to plotting the data and the fit, we'll plot residuals from a % fit against the predictors, to diagnose any problems with the model. % The residuals should appear independent and identically distributed. % Because of the weights, we'll have to scale the residuals to make the plot % easier to interpret. plot(x,rw.*sqrt(w),'b^'); if feature('HGUsingMATLABClasses')     hy = specgraphhelper('createConstantLineUsingMATLABClasses',...         'LineStyle',':','Color',[.5 .5 .5],'Parent',gca);     hy.Value = 0;     else         graph2d.constantline(0,'linestyle',':','color',[.5 .5 .5]); end xlabel('x'); ylabel('Residuals, yFit - y'); %% % There is some evidence of systematic patterns in this residual plot.  Notice % how the last four residuals have a linear trend, suggesting that the model % might not increase fast enough as x increases.  Also, the magnitude of the % residuals tends to decrease as x increases, suggesting that measurement % error may depend on x.  These deserve investigation, however, there are so % few data points, that it's hard to attach significance to these apparent % patterns.   %% Fit the Model without Weights % To see what difference the weights made, we can compare to an unweighted % fit. [bFit,r,J,Sigma,mse] = nlinfit(x,y,modelFun,start); [yFit,delta] = nlpredci(modelFun,xgrid,bFit,r,'cov',Sigma);  plot(x,y,'ko', xgrid,yFitw,'b-',xgrid,yFit,'r-'); legend({'Data', 'Weighted fit', 'Unweighted fit'},'location','SouthEast'); xlabel('x'); ylabel('y'); %% % Notice how the weighted fit is less influenced by the two points with % smaller weights, and as a result, fits the remaining points better. % The difference in the two fits can also be seen in the estimated population % standard deviations rmse = sqrt(mse); [rmse rmsew] %% % The weighted estimate is about 25% smaller, which appears to indicate that % the weighted fit is a better one.  However, the two estimates have slightly % different interpretations.  Both estimates describe the variability of a % "typical" measurement, in terms of standard deviation.  But in the % weighted fit, measurements have different precisions.  An estimate of the % standard deviation for the higher precision observations is rmsew/sqrt(w(3)) %% % which is much smaller than the "global" unweighted standard deviation % estimate,  while the estimate for the lower precision observations is rmsew/sqrt(w(1)) %% % which is larger than the unweighted estimate.  %% % Assuming the weights were known apriori to be the correct relative % measurement precisions, that all makes sense. If the weights had not been % known, the weighted fit might have been a useful exercise to see the % influence of those two points on the fit, but could probably not be taken as % the appropriate fit without some justification for the weights.   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

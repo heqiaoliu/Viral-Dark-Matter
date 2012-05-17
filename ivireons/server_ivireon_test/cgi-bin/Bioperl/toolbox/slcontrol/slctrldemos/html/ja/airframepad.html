@@ -1,0 +1,90 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>機体の平衡化と線形化</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="airframepad.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit airframepad">エディターで airframepad.m を開く</a></div><div class="right"><a href="matlab:echodemo airframepad">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>機体の平衡化と線形化</h1><!--introduction--><!--/introduction--><h2>目次</h2><div><ul><li><a href="#3">操作点の生成</a></li><li><a href="#8">モデルの線形化</a></li></ul></div><p>この例では、昇降舵の偏差と結果として得られる平衡化した本体比 (q) を見つける必要があります。これにより、機体が設定速度で飛行しているときの特定の入射角値が生成されます。平衡化条件を見つけると、その平衡化条件周りの状態のダイナミクスに対する線形モデルを得ることができます。</p><pre>        固定パラメーター:
+発生率 (Theta)
+本体の属性 (U)
+位置
+平衡化定常状態パラメーター :
+昇降舵の偏差 (w)
+本体比 (q)</pre><p>モデルを開くには、scdairframe コマンドを使用します。</p><pre class="codeinput">scdairframe
+</pre><img vspace="5" hspace="5" src="../airframepad_01.png" alt=""> <h2>操作点の生成<a name="3"></a></h2><p>操作点の仕様オブジェクトを取得するには、operspec コマンドを使用します。</p><pre class="codeinput">opspec = operspec(<span class="string">'scdairframe'</span>)
+</pre><pre class="codeoutput">
+ Operating Specification for the Model scdairframe.
+ (Time-Varying Components Evaluated at time t=0)
+
+States: 
+----------
+(1.) scdairframe/EOM/ Equations of Motion (Body Axes)/Position
+      spec:  dx = 0,  initial guess:             0
+      spec:  dx = 0,  initial guess:    -3.05e+003
+(2.) scdairframe/EOM/ Equations of Motion (Body Axes)/Theta
+      spec:  dx = 0,  initial guess:             0
+(3.) scdairframe/EOM/ Equations of Motion (Body Axes)/U,w
+      spec:  dx = 0,  initial guess:           984
+      spec:  dx = 0,  initial guess:             0
+(4.) scdairframe/EOM/ Equations of Motion (Body Axes)/q
+      spec:  dx = 0,  initial guess:             0
+
+Inputs: 
+----------
+(1.) scdairframe/Fin Deflection
+      initial guess: 0            
+
+Outputs: 
+----------
+(1.) scdairframe/q
+      spec:  none
+(2.) scdairframe/az
+      spec:  none
+
+</pre><p>最初に、Position の状態仕様を設定します。これは、既知のものですが、定常状態にはありません。</p><pre class="codeinput">opspec.States(1).Known = [1;1];
+opspec.States(1).SteadyState = [0;0];
+</pre><p>2 番目の状態仕様は Theta です。これは、既知のものですが、定常状態にはありません。</p><pre class="codeinput">opspec.States(2).Known = 1;
+opspec.States(2).SteadyState = 0;
+</pre><p>3 番目の状態仕様には、ボディ軸の角度比が含まれ、変数 w は定常状態にあります。</p><pre class="codeinput">opspec.States(3).Known = [1 1];
+opspec.States(3).SteadyState = [0 1];
+</pre><p>次に、この仕様を満たす操作点を検索します。</p><pre class="codeinput">op = findop(<span class="string">'scdairframe'</span>,opspec);
+</pre><pre class="codeoutput">
+ Operating Point Search Report:
+---------------------------------
+
+ Operating Report for the Model scdairframe.
+ (Time-Varying Components Evaluated at time t=0)
+
+Operating point specifications were successfully met.
+States: 
+----------
+(1.) scdairframe/EOM/ Equations of Motion (Body Axes)/Position
+      x:             0      dx:           984
+      x:    -3.05e+003      dx:             0
+(2.) scdairframe/EOM/ Equations of Motion (Body Axes)/Theta
+      x:             0      dx:      -0.00972
+(3.) scdairframe/EOM/ Equations of Motion (Body Axes)/U,w
+      x:           984      dx:          22.7
+      x:             0      dx:    -1.44e-011 (0)
+(4.) scdairframe/EOM/ Equations of Motion (Body Axes)/q
+      x:      -0.00972      dx:     6.31e-016 (0)
+
+Inputs: 
+----------
+(1.) scdairframe/Fin Deflection
+      u:       0.00142    [-Inf Inf]
+
+Outputs: 
+----------
+(1.) scdairframe/q
+      y:      -0.00972    [-Inf Inf]
+(2.) scdairframe/az
+      y:        -0.242    [-Inf Inf]
+
+</pre><h2>モデルの線形化<a name="8"></a></h2><p>操作点は、線形化を行う準備ができました。最初に、次のコマンドを使用して、入力点と出力点を指定します。</p><pre class="codeinput">io(1) = linio(<span class="string">'scdairframe/Fin Deflection'</span>,1,<span class="string">'in'</span>);
+io(2) = linio(<span class="string">'scdairframe/EOM'</span>,3,<span class="string">'out'</span>);
+io(3) = linio(<span class="string">'scdairframe/Selector'</span>,1,<span class="string">'out'</span>);
+</pre><p>モデルを線形化して、条件ごとにボード線図の振幅応答をプロットします。</p><pre class="codeinput">sys = linearize(<span class="string">'scdairframe'</span>,op,io);
+bodemag(sys)
+
+bdclose(<span class="string">'scdairframe'</span>)
+</pre><img vspace="5" hspace="5" src="../airframepad_02.png" alt=""> <p class="footer">Copyright 2005 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Trimming and Linearizing an Airframe % % Copyright 2005 The MathWorks, Inc. % $Revision: 1.1.4.3.2.1 $ $Date: 2010/07/29 21:29:20 $  %% % In this example, we need to find the elevator deflection and the % resulting trimmed body rate (q) that will generate a given incidence % value when the airframe is traveling at a set speed. Once we find the trim % condition, we can derive a linear model for the dynamics of the states % around the trim condition.  %  %          Fixed parameters  : %                              Incidence (Theta) %                              Body attitude (U) %                              Position  %          Trimmed steady state parameters : %                              Elevator deflection (w) %                              Body rate (q)  %% % The model can be opened using the scdairframe command scdairframe  %% Generating  Operating Points % To get the operating point specification object, you use the operspec % command: opspec = operspec('scdairframe')  %% % First, we set the Position state specifications, which are known but not at steady state: opspec.States(1).Known = [1;1]; opspec.States(1).SteadyState = [0;0];  %%  % The second state specification is Theta which is known but not at steady state:  opspec.States(2).Known = 1; opspec.States(2).SteadyState = 0;  %% % The third state specification includes the body axis angular rates where the  % variable w is at steady state:  opspec.States(3).Known = [1 1]; opspec.States(3).SteadyState = [0 1];  %% % Next, we search for the operating point that meets this specification  op = findop('scdairframe',opspec);  %% Linearizing the Model % The operating points are now ready for linearization. First, we specify % the input and output points using the following commands: io(1) = linio('scdairframe/Fin Deflection',1,'in'); io(2) = linio('scdairframe/EOM',3,'out'); io(3) = linio('scdairframe/Selector',1,'out');  %% % Linearize the model and plot the Bode magnitude response for each condition.  sys = linearize('scdairframe',op,io); bodemag(sys)  bdclose('scdairframe') displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

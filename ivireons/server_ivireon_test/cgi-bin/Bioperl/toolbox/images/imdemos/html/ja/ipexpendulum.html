@@ -1,0 +1,104 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>動いている振り子の長さを検出</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipexpendulum.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexpendulum">エディターで ipexpendulum.m を開く</a></div><div class="right"><a href="matlab:echodemo ipexpendulum">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>動いている振り子の長さを検出</h1><!--introduction--><p>Image Acquisition Toolbox™ で時系列のイメージをキャプチャし、Image Processing Toolbox™ でキャプチャしたイメージを解析します。このデモは、動いている振り子の長さをどのように計算するかを示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">手順 1:イメージの取得</a></li><li><a href="#2">手順 2:IMPLAY による列の調査</a></li><li><a href="#3">手順 3:振り子が揺れる領域の選択</a></li><li><a href="#5">手順 4:各フレームでの振り子の分割</a></li><li><a href="#6">手順 5:各フレームで分割された振り子の中心の検出</a></li><li><a href="#9">手順 6:振り子の中心を介した円の近似による半径の計算</a></li></ul></div><h2>手順 1:イメージの取得<a name="1"></a></h2><p>動いている振り子のイメージ フレームを読み込みます。Image Acquisition Toolbox の以下の関数を使用して、MAT ファイル <tt>pendulum.mat</tt> のフレームが取得されました。</p><pre class="codeinput"><span class="comment">% Access an image acquisition device (video object).</span>
+<span class="comment">% vidobj=videoinput('winvideo',1,'RGB24_352x288');</span>
+
+<span class="comment">% Configure object to capture every fifth frame.</span>
+<span class="comment">% set(vidobj,'FrameGrabInterval',5);</span>
+
+<span class="comment">% Configure the number of frames to be logged.</span>
+<span class="comment">% nFrames=50;</span>
+<span class="comment">% set(vidobj,'FramesPerTrigger',nFrames);</span>
+
+<span class="comment">% Access the device's video source.</span>
+<span class="comment">% src=getselectedsource(vidobj);</span>
+
+<span class="comment">% Configure device to provide thirty frames per second.</span>
+<span class="comment">% set(src,'FrameRate','30');</span>
+
+<span class="comment">% Open a live preview window.Focus camera onto a moving pendulum.</span>
+<span class="comment">% preview(vidobj);</span>
+
+<span class="comment">% Initiate the acquisition.</span>
+<span class="comment">% start(vidobj);</span>
+
+<span class="comment">% Wait for data logging to finish before retrieving the data.</span>
+<span class="comment">% wait(vidobj, 10);</span>
+
+<span class="comment">% Extract frames from memory.</span>
+<span class="comment">% frames = getdata(vidobj);</span>
+
+<span class="comment">% Clean up.Delete and clear associated variables.</span>
+<span class="comment">% delete(vidobj)</span>
+<span class="comment">% clear vidobj</span>
+
+<span class="comment">%load MAT-file</span>
+
+load <span class="string">pendulum</span>;
+</pre><h2>手順 2:IMPLAY による列の調査<a name="2"></a></h2><p>次のコマンドを実行して、<tt>implay</tt> のイメージ列を調査します。</p><pre class="codeinput">implay(frames);
+</pre><img vspace="5" hspace="5" src="../ipexpendulum_01.png" alt=""> <h2>手順 3:振り子が揺れる領域の選択<a name="3"></a></h2><p>イメージ列の各フレームの上半分で振り子が揺れているのがわかります。振り子が揺れている領域のみを含む新しい一連のフレームを作成します。</p><p>関数 <tt>imcrop</tt> を使用して一連のフレームを抜き出すには、最初に 1 つのフレームで関数 <tt>imcrop</tt> を実行し、その出力イメージを保存します。次に、前の出力のサイズを使用して、一連のフレーム領域を作成します。便宜上、関数 <tt>imcrop</tt> の <tt>pendulum.mat</tt> によって読み込まれた <tt>rect</tt> を使用します。</p><pre class="codeinput">nFrames = size(frames,4);
+first_frame = frames(:,:,:,1);
+first_region = imcrop(first_frame,rect);
+frame_regions = repmat(uint8(0), [size(first_region) nFrames]);
+<span class="keyword">for</span> count = 1:nFrames
+  frame_regions(:,:,:,count) = imcrop(frames(:,:,:,count),rect);
+<span class="keyword">end</span>
+imshow(frames(:,:,:,1))
+</pre><img vspace="5" hspace="5" src="../ipexpendulum_02.png" alt=""> <pre class="codeinput">imshow(frame_regions(:,:,:,1));
+</pre><img vspace="5" hspace="5" src="../ipexpendulum_03.png" alt=""> <h2>手順 4:各フレームでの振り子の分割<a name="5"></a></h2><p>振り子は背景よりも暗くなっていることに注目してください。フレームをグレースケールに変換し、<tt>im2bw</tt> を使用してしきい値処理し、関数 <tt>imopen</tt> および <tt>imclearborder</tt> を使用して背景構造を除去することで、各フレームで振り子を分割できます。</p><pre class="codeinput"><span class="comment">% initialize array to contain the segmented pendulum frames.</span>
+seg_pend = false([size(first_region,1) size(first_region,2) nFrames]);
+centroids = zeros(nFrames,2);
+se_disk = strel(<span class="string">'disk'</span>,3);
+
+<span class="keyword">for</span> count = 1:nFrames
+    fr = frame_regions(:,:,:,count);
+    imshow(fr)
+    pause(0.2)
+
+    gfr = rgb2gray(fr);
+    gfr = imcomplement(gfr);
+    imshow(gfr)
+    pause(0.2)
+
+    bw = im2bw(gfr,.7);  <span class="comment">% threshold is determined experimentally</span>
+    bw = imopen(bw,se_disk);
+    bw = imclearborder(bw);
+    seg_pend(:,:,count) = bw;
+    imshow(bw)
+    pause(0.2)
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="../ipexpendulum_04.png" alt=""> <h2>手順 5:各フレームで分割された振り子の中心の検出<a name="6"></a></h2><p>フレームによって振り子の形状が異なっていることがわかります。振り子の中心のみが必要なので、これは重大な問題ではありません。振り子の中心を使用して、振り子の長さを検出します。</p><p><tt>regionprops</tt> を使用して、振り子の中心を計算します。</p><pre class="codeinput">pend_centers = zeros(nFrames,2);
+<span class="keyword">for</span> count = 1:nFrames
+    property = regionprops(seg_pend(:,:,count), <span class="string">'Centroid'</span>);
+    pend_centers(count,:) = property.Centroid;
+<span class="keyword">end</span>
+</pre><p>関数 <tt>plot</tt> を使用して振り子の中心を表示します。</p><pre class="codeinput">x = pend_centers(:,1);
+y = pend_centers(:,2);
+figure
+plot(x,y,<span class="string">'m.'</span>), axis <span class="string">ij</span>, axis <span class="string">equal</span>, hold <span class="string">on</span>;
+xlabel(<span class="string">'x'</span>);
+ylabel(<span class="string">'y'</span>);
+title(<span class="string">'pendulum centers'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexpendulum_05.png" alt=""> <h2>手順 6:振り子の中心を介した円の近似による半径の計算<a name="9"></a></h2><p>以下の円の基本方程式を書き換えます。</p><p><tt>(x-xc)^2 + (y-yc)^2 = radius^2</tt></p><p>ここで、<tt>(xc,yc)</tt> は中心であり、パラメーター <tt>a</tt>、<tt>b</tt>、<tt>c</tt> で表すと、以下のようになります。</p><p><tt>x^2 + y^2 + a*x + b*y + c = 0</tt></p><p>ここで、<tt>a = -2*xc</tt>、<tt>b = -2*yc</tt>、<tt>c = xc^2 + yc^2 - radius^2</tt> です。</p><p>最小二乗法を使用して、パラメーター <tt>a</tt>、<tt>b</tt>、および <tt>c</tt> について解くことができます。上記の方程式を以下のように書き換えます。</p><p><tt>a*x + b*y + c = -(x^2 + y^2)</tt></p><p>以下のように書き換えることもできます。</p><p><tt>[x y 1] * [a;b;c] = -x^2 - y^2</tt></p><p>バックスラッシュ (<tt>\</tt>) 演算子を使用してこの方程式を解きます。</p><p>円の半径は振り子の長さです (ピクセル単位)。</p><pre class="codeinput">abc = [x y ones(length(x),1)] \ -(x.^2 + y.^2);
+a = abc(1); b = abc(2); c = abc(3);
+xc = -a/2;
+yc = -b/2;
+circle_radius = sqrt((xc^2 + yc^2) - c);
+pendulum_length = round(circle_radius)
+</pre><pre class="codeoutput">
+pendulum_length =
+
+   253
+
+</pre><p>振り子の中心のプロットの上に円および円の中心を重ねます。</p><pre class="codeinput">circle_theta = pi/3:0.01:pi*2/3;
+x_fit = circle_radius*cos(circle_theta)+xc;
+y_fit = circle_radius*sin(circle_theta)+yc;
+
+plot(x_fit,y_fit,<span class="string">'b-'</span>);
+plot(xc,yc,<span class="string">'bx'</span>,<span class="string">'LineWidth'</span>,2);
+plot([xc x(1)],[yc y(1)],<span class="string">'b-'</span>);
+text(xc-110,yc+100,sprintf(<span class="string">'pendulum length = %d pixels'</span>, pendulum_length));
+</pre><img vspace="5" hspace="5" src="../ipexpendulum_06.png" alt=""> <p class="footer">Copyright 1993-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Finding the Length of a Pendulum in Motion % You can capture images in a time series with the Image Acquisition % Toolbox(TM) and analyze them with the Image Processing Toolbox(TM). This % demo shows you how to calculate the length of a pendulum in motion.  % Copyright 1993-2010 The MathWorks, Inc.  %% Step 1: Acquire Images % Load the image frames of a pendulum in motion. The frames in the MAT-file % |pendulum.mat| were acquired using the following functions in the Image % Acquisition Toolbox.  % Access an image acquisition device (video object). % vidobj=videoinput('winvideo',1,'RGB24_352x288');  % Configure object to capture every fifth frame. % set(vidobj,'FrameGrabInterval',5);  % Configure the number of frames to be logged. % nFrames=50; % set(vidobj,'FramesPerTrigger',nFrames);  % Access the device's video source. % src=getselectedsource(vidobj);  % Configure device to provide thirty frames per second. % set(src,'FrameRate','30');  % Open a live preview window. Focus camera onto a moving pendulum. % preview(vidobj);  % Initiate the acquisition. % start(vidobj);  % Wait for data logging to finish before retrieving the data. % wait(vidobj, 10);  % Extract frames from memory. % frames = getdata(vidobj);  % Clean up. Delete and clear associated variables. % delete(vidobj) % clear vidobj  %load MAT-file  load pendulum;  %% Step 2: Explore Sequence with IMPLAY % Run the following command to explore the image sequence in |implay|.  implay(frames);  %% Step 3: Select Region where Pendulum is Swinging % You can see that the pendulum is swinging in the upper half of each frame % in the image series.  Create a new series of frames that contains only % the region where the pendulum is swinging. % % To crop a series of frames using |imcrop|, first perform |imcrop| on one % frame and store its output image. Then use the previous output's size to % create a series of frame regions.  For convenience, use the |rect| that % was loaded by |pendulum.mat| in |imcrop|.  nFrames = size(frames,4); first_frame = frames(:,:,:,1); first_region = imcrop(first_frame,rect); frame_regions = repmat(uint8(0), [size(first_region) nFrames]); for count = 1:nFrames   frame_regions(:,:,:,count) = imcrop(frames(:,:,:,count),rect); end imshow(frames(:,:,:,1))  %% imshow(frame_regions(:,:,:,1));  %% Step 4: Segment the Pendulum in Each Frame % Notice that the pendulum is much darker than the background.  You can % segment the pendulum in each frame by converting the frame to grayscale, % thresholding it using |im2bw|, and removing background structures using % |imopen| and |imclearborder|.  % initialize array to contain the segmented pendulum frames. seg_pend = false([size(first_region,1) size(first_region,2) nFrames]); centroids = zeros(nFrames,2); se_disk = strel('disk',3);  for count = 1:nFrames     fr = frame_regions(:,:,:,count);     imshow(fr)     pause(0.2)          gfr = rgb2gray(fr);     gfr = imcomplement(gfr);     imshow(gfr)     pause(0.2)          bw = im2bw(gfr,.7);  % threshold is determined experimentally      bw = imopen(bw,se_disk);     bw = imclearborder(bw);     seg_pend(:,:,count) = bw;     imshow(bw)     pause(0.2) end  %% Step 5: Find the Center of the Segmented Pendulum in Each Frame % You can see that the shape of the pendulum varied in different frames. % This is not a serious issue because you just need its center. You will % use the pendulum centers to find the length of the pendulum.  %% % Use |regionprops| to calculate the center of the pendulum. pend_centers = zeros(nFrames,2); for count = 1:nFrames     property = regionprops(seg_pend(:,:,count), 'Centroid');     pend_centers(count,:) = property.Centroid;  end  %% % Display pendulum centers using |plot|.  x = pend_centers(:,1); y = pend_centers(:,2); figure plot(x,y,'m.'), axis ij, axis equal, hold on; xlabel('x'); ylabel('y'); title('pendulum centers');  %% Step 6: Calculate Radius by Fitting a Circle Through Pendulum Centers % Rewrite the basic equation of a circle:  % % |(x-xc)^2 + (y-yc)^2 = radius^2| % % where |(xc,yc)| is the center, in terms of parameters |a|, |b|, |c| as % % |x^2 + y^2 + a*x + b*y + c = 0| % % where |a = -2*xc|, |b = -2*yc|, and |c = xc^2 + yc^2 - radius^2|. % % You can solve for parameters |a|, |b|, and |c| using the least squares % method. Rewrite the above equation as  % % |a*x + b*y + c = -(x^2 + y^2)| % % which can also be rewritten as  % % |[x y 1] * [a;b;c] = -x^2 - y^2|.   % % Solve this equation using the backslash(|\|) operator. % % The circle radius is the length of the pendulum in pixels.  abc = [x y ones(length(x),1)] \ -(x.^2 + y.^2); a = abc(1); b = abc(2); c = abc(3); xc = -a/2; yc = -b/2; circle_radius = sqrt((xc^2 + yc^2) - c);  pendulum_length = round(circle_radius)  %% % Superimpose circle and circle center on the plot of pendulum centers.  circle_theta = pi/3:0.01:pi*2/3; x_fit = circle_radius*cos(circle_theta)+xc; y_fit = circle_radius*sin(circle_theta)+yc;  plot(x_fit,y_fit,'b-'); plot(xc,yc,'bx','LineWidth',2); plot([xc x(1)],[yc y(1)],'b-'); text(xc-110,yc+100,sprintf('pendulum length = %d pixels', pendulum_length));  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,128 @@
+%% File: tgtgrtmainlib.tlc
+%%
+%% Abstract:
+%%   Helper functions to automatically generate main for GRT targets
+%%
+%% $Revision: 1.1.8.1 $
+%% $Date: 2006/05/24 03:58:54 $
+%%
+%% Copyright 2001-2006 The MathWorks, Inc.
+
+%% Function: SLibCallMdlStepSingleTasking ================================================
+%% Abstract:
+%%   Model step for single-tasking case, GRT targets
+%function SLibCallMdlStepSingleTasking() Output
+      tnext = rt_SimGetNextSampleHit();
+      rtsiSetSolverStopTime(rtmGetRTWSolverInfo(S),tnext);
+      
+      MdlOutputs(0);
+      MdlUpdate(0);
+      
+      rt_SimUpdateDiscreteTaskSampleHits(rtmGetNumSampleTimes(S),
+      rtmGetTimingData(S),
+      rtmGetSampleHitPtr(S),
+      rtmGetTPtr(S));
+
+%endfunction
+
+%% Function: SLibCallMdlStepMultiTaskingBaseRate ================================================
+%% Abstract:
+%%   Model step for base-rate, multi-tasking case
+%function SLibCallMdlStepMultiTaskingBaseRate() Output
+          tnext = rt_SimUpdateDiscreteEvents (rtmGetNumSampleTimes(S), 
+          rtmGetTimingData(S),
+          rtmGetSampleHitPtr(S), 
+          rtmGetPerTaskSampleHitsPtr(S));
+
+          rtsiSetSolverStopTime(rtmGetRTWSolverInfo(S),tnext);
+          
+          for (i=FIRST_TID+1; i < NUMST; i++) {
+            eventFlags[i] = sampleHit[i];
+          }
+          
+          MdlOutputs(FIRST_TID);                  
+          MdlUpdate(FIRST_TID);
+
+          rt_SimUpdateDiscreteTaskTime(rtmGetTPtr(S), rtmGetTimingData(S), FIRST_TID);
+          
+%endfunction
+
+
+%% Function: SLibCallMdlStepMultiTaskingSubRate ================================================
+%% Abstract:
+%%   Model step for sub-rates, multi-tasking case
+%function SLibCallMdlStepMultiTaskingSubRate(tid) Output
+          MdlOutputs(%<tid>);  
+          MdlUpdate(%<tid>);
+          rt_SimUpdateDiscreteTaskTime(rtmGetTPtr(S), rtmGetTimingData(S),%<tid>);                
+                    
+%endfunction
+
+%% Function: SLibTgtModelInitialize ================================================
+%% Abstract:
+%%   Model initialization for GRT target
+%function SLibTgtModelInitialize() Output
+    S = MODEL();
+    if (rtmGetErrorStatus(S) != NULL)
+    
+    while (1==1) 
+    { 
+    /* Initialization failure */ 
+    }      
+  
+    MdlInitializeSizes();
+    MdlInitializeSampleTimes();
+    
+    status = (const char *) rt_SimInitTimingEngine(rtmGetNumSampleTimes(S),
+    rtmGetStepSize(S),
+    rtmGetSampleTimePtr(S),
+    rtmGetOffsetTimePtr(S),
+    rtmGetSampleHitPtr(S),
+    rtmGetSampleTimeTaskIDPtr(S),
+    rtmGetTStart(S),
+    &rtmGetSimTimeStep(S),
+    &rtmGetTimingData(S));
+    if (status != NULL)
+    
+    while (1==1) 
+    { 
+    /* Initialization failure */ 
+    }
+    
+    MdlStart();
+                    
+%endfunction
+
+
+%% Function: SLibGRTDefinesMultiTasking ================================================
+%% Abstract:
+%%   Defines for multi-tasking case, GRT targets
+%function SLibGRTDefinesMultiTasking() Output
+    %if CompiledModel.FixedStepOpts.TID01EQ == 1
+      #define FIRST_TID 1
+    %else
+      #define FIRST_TID 0
+    %endif
+                    
+%endfunction
+
+%% Function: SLibGRTIncludes ================================================
+%% Abstract:
+%%   Includes for GRT targets.
+%function SLibGRTIncludes() Output
+  #include <float.h>
+  #include "rt_sim.h"
+%endfunction
+
+%% Function: SLibGRTDeclarations ================================================
+%% Abstract:
+%%   Extern function declarations for GRT targets.
+%function SLibGRTDeclarations() Output
+    extern %<CompiledModel.Name>_rtModel *%<CompiledModel.Name>(void);
+    extern void MdlInitializeSizes(void);
+    extern void MdlInitializeSampleTimes(void);
+    extern void MdlStart(void);
+    extern void MdlOutputs(int_T tid);
+    extern void MdlUpdate(int_T tid);
+    extern void MdlTerminate(void);
+%endfunction

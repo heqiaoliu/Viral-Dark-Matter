@@ -1,0 +1,116 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>量子化誤差</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="qerrordemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit qerrordemo">エディターで qerrordemo.m を開く</a></div><div class="right"><a href="matlab:echodemo qerrordemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>量子化誤差</h1><!--introduction--><p>これは、さまざまな丸め方法を使用して信号が量子化される際の誤差の統計のデモです。</p><p>まず、量子化器の範囲に及ぶランダム信号が作成されます。</p><p>次に、fix、floor、ceil、nearest、convergent といった丸めモードで信号が量子化されて、信号の統計が推測されます。</p><p>量子化誤差の論理的確率密度関数は、ERRPDF を使用して計算されます。量子化誤差の理論的平均値は、ERRMEAN を使用して計算されます。また、量子化誤差の理論的分散は、ERRVAR で計算されます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">一様分布ランダム信号</a></li><li><a href="#2">Fix: ゼロ方向への丸め</a></li><li><a href="#3">Floor: 負の無限大方向への丸め</a></li><li><a href="#4">Ceil: 正の無限大方向への丸め</a></li><li><a href="#5">Round: 最近傍への丸め。同順位では、最大固有値への丸め</a></li><li><a href="#6">Convergent: 最近傍への丸め。同順位では、偶数への丸め</a></li><li><a href="#7">Nearest と Convergent の比較</a></li><li><a href="#8">プロット補助関数</a></li></ul></div><h2>一様分布ランダム信号<a name="1"></a></h2><p>まず、これから見る固定小数点量子化器の -1 ～ 1 の領域に及ぶ一様分布ランダム信号を作成します。</p><pre class="codeinput">q = quantizer([8 7]);
+r = realmax(q);
+u = r*(2*rand(50000,1) - 1);        <span class="comment">% Uniformly distributed (-1,1)</span>
+xi=linspace(-2*eps(q),2*eps(q),256);
+</pre><h2>Fix:ゼロ方向への丸め<a name="2"></a></h2><p>fix 丸めでは、確率密度関数は、他と比べて幅が 2 倍であることに注意してください。このため、分散は他の 4 倍となります。</p><pre class="codeinput">q = quantizer(<span class="string">'fix'</span>,[8 7]);
+err = quantize(q,u) - u;
+f_t = errpdf(q,xi);
+mu_t = errmean(q);
+v_t  = errvar(q);
+<span class="comment">% Theoretical variance = eps(q)^2 / 3</span>
+<span class="comment">% Theoretical mean     = 0</span>
+qerrordemoplot(q,f_t,xi,mu_t,v_t,err)
+</pre><pre class="codeoutput">Estimated   error variance (dB) = -46.9238
+Theoretical error variance (dB) = -46.9154
+Estimated   mean = -4.2966e-005
+Theoretical mean = 0
+</pre><img vspace="5" hspace="5" src="../qerrordemo_01.png" alt=""> <h2>Floor: 負の無限大方向への丸め<a name="3"></a></h2><p>ｆloor 丸めは、2 の補数で表される固定小数点数や整数と共に使用される場合は切り捨てと呼ばれます。実装にハードウェアが必要ないため、DSP プロセッサーの丸めモードでは最も一般的です。floor は、ROUND ほどには実際値に近い量子化された値を生成しませんが、同じ分散になります。また、符号が異なる小さな信号を検出します。Round ではそれらは失われるのに対して符号が異なる同じ信号が検出されます。</p><pre class="codeinput">q = quantizer(<span class="string">'floor'</span>,[8 7]);
+err = quantize(q,u) - u;
+f_t = errpdf(q,xi);
+mu_t = errmean(q);
+v_t  = errvar(q);
+<span class="comment">% Theoretical variance = eps(q)^2 / 12</span>
+<span class="comment">% Theoretical mean     = -eps(q)/2</span>
+qerrordemoplot(q,f_t,xi,mu_t,v_t,err)
+</pre><pre class="codeoutput">Estimated   error variance (dB) = -52.9343
+Theoretical error variance (dB) = -52.936
+Estimated   mean = -0.0039177
+Theoretical mean = -0.0039063
+</pre><img vspace="5" hspace="5" src="../qerrordemo_02.png" alt=""> <h2>Ceil:正の無限大方向への丸め<a name="4"></a></h2><pre class="codeinput">q = quantizer(<span class="string">'ceil'</span>,[8 7]);
+err = quantize(q,u) - u;
+f_t = errpdf(q,xi);
+mu_t = errmean(q);
+v_t  = errvar(q);
+<span class="comment">% Theoretical variance = eps(q)^2 / 12</span>
+<span class="comment">% Theoretical mean     = eps(q)/2</span>
+qerrordemoplot(q,f_t,xi,mu_t,v_t,err)
+</pre><pre class="codeoutput">Estimated   error variance (dB) = -52.9343
+Theoretical error variance (dB) = -52.936
+Estimated   mean = 0.0038948
+Theoretical mean = 0.0039063
+</pre><img vspace="5" hspace="5" src="../qerrordemo_03.png" alt=""> <h2>Round:最近傍への丸め。同順位では、最大固有値への丸め<a name="5"></a></h2><p>round は floor より正確ですが、eps(q) より小さい値はすべてゼロに丸められ、失われます。</p><pre class="codeinput">q = quantizer(<span class="string">'nearest'</span>,[8 7]);
+err = quantize(q,u) - u;
+f_t = errpdf(q,xi);
+mu_t = errmean(q);
+v_t  = errvar(q);
+<span class="comment">% Theoretical variance = eps(q)^2 / 12</span>
+<span class="comment">% Theoretical mean     = 0</span>
+qerrordemoplot(q,f_t,xi,mu_t,v_t,err)
+</pre><pre class="codeoutput">Estimated   error variance (dB) = -52.9231
+Theoretical error variance (dB) = -52.936
+Estimated   mean = 1.2659e-005
+Theoretical mean = 0
+</pre><img vspace="5" hspace="5" src="../qerrordemo_04.png" alt=""> <h2>Convergent:最近傍への丸め。同順位では、偶数への丸め<a name="6"></a></h2><p>convergent 丸めは、同順位を常に同じ方向へ丸める通常の「丸め」によって生じる偏りを除去します。</p><pre class="codeinput">q = quantizer(<span class="string">'convergent'</span>,[8 7]);
+err = quantize(q,u) - u;
+f_t = errpdf(q,xi);
+mu_t = errmean(q);
+v_t  = errvar(q);
+<span class="comment">% Theoretical variance = eps(q)^2 / 12</span>
+<span class="comment">% Theoretical mean     = 0</span>
+qerrordemoplot(q,f_t,xi,mu_t,v_t,err)
+</pre><pre class="codeoutput">Estimated   error variance (dB) = -52.9231
+Theoretical error variance (dB) = -52.936
+Estimated   mean = 1.2659e-005
+Theoretical mean = 0
+</pre><img vspace="5" hspace="5" src="../qerrordemo_05.png" alt=""> <h2>Nearest と Convergent の比較<a name="7"></a></h2><p>収束する方向への丸め誤差確率密度関数を最近似値に丸めるためのものと区別するのは、プロットを見ただけでは困難です。</p><p>収束する方向への丸め誤差 p.d.f. は、</p><pre> f(err) = 1/eps(q),  for -eps(q)/2 &lt;= err &lt;= eps(q)/2, and 0 otherwise</pre><p>最近傍への丸め誤差 p.d.f. は、</p><pre> f(err) = 1/eps(q),  for -eps(q)/2 &lt;  err &lt;= eps(q)/2, and 0 otherwise</pre><p>最近傍に丸めは正の方向へわずかに偏りがあるのに対し、収束する方向への丸め誤差 p.d.f. は対称的です。</p><p>唯一の違いは、同順位における丸めの方向です。</p><pre class="codeinput">x=[-3.5:3.5]';
+[x convergent(x) nearest(x)]
+</pre><pre class="codeoutput">
+ans =
+
+   -3.5000   -4.0000   -3.0000
+   -2.5000   -2.0000   -2.0000
+   -1.5000   -2.0000   -1.0000
+   -0.5000         0         0
+    0.5000         0    1.0000
+    1.5000    2.0000    2.0000
+    2.5000    2.0000    3.0000
+    3.5000    4.0000    4.0000
+
+</pre><h2>プロット補助関数<a name="8"></a></h2><p>このデモでプロットを生成するのに使用された補助関数は、以下にリストされています。</p><pre class="codeinput">type <span class="string">qerrordemoplot.m</span>
+</pre><pre class="codeoutput">
+function qerrordemoplot(q,f_t,xi,mu_t,v_t,err)
+%QERRORDEMOPLOT  Plot function for QERRORDEMO.
+%    QERRORDEMOPLOT(Q,F_T,XI,MU_T,V_T,ERR) produces the plot and display used by
+%    the demo function QERRORDEMO, where Q is the quantizer whos attributes are
+%    being analyzed; F_T is the theoretical quantization error probability
+%    density function for quantizer Q computed by ERRPDF; XI is the domain of
+%    values being evaluated by ERRPDF; MU_T is the theoretical quantization
+%    error mean of quantizer Q computed by ERRMEAN; V_T is the theoretical
+%    quantization error variance of quantizer Q computed by ERRVAR; and ERR
+%    is the error generated by quantizing a random signal by quantizer Q.
+%
+%    See QERRORDEMO for examples of use.
+
+%    Author:Thomas A. Bryan
+%    Copyright 1999-2005 The MathWorks, Inc.
+%    $Revision: 1.1.4.2.2.1 $
+v=10*log10(var(err));
+disp(['Estimated   error variance (dB) = ',num2str(v)]);
+disp(['Theoretical error variance (dB) = ',num2str(10*log10(v_t))]);
+disp(['Estimated   mean = ',num2str(mean(err))]);
+disp(['Theoretical mean = ',num2str(mu_t)]);
+[n,c]=hist(err);
+figure(gcf)
+bar(c,n/(length(err)*(c(2)-c(1))),'hist');
+line(xi,f_t,'linewidth',2,'color','r');
+% Set the ylim uniformly on all plots
+set(gca,'ylim',[0 max(errpdf(quantizer(q.format,'nearest'),xi)*1.1)])
+legend('Estimated','Theoretical')
+xlabel('err'); ylabel('errpdf')
+
+</pre><p class="footer">Copyright 1999-2005 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Quantization Error % This is a demonstration of the statistics of the error when signals are % quantized using various rounding methods. % % First, a random signal is created that spans the range of the quantizer. % % Next, the signal is quantized, respectively, with roundmodes 'fix', 'floor', % 'ceil', 'nearest', and 'convergent', and the statistics of the signal are % estimated. % % The theoretical probability density function of the quantization error will be % computed with ERRPDF, the theoretical mean of the quantization error will be % computed with ERRMEAN, and the theoretical variance of the quantization error % will be computed with ERRVAR. % % Copyright 1999-2005 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $  %% Uniformly Distributed Random Signal % First we create a uniformly distributed random signal that spans the domain -1 % to 1 of the fixed-point quantizers that we will look at.  q = quantizer([8 7]); r = realmax(q); u = r*(2*rand(50000,1) - 1);        % Uniformly distributed (-1,1) xi=linspace(-2*eps(q),2*eps(q),256);   %% Fix:  Round Towards Zero. % Notice that with 'fix' rounding, the probability density function is % twice as wide as the others.  For this reason, the variance is four times % that of the others.  q = quantizer('fix',[8 7]); err = quantize(q,u) - u;     f_t = errpdf(q,xi); mu_t = errmean(q); v_t  = errvar(q); % Theoretical variance = eps(q)^2 / 3 % Theoretical mean     = 0 qerrordemoplot(q,f_t,xi,mu_t,v_t,err)  %% Floor: Round Towards Minus Infinity. % Floor rounding is often called truncation when used with integers and % fixed-point numbers that are represented in two's complement.  It is the most % common rounding mode of DSP processors because it requires no hardware to % implement.  Floor does not produce quantized values that are as close to the % true values as ROUND will, but it has the same variance, and small signals % that vary in sign will be detected, whereas in ROUND they will be lost.  q = quantizer('floor',[8 7]); err = quantize(q,u) - u;     f_t = errpdf(q,xi); mu_t = errmean(q); v_t  = errvar(q); % Theoretical variance =  eps(q)^2 / 12 % Theoretical mean     = -eps(q)/2 qerrordemoplot(q,f_t,xi,mu_t,v_t,err)  %% Ceil:  Round Towards Plus Infinity.  q = quantizer('ceil',[8 7]); err = quantize(q,u) - u;     f_t = errpdf(q,xi); mu_t = errmean(q); v_t  = errvar(q); % Theoretical variance = eps(q)^2 / 12 % Theoretical mean     = eps(q)/2 qerrordemoplot(q,f_t,xi,mu_t,v_t,err)  %% Round: Round to Nearest.  In a Tie, Round to Largest Magnitude. % Round is more accurate than floor, but all values smaller than eps(q) get % rounded to zero and so are lost. q = quantizer('nearest',[8 7]); err = quantize(q,u) - u;     f_t = errpdf(q,xi); mu_t = errmean(q); v_t  = errvar(q); % Theoretical variance = eps(q)^2 / 12 % Theoretical mean     = 0 qerrordemoplot(q,f_t,xi,mu_t,v_t,err)  %% Convergent: Round to Nearest. In a Tie, Round to Even. % Convergent rounding eliminates the bias introduced by ordinary "round" % caused by always rounding the tie in the same direction. q = quantizer('convergent',[8 7]); err = quantize(q,u) - u;     f_t = errpdf(q,xi); mu_t = errmean(q); v_t  = errvar(q); % Theoretical variance = eps(q)^2 / 12 % Theoretical mean     = 0 qerrordemoplot(q,f_t,xi,mu_t,v_t,err)  %% Comparison of Nearest vs. Convergent % The error probability density function for convergent rounding is difficult to % distiguish from that of round-to-nearest by looking at the plot.   % % The error p.d.f. of convergent is % %   f(err) = 1/eps(q),  for -eps(q)/2 <= err <= eps(q)/2, and 0 otherwise % % while the error p.d.f. of round is % %   f(err) = 1/eps(q),  for -eps(q)/2 <  err <= eps(q)/2, and 0 otherwise % % Note that the error p.d.f. of convergent is symmetric, while round is % slightly biased towards the positive. % % The only difference is the direction of rounding in a tie. x=[-3.5:3.5]'; [x convergent(x) nearest(x)]   %% Plot Helper Function % The helper function that was used to generate the plots in this demo is % listed below. type qerrordemoplot.m   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

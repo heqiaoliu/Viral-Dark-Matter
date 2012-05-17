@@ -1,0 +1,145 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Multi-Dimensional Signals</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_lct_ndarray_script.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_lct_ndarray_script">Open rtwdemo_lct_ndarray_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_lct_ndarray_script">Run in the Command Window</a></div></div><div class="content"><h1>Multi-Dimensional Signals</h1><!--introduction--><p>This demo shows you how to use the Legacy Code Tool to integrate legacy C functions with Multi-Dimensional Signals.</p><p>The Legacy Code Tool allows you to:</p><div><ul><li>Provide the legacy function specification,</li><li>Generate a C-MEX S-function that is used during simulation to call the legacy code, and</li><li>Compile and build the generated S-function for simulation.</li><li>Generate a block TLC file and optional rtwmakecfg.m file that is used during code generation to call the legacy code.</li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Providing the Legacy Function Specification</a></li><li><a href="#3">Generating S-Functions for Use During Simulation</a></li><li><a href="#4">Compiling the Generated S-Function for Simulation</a></li><li><a href="#5">Generating a TLC Block File for Code Generation</a></li><li><a href="#6">Generating an rtwmakecfg.m File for Code Generation</a></li><li><a href="#7">Generating a masked S-Function block for calling the generated S-Function</a></li><li><a href="#8">Demoing the Generated Integration with Legacy Code</a></li></ul></div><h2>Providing the Legacy Function Specification<a name="1"></a></h2><p>All functions provided with the Legacy Code Tool take a specific data structure or array of structures as the argument. The data structure is initialized by calling the function legacy_code() using 'initialize' as the first input. After initializing the structure, you have to assign its properties to values corresponding to the legacy code being integrated. For detailed help on the properties, call <a href="matlab:legacy_code('help')">legacy_code('help')</a>. The prototype of the legacy functions being called in this demo are:</p><p>void array3d_add(real_T *y1, real_T *u1, real_T *u2, int32_T nbRows, int32_T nbCols, int32_T nbPages);</p><p>where real_T is a typedef to double, and int32_T is a typedef to a 32-bit integer.  The legacy source code is found in the files <a href="matlab:sldemo_lct_util('edit','sldemo_lct_src/ndarray_ops.h')">ndarray_ops.h</a>, and <a href="matlab:sldemo_lct_util('edit','sldemo_lct_src/ndarray_ops.c')">ndarray_ops.c</a>.</p><pre class="codeinput"><span class="comment">% rtwdemo_sfun_ndarray_add</span>
+def = legacy_code(<span class="string">'initialize'</span>);
+def.SFunctionName = <span class="string">'rtwdemo_sfun_ndarray_add'</span>;
+def.OutputFcnSpec = [<span class="string">'void array3d_add(double y1[size(u1,1)][size(u1,2)][size(u1,3)], '</span>,<span class="keyword">...</span>
+                    <span class="string">'double u1[][][], double u2[][][], '</span> <span class="keyword">...</span>
+                   <span class="string">'int32 size(u1,1), int32 size(u1,2), int32 size(u1,3))'</span>];
+def.HeaderFiles   = {<span class="string">'ndarray_ops.h'</span>};
+def.SourceFiles   = {<span class="string">'ndarray_ops.c'</span>};
+def.IncPaths      = {<span class="string">'sldemo_lct_src'</span>};
+def.SrcPaths      = {<span class="string">'sldemo_lct_src'</span>};
+</pre><p>where y1 is a 3-D output signal of same dimensions as the 3-D input signal u1. Note that the last 3 arguments passed to the legacy function correspond to the number of element in each dimension of the 3-D input signal u1.</p><h2>Generating S-Functions for Use During Simulation<a name="3"></a></h2><p>The function legacy_code() is called again with the first input set to 'sfcn_cmex_generate' in order to automatically generate C-MEX S-function according to the description provided by the input argument 'def'. This S-function is used to call the legacy function in simulation. The source code for the S-function is found in the file <a href="matlab:rtwdemo_lct_util('edit','rtwdemo_sfun_ndarray_add.c')">rtwdemo_sfun_ndarray_add.c</a>.</p><pre class="codeinput">legacy_code(<span class="string">'sfcn_cmex_generate'</span>, def);
+</pre><h2>Compiling the Generated S-Function for Simulation<a name="4"></a></h2><p>After the C-MEX S-function source files are generated, the function legacy_code() is called again with the first input set to 'compile' in order to compile the S-function for simulation with Simulink&reg;.</p><pre class="codeinput">legacy_code(<span class="string">'compile'</span>, def);
+</pre><pre class="codeoutput">
+### Start Compiling rtwdemo_sfun_ndarray_add
+    mex('rtwdemo_sfun_ndarray_add.c', 'B:\matlab\toolbox\simulink\simdemos\simfeatures\sldemo_lct_src\ndarray_ops.c', '-IB:\matlab\toolbox\simulink\simdemos\simfeatures\sldemo_lct_src', '-IC:\Temp\R2010bd_251_3840\tp0131b8c4_8885_42d9_84ce_432a16cc3511')
+### Finish Compiling rtwdemo_sfun_ndarray_add
+### Exit
+</pre><h2>Generating a TLC Block File for Code Generation<a name="5"></a></h2><p>After the S-function is compiled and used in simulation, the function legacy_code() can be called again with the first input set to 'sfcn_tlc_generate' in order to generate a TLC block file to support code generation through Real Time Workshop. Code generation will fail if the TLC block file is not created and you try to generate code for a model that includes the S-function. The TLC block file for the S-function is: <a href="matlab:rtwdemo_lct_util('edit','rtwdemo_sfun_ndarray_add.tlc')">rtwdemo_sfun_ndarray_add.tlc</a>.</p><pre class="codeinput">legacy_code(<span class="string">'sfcn_tlc_generate'</span>, def);
+</pre><h2>Generating an rtwmakecfg.m File for Code Generation<a name="6"></a></h2><p>After the TLC block file is created, the function legacy_code() can be called again with the first input set to 'rtwmakecfg_generate' in order to generate an rtwmakecfg.m file to support code generation through Real Time Workshop. The file is needed only if the required source and header files for the S-functions are not in the same directory as the S-functions, and you want to add these dependencies in the makefile produced during code generation.</p><pre class="codeinput">legacy_code(<span class="string">'rtwmakecfg_generate'</span>, def);
+</pre><h2>Generating a masked S-Function block for calling the generated S-Function<a name="7"></a></h2><p>After the C-MEX S-function source is compiled, the function legacy_code() can be called again with the first input set to 'slblock_generate' in order to generate a masked S-function block that is configured to call that S-function.  The block is placed in a new model and can be copied to an existing model.</p><pre class="codeinput"><span class="comment">% legacy_code('slblock_generate', def);</span>
+</pre><h2>Demoing the Generated Integration with Legacy Code<a name="8"></a></h2><p>The model <a href="matlab:rtwdemo_lct_ndarray">rtwdemo_lct_ndarray</a> shows integration with the legacy code.  The subsystem ndarray_add serves as a harness for the call to the legacy C function.</p><pre class="codeinput">open_system(<span class="string">'rtwdemo_lct_ndarray'</span>)
+open_system(<span class="string">'rtwdemo_lct_ndarray/ndarray_add'</span>)
+sim(<span class="string">'rtwdemo_lct_ndarray'</span>)
+</pre><img vspace="5" hspace="5" src="rtwdemo_lct_ndarray_script_01.png" alt=""> <img vspace="5" hspace="5" src="rtwdemo_lct_ndarray_script_02.png" alt=""> <p class="footer">Copyright 1990-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Multi-Dimensional Signals
+% This demo shows you how to use the Legacy Code Tool to integrate legacy C 
+% functions with Multi-Dimensional Signals.
+%
+% The Legacy Code Tool allows you to:
+%
+% * Provide the legacy function specification,
+% * Generate a C-MEX S-function that is used during simulation to call the legacy code, and
+% * Compile and build the generated S-function for simulation.
+% * Generate a block TLC file and optional rtwmakecfg.m file that is used during code generation to call the legacy code.
+%
+
+%   Copyright 1990-2008 The MathWorks, Inc.
+%   $Revision: 1.1.8.4 $  $Date: 2008/12/01 07:30:54 $
+
+%% Providing the Legacy Function Specification
+% All functions provided with the Legacy Code Tool take a specific data 
+% structure or array of structures as the argument. The data structure is 
+% initialized by calling the function legacy_code() using 'initialize' as the
+% first input. After initializing the structure, you have to assign its
+% properties to values corresponding to the legacy code being integrated.  
+% For detailed help on the properties, call 
+% <matlab:legacy_code('help') legacy_code('help')>. The 
+% prototype of the legacy functions being called in this demo are:
+%
+% void array3d_add(real_T *y1, real_T *u1, real_T *u2, int32_T nbRows, int32_T nbCols, int32_T nbPages);
+%
+% where real_T is a typedef to double, and int32_T is a typedef to a
+% 32-bit integer.  The legacy source code is found in the
+% files <matlab:sldemo_lct_util('edit','sldemo_lct_src/ndarray_ops.h') ndarray_ops.h>, and
+% <matlab:sldemo_lct_util('edit','sldemo_lct_src/ndarray_ops.c') ndarray_ops.c>.
+
+% rtwdemo_sfun_ndarray_add
+def = legacy_code('initialize');
+def.SFunctionName = 'rtwdemo_sfun_ndarray_add';
+def.OutputFcnSpec = ['void array3d_add(double y1[size(u1,1)][size(u1,2)][size(u1,3)], ',...
+                    'double u1[][][], double u2[][][], ' ...
+                   'int32 size(u1,1), int32 size(u1,2), int32 size(u1,3))'];
+def.HeaderFiles   = {'ndarray_ops.h'};
+def.SourceFiles   = {'ndarray_ops.c'};
+def.IncPaths      = {'sldemo_lct_src'}; 
+def.SrcPaths      = {'sldemo_lct_src'}; 
+
+%%
+% where y1 is a 3-D output signal of same dimensions as the 3-D input signal
+% u1. Note that the last 3 arguments passed to the legacy function
+% correspond to the number of element in each dimension of the 3-D input
+% signal u1.
+
+%% Generating S-Functions for Use During Simulation
+% The function legacy_code() is called again with the first input set to 
+% 'sfcn_cmex_generate' in order to automatically generate C-MEX S-function
+% according to the description provided by the input argument 'def'.
+% This S-function is used to call the legacy function in simulation.
+% The source code for the S-function is found in the file
+% <matlab:rtwdemo_lct_util('edit','rtwdemo_sfun_ndarray_add.c') rtwdemo_sfun_ndarray_add.c>.
+
+legacy_code('sfcn_cmex_generate', def);
+
+%% Compiling the Generated S-Function for Simulation
+% After the C-MEX S-function source files are generated, the function 
+% legacy_code() is called again with the first input set to 'compile' in order
+% to compile the S-function for simulation with Simulink(R).
+
+legacy_code('compile', def);
+
+%% Generating a TLC Block File for Code Generation
+% After the S-function is compiled and used in simulation, the function
+% legacy_code() can be called again with the first input set to 
+% 'sfcn_tlc_generate' in order to generate a TLC block file to support
+% code generation through Real Time Workshop. Code generation will fail 
+% if the TLC block file is not created and you try to generate code for a model
+% that includes the S-function. The TLC block file for the S-function is:
+% <matlab:rtwdemo_lct_util('edit','rtwdemo_sfun_ndarray_add.tlc') rtwdemo_sfun_ndarray_add.tlc>.
+
+legacy_code('sfcn_tlc_generate', def);
+
+%% Generating an rtwmakecfg.m File for Code Generation
+% After the TLC block file is created, the function
+% legacy_code() can be called again with the first input set to 
+% 'rtwmakecfg_generate' in order to generate an rtwmakecfg.m file to support
+% code generation through Real Time Workshop. The file is needed only if 
+% the required source and header files for the S-functions are not in the 
+% same directory as the S-functions, and you want to add these 
+% dependencies in the makefile produced during code generation.
+
+legacy_code('rtwmakecfg_generate', def);
+
+%% Generating a masked S-Function block for calling the generated S-Function
+% After the C-MEX S-function source is compiled, the function 
+% legacy_code() can be called again with the first input set to 'slblock_generate' in order
+% to generate a masked S-function block that is configured to call that
+% S-function.  The block is placed in a new model and can be copied to an
+% existing model.
+
+% legacy_code('slblock_generate', def);
+
+%% Demoing the Generated Integration with Legacy Code
+% The model <matlab:rtwdemo_lct_ndarray rtwdemo_lct_ndarray> 
+% shows integration with the legacy
+% code.  The subsystem ndarray_add serves as a harness for the call to the
+% legacy C function.
+
+open_system('rtwdemo_lct_ndarray')
+open_system('rtwdemo_lct_ndarray/ndarray_add')
+sim('rtwdemo_lct_ndarray')
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

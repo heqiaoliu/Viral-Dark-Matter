@@ -1,0 +1,70 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Absolute Time Temporal Logic in the Presence of Zero Crossings</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_abstemporal_ct.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_abstemporal_ct.mdl</div><div class="right"><a href="matlab:sf_abstemporal_ct">Open this model</a></div></div><div class="content"><h1>Absolute Time Temporal Logic in the Presence of Zero Crossings</h1><p>This model illustrates the behavior of absolute time temporal logic in the presence of continuous time Stateflow&reg; charts with zero crossings enabled.</p><img vspace="5" hspace="5" src="sf_abstemporal_ct_01.png" alt=""> <p>The model consists of a single Stateflow chart with two states <tt>A</tt> and <tt>B</tt>. The transition is guarded by the expression <tt>after(4.2345,sec)</tt>.</p><img vspace="5" hspace="5" src="sf_abstemporal_ct_02.png" alt=""> <p>Please note the following:</p><div><ol><li>The chart has the "Update Method" set to "continuous" and the option "Enable zero-crossing detection" checked.</li><li>We are using a variable step solver with zero crossings enabled.</li></ol></div><p>When we simulate the model, we see the following output:</p><img vspace="5" hspace="5" src="sf_abstemporal_ct_03.png" alt=""> <p>If we plot the simulation time-step with respect to the simulation time, we see the following:</p><img vspace="5" hspace="5" src="sf_abstemporal_ct_04.png" alt=""> <p>As is evident, the solver very accurately finds the time at which the transition from <tt>A</tt> to <tt>B</tt> happened.</p><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Absolute Time Temporal Logic in the Presence of Zero Crossings
+% 
+% This model illustrates the behavior of absolute time temporal logic in
+% the presence of continuous time Stateflow(R) charts with zero crossings
+% enabled.
+
+%   Copyright 2009 The MathWorks, Inc.
+
+bdclose all
+clear all
+close all
+
+model = 'sf_abstemporal_ct';
+open_system(model);
+
+r = sfroot;
+m = r.find('-isa', 'Stateflow.Machine', 'Name', model);
+c = m.find('-isa', 'Stateflow.Chart', 'Name', 'Chart');
+
+close_system([model '/Scope']);
+c.Visible = 0;
+
+%% 
+% The model consists of a single Stateflow chart with two states |A| and
+% |B|. The transition is guarded by the expression |after(4.2345,sec)|.
+% 
+c.Visible = 1;
+
+%% 
+% Please note the following:
+% 
+% # The chart has the "Update Method" set to "continuous" and the option
+% "Enable zero-crossing detection" checked.
+% # We are using a variable step solver with zero crossings enabled.
+% 
+% When we simulate the model, we see the following output:
+
+evalc('sim(model)');
+open_system([model '/Scope']);
+
+%%
+% If we plot the simulation time-step with respect to the simulation time,
+% we see the following:
+
+plot(tout, [diff(tout); NaN]);
+xlabel('Simulation time (t)');
+ylabel('Simulation time step (dt = diff(t))');
+
+%% 
+% As is evident, the solver very accurately finds the time at which the
+% transition from |A| to |B| happened.
+
+%% 
+bdclose all
+clear all
+close all
+
+##### SOURCE END #####
+--></body></html>

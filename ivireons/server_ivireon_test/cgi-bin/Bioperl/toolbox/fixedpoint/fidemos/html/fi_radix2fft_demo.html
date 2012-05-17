@@ -1,0 +1,625 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Fixed-Point Fast Fourier Transform (FFT)</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="fi_radix2fft_demo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit fi_radix2fft_demo">Open fi_radix2fft_demo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo fi_radix2fft_demo">Run in the Command Window</a></div></div><div class="content"><h1>Fixed-Point Fast Fourier Transform (FFT)</h1><!--introduction--><p>This demo shows you how to convert a textbook version of the Fast Fourier Transform (FFT) algorithm into fixed-point MATLAB&reg; code and fixed-point C-code.</p><p>For comparison purposes, the FFT block from the Signal Processing Blockset&#8482; is used at the end of this demo to compute a fixed-point FFT.  To use the FFT block to compute a fixed-point FFT, you must have licenses for Simulink&reg;, Simulink&reg; Fixed Point&#8482; and Signal Processing Blockset&#8482;.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Setup</a></li><li><a href="#2">Implementing the Textbook FFT Algorithm in MATLAB</a></li><li><a href="#5">Verifying your Floating-Point code in MATLAB</a></li><li><a href="#8">Identifying Fixed-Point Issues in MATLAB</a></li><li><a href="#10">Modifying the Algorithm in MATLAB to Address Fixed-Point Issues</a></li><li><a href="#14">Converting Fixed-Point MATLAB code to C-code using the Embedded MATLAB&reg; Subset</a></li><li><a href="#23">Converting Fixed-Point MATLAB Code to Hand-Written C-Code</a></li><li><a href="#25">Debugging C-Code by Comparing it to your Fixed-Point MATLAB Code</a></li><li><a href="#26">Considering Alternate Implementations of the FFT</a></li><li><a href="#27">Computing a Fixed-Point FFT in Signal Processing Blockset&#8482;</a></li><li><a href="#30">Cleanup</a></li><li><a href="#31">References</a></li></ul></div><h2>Setup<a name="1"></a></h2><p>This demo may use display settings or preferences that are different from what you are currently using. To ensure that your current display settings and preferences are not changed by running this demo, the demo automatically saves and restores them. The following code captures the current states for any display settings or properties that the demo changes.</p><pre class="codeinput"><span class="comment">% Capture the current state of the display format and set it to 'loose' and</span>
+<span class="comment">% 'long g'.</span>
+formatAtStartOfThisDemo        = get(0,<span class="string">'Format'</span>);
+formatSpacingAtStartOfThisDemo = get(0,<span class="string">'FormatSpacing'</span>);
+format <span class="string">loose</span>
+format <span class="string">long</span> <span class="string">g</span>
+<span class="comment">% Capture the current state of and reset the fi display and logging</span>
+<span class="comment">% preferences to the factory settings.</span>
+fiprefAtStartOfThisDemo = get(fipref);
+reset(fipref);
+<span class="comment">% Capture the present state of and reset the global fimath to the factory</span>
+<span class="comment">% settings.</span>
+globalFimathAtStartOfThisDemo = fimath;
+resetglobalfimath;
+</pre><h2>Implementing the Textbook FFT Algorithm in MATLAB<a name="2"></a></h2><p>FFT is a complex-valued linear transformation from the time domain to the frequency domain.  For example, if you construct a vector as the sum of two sinusoids and transform it with the FFT, you can see the peaks of the frequencies in the FFT magnitude plot.</p><pre class="codeinput">n = 64;                                     <span class="comment">% Number of points</span>
+Fs = 4;                                     <span class="comment">% Sampling frequency in Hz</span>
+t  = (0:(n-1))/Fs;                          <span class="comment">% Time vector</span>
+f  = linspace(0,Fs,n);                      <span class="comment">% Frequency vector</span>
+f0 = .2; f1 = .5;                           <span class="comment">% Frequencies, in Hz</span>
+x0 = cos(2*pi*f0*t) + 0.55*cos(2*pi*f1*t);  <span class="comment">% Time-domain signal</span>
+y  = fft(x0);                               <span class="comment">% Frequency-domain transformation</span>
+
+figure(gcf); clf
+subplot(211); plot(t,x0,<span class="string">'b.-'</span>); xlabel(<span class="string">'Time (s)'</span>); ylabel(<span class="string">'Amplitude'</span>);legend(<span class="string">'x0'</span>)
+subplot(212); plot(f,abs(y),<span class="string">'m.-'</span>); xlabel(<span class="string">'Frequency (Hz)'</span>); ylabel(<span class="string">'Magnitude'</span>);legend(<span class="string">'abs(fft(x0))'</span>)
+</pre><img vspace="5" hspace="5" src="fi_radix2fft_demo_01.png" alt=""> <p>The peaks at 0.2 and 0.5 Hz in the frequency plot correspond to the two sinusoids of the time-domain signal at those frequencies.</p><p>Note the reflected peaks at 3.5 and 3.8 Hz.  When the input to an FFT is real-valued, as it is in this case, then the output <tt>y</tt> is conjugate-symmetric:</p><p><img src="fi_radix2fft_demo_eq67463.png" alt="$$y(k) = \mbox{conj}(y(N-k)).$$"></p><p>There are many different implementations of the FFT, each having its own costs and benefits.  You may find that a different algorithm is better for your application than the one given here.  This algorithm is used to provide you with an example of how you might begin your own exploration.</p><p>This demo uses the decimation-in-time unit-stride FFT shown in Algorithm 1.6.2 on page 45 of the book <i>Computational Frameworks for the Fast Fourier Transform</i> by Charles Van Loan (<a href="http://www.mathworks.com/support/books/book1384.html">http://www.mathworks.com/support/books/book1384.html</a>).</p><p>In pseudocode, the algorithm in the textbook is as follows.</p><p>Algorithm 1.6.2.  If <img src="fi_radix2fft_demo_eq43551.png" alt="$x$"> is a complex vector of length <img src="fi_radix2fft_demo_eq25947.png" alt="$n$"> and <img src="fi_radix2fft_demo_eq10775.png" alt="$n = 2^t$">, then the following algorithm overwrites <img src="fi_radix2fft_demo_eq43551.png" alt="$x$"> with <img src="fi_radix2fft_demo_eq34328.png" alt="$F_nx$">.</p><p><img src="fi_radix2fft_demo_eq13120.png" alt="$$\begin{array}{llll}&#xA;   \multicolumn{4}{l}{x = P_nx}\\&#xA;   \multicolumn{4}{l}{w = w_n^{(long)}\mbox{\hspace*{3em}(See Van Loan \S 1.4.11.)}}\\&#xA;   \mbox{for}\ q\ &amp; \multicolumn{3}{l}{ = 1:t}\\&#xA;       &amp; \multicolumn{3}{l}{L=2^q;\ r=n/L;\ L_\ast=L/2;}\\&#xA;       &amp; \mbox{for}\ k\ &amp; \multicolumn{2}{l}{=0:r-1}\\&#xA;       &amp; &amp; \mbox{for}\ j\ &amp; =0:L_\ast-1\\&#xA;       &amp; &amp;                &amp; \tau  = w(L_\ast-1+j) \cdot x(kL+j+L_\ast)\\&#xA;       &amp; &amp;                &amp; x(kL+j+L_\ast) = x(kL+j)  - \tau\\&#xA;       &amp; &amp;                &amp; x(kL+j)    = x(kL+j)  + \tau\\&#xA;       &amp; &amp; \mbox{end}\\&#xA;       &amp; \mbox{end}\\&#xA;  \mbox{end}\\&#xA;\end{array}$$"></p><p>The textbook algorithm uses zero-based indexing. <img src="fi_radix2fft_demo_eq72454.png" alt="$F_n$"> is an n-by-n Fourier-transform matrix, <img src="fi_radix2fft_demo_eq33272.png" alt="$P_n$"> is an n-by-n bit-reversal permutation matrix, and <img src="fi_radix2fft_demo_eq64535.png" alt="$w$"> is a complex vector of twiddle factors.  The twiddle factors, <img src="fi_radix2fft_demo_eq64535.png" alt="$w$">, are complex roots of unity computed by the following algorithm:</p><pre class="codeinput">type_nocomments <span class="string">fi_radix2twiddles</span>
+</pre><pre class="codeoutput">function w = fi_radix2twiddles(n)
+t = log2(n);
+if floor(t) ~= t
+  error('N must be an exact power of two.');
+end
+w = zeros(n-1,1);
+k=1;
+L=2;
+while L&lt;=n
+  theta = 2*pi/L;
+  for j=0:(L/2 - 1)
+    w(k) = complex( cos(j*theta), -sin(j*theta) );
+    k = k + 1;
+  end
+  L = L*2;
+end
+</pre><pre class="codeinput">figure(gcf);clf
+w0 = fi_radix2twiddles(n);
+polar(angle(w0),abs(w0),<span class="string">'o'</span>)
+title(<span class="string">'Twiddle Factors: Complex roots of unity'</span>)
+</pre><img vspace="5" hspace="5" src="fi_radix2fft_demo_02.png" alt=""> <h2>Verifying your Floating-Point code in MATLAB<a name="5"></a></h2><p>To implement the algorithm in MATLAB, you can use the <tt>fi_bitreverse</tt> function to bit-reverse the input sequence, and you must add one to the indices to convert them from zero-based to one-based.</p><pre class="codeinput">type_nocomments <span class="string">fi_m_radix2fft_algorithm1_6_2</span>
+</pre><pre class="codeoutput">function x = fi_m_radix2fft_algorithm1_6_2(x, w)
+n = length(x);  t = log2(n);
+x = fi_bitreverse(x,n);
+for q=1:t
+  L = 2^q; r = n/L; L2 = L/2;
+  for k=0:(r-1)
+    for j=0:(L2-1)
+      temp          = w(L2-1+j+1) * x(k*L+j+L2+1);
+      x(k*L+j+L2+1) = x(k*L+j+1)  - temp;
+      x(k*L+j+1)    = x(k*L+j+1)  + temp;
+    end
+  end
+end
+</pre><p>To verify that you correctly implemented the algorithm in MATLAB, run a known signal through it and compare the results to the results produced by the MATLAB FFT function.</p><pre class="codeinput">y = fi_m_radix2fft_algorithm1_6_2(x0, w0);
+
+y0 = fft(x0); <span class="comment">% MATLAB's built-in FFT for comparison</span>
+
+fi_fft_demo_plot(x0,y,y0,Fs,<span class="string">'Double data'</span>, {<span class="string">'FFT Algorithm 1.6.2'</span>,<span class="string">'Built-in FFT'</span>});
+</pre><img vspace="5" hspace="5" src="fi_radix2fft_demo_03.png" alt=""> <p>Because the error is within tolerance of the MATLAB built-in FFT function, you know you have correctly implemented the algorithm.</p><h2>Identifying Fixed-Point Issues in MATLAB<a name="8"></a></h2><p>Now, try converting the data to fixed-point and see if the algorithm still looks good.  In this first pass, you use all the defaults for signed fixed-point data by using the <tt>sfi</tt> constructor.</p><pre class="codeinput">x = sfi(x0);  <span class="comment">% Convert to signed fixed-point</span>
+w = sfi(w0);  <span class="comment">% Convert to signed fixed-point</span>
+
+<span class="comment">% Re-run the same algorithm with the fixed-point inputs</span>
+y  = fi_m_radix2fft_algorithm1_6_2(x,w);
+fi_fft_demo_plot(x,y,y0,Fs,<span class="string">'Fixed-point data'</span>, <span class="keyword">...</span>
+                 {<span class="string">'Fixed-point FFT Algorithm 1.6.2'</span>,<span class="string">'Built-in'</span>});
+</pre><img vspace="5" hspace="5" src="fi_radix2fft_demo_04.png" alt=""> <p>Note that the magnitude plot (center) of the fixed-point FFT does not resemble the plot of the built-in FFT.  The error (bottom plot) is much larger than what you would expect to see for round off error, so it is likely that overflow has occurred.</p><h2>Modifying the Algorithm in MATLAB to Address Fixed-Point Issues<a name="10"></a></h2><p>The magnitude of an individual bin in the FFT grows, at most, by a factor of n, where n is the length of the FFT.  Hence, by scaling your data by 1/n, you can prevent overflow from occurring for any input.</p><p>When you scale only the input to the first stage of a length-n FFT by 1/n, you obtain a noise-to-signal ratio proportional to n^2 [Oppenheim &amp; Schafer 1989, equation 9.101], [Welch 1969].</p><p>However, if you scale the input to each of the stages of the FFT by 1/2, you can obtain an overall scaling of 1/n and produce a noise-to-signal ratio proportional to n [Oppenheim &amp; Schafer 1989, equation 9.105], [Welch 1969].</p><p>An efficient way to scale by 1/2 in fixed-point is to right-shift the data. To do this, you use the bit shift right arithmetic function <tt>bitsra</tt>. After scaling each stage of the FFT, your algorithm becomes:</p><pre class="codeinput">type_nocomments_nosubfunctions <span class="string">fi_m_radix2fft_withscaling</span>
+</pre><pre class="codeoutput">function xc = fi_m_radix2fft_withscaling(x, w)
+n = length(x);  t = log2(n);
+x = fi_bitreverse(x,n);
+xc = complex(x,0);
+for q=1:t
+    L = 2^q; r = n/L; L2 = L/2;
+    for k=0:(r-1)
+        for j=0:(L2-1)
+            temp           = w(L2-1+j+1) * xc(k*L+j+L2+1);
+            xc(k*L+j+L2+1) = bitsra(xc(k*L+j+1) - temp, 1);
+            xc(k*L+j+1)    = bitsra(xc(k*L+j+1) + temp, 1);
+        end
+    end
+end
+
+</pre><p>Run the scaled algorithm with fixed-point data.</p><pre class="codeinput">x = sfi(x0);
+w = sfi(w0);
+
+y = fi_m_radix2fft_withscaling(x,w);
+</pre><pre class="codeinput">fi_fft_demo_plot(x, y, y0/n, Fs, <span class="string">'Fixed-point data'</span>, <span class="keyword">...</span>
+                 {<span class="string">'Fixed-point FFT with scaling'</span>,<span class="string">'Scaled built-in'</span>});
+</pre><img vspace="5" hspace="5" src="fi_radix2fft_demo_05.png" alt=""> <p>You can see that the scaled fixed-point FFT algorithm now matches the built-in FFT to a tolerance that is expected for 16-bit fixed-point data.</p><h2>Converting Fixed-Point MATLAB code to C-code using the Embedded MATLAB&reg; Subset<a name="14"></a></h2><p>Once you have a working fixed-point algorithm with no overflows, you can convert it to C-code with the following constraints:</p><div><ul><li>The data is represented by 16-bit integers.</li><li>Products and sums are computed in 32-bit integers.</li></ul></div><p>To set up your fixed-point MATLAB code to behave like C-code, use the <tt>globalfimath</tt> object with the following settings.</p><p>*Keep the least-significant bits of products and sums. *Compute products and sums in 32 bits.</p><p>Although the overflow characteristics of signed integers in C-code is not specified by the ANSII standard, it typically wraps on overflow.  Since you are right-shifting and letting the bits fall off the end in C-code, set the rounding mode in MATLAB to be <tt>floor</tt>.</p><p>When attached to a <tt>fi</tt> object, <tt>fimath</tt> objects define the arithmetic attributes of that <tt>fi</tt> object. If a <tt>fi</tt> object does not have an attached <tt>fimath</tt> object, the global fimath determines the arithmetic attributes of the <tt>fi</tt> object. Use of the global fimath is encouraged.</p><pre class="codeinput">G = globalfimath;
+G.ProductMode       = <span class="string">'KeepLSB'</span>;
+G.ProductWordLength = 32;
+G.SumMode           = <span class="string">'KeepLSB'</span>;
+G.SumWordLength     = 32;
+G.OverflowMode      = <span class="string">'wrap'</span>;
+G.RoundMode         = <span class="string">'floor'</span>;
+G.CastBeforeSum     = true;
+</pre><p>You must also specify a word length for your data. You can let the scaling of input <tt>x</tt> be set automatically by best-precision scaling, but you can specify fractional scaling for the twiddle factors, <tt>w</tt>, since you know that they are complex sinusoids whose real and imaginary parts are between +1 and -1.  The <tt>sfi</tt> constructor uses a <tt>RoundMode</tt> of <tt>'nearest'</tt> and <tt>OverflowMode</tt> of <tt>'saturate'</tt> to quantize the initial value, regardless of the settings of the global fimath.</p><pre class="codeinput">wordlength = 16;
+x = sfi(x0, wordlength);
+w = sfi(w0, wordlength, wordlength-1);
+</pre><pre class="codeinput">y = fi_m_radix2fft_withscaling(x,w);
+fi_fft_demo_plot(x, y, y0/n, Fs, <span class="string">'Fixed-point data'</span>, <span class="keyword">...</span>
+                 {<span class="string">'Fixed-point FFT with C attributes'</span>,<span class="string">'Scaled built-in'</span>});
+</pre><img vspace="5" hspace="5" src="fi_radix2fft_demo_06.png" alt=""> <p>You can compile the fixed-point MATLAB code into a C-MEX function using the Embedded MATLAB C-MEX generation function <tt>emlmex</tt>. The resulting fixed-point C-MEX function typically runs faster than your fixed-point MATLAB code, especially when you are using large inputs.</p><p>The <tt>emlmex</tt> function compiles the <tt>fi_m_radix2fft_withscaling</tt> file into a C-MEX function.  The <tt>emlmex</tt> function puts the C-MEX function in your current directory.  The following code creates a temporary directory for the C-MEX function so the contents of your current directory is not modified.</p><pre class="codeinput">emlmexdir = [tempdir filesep <span class="string">'emlmexdir'</span>];
+<span class="keyword">if</span> ~exist(emlmexdir,<span class="string">'dir'</span>)
+    mkdir(emlmexdir);
+<span class="keyword">end</span>
+emlcurdir = pwd;
+cd(emlmexdir);
+</pre><p>Compile the <tt>fi_m_radix2fft_withscaling.m</tt> file into a MEX File</p><pre class="codeinput">emlmex <span class="string">fi_m_radix2fft_withscaling</span> <span class="string">-eg</span> <span class="string">{x,w}</span> <span class="string">-o</span> <span class="string">fi_m_radix2fft_withscaling_mex</span>;
+</pre><p>Run the MEX function with the fixed-point inputs</p><pre class="codeinput">y1 = fi_m_radix2fft_withscaling_mex(x,w);
+fi_fft_demo_plot(x, y, y1, Fs, <span class="string">'Fixed-point data'</span>, <span class="keyword">...</span>
+                 {<span class="string">'MATLAB Function'</span>,<span class="string">'C-MEX Function'</span>});
+</pre><img vspace="5" hspace="5" src="fi_radix2fft_demo_07.png" alt=""> <p>Looking at the error plot, you can see that the output of the compiled C-MEX function is bit-faithful with the output produced by your MATLAB code.</p><p>You can also generate embeddable C-code from the MATLAB file using the Embedded MATLAB code generation utility <tt>emlc</tt>.</p><pre class="codeinput"><span class="keyword">if</span> license(<span class="string">'test'</span>,<span class="string">'Simulink'</span>) &amp;&amp; license(<span class="string">'test'</span>,<span class="string">'Real-Time_Workshop'</span>)
+    emlc <span class="string">fi_m_radix2fft_withscaling</span> <span class="string">-eg</span> <span class="string">{x,w}</span> <span class="string">-o</span> <span class="string">fi_m_radix2fft_withscaling_mex</span>;
+<span class="keyword">end</span>
+</pre><p>Clean up the Temporary Directory</p><pre class="codeinput">cd(emlcurdir);
+clear <span class="string">fi_m_radix2fft_withscaling_mex</span>;
+status = rmdir(emlmexdir,<span class="string">'s'</span>);
+close <span class="string">all</span>;
+</pre><h2>Converting Fixed-Point MATLAB Code to Hand-Written C-Code<a name="23"></a></h2><p>If you have hand-written C code, you can prototype your algorithm in MATLAB before converting it to C-code.</p><p>Here are some things you need to be careful about in C-code that MATLAB handles for you:</p><div><ul><li>There are no built-in complex data types in C, so you have to work directly with the real and imaginary parts of all variables.</li></ul></div><div><ul><li>When you compute the product of the twiddle factors and data in C, you store the result in a 32-bit integer.  When integers are multiplied, they keep their least-significant bits. So to align the product with the data before addition, you must left-shift the data by the fraction length of the twiddle factors, and then right-shift by the same amount before overwriting the data.</li></ul></div><p>The source files for the C-MEX function are as follows:</p><pre> fi_c_radix2fft_withscaling.c
+ fi_c_radix2fft_withscaling.h</pre><pre class="codeinput">type_nocomments <span class="string">fi_c_radix2fft_withscaling.h</span>
+</pre><pre class="codeoutput">void fi_c_radix2fft_withscaling(int16_T* xr, int16_T* xi, int16_T* wr, int16_T* wi,
+                                int n, int nw, int t,
+                                int Wfraclen)
+{
+    int32_T tempr, tempi;
+    int q, i, j, k;
+    int n1, n2, n3;
+    int L, kL, r, L2;
+    bitreverse(xr,xi,n);
+    for (q=1; q&lt;=t; q++) {
+        L = 1; L &lt;&lt;= q;
+        r = 1; r &lt;&lt;= (t-q);
+        L2 = L&gt;&gt;1;
+        kL = 0;
+        for (k=0; k&lt;r; k++) {
+            for (j=0; j&lt;L2; j++) {
+                n3     = kL + j;
+                n2     = n3 + L2;
+                n1     = L2 - 1 + j;
+                tempr  = (int32_T)wr[n1]*(int32_T)xr[n2] - (int32_T)wi[n1]*(int32_T)xi[n2];
+                tempi  = (int32_T)wr[n1]*(int32_T)xi[n2] + (int32_T)wi[n1]*(int32_T)xr[n2];
+                xr[n2] = ((((int32_T)xr[n3])&lt;&lt;Wfraclen) - tempr)&gt;&gt;(Wfraclen+1);
+                xi[n2] = ((((int32_T)xi[n3])&lt;&lt;Wfraclen) - tempi)&gt;&gt;(Wfraclen+1);
+                xr[n3] = ((((int32_T)xr[n3])&lt;&lt;Wfraclen) + tempr)&gt;&gt;(Wfraclen+1);
+                xi[n3] = ((((int32_T)xi[n3])&lt;&lt;Wfraclen) + tempi)&gt;&gt;(Wfraclen+1);
+            }
+            kL += L;
+        }
+    }
+}		
+</pre><p>To compile the C-MEX file, type</p><pre> mex fi_c_radix2fft_withscaling.c</pre><p>at the MATLAB command line.</p><p>The input to the C program expects 16-bit signed integers for the data, so you must convert the input to <tt>int16</tt>.  The C-code version of the algorithm also needs to know the fraction length of the twiddle factors:</p><pre class="codeinput">yint = fi_c_radix2fft_withscaling(int16(x), int16(w), w.fractionlength);
+
+fi_fft_demo_plot(int16(x),yint,int16(y),Fs,<span class="string">'Integer data'</span>, <span class="keyword">...</span>
+                 {<span class="string">'C algorithm'</span>,<span class="string">'MATLAB algorithm'</span>});
+</pre><img vspace="5" hspace="5" src="fi_radix2fft_demo_08.png" alt=""> <h2>Debugging C-Code by Comparing it to your Fixed-Point MATLAB Code<a name="25"></a></h2><p>In the above plots, note that the output of your C-code exactly matches the output of your fixed-point MATLAB code.  If your results are different, try the following suggestions to debug the code:</p><div><ul><li>Set the Fixed-Point Preferences object, <tt>fipref</tt>, to display integers.</li></ul></div><pre>      p = fipref;
+      p.NumberDisplay      = 'int';
+      p.NumericTypeDisplay = 'short';
+      p.FimathDisplay      = 'none';</pre><div><ul><li>Set the MATLAB debugger to stop in the MATLAB code, and your C   debugger to stop in the C-code at the same place.</li></ul></div><div><ul><li>For information on setting breakpoints in MATLAB files, open the MATLAB Help   Window and navigate to <b>MATLAB &gt; User Guide &gt; Desktop Tools and   Development Environment &gt; Editing and Debugging MATLAB-files &gt;   Debugging Process and Features &gt;   <a href="matlab:helpview(fullfile(docroot,'techdoc','matlab_env','matlab_env.map'),'TIPS_env7_setting_breakpoints');">  Setting Breakpoints</a></b>.</li></ul></div><div><ul><li>For information on setting breakpoints in C-MEX files, open the MATLAB   Help Window and navigate to <b>MATLAB &gt; User Guide &gt; External Interfaces &gt;   Creating C Language MEX-Files &gt; Debugging C Language MEX-Files</b>.</li></ul></div><div><ul><li>Step through the MATLAB code and C-code and compare the results.  Since you   set the <tt>fi</tt> preferences to display integers, the results should be   identical.  It should become evident where the programs diverge.</li></ul></div><div><ul><li>An alternative to setting breakpoints is to sprinkle <tt>mexPrintf</tt>   statements in the C-code, leave off semicolons in the MATLAB code, and   store the output for comparison using the MATLAB <tt>diary</tt> command.</li></ul></div><div><ul><li>Try using simple sequences for your inputs so you know what the output   should be. For example:</li></ul></div><pre>      x = ones(1,n)</pre><pre>     or</pre><pre>      x = [1 zeros(1,n-1)]</pre><h2>Considering Alternate Implementations of the FFT<a name="26"></a></h2><p>An optimization that is often made in the FFT algorithm is to skip multiplies by the twiddle factor <tt>W^0 = exp(2*pi*0) = 1</tt>, which is the initial multiply in the innermost loop.  An example of skipping the multiply by <tt>W^0</tt> can be found in these files:</p><pre> fi_m_radix2fft_skip_w0.m
+ fi_c_radix2fft_skip_w0.c</pre><p>Scaling after every stage is sufficient to guarantee that no overflow will occur for any input; however it is not always necessary. Another method of scaling is block floating-point in which scaling is only done when an overflow is detected.  An example of block floating-point scaling can be found in these files:</p><pre> fi_m_radix2fft_blockfloatingpoint.m
+ fi_c_radix2fft_blockfloatingpoint.c</pre><h2>Computing a Fixed-Point FFT in Signal Processing Blockset&#8482;<a name="27"></a></h2><p>An FFT block is available in Signal Processing Blockset, and with a Simulink&reg; Fixed Point&#8482; license, you can use it for fixed-point applications. We demonstrate it here for comparison.  Note that fixed-point objects can be passed in and out of Simulink&reg; via the Signal From Workspace and Signal To Workspace blocks.  The algorithm in the blockset optimizes away multiplication by 1 and orders the computations to minimize the number of times it must access the twiddle-factor table.</p><p>To open the model, type the following at the MATLAB command line:</p><pre> fi_mdl_radix2fft_withscaling</pre><p>To run the model from the MATLAB command line, type the following:</p><pre class="codeinput"><span class="keyword">if</span> license(<span class="string">'test'</span>,<span class="string">'Signal_Blocks'</span>) &amp;&amp; license(<span class="string">'test'</span>,<span class="string">'Fixed-Point_Blocks'</span>)
+    simopts = simset(<span class="string">'SrcWorkspace'</span>,<span class="string">'current'</span>);
+    sim(<span class="string">'fi_mdl_radix2fft_withscaling'</span>,[],simopts)
+<span class="keyword">end</span>
+</pre><p>Compare the Simulink results with the double results:</p><pre class="codeinput"><span class="keyword">if</span> license(<span class="string">'test'</span>,<span class="string">'Signal_Blocks'</span>) &amp;&amp; license(<span class="string">'test'</span>,<span class="string">'Fixed-Point_Blocks'</span>)
+    fi_fft_demo_plot(x, y_sim, y0/n ,Fs, <span class="string">'data'</span>,{<span class="string">'Simulink'</span>,<span class="string">'Double'</span>});
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="fi_radix2fft_demo_09.png" alt=""> <p>To see the Generated Code Report that was produced by Real-Time Workshop&reg; for this model, click the following link: <a href="../fi_mdl_radix2fft_withscaling_grt_rtw/html/fi_mdl_radix2fft_withscaling_codegen_rpt.html">../fi_mdl_radix2fft_withscaling_grt_rtw/html/fi_mdl_radix2fft_withscaling_codegen_rpt.html</a></p><h2>Cleanup<a name="30"></a></h2><p>The following code sets the display settings and preferences back to their original states.</p><pre class="codeinput"><span class="comment">% Reset the display format</span>
+format(formatAtStartOfThisDemo)
+format(formatSpacingAtStartOfThisDemo)
+<span class="comment">% Reset the fi display and logging preferences</span>
+fipref(fiprefAtStartOfThisDemo);
+<span class="comment">% Reset the global fimath</span>
+globalfimath(globalFimathAtStartOfThisDemo);
+</pre><h2>References<a name="31"></a></h2><p>Charles Van Loan, <i>Computational Frameworks for the Fast Fourier Transform,</i> SIAM, 1992, <a href="http://www.mathworks.com/support/books/book1384.html">http://www.mathworks.com/support/books/book1384.html</a>.</p><p>Cleve Moler, <i>Numerical Computing with MATLAB,</i> SIAM, 2004, Chapter 8 Fourier Analysis, <a href="http://www.mathworks.com/company/aboutus/founders/clevemoler.html">http://www.mathworks.com/company/aboutus/founders/clevemoler.html</a>, <a href="http://www.mathworks.com/support/books/book7638.html">http://www.mathworks.com/support/books/book7638.html</a>.</p><p>Alan V. Oppenheim and Ronald W. Schafer, <i>Discrete-Time Signal Processing,</i> Prentice Hall, 1989.</p><p>Peter D. Welch, "A Fixed-Point Fast Fourier Transform Error Analysis," IEEE&reg; Transactions on Audio and Electroacoustics, Vol. AU-17, No. 2, June 1969, pp. 151-157.</p><p class="footer">Copyright 2004-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Fixed-Point Fast Fourier Transform (FFT)
+%
+% This demo shows you how to convert a textbook version of the Fast Fourier
+% Transform (FFT) algorithm into fixed-point MATLAB(R) code and fixed-point
+% C-code.
+%
+% For comparison purposes, the FFT block from the Signal Processing Blockset(TM)
+% is used at the end of this demo to compute a fixed-point FFT.  To use the FFT
+% block to compute a fixed-point FFT, you must have licenses for Simulink(R),
+% Simulink(R) Fixed Point(TM) and Signal Processing Blockset(TM).
+%
+% Copyright 2004-2010 The MathWorks, Inc.
+% $Revision: 1.1.6.9 $
+
+%% Setup
+% This demo may use display settings or preferences that are different from what
+% you are currently using. To ensure that your current display settings and
+% preferences are not changed by running this demo, the demo automatically saves
+% and restores them. The following code captures the current states for any
+% display settings or properties that the demo changes.
+
+% Capture the current state of the display format and set it to 'loose' and
+% 'long g'.
+formatAtStartOfThisDemo        = get(0,'Format');
+formatSpacingAtStartOfThisDemo = get(0,'FormatSpacing');
+format loose
+format long g
+% Capture the current state of and reset the fi display and logging
+% preferences to the factory settings.
+fiprefAtStartOfThisDemo = get(fipref);
+reset(fipref);
+% Capture the present state of and reset the global fimath to the factory
+% settings.
+globalFimathAtStartOfThisDemo = fimath;
+resetglobalfimath;
+
+%% Implementing the Textbook FFT Algorithm in MATLAB
+% FFT is a complex-valued linear transformation from the time domain to
+% the frequency domain.  For example, if you construct a vector as the
+% sum of two sinusoids and transform it with the FFT, you can see the
+% peaks of the frequencies in the FFT magnitude plot.
+n = 64;                                     % Number of points
+Fs = 4;                                     % Sampling frequency in Hz
+t  = (0:(n-1))/Fs;                          % Time vector
+f  = linspace(0,Fs,n);                      % Frequency vector
+f0 = .2; f1 = .5;                           % Frequencies, in Hz
+x0 = cos(2*pi*f0*t) + 0.55*cos(2*pi*f1*t);  % Time-domain signal
+y  = fft(x0);                               % Frequency-domain transformation
+
+figure(gcf); clf
+subplot(211); plot(t,x0,'b.-'); xlabel('Time (s)'); ylabel('Amplitude');legend('x0')
+subplot(212); plot(f,abs(y),'m.-'); xlabel('Frequency (Hz)'); ylabel('Magnitude');legend('abs(fft(x0))')
+%%
+% The peaks at 0.2 and 0.5 Hz in the frequency plot correspond to
+% the two sinusoids of the time-domain signal at those frequencies. 
+%
+% Note the reflected peaks at 3.5 and 3.8 Hz.  When the input to an FFT
+% is real-valued, as it is in this case, then the output |y| is
+% conjugate-symmetric:
+%
+% $$y(k) = \mbox{conj}(y(N-k)).$$
+%
+% There are many different implementations of the FFT, each having its own
+% costs and benefits.  You may find that a different algorithm is better 
+% for your application than the one given here.  This algorithm is used to
+% provide you with an example of how you might begin your own exploration.
+%
+% This demo uses the decimation-in-time unit-stride FFT shown in Algorithm 1.6.2
+% on page 45 of the book _Computational Frameworks for the Fast Fourier
+% Transform_ by Charles Van Loan
+% (<http://www.mathworks.com/support/books/book1384.html>).
+%
+% In pseudocode, the algorithm in the textbook is as follows.
+%
+% Algorithm 1.6.2.  If $x$ is a complex vector of length $n$ and $n = 2^t$, then
+% the following algorithm overwrites $x$ with $F_nx$.
+%
+% $$\begin{array}{llll}
+%    \multicolumn{4}{l}{x = P_nx}\\
+%    \multicolumn{4}{l}{w = w_n^{(long)}\mbox{\hspace*{3em}(See Van Loan \S 1.4.11.)}}\\
+%    \mbox{for}\ q\ & \multicolumn{3}{l}{ = 1:t}\\
+%        & \multicolumn{3}{l}{L=2^q;\ r=n/L;\ L_\ast=L/2;}\\
+%        & \mbox{for}\ k\ & \multicolumn{2}{l}{=0:r-1}\\
+%        & & \mbox{for}\ j\ & =0:L_\ast-1\\
+%        & &                & \tau  = w(L_\ast-1+j) \cdot x(kL+j+L_\ast)\\
+%        & &                & x(kL+j+L_\ast) = x(kL+j)  - \tau\\
+%        & &                & x(kL+j)    = x(kL+j)  + \tau\\
+%        & & \mbox{end}\\
+%        & \mbox{end}\\
+%   \mbox{end}\\
+% \end{array}$$
+%
+% The textbook algorithm uses zero-based indexing. $F_n$ is an n-by-n
+% Fourier-transform matrix, $P_n$ is an n-by-n bit-reversal permutation
+% matrix, and $w$ is a complex vector of twiddle factors.  The twiddle
+% factors, $w$, are complex roots of unity computed by the following
+% algorithm:
+
+type_nocomments fi_radix2twiddles
+%%
+figure(gcf);clf
+w0 = fi_radix2twiddles(n);
+polar(angle(w0),abs(w0),'o')
+title('Twiddle Factors: Complex roots of unity')
+
+%% Verifying your Floating-Point code in MATLAB
+% To implement the algorithm in MATLAB, you can use the |fi_bitreverse| function
+% to bit-reverse the input sequence, and you must add one to the indices to
+% convert them from zero-based to one-based.
+type_nocomments fi_m_radix2fft_algorithm1_6_2
+%%
+% To verify that you correctly implemented the algorithm in MATLAB,
+% run a known signal through it and compare the results to the results 
+% produced by the MATLAB FFT function.
+
+y = fi_m_radix2fft_algorithm1_6_2(x0, w0);
+
+y0 = fft(x0); % MATLAB's built-in FFT for comparison
+
+fi_fft_demo_plot(x0,y,y0,Fs,'Double data', {'FFT Algorithm 1.6.2','Built-in FFT'});
+
+%% 
+% Because the error is within tolerance of the MATLAB built-in FFT function, 
+% you know you have correctly implemented the algorithm.
+
+%% Identifying Fixed-Point Issues in MATLAB
+%
+% Now, try converting the data to fixed-point and see if the algorithm 
+% still looks good.  In this first pass, you use all the defaults for 
+% signed fixed-point data by using the |sfi| constructor.
+
+x = sfi(x0);  % Convert to signed fixed-point
+w = sfi(w0);  % Convert to signed fixed-point
+
+% Re-run the same algorithm with the fixed-point inputs
+y  = fi_m_radix2fft_algorithm1_6_2(x,w);
+fi_fft_demo_plot(x,y,y0,Fs,'Fixed-point data', ...
+                 {'Fixed-point FFT Algorithm 1.6.2','Built-in'});
+%%
+% Note that the magnitude plot (center) of the fixed-point FFT does not resemble
+% the plot of the built-in FFT.  The error (bottom plot) is much larger than
+% what you would expect to see for round off error, so it is likely that
+% overflow has occurred.
+
+%% Modifying the Algorithm in MATLAB to Address Fixed-Point Issues
+% The magnitude of an individual bin in the FFT grows, at most, by a factor of
+% n, where n is the length of the FFT.  Hence, by scaling your data by 1/n, you
+% can prevent overflow from occurring for any input.
+%
+% When you scale only the input to the first stage of a length-n FFT by 1/n, you
+% obtain a noise-to-signal ratio proportional to n^2 [Oppenheim & Schafer 1989,
+% equation 9.101], [Welch 1969].
+%
+% However, if you scale the input to each of the stages of the FFT by 1/2, you
+% can obtain an overall scaling of 1/n and produce a noise-to-signal ratio
+% proportional to n [Oppenheim & Schafer 1989, equation 9.105], [Welch 1969].
+%
+% An efficient way to scale by 1/2 in fixed-point is to right-shift the data.
+% To do this, you use the bit shift right arithmetic function |bitsra|.  
+% After scaling each stage of the FFT, your algorithm becomes:
+type_nocomments_nosubfunctions fi_m_radix2fft_withscaling
+
+%%
+% Run the scaled algorithm with fixed-point data.
+x = sfi(x0);  
+w = sfi(w0);  
+
+y = fi_m_radix2fft_withscaling(x,w);
+
+%%
+fi_fft_demo_plot(x, y, y0/n, Fs, 'Fixed-point data', ...
+                 {'Fixed-point FFT with scaling','Scaled built-in'});
+%%
+% You can see that the scaled fixed-point FFT algorithm now matches the 
+% built-in FFT to a tolerance that is expected for 16-bit fixed-point data.
+
+%% Converting Fixed-Point MATLAB code to C-code using the Embedded MATLAB(R) Subset
+% Once you have a working fixed-point algorithm with no overflows, you
+% can convert it to C-code with the following constraints: 
+%
+% * The data is represented by 16-bit integers.
+% * Products and sums are computed in 32-bit integers.
+%
+%
+% To set up your fixed-point MATLAB code to behave like C-code, use the
+% |globalfimath| object with the following settings.  
+%
+% *Keep the least-significant bits of products and sums.  
+% *Compute products and sums in 32 bits.  
+%
+% Although the overflow characteristics of signed
+% integers in C-code is not specified by the ANSII standard, it typically
+% wraps on overflow.  Since you are right-shifting and letting the bits
+% fall off the end in C-code, set the rounding mode in MATLAB to be
+% |floor|.
+%
+% When attached to a |fi| object, |fimath| objects define the arithmetic
+% attributes of that |fi| object. If a |fi| object does not have an
+% attached |fimath| object, the global fimath determines the arithmetic
+% attributes of the |fi| object. Use of the global fimath is encouraged.
+G = globalfimath;
+G.ProductMode       = 'KeepLSB';
+G.ProductWordLength = 32;
+G.SumMode           = 'KeepLSB';
+G.SumWordLength     = 32;
+G.OverflowMode      = 'wrap';
+G.RoundMode         = 'floor';
+G.CastBeforeSum     = true;
+%%
+% You must also specify a word length for your data. You can let the scaling of
+% input |x| be set automatically by best-precision scaling, but you can specify
+% fractional scaling for the twiddle factors, |w|, since you know that they are
+% complex sinusoids whose real and imaginary parts are between +1 and -1.  The
+% |sfi| constructor uses a |RoundMode| of |'nearest'| and |OverflowMode| of
+% |'saturate'| to quantize the initial value, regardless of the settings of the
+% global fimath.
+wordlength = 16;
+x = sfi(x0, wordlength);
+w = sfi(w0, wordlength, wordlength-1);
+
+%% 
+y = fi_m_radix2fft_withscaling(x,w);
+fi_fft_demo_plot(x, y, y0/n, Fs, 'Fixed-point data', ...
+                 {'Fixed-point FFT with C attributes','Scaled built-in'});
+
+%%
+% You can compile the fixed-point MATLAB code into a C-MEX function using the
+% Embedded MATLAB C-MEX generation function |emlmex|. The resulting fixed-point
+% C-MEX function typically runs faster than your fixed-point MATLAB code, 
+% especially when you are using large inputs.
+%
+% The |emlmex| function compiles the |fi_m_radix2fft_withscaling| file
+% into a C-MEX function.  The |emlmex| function puts the C-MEX function in 
+% your current directory.  The following code creates a temporary directory
+% for the C-MEX function so the contents of your current directory is not 
+% modified.
+emlmexdir = [tempdir filesep 'emlmexdir'];
+if ~exist(emlmexdir,'dir')
+    mkdir(emlmexdir);
+end
+emlcurdir = pwd;
+cd(emlmexdir);
+
+%%
+% Compile the |fi_m_radix2fft_withscaling.m| file into a MEX File
+emlmex fi_m_radix2fft_withscaling -eg {x,w} -o fi_m_radix2fft_withscaling_mex;
+
+%%
+% Run the MEX function with the fixed-point inputs
+y1 = fi_m_radix2fft_withscaling_mex(x,w);
+fi_fft_demo_plot(x, y, y1, Fs, 'Fixed-point data', ...
+                 {'MATLAB Function','C-MEX Function'});
+%%
+% Looking at the error plot, you can see that the output of the compiled 
+% C-MEX function is bit-faithful with the output produced by your MATLAB code.
+
+%%             
+% You can also generate embeddable C-code from the MATLAB file using the 
+% Embedded MATLAB code generation utility |emlc|. 
+if license('test','Simulink') && license('test','Real-Time_Workshop')
+    emlc fi_m_radix2fft_withscaling -eg {x,w} -o fi_m_radix2fft_withscaling_mex;
+end
+    
+%%
+% Clean up the Temporary Directory
+cd(emlcurdir);
+clear fi_m_radix2fft_withscaling_mex;
+status = rmdir(emlmexdir,'s');
+close all;
+
+
+
+%% Converting Fixed-Point MATLAB Code to Hand-Written C-Code
+% If you have hand-written C code, you can prototype your algorithm in MATLAB
+% before converting it to C-code.
+%
+% Here are some things you need to be careful about in C-code that MATLAB
+% handles for you:
+% 
+% * There are no built-in complex data types in C, so you have to work directly
+% with the real and imaginary parts of all variables.
+% 
+% * When you compute the product of the twiddle factors and data in C, you store the
+% result in a 32-bit integer.  When integers are multiplied, they keep their
+% least-significant bits. So to align the product with the data before addition,
+% you must left-shift the data by the fraction length of the twiddle factors,
+% and then right-shift by the same amount before overwriting the data.
+%
+% The source files for the C-MEX function are as follows:
+%
+%   fi_c_radix2fft_withscaling.c
+%   fi_c_radix2fft_withscaling.h
+
+type_nocomments fi_c_radix2fft_withscaling.h
+
+%% 
+%
+% To compile the C-MEX file, type
+%
+%   mex fi_c_radix2fft_withscaling.c
+%
+% at the MATLAB command line.
+%
+% The input to the C program expects 16-bit signed integers for the
+% data, so you must convert the input to |int16|.  The C-code version of the 
+% algorithm also needs to know the fraction length of the twiddle factors:
+yint = fi_c_radix2fft_withscaling(int16(x), int16(w), w.fractionlength);
+
+fi_fft_demo_plot(int16(x),yint,int16(y),Fs,'Integer data', ...
+                 {'C algorithm','MATLAB algorithm'});
+%% Debugging C-Code by Comparing it to your Fixed-Point MATLAB Code
+% In the above plots, note that the output of your C-code exactly
+% matches the output of your fixed-point MATLAB code.  If your results are
+% different, try the following suggestions to debug the code:
+%
+% * Set the Fixed-Point Preferences object, |fipref|, to display integers.
+%
+%        p = fipref;
+%        p.NumberDisplay      = 'int';
+%        p.NumericTypeDisplay = 'short';
+%        p.FimathDisplay      = 'none';
+%
+% * Set the MATLAB debugger to stop in the MATLAB code, and your C
+%   debugger to stop in the C-code at the same place.  
+%
+% * For information on setting breakpoints in MATLAB files, open the MATLAB Help
+%   Window and navigate to *MATLAB > User Guide > Desktop Tools and
+%   Development Environment > Editing and Debugging MATLAB-files > 
+%   Debugging Process and Features >
+%   <matlab:helpview(fullfile(docroot,'techdoc','matlab_env','matlab_env.map'),'TIPS_env7_setting_breakpoints');
+%   Setting Breakpoints>*.
+%
+% * For information on setting breakpoints in C-MEX files, open the MATLAB
+%   Help Window and navigate to *MATLAB > User Guide > External Interfaces >
+%   Creating C Language MEX-Files > Debugging C Language MEX-Files*.
+%
+% * Step through the MATLAB code and C-code and compare the results.  Since you
+%   set the |fi| preferences to display integers, the results should be 
+%   identical.  It should become evident where the programs diverge.
+%
+% * An alternative to setting breakpoints is to sprinkle |mexPrintf|
+%   statements in the C-code, leave off semicolons in the MATLAB code, and
+%   store the output for comparison using the MATLAB |diary| command.
+%
+% * Try using simple sequences for your inputs so you know what the output
+%   should be. For example:
+%
+%        x = ones(1,n)
+%
+%       or
+%
+%        x = [1 zeros(1,n-1)]
+
+%% Considering Alternate Implementations of the FFT
+% An optimization that is often made in the FFT algorithm is to skip 
+% multiplies by the twiddle factor |W^0 = exp(2*pi*0) = 1|, which is the 
+% initial multiply in the innermost loop.  An example of skipping the 
+% multiply by |W^0| can be found in these files: 
+%
+%   fi_m_radix2fft_skip_w0.m
+%   fi_c_radix2fft_skip_w0.c
+%
+% Scaling after every stage is sufficient to guarantee that no overflow
+% will occur for any input; however it is not always necessary. Another
+% method of scaling is block floating-point in which scaling is only done
+% when an overflow is detected.  An example of block floating-point scaling
+% can be found in these files:
+%
+%   fi_m_radix2fft_blockfloatingpoint.m
+%   fi_c_radix2fft_blockfloatingpoint.c
+
+%% Computing a Fixed-Point FFT in Signal Processing Blockset(TM)
+% An FFT block is available in Signal Processing Blockset, and with a
+% Simulink(R) Fixed Point(TM) license, you can use it for fixed-point
+% applications. We demonstrate it here for comparison.  Note that fixed-point
+% objects can be passed in and out of Simulink(R) via the Signal From Workspace
+% and Signal To Workspace blocks.  The algorithm in the blockset optimizes away
+% multiplication by 1 and orders the computations to minimize the number of
+% times it must access the twiddle-factor table.
+%
+% To open the model, type the following at the MATLAB command line:
+%
+%   fi_mdl_radix2fft_withscaling
+%
+% To run the model from the MATLAB command line, type the following:
+if license('test','Signal_Blocks') && license('test','Fixed-Point_Blocks')
+    simopts = simset('SrcWorkspace','current');
+    sim('fi_mdl_radix2fft_withscaling',[],simopts)
+end
+%% 
+% Compare the Simulink results with the double results:
+if license('test','Signal_Blocks') && license('test','Fixed-Point_Blocks')
+    fi_fft_demo_plot(x, y_sim, y0/n ,Fs, 'data',{'Simulink','Double'});
+end                 
+
+
+%% 
+% To see the Generated Code Report that was produced by 
+% Real-Time Workshop(R) for this model, click the following link:
+% <../fi_mdl_radix2fft_withscaling_grt_rtw/html/fi_mdl_radix2fft_withscaling_codegen_rpt.html>
+
+%% Cleanup
+% The following code sets the display settings and preferences back to their
+% original states. 
+
+% Reset the display format
+format(formatAtStartOfThisDemo)
+format(formatSpacingAtStartOfThisDemo)
+% Reset the fi display and logging preferences
+fipref(fiprefAtStartOfThisDemo);
+% Reset the global fimath
+globalfimath(globalFimathAtStartOfThisDemo);
+
+%% References
+% Charles Van Loan, _Computational Frameworks for the Fast Fourier
+% Transform,_ SIAM, 1992, 
+% <http://www.mathworks.com/support/books/book1384.html>.
+%
+% Cleve Moler, _Numerical Computing with MATLAB,_ SIAM, 2004, Chapter 8
+% Fourier Analysis,   
+% <http://www.mathworks.com/company/aboutus/founders/clevemoler.html>,
+% <http://www.mathworks.com/support/books/book7638.html>.
+%
+% Alan V. Oppenheim and Ronald W. Schafer, _Discrete-Time Signal 
+% Processing,_ Prentice Hall, 1989.
+%
+% Peter D. Welch, "A Fixed-Point Fast Fourier Transform Error Analysis," IEEE(R)
+% Transactions on Audio and Electroacoustics, Vol. AU-17, No. 2, June 1969,
+% pp. 151-157.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

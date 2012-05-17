@@ -1,0 +1,85 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>複数操作点用の PID コントローラー ファミリーの設計</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="scdcstrpidarraypad.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdcstrpidarraypad">エディターで scdcstrpidarraypad.m を開く</a></div><div class="right"><a href="matlab:echodemo scdcstrpidarraypad">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>複数操作点用の PID コントローラー ファミリーの設計</h1><!--introduction--><p>このデモでは、幅広い操作点上で動作する非線形プラント用の PID コントローラーの配列を Simulink で設計する方法を説明します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">プラント モデルを開く</a></li><li><a href="#4">ゲイン スケジュールの紹介</a></li><li><a href="#6">複数操作点用の線形プラント モデルの取得</a></li><li><a href="#9">プラント モデル用の PID コントローラーの設計</a></li></ul></div><h2>プラント モデルを開く<a name="1"></a></h2><p>プラントは、幅広い操作点上で動作する連続攪拌タンク反応器 (CSTR) です。単一の PID コントローラーの場合、冷却水温度を効果的に使用して、その PID コントローラーの設計にある小規模な操作範囲付近の出力濃度を調整できます。ただし、プラントが強度な非線形システムであるため、操作点が大きく変化する場合、制御性能が低下します。閉ループ システムでは、不安定になる可能性もあります。</p><p><a href="matlab:open_system('scdcstrctrlplant')">以下のコマンドで CSTR プラント モデルを開きます。</a></p><pre class="codeinput">mdl = <span class="string">'scdcstrctrlplant'</span>;
+open_system(mdl)
+</pre><img vspace="5" hspace="5" src="../scdcstrpidarraypad_01.png" alt=""> <p>詳細は、Seborg, D.E. et al., &quot;Process Dynamics and Control&quot;, 2nd Ed., 2004, Wiley, pp.34-36 を参照してください。</p><h2>ゲイン スケジュールの紹介<a name="4"></a></h2><p>非線形制御問題を解決するための一般的な方法として、線形コントローラーでゲイン スケジュールを使用する方法が挙げられます。ゲイン スケジュール コントロール システムの設計には、一般的に以下の 4 つの手順があります。</p><pre> (1) 各動作領域に対してプラント モデルを取得する。通常は、
+いくつかの平衡操作点でプラントを線形化します。</pre><pre> (2) 直前の手順で取得されたプラント モデル用に、
+PID などの線形コントローラーのファミリーを設計する。</pre><pre> (3) PID ゲインなどのコントローラー係数がスケジュール変数の
+値に基づいて変化するようなスケジュール メカニズムを
+実装する。プラント動作への外乱を最小化するために、コントローラー間の伝達は、
+平滑な (バンプレスな) 伝達であることが要求されます。</pre><pre> (4) 制御性能をシミュレーションを使用して評価する。</pre><p>ゲイン スケジュールでのバックグラウンドの読み込みについての詳細は、W. J. Rugh と J. S. Shamma の調査論文&quot;Research on gain scheduling&quot;, Automatica, Issue 36, 2000, pp.1401-1425 を参照してください。</p><p>この例では、手順 1 および 2 にある CSTR プラントの PID コントローラー ファミリーの設計について説明します。</p><h2>複数操作点用の線形プラント モデルの取得<a name="6"></a></h2><p>出力濃度 C は、異なる動作領域を識別するために使用されます。CSTR プラントは、低変換率 (C=9) と高変換率 (C=2) の間の任意の変換率で操作できます。このデモでは、全操作範囲を C = 2、3、4、5、6、7、8 および 9 と表現される 8 つの領域に分割します。</p><p>以下のループでは、まず、<b>findop</b> コマンドを使用して平衡操作点を計算します。その後、<b>linearize</b> コマンドを使用して各操作点でプラントを線形化します。</p><pre class="codeinput"><span class="comment">% Obtain default operating point</span>
+op = operspec(mdl);
+<span class="comment">% Set the value of output concentration C to be known</span>
+op.Outputs.Known = true;
+<span class="comment">% Specify operating regions</span>
+C = [2 3 4 5 6 7 8 9];
+<span class="comment">% Initialize an array of state space systems</span>
+Plants = rss(1,1,1,8);
+<span class="keyword">for</span> ct = 1:length(C)
+    <span class="comment">% Compute equilibrium operating point corresponding to the value of C</span>
+    op.Outputs.y = C(ct);
+    opoint = findop(mdl,op,linoptions(<span class="string">'DisplayReport'</span>,<span class="string">'off'</span>));
+    <span class="comment">% Linearize plant at this operating point</span>
+    Plants(:,:,ct) = linearize(mdl, opoint);
+<span class="keyword">end</span>
+</pre><p>CSTR プラントが非線形であるため、複数の線形モデルで異なる特性が期待されます。たとえば、高変換率と低変換率を使用するプラント モデルは安定していますが、それ以外は安定しません。</p><pre class="codeinput">isstable(Plants)'
+</pre><pre class="codeoutput">
+ans =
+
+     1     1     0     0     0     0     1     1
+
+</pre><h2>プラント モデル用の PID コントローラーの設計<a name="9"></a></h2><p>複数の PID コントローラーをバッチで設計するには、<b>pidtune</b> コマンドを使用します。次のコマンドでは、並列形式で PID コントローラーの配列が生成されます。必要な開ループ クロスオーバー周波数は 1 ラジアン/秒、および位相余裕は既定値の 60&deg;です。</p><pre class="codeinput"><span class="comment">% Design controllers</span>
+Controllers = pidtune(Plants,<span class="string">'pidf'</span>,pidtuneOptions(<span class="string">'Crossover'</span>,1));
+<span class="comment">% Display controller for C=4</span>
+Controllers(:,:,4)
+</pre><pre class="codeoutput">Continuous-time PIDF controller in parallel form:
+ 
+           1            s    
+Kp + Ki * --- + Kd * --------
+           s          Tf*s+1 
+ 
+with Kp = -12.4511, Ki = -0.10841, Kd = -14.3804, Tf = 0.0087502
+ 
+</pre><p>ステップ設定値追従用の閉ループ応答を以下のようにプロットします。</p><pre class="codeinput"><span class="comment">% Construct closed-loop systems</span>
+clsys = feedback(Plants*Controllers,1);
+<span class="comment">% Plot closed-loop responses</span>
+figure;
+hold <span class="string">on</span>
+<span class="keyword">for</span> ct = 1:length(C)
+    <span class="comment">% Select a system from the LTI array</span>
+    sys = clsys(:,:,ct);
+    set(sys,<span class="string">'Name'</span>,[<span class="string">'C='</span>,num2str(C(ct))],<span class="string">'InputName'</span>,<span class="string">'Reference'</span>);
+    <span class="comment">% Plot step response</span>
+    stepplot(sys,20);
+<span class="keyword">end</span>
+legend(<span class="string">'show'</span>,<span class="string">'location'</span>,<span class="string">'southeast'</span>)
+</pre><img vspace="5" hspace="5" src="../scdcstrpidarraypad_02.png" alt=""> <p>すべての閉ループは安定していますが、不安定なプラント (C=4、5、6、および 7) のあるループの整定時間が長すぎます。開ループ帯域幅を 5 ラジアン/秒に増加し、位相余裕を 30&deg;に減少すると改善する場合があります。これらのループのオーバーシュートは、不安定なプラントが PID コントローラーの性能を制限するため大きなまま維持されます。</p><pre class="codeinput"><span class="comment">% Design controllers for unstable plant models</span>
+Controllers(:,:,3:6) = pidtune(Plants(:,:,3:6),<span class="string">'pidf'</span>,pidtuneOptions(<span class="string">'CrossoverFrequency'</span>,5,<span class="string">'PhaseMargin'</span>,30));
+<span class="comment">% Display controller for C=4</span>
+Controllers(:,:,4)
+</pre><pre class="codeoutput">Continuous-time PIDF controller in parallel form:
+ 
+           1            s    
+Kp + Ki * --- + Kd * --------
+           s          Tf*s+1 
+ 
+with Kp = -146.9905, Ki = -6.346, Kd = -60.9858, Tf = 0.19999
+ 
+</pre><p>これで、すべての閉ループ応答が満足のいく応答となります。</p><pre class="codeinput"><span class="comment">% Construct closed-loop systems</span>
+clsys = feedback(Plants*Controllers,1);
+<span class="comment">% Plot closed-loop responses</span>
+figure;
+hold <span class="string">on</span>
+<span class="keyword">for</span> ct = 1:length(C)
+    <span class="comment">% Select a system from the LTI array</span>
+    sys = clsys(:,:,ct);
+    set(sys,<span class="string">'Name'</span>,[<span class="string">'C='</span>,num2str(C(ct))],<span class="string">'InputName'</span>,<span class="string">'Reference'</span>);
+    <span class="comment">% Plot step response</span>
+    stepplot(sys,20);
+<span class="keyword">end</span>
+legend(<span class="string">'show'</span>,<span class="string">'location'</span>,<span class="string">'southeast'</span>)
+</pre><img vspace="5" hspace="5" src="../scdcstrpidarraypad_03.png" alt=""> <p>PID コントローラーの配列を設計しました。各 PID コントローラーは、ローカル操作点周辺で適切な性能を出さなければなりません。次の手順は、このデモでは取り扱わないスケジュール メカニズムの実装です。</p><p>モデルを閉じます。</p><pre class="codeinput">bdclose(mdl);
+</pre><p class="footer">Copyright 2009-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Designing a Family of PID Controllers for Multiple Operating Points % This demo shows how to design an array of PID controllers for a nonlinear % plant in Simulink that operates over a wide range of operating points.   %   Copyright 2009-2010 The MathWorks, Inc. %   $Revision: 1.1.2.1 $  $Date: 2010/07/29 21:29:23 $  %% Opening the Plant Model % The plant is a continuous stirred tank reactor (CSTR) that operates over % a wide range of operating points. A single PID controller can effectively % use the coolant temperature to regulate the output concentration around a % small operating range that the PID controller is designed for. But since % the plant is a strongly nonlinear system, control performance degrades if % operating point changes significantly. The closed-loop system can even % become unstable. %% % <matlab:open_system('scdcstrctrlplant') Open the CSTR plant model> mdl = 'scdcstrctrlplant'; open_system(mdl)  %% % For background, see Seborg, D.E. et al., "Process Dynamics and Control", % 2nd Ed., 2004, Wiley, pp.34-36.   %% Introduction to Gain Scheduling % A common approach to solve the nonlinear control problem is using gain % scheduling with linear controllers. Generally speaking designing a gain % scheduling control system takes four steps: % %   (1) Obtain a plant model for each operating region. The usual practice %   is to linearize the plant at several equilibrium operating points. % %   (2) Design a family of linear controllers such as PID for the plant %   models obtained in the previous step.  % %   (3) Implement a scheduling mechanism such that the controller %   coefficients such as PID gains are changed based on the values of the %   scheduling variables.  Smooth (bumpless) transfer between controllers %   is required to minimize disturbance to plant operation. % %   (4) Assess control performance with simulation. % % For more background reading on gain scheduling, see a survey paper from % W. J. Rugh and J. S. Shamma: "Research on gain scheduling", Automatica, % Issue 36, 2000, pp.1401-1425.  %% % In this example, we focus on designing a family of PID controllers for % the CSTR plant described in step 1 and 2.  %% Obtaining Linear Plant Models for Multiple Operating Points % The output concentration C is used to identify different operating % regions. The CSTR plant can operate at any conversion rate between low % conversion rate (C=9) and high conversion rate (C=2). In this demo, % divide the whole operating range into 8 regions represented by C = 2, 3, % 4, 5, 6, 7, 8 and 9.  %% % In the following loop, first compute equilibrium operating points with % the *findop* command. Then linearize the plant at each operating point % with the *linearize* command.  % Obtain default operating point op = operspec(mdl);  % Set the value of output concentration C to be known op.Outputs.Known = true;                 % Specify operating regions  C = [2 3 4 5 6 7 8 9]; % Initialize an array of state space systems Plants = rss(1,1,1,8); for ct = 1:length(C)     % Compute equilibrium operating point corresponding to the value of C     op.Outputs.y = C(ct);     opoint = findop(mdl,op,linoptions('DisplayReport','off'));      % Linearize plant at this operating point     Plants(:,:,ct) = linearize(mdl, opoint);  end  %% % Since the CSTR plant is nonlinear, we expect different characteristics % among the linear models. For example, plant models with high and low % conversion rates are stable, while the others are not. isstable(Plants)'  %% Designing PID Controllers for the Plant Models % To design multiple PID controllers in batch, we can use the *pidtune* % command. The following command will generate an array of PID controllers % in parallel form. The desired open loop crossover frequency is at 1 % rad/sec and the phase margin is the default value of 60 degrees.  % Design controllers Controllers = pidtune(Plants,'pidf',pidtuneOptions('Crossover',1)); % Display controller for C=4 Controllers(:,:,4)  %% % Plot the closed loop responses for step set-point tracking as below:  % Construct closed-loop systems clsys = feedback(Plants*Controllers,1); % Plot closed-loop responses figure; hold on for ct =1:length(C)     % Select a system from the LTI array     sys = clsys(:,:,ct);     set(sys,'Name',['C=',num2str(C(ct))],'InputName','Reference');     % Plot step response     stepplot(sys,20); end legend('show','location','southeast')  %% % All the closed loops are stable but the settling time of the loops with % unstable plants (C=4, 5, 6 and 7) are too long.  It can be improved by % increasing the open loop bandwidth to 5 rad/sec and reducing the phase % margin to 30 degrees.  The overshoots of these loops remain large because % the unstable plants restrict the performance of PID controllers.  % Design controllers for unstable plant models Controllers(:,:,3:6) = pidtune(Plants(:,:,3:6),'pidf',pidtuneOptions('CrossoverFrequency',5,'PhaseMargin',30)); % Display controller for C=4 Controllers(:,:,4)  %% % All the closed loop responses are satisfactory now.  % Construct closed-loop systems clsys = feedback(Plants*Controllers,1); % Plot closed-loop responses figure; hold on for ct =1:length(C)     % Select a system from the LTI array     sys = clsys(:,:,ct);     set(sys,'Name',['C=',num2str(C(ct))],'InputName','Reference');     % Plot step response     stepplot(sys,20); end legend('show','location','southeast')  %% % We designed an array of PID controllers and each of them should give % reasonable performance around the local operating point. The next step is % to implement the scheduling mechanism, which is beyond the scope of this % demo.  %% % Close the model. bdclose(mdl); displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

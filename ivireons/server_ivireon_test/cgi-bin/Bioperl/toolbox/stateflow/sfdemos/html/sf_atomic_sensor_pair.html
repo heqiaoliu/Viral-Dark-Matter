@@ -1,0 +1,172 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling a Redundant Sensor Pair Using Atomic Subcharts</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_atomic_sensor_pair.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_atomic_sensor_pair.mdl</div><div class="right"><a href="matlab:sf_atomic_sensor_pair">Open this model</a></div></div><div class="content"><h1>Modeling a Redundant Sensor Pair Using Atomic Subcharts</h1><!--introduction--><p>This model demonstrates how to model a simple redundant sensor pair using a new Stateflow&reg; feature called Atomic Subcharts. This feature allows you to compose a large chart from other charts which reside in a different library file.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">Main Chart</a></li><li><a href="#4">Library Chart</a></li><li><a href="#5">Mapping Inputs, Outputs and Parameters</a></li><li><a href="#6">Simulation Behavior</a></li></ul></div><img vspace="5" hspace="5" src="sf_atomic_sensor_pair_01.png" alt=""> <h2>Main Chart<a name="2"></a></h2><p>The main Stateflow chart <tt>RedundantSensors</tt> consists of two "linked atomic subcharts" called <tt>Sensor1</tt> and <tt>Sensor2</tt>.</p><img vspace="5" hspace="5" src="sf_atomic_sensor_pair_02.png" alt=""> <p>By default, <tt>Sensor1</tt> is active. It reads input <tt>u1</tt> and sets the output <tt>y</tt>. When it fails, we switch to <tt>Sensor2</tt> which reads input <tt>u2</tt> and sets the output <tt>y</tt>. When both of them fail, we fall into the <tt>Alarm</tt> state and produce a nominal zero output.</p><p><tt>Sensor1</tt> and <tt>Sensor2</tt> are "linked atomic subcharts". These look and behave just like normal Stateflow states except that the contents of the linked atomic subchart reside in a chart in another library model. In this case, both of the linked atomic subcharts correspond to the library chart <tt>sf_atomic_sensor_lib/SingleSensor</tt>.</p><h2>Library Chart<a name="4"></a></h2><p>The <tt>SingleSensor</tt> chart models a single sensor which accepts a sensor input <tt>u</tt> and provides a filtered sensor output <tt>y</tt>. It has logic built-in to detect out-of-range errors. By default the sensor is assumed to be in the state "OK". If the sensor reading goes out of range (which is modeled by the transition from "OK" to "FailOnce") and stays faulty for 0.5 seconds, then we transition to "Fail". In this case, the sensor outputs a constant 0. This allows the sensor to model faults but ignore very transient spikes in the sensor reading.</p><p>Notice the following:</p><div><ul><li>The transition from "OK" to "FailOnce" relies on two Stateflow chart parameters "LOW" and "HIGH".</li><li>There is a top-level function called "inFailed" which is used to convey to the container chart whether the sensor is in a failed state.</li></ul></div><img vspace="5" hspace="5" src="sf_atomic_sensor_pair_03.png" alt=""> <img vspace="5" hspace="5" src="sf_atomic_sensor_pair_04.png" alt=""> <h2>Mapping Inputs, Outputs and Parameters<a name="5"></a></h2><p>Notice that the main chart <tt>RedundantSensors</tt> has two inputs <tt>u1</tt> and <tt>u2</tt>, while the library chart corresponding to the linked atomic subcharts has only a single input <tt>u</tt>. In this case, we want the linked subchart <tt>Sensor1</tt> to access the chart input <tt>u1</tt> and the linked subchart <tt>Sensor2</tt> to access the chart input <tt>u2</tt>. In order to accomplish this, we need to specify "Mappings" for each instance of the linked atomic subchart. For example, if you right-click on <tt>Sensor1</tt> and select the context menu item <tt>Edit Subchart Mappings</tt>, you will see the following dialog:</p><p><img vspace="5" hspace="5" src="sf_atomic_sensor_pair_binding_sensor1.png" alt=""> </p><p>This dialog allows you to map symbols (inputs, outputs and parameters) from the main chart to symbols in the library chart. Notice how the input "u" is mapped to the main chart input "u1". Similarly, parameters defined in the library chart can be given different values amongst the various instances of the subchart.</p><p>In this case, the mappings for <tt>Sensor1</tt> and <tt>Sensor2</tt> are as follows:</p><p>
+<table border="1">
+  <tr>
+    <td></td>
+    <td><tt>Sensor1</tt></td>
+    <td><tt>Sensor2</tt></td>
+  </tr>
+  <tr>
+    <td>u</td>
+    <td>u1</td>
+    <td>u2</td>
+  </tr>
+  <tr>
+    <td>HIGH</td>
+    <td>75</td>
+    <td>100</td>
+  </tr>
+  <tr>
+    <td>LOW</td>
+    <td>-75</td>
+    <td>-100</td>
+  </tr>
+</table>
+</p><h2>Simulation Behavior<a name="6"></a></h2><p>If you simulate the model, you will notice the following behavior:</p><div><ul><li>Initially, both inputs to the main chart are zero. Hence the output produced is zero.</li><li>When you vary the first input between, u1, between (-75, 75), the output will track u1.</li><li>As soon as u1 is outside these bounds, y begins to track u2.</li><li>When u2 falls outside the range (-100, 100), then y begins to produce a nominal zero output.</li></ul></div><p>You can <a href="matlab:open_system('sf_atomic_sensor_pair')">open</a> this model now and start the simulation to see this behavior. To change the inputs to the chart, double click on the gain blocks and drag the sliders.</p><p class="footer">Copyright 2007-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling a Redundant Sensor Pair Using Atomic Subcharts
+% 
+% This model demonstrates how to model a simple redundant sensor pair using
+% a new Stateflow(R) feature called Atomic Subcharts. This feature allows
+% you to compose a large chart from other charts which reside in a
+% different library file.
+
+%%
+% 
+
+%   Copyright 2007-2010 The MathWorks, Inc.
+
+mdl = 'sf_atomic_sensor_pair';
+open_system(mdl);
+r = sfroot;
+m = r.find('-isa', 'Stateflow.Machine', 'Name', mdl);
+c = m.find('-isa', 'Stateflow.Chart', 'Name', 'RedundantSensors');
+c.Visible = 0;
+
+%% Main Chart
+% The main Stateflow chart |RedundantSensors| consists of two "linked
+% atomic subcharts" called |Sensor1| and |Sensor2|.
+
+c.Visible = 1;
+ed = c.Editor;
+ed.WindowPosition(3) = ed.WindowPosition(3)/1.5;
+ed.WindowPosition(4) = ed.WindowPosition(4)/1.5;
+ed.ZoomFactor = ed.ZoomFactor*1.5;
+
+%% 
+% By default, |Sensor1| is active. It reads input |u1| and sets the output
+% |y|. When it fails, we switch to |Sensor2| which reads input |u2| and
+% sets the output |y|. When both of them fail, we fall into the |Alarm|
+% state and produce a nominal zero output.
+% 
+% |Sensor1| and |Sensor2| are "linked atomic subcharts". These look and
+% behave just like normal Stateflow states except that the contents of the
+% linked atomic subchart reside in a chart in another library model. In
+% this case, both of the linked atomic subcharts correspond to the library
+% chart |sf_atomic_sensor_lib/SingleSensor|.
+% 
+%% Library Chart
+% 
+% The |SingleSensor| chart models a single sensor which accepts a sensor
+% input |u| and provides a filtered sensor output |y|. It has logic
+% built-in to detect out-of-range errors. By default the sensor is assumed
+% to be in the state "OK". If the sensor reading goes out of range (which
+% is modeled by the transition from "OK" to "FailOnce") and stays faulty
+% for 0.5 seconds, then we transition to "Fail". In this case, the sensor
+% outputs a constant 0. This allows the sensor to model faults but ignore
+% very transient spikes in the sensor reading.
+% 
+% Notice the following:
+% 
+% * The transition from "OK" to "FailOnce" relies on two Stateflow chart
+% parameters "LOW" and "HIGH". 
+% * There is a top-level function called "inFailed" which is used to convey
+% to the container chart whether the sensor is in a failed state.
+% 
+
+open_system('sf_atomic_sensor_lib');
+open_system('sf_atomic_sensor_lib/SingleSensor');
+set_param('sf_atomic_sensor_lib', 'Lock', 'off');
+
+cid = sfprivate('block2chart', 'sf_atomic_sensor_lib/SingleSensor');
+c = idToHandle(sfroot, cid);
+ed = c.Editor;
+ed.WindowPosition(3) = ed.WindowPosition(3)/1.5;
+ed.WindowPosition(4) = ed.WindowPosition(4)/1.5;
+ed.ZoomFactor = ed.ZoomFactor*1.5;
+
+
+%% Mapping Inputs, Outputs and Parameters
+% 
+% Notice that the main chart |RedundantSensors| has two inputs |u1| and
+% |u2|, while the library chart corresponding to the linked atomic
+% subcharts has only a single input |u|. In this case, we want the linked
+% subchart |Sensor1| to access the chart input |u1| and the linked subchart
+% |Sensor2| to access the chart input |u2|. In order to accomplish this, we
+% need to specify "Mappings" for each instance of the linked atomic
+% subchart. For example, if you right-click on |Sensor1| and select the
+% context menu item |Edit Subchart Mappings|, you will see the following
+% dialog:
+% 
+% <<sf_atomic_sensor_pair_binding_sensor1.png>>
+% 
+% This dialog allows you to map symbols (inputs, outputs and parameters)
+% from the main chart to symbols in the library chart. Notice how the input
+% "u" is mapped to the main chart input "u1". Similarly, parameters defined
+% in the library chart can be given different values amongst the various
+% instances of the subchart.
+% 
+% In this case, the mappings for |Sensor1| and |Sensor2| are as follows:
+% 
+% <html>
+% <table border="1">
+%   <tr>
+%     <td></td>
+%     <td><tt>Sensor1</tt></td>
+%     <td><tt>Sensor2</tt></td>
+%   </tr>
+%   <tr>
+%     <td>u</td>
+%     <td>u1</td>
+%     <td>u2</td>
+%   </tr>
+%   <tr>
+%     <td>HIGH</td>
+%     <td>75</td>
+%     <td>100</td>
+%   </tr>
+%   <tr>
+%     <td>LOW</td>
+%     <td>-75</td>
+%     <td>-100</td>
+%   </tr>
+% </table>
+% </html>
+% 
+%% Simulation Behavior
+% If you simulate the model, you will notice the following behavior:
+% 
+% * Initially, both inputs to the main chart are zero. Hence the output
+% produced is zero.
+% * When you vary the first input between, u1, between (-75, 75), the
+% output will track u1.
+% * As soon as u1 is outside these bounds, y begins to track u2.
+% * When u2 falls outside the range (-100, 100), then y begins to produce a
+% nominal zero output.
+% 
+% You can <matlab:open_system('sf_atomic_sensor_pair') open>
+% this model now and start the simulation to see this behavior. To change
+% the inputs to the chart, double click on the gain blocks and drag the
+% sliders.
+
+bdclose all;
+##### SOURCE END #####
+--></body></html>

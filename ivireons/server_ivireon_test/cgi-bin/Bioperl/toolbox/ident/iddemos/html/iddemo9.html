@@ -1,0 +1,296 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Dealing with Multi-Variable Systems: Identification and Analysis</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="iddemo9.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit iddemo9">Open iddemo9.m in the Editor</a></div><div class="right"><a href="matlab:echodemo iddemo9">Run in the Command Window</a></div></div><div class="content"><h1>Dealing with Multi-Variable Systems: Identification and Analysis</h1><!--introduction--><p>This demo shows how to deal with data with several input and output channels (MIMO data). Common operations, such as viewing the MIMO data, estimating and comparing models, and viewing the corresponding model responses are highlighted.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">The Data Set</a></li><li><a href="#8">Step and Impulse Responses</a></li><li><a href="#9">Responses with Confidence Regions (3 s.d.)</a></li><li><a href="#11">A Two-Input-Two-Output Model</a></li><li><a href="#16">Spectral Analysis</a></li><li><a href="#22">Single-Input-Single-Output (SISO) Models</a></li><li><a href="#28">Two-Input-Single-Output Model</a></li><li><a href="#30">Merging SISO Models</a></li><li><a href="#32">Additional Information</a></li></ul></div><h2>The Data Set<a name="1"></a></h2><p>We start by looking at the data set SteamEng.</p><pre class="codeinput">load <span class="string">SteamEng</span>
+</pre><p>This data set is collected from a laboratory scale steam engine. It has the inputs <b>Pressure</b> of the steam (actually compressed air) after the control valve, and <b>Magnitization voltage</b> over the generator connected to the output axis. The outputs are <b>Generated voltage</b> in the generator and the <b>rotational speed</b> of the generator (Frequency of the generated AC voltage) The sampling interval was 50 ms.</p><p>First collect the measured channels into an <tt>iddata</tt> object:</p><pre class="codeinput">steam = iddata([GenVolt,Speed],[Pressure,MagVolt],0.05);
+steam.InputName  = {<span class="string">'Pressure'</span>;<span class="string">'MagVolt'</span>};
+steam.OutputName = {<span class="string">'GenVolt'</span>;<span class="string">'Speed'</span>};
+</pre><p>Let us have a look at the data</p><pre class="codeinput">plot(steam(:,1,1))
+</pre><img vspace="5" hspace="5" src="iddemo9_01.png" alt=""> <pre class="codeinput">plot(steam(:,1,2))
+</pre><img vspace="5" hspace="5" src="iddemo9_02.png" alt=""> <pre class="codeinput">plot(steam(:,2,1))
+</pre><img vspace="5" hspace="5" src="iddemo9_03.png" alt=""> <pre class="codeinput">plot(steam(:,2,2))
+</pre><img vspace="5" hspace="5" src="iddemo9_04.png" alt=""> <h2>Step and Impulse Responses<a name="8"></a></h2><p>A first step to get a feel for the dynamics is to look at the step responses between the different channels:</p><pre class="codeinput">ms = step(steam);
+step(ms)
+</pre><img vspace="5" hspace="5" src="iddemo9_05.png" alt=""> <h2>Responses with Confidence Regions (3 s.d.)<a name="9"></a></h2><p>To look at the significance of the responses, the impulse plot can be used instead, with confidence regions corresponding to 3 standard deviations:</p><pre class="codeinput">impulse(ms,<span class="string">'sd'</span>,3)
+</pre><img vspace="5" hspace="5" src="iddemo9_06.png" alt=""> <p>Apparently the response from MagVolt to Speed is not very significant (Compare the y-scales!) and the influence from MagVolt to GenVolt has not much dynamics, just a delay.</p><h2>A Two-Input-Two-Output Model<a name="11"></a></h2><p>A quick first test is also to look a a default state-space prediction error model. Use only the first half of the data for estimation:</p><pre class="codeinput">mp = pem(steam(1:250))
+</pre><pre class="codeoutput">State-space model:  x(t+Ts) = A x(t) + B u(t) + K e(t)
+                       y(t) = C x(t) + D u(t) + e(t)
+ 
+A = 
+                        x1           x2           x3
+           x1      0.13663     -0.11647     0.031018
+           x2    -0.018116      0.99119     -0.21954
+           x3     0.062284      0.19376      0.68313
+ 
+ 
+B = 
+                  Pressure      MagVolt
+           x1  -0.00035013     -0.03543
+           x2    0.0012629   0.00015516
+           x3    -0.027068     0.004312
+ 
+ 
+C = 
+                        x1           x2           x3
+      GenVolt      -10.888       1.5597     0.063506
+        Speed      0.03383       3.3192     0.035074
+ 
+ 
+D = 
+                  Pressure      MagVolt
+      GenVolt            0            0
+        Speed            0            0
+ 
+ 
+K = 
+                   GenVolt        Speed
+           x1   -0.0032652    -0.023505
+           x2      0.06212      0.17101
+           x3      0.15329     0.029301
+ 
+ 
+x(0) = 
+                          
+           x1    -0.056781
+           x2     -0.03411
+           x3      0.03002
+ 
+Estimated using PEM using SearchMethod = Auto
+Loss function 3.18517e-006 and FPE 3.72028e-006
+Sampling interval: 0.05                                                                      
+                                                                                             
+</pre><p>Compare with the step responses estimated directly from data:</p><pre class="codeinput">    step(ms,<span class="string">'b'</span>,mp,<span class="string">'r'</span>,3) <span class="comment">% Blue for direct estimate, red for mp</span>
+</pre><img vspace="5" hspace="5" src="iddemo9_07.png" alt=""> <p>The agreement is striking, except for MagVolt to Speed, which anyway is insignificant.</p><p>To test the quality of the state-space model, simulate it on the part of data that was not used for estimation and compare the outputs:</p><pre class="codeinput">compare(steam(251:450),mp)
+</pre><img vspace="5" hspace="5" src="iddemo9_08.png" alt=""> <p>The model is very good at reproducing the Generated Voltage for the validation data, and does a reasonable job also for the speed.</p><h2>Spectral Analysis<a name="16"></a></h2><p>Similarly, comparisons of the frequency response of mp with a spectral analysis estimate gives.</p><pre class="codeinput">msp = spa(steam);
+</pre><p><tt>bode(msp,mp)</tt></p><pre class="codeinput">bode(msp(1,1),<span class="string">'b'</span>,mp(1,1),<span class="string">'r'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo9_09.png" alt=""> <pre class="codeinput">bode(msp(1,2),<span class="string">'b'</span>,mp(1,2),<span class="string">'r'</span>)<span class="comment">% Press Return for next I/O pair</span>
+</pre><img vspace="5" hspace="5" src="iddemo9_10.png" alt=""> <pre class="codeinput">bode(msp(2,1),<span class="string">'b'</span>,mp(2,1),<span class="string">'r'</span>)<span class="comment">% Press Return for next I/O pair</span>
+</pre><img vspace="5" hspace="5" src="iddemo9_11.png" alt=""> <pre class="codeinput">bode(msp(2,2),<span class="string">'b'</span>,mp(2,2),<span class="string">'r'</span>)<span class="comment">% Press Return for next I/O pair.</span>
+</pre><img vspace="5" hspace="5" src="iddemo9_12.png" alt=""> <p>As before the response from MagVolt to Speed is insignificant and difficult to estimate.</p><h2>Single-Input-Single-Output (SISO) Models<a name="22"></a></h2><p>This data set quickly gave good models. Otherwise you often have to try out submodels for certain channels, to see significant influences The toolbox objects give full support to the necessary bookkeeping in such work. The InputNames and OutputNames are central for this.</p><p>The step responses indicate that MagVolt primarily influences GenVolt while Pressure primarily affects Speed. Build two simple SISO model for this:</p><pre class="codeinput">m1 = armax(steam(1:250,<span class="string">'Speed'</span>,<span class="string">'Pressure'</span>),[2 2 2 1]);
+m2 = armax(steam(1:250,1,2),[2 2 2 1]); <span class="comment">%Both names and numbers can be used</span>
+</pre><p>Compare these models with the MIMO model mp:</p><pre class="codeinput">compare(steam(251:450),m1,m2,mp)
+</pre><img vspace="5" hspace="5" src="iddemo9_13.png" alt=""> <p><tt>nyquist(m1,m2,mp,'sd',3) % m1 is blue, m2 is green and mp is red.</tt> Note that the sorting is automatic. mp describes all input output pairs, while m1 only contains Pressure to Speed and m2 only contains MagVolt to GenVolt.</p><pre class="codeinput">nyquist(m1(1,1),<span class="string">'b'</span>,mp(2,1),<span class="string">'r'</span>,<span class="string">'sd'</span>,3)
+
+nyquist(mp(2,2),<span class="string">'r'</span>,<span class="string">'sd'</span>,3)<span class="comment">% Press Return for next I/O.</span>
+</pre><img vspace="5" hspace="5" src="iddemo9_14.png" alt=""> <p>This is the input-output pair that has insignificant dynamics.</p><pre class="codeinput">nyquist(mp(2,1),<span class="string">'r'</span>,<span class="string">'sd'</span>,3)<span class="comment">% Press Return for next I/O</span>
+</pre><img vspace="5" hspace="5" src="iddemo9_15.png" alt=""> <pre class="codeinput">nyquist(m2(1,1),<span class="string">'g'</span>,mp(1,2),<span class="string">'r'</span>,<span class="string">'sd'</span>,3)<span class="comment">% Press Return for next I/O</span>
+</pre><img vspace="5" hspace="5" src="iddemo9_16.png" alt=""> <p>The SISO models do a good job to reproduce their respective outputs.</p><p>The rule-of-thumb is that the model fitting becomes harder when you add more outputs (more to explain!) and simpler when you add more inputs.</p><h2>Two-Input-Single-Output Model<a name="28"></a></h2><p>To do a good job on the output 'GenVolt', both inputs could be used.</p><pre class="codeinput">m3 = armax(steam(1:250,<span class="string">'GenVolt'</span>,:),<span class="string">'na'</span>,4,<span class="string">'nb'</span>,[4 4],<span class="string">'nc'</span>,2,<span class="string">'nk'</span>,[1 1]);
+m4 = pem(steam(1:250,<span class="string">'GenVolt'</span>,:));
+
+compare(steam(251:450),mp,m3,m4,m2)
+</pre><img vspace="5" hspace="5" src="iddemo9_17.png" alt=""> <p>About 10 % improvement was possible by including the input Pressure, compared to m2 that uses just MagVolt as input.</p><h2>Merging SISO Models<a name="30"></a></h2><p>If desired, the two SISO models m1 and m2 can be put together as one 'Diagonal' model by first creating a zero dummy model:</p><pre class="codeinput">mdum = idss(zeros(2,2),zeros(2,2),zeros(2,2),zeros(2,2));
+set(mdum,<span class="string">'InputName'</span>,get(steam,<span class="string">'InputName'</span>),<span class="string">'OutputName'</span>,get(steam,<span class="string">'OutputName'</span>));
+mdum.ts = 0.05;
+m12 = [idss(m1),mdum(<span class="string">'Speed'</span>,<span class="string">'MagVolt'</span>)];    <span class="comment">% Adding Inputs.</span>
+                                             <span class="comment">% From both inputs to Speed</span>
+m22 = [mdum(<span class="string">'GenVolt'</span>,<span class="string">'Pressure'</span>),idss(m2)]; <span class="comment">% Adding Inputs.</span>
+                                             <span class="comment">% From both inputs to GenVolt</span>
+
+mm = [m12;m22]; <span class="comment">% Adding the outputs to a 2-by-2 model.</span>
+
+compare(steam(251:450),mp,mm)
+</pre><img vspace="5" hspace="5" src="iddemo9_18.png" alt=""> <p>Clearly the "Diagonal" model <tt>mm</tt> performs like <tt>m1</tt> and <tt>m2</tt> in explaining the outputs.</p><h2>Additional Information<a name="32"></a></h2><p>For more information on identification of dynamic systems using System Identification Toolbox&#8482; visit the <a href="http://www.mathworks.com/products/sysid/">System Identification Toolbox</a> product information page.</p><p class="footer">Copyright 1986-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Dealing with Multi-Variable Systems: Identification and Analysis
+% This demo shows how to deal with data with several input and output
+% channels (MIMO data). Common operations, such as viewing 
+% the MIMO data, estimating and comparing models, and viewing the
+% corresponding model responses are highlighted.
+
+% Copyright 1986-2010 The MathWorks, Inc.
+% $Revision: 1.5.4.11 $ $Date: 2010/03/08 21:39:52 $
+
+%% The Data Set
+% We start by looking at the data set SteamEng.
+load SteamEng
+%%
+% This data set is collected from a laboratory scale steam engine. It has
+% the inputs 
+% *Pressure* of the steam (actually compressed air) after the control
+% valve,
+% and
+% *Magnitization voltage* over the generator connected to the output axis.
+% The outputs are
+% *Generated voltage* in the generator and
+% the *rotational speed* of the generator (Frequency of the generated AC
+% voltage)
+% The sampling interval was 50 ms.
+
+%%
+% First collect the measured channels into an |iddata| object:
+
+steam = iddata([GenVolt,Speed],[Pressure,MagVolt],0.05);
+steam.InputName  = {'Pressure';'MagVolt'};
+steam.OutputName = {'GenVolt';'Speed'};
+
+%% 
+% Let us have a look at the data
+plot(steam(:,1,1))
+
+%%
+plot(steam(:,1,2))
+
+%%
+plot(steam(:,2,1))
+
+%%  
+plot(steam(:,2,2))
+  
+
+%% Step and Impulse Responses
+% A first step to get a feel for the dynamics is to look at the
+% step responses between the different channels:
+
+ms = step(steam);
+step(ms)
+
+%% Responses with Confidence Regions (3 s.d.)
+% To look at the significance of the responses, the impulse plot
+% can be used instead, with confidence regions corresponding to
+% 3 standard deviations:
+
+impulse(ms,'sd',3)
+
+%%
+% Apparently the response from MagVolt to Speed is not very significant
+% (Compare the y-scales!) and the influence from MagVolt to GenVolt has not
+% much dynamics, just a delay.
+
+%% A Two-Input-Two-Output Model
+% A quick first test is also to look a a default state-space prediction
+% error model. Use only the first half of the data for estimation:
+
+mp = pem(steam(1:250))
+
+%%
+%
+% Compare with the step responses estimated directly from data:
+
+    step(ms,'b',mp,'r',3) % Blue for direct estimate, red for mp
+
+%%
+% The agreement is striking, except for MagVolt to Speed, which anyway is
+% insignificant.
+
+%%
+% To test the quality of the state-space model, simulate it on the part
+% of data that was not used for estimation and compare the outputs:
+
+compare(steam(251:450),mp)
+
+%%
+% The model is very good at reproducing the Generated Voltage for the
+% validation data, and does a reasonable job also for the speed.
+
+%% Spectral Analysis
+% Similarly, comparisons of the frequency response of mp with a spectral
+% analysis estimate gives.
+
+msp = spa(steam);
+
+%%    
+% |bode(msp,mp)|
+bode(msp(1,1),'b',mp(1,1),'r')
+
+%%
+bode(msp(1,2),'b',mp(1,2),'r')% Press Return for next I/O pair
+
+%%
+bode(msp(2,1),'b',mp(2,1),'r')% Press Return for next I/O pair
+
+%%
+bode(msp(2,2),'b',mp(2,2),'r')% Press Return for next I/O pair. 
+
+%% 
+% As before the response from MagVolt to Speed is insignificant and
+% difficult to estimate.
+
+%% Single-Input-Single-Output (SISO) Models
+% This data set quickly gave good models. Otherwise you often have to try
+% out submodels for certain channels, to see significant influences
+% The toolbox objects give full support to the necessary bookkeeping in
+% such work. The InputNames and OutputNames are central for this.
+%
+% The step responses indicate that MagVolt primarily influences GenVolt while
+% Pressure primarily affects Speed. Build two simple SISO model for this:
+
+m1 = armax(steam(1:250,'Speed','Pressure'),[2 2 2 1]);
+m2 = armax(steam(1:250,1,2),[2 2 2 1]); %Both names and numbers can be used
+
+%%
+% Compare these models with the MIMO model mp:
+
+compare(steam(251:450),m1,m2,mp)
+
+%%
+% |nyquist(m1,m2,mp,'sd',3) % m1 is blue, m2 is green and mp is red.|
+% Note that the sorting is automatic. mp describes all input output pairs,
+% while m1 only contains Pressure to Speed and m2 only contains MagVolt to GenVolt.
+
+nyquist(m1(1,1),'b',mp(2,1),'r','sd',3)
+
+nyquist(mp(2,2),'r','sd',3)% Press Return for next I/O. 
+
+%% 
+% This is the input-output pair that has insignificant dynamics.
+
+nyquist(mp(2,1),'r','sd',3)% Press Return for next I/O
+%%
+
+nyquist(m2(1,1),'g',mp(1,2),'r','sd',3)% Press Return for next I/O
+
+%%
+% The SISO models do a good job to reproduce their respective outputs.
+%
+% The rule-of-thumb is that the model fitting becomes harder when you add more
+% outputs (more to explain!) and simpler when you add more inputs. 
+
+%% Two-Input-Single-Output Model
+% To do a good
+% job on the output 'GenVolt', both inputs could be used.
+
+m3 = armax(steam(1:250,'GenVolt',:),'na',4,'nb',[4 4],'nc',2,'nk',[1 1]);
+m4 = pem(steam(1:250,'GenVolt',:));
+
+compare(steam(251:450),mp,m3,m4,m2)
+
+%%
+% About 10 % improvement was possible by including the input Pressure,
+% compared to m2 that uses just MagVolt as input.
+
+%% Merging SISO Models
+% If desired, the two SISO models m1 and m2 can be put together as one 'Diagonal' 
+% model by first creating a zero dummy model:
+
+mdum = idss(zeros(2,2),zeros(2,2),zeros(2,2),zeros(2,2));
+set(mdum,'InputName',get(steam,'InputName'),'OutputName',get(steam,'OutputName'));
+mdum.ts = 0.05;
+m12 = [idss(m1),mdum('Speed','MagVolt')];    % Adding Inputs. 
+                                             % From both inputs to Speed
+m22 = [mdum('GenVolt','Pressure'),idss(m2)]; % Adding Inputs. 
+                                             % From both inputs to GenVolt
+
+mm = [m12;m22]; % Adding the outputs to a 2-by-2 model.
+
+compare(steam(251:450),mp,mm)
+
+%%
+% Clearly the "Diagonal" model |mm| performs like |m1| and |m2| in
+% explaining the outputs.
+
+%% Additional Information
+% For more information on identification of dynamic systems using System Identification Toolbox(TM) 
+% visit the 
+% <http://www.mathworks.com/products/sysid/ System Identification Toolbox> product
+% information page.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

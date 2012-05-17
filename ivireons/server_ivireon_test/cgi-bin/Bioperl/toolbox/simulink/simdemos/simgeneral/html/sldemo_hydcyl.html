@@ -1,0 +1,320 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Single Hydraulic Cylinder Simulation</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_hydcyl.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_hydcyl.mdl</div><div class="right"><a href="matlab:sldemo_hydcyl">Open this model</a></div></div><div class="content"><h1>Single Hydraulic Cylinder Simulation</h1><!--introduction--><p>This demo uses Simulink&reg; to model a hydraulic cylinder. You can apply these concepts to applications where you need to model hydraulic behavior. See two related demos that use the same basic components: <a href="matlab:open_system('sldemo_hydcyl4')">four cylinder model</a> and <a href="matlab:open_system('sldemo_hydrod')">two cylinder model</a> with load constraints.</p><div><ul><li>Note: This is a basic hydraulics demo. You can more easily build hydraulic and automotive models using SimDriveline&#8482; and SimHydraulics&reg;.</li></ul></div><div><ul><li><b>SimHydraulics</b> extends Simulink with tools for modeling and simulating hydraulic power and control systems. It enables you to describe multi-domain systems containing connected hydraulic and mechanical components as physical networks.</li></ul></div><div><ul><li><b>SimDriveline</b> extends Simulink with tools for modeling and simulating the mechanics of driveline (drivetrain) systems. These tools include components such as gears, rotating shafts, and clutches; standard transmission templates; engine and tire models.</li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analysis and Physics of the Model</a></li><li><a href="#11">Modeling</a></li><li><a href="#12">Opening the Model and Running the Simulation</a></li><li><a href="#14">'Pump' Subsystem</a></li><li><a href="#18">'Valve/Cylinder/Piston/Spring Assembly' Subsystem</a></li><li><a href="#20">Results</a></li><li><a href="#26">Closing the Model</a></li></ul></div><h2>Analysis and Physics of the Model<a name="1"></a></h2><p>Figure 1 shows a schematic diagram of the basic model. The model directs the pump flow, <tt>Q</tt>, to supply pressure, <tt>p1</tt>, from which laminar flow, <tt>q1ex</tt>, leaks to exhaust. The control valve for the piston/cylinder assembly is modeled as turbulent flow through a variable-area orifice. Its flow, <tt>q12</tt>, leads to intermediate pressure, <tt>p2</tt>, which undergoes a subsequent pressure drop in the line connecting it to the actuator cylinder. The cylinder pressure, <tt>p3</tt>, moves the piston against a spring load, resulting in position <tt>x</tt>.</p><p><img vspace="5" hspace="5" src="sldemo_hydcyl_figure1.png" alt=""> </p><p><b>Figure 1:</b> Schematic diagram of the basic hydraulic system</p><p>At the pump output, the flow is split between leakage and flow to the control valve. We model the leakage, <tt>q1ex</tt>, as laminar flow (see Equation Block 1).</p><p><b>Equation Block 1</b></p><p><img src="sldemo_hydcyl_eq42384.png" alt="$$Q=q_{12}+q_{1ex}$$"></p><p><img src="sldemo_hydcyl_eq79953.png" alt="$$q_{1ex}=C_2 \cdot p_1 $$"></p><p><img src="sldemo_hydcyl_eq60743.png" alt="$$p_1=\frac{(Q-q_{12})}{C_2}$$"></p><p><img src="sldemo_hydcyl_eq29234.png" alt="$$ Q = \mbox{ pump flow}$$"></p><p><img src="sldemo_hydcyl_eq74908.png" alt="$$ q_{12} = \mbox{ control valve flow}$$"></p><p><img src="sldemo_hydcyl_eq95947.png" alt="$$ q_{1ex} = \mbox{ leakage}$$"></p><p><img src="sldemo_hydcyl_eq73162.png" alt="$$ C_2 = \mbox{ flow coefficient}$$"></p><p><img src="sldemo_hydcyl_eq01875.png" alt="$$ p_1 = \mbox{ pump pressure}$$"></p><p>We modeled turbulent flow through the control valve with the orifice equation. The sign and absolute value functions accommodate flow in either direction (see Equation Block 2).</p><p><b>Equation Block 2</b></p><p><img src="sldemo_hydcyl_eq16192.png" alt="$$q_{12}=C_d \cdot A \cdot sgn(p_1-p_2) \cdot \sqrt{\frac{2}{\rho}|p_1-p_2|}$$"></p><p><img src="sldemo_hydcyl_eq24701.png" alt="$$ C_d = \mbox{ orifice discharge coefficient} $$"></p><p><img src="sldemo_hydcyl_eq67944.png" alt="$$ A = \mbox{ orifice area} $$"></p><p><img src="sldemo_hydcyl_eq01236.png" alt="$$ p_2 = \mbox{ pressure downstream of control valve} $$"></p><p><img src="sldemo_hydcyl_eq64525.png" alt="$$ \rho = \mbox{ fluid density} $$"></p><p>The fluid within the cylinder pressurizes due to this flow, <tt>q12 = q23</tt>, minus the compliance of the piston motion. We also modeled fluid compressibility in this case (see Equation Block 3).</p><p><b>Equation Block 3</b></p><p><img src="sldemo_hydcyl_eq95199.png" alt="$$\frac{dp_3}{dt}=\frac{\beta}{V_3} \left(q_{12}-A_c \frac{dx}{dt}\right)$$"></p><p><img src="sldemo_hydcyl_eq34758.png" alt="$$V_3=V_{30} + A_c \cdot x$$"></p><p><img src="sldemo_hydcyl_eq63572.png" alt="$$ p_3   = \mbox{ piston pressure} $$"></p><p><img src="sldemo_hydcyl_eq46799.png" alt="$$ \beta = \mbox{ fluid bulk modulus} $$"></p><p><img src="sldemo_hydcyl_eq94697.png" alt="$$ V_3   = \mbox{ fluid volume at } p_3 $$"></p><p><img src="sldemo_hydcyl_eq92626.png" alt="$$ V_{30}= \mbox{ fluid volume in the piston for } x = 0 $$"></p><p><img src="sldemo_hydcyl_eq90533.png" alt="$$ A_c   = \mbox{ cylinder cross-sectional area} $$"></p><p>We neglected the piston and spring masses because of the large hydraulic forces. We completed the system of equations by differentiating this relationship and incorporating the pressure drop between <tt>p2</tt> and <tt>p3</tt>. Equation Block 3 models laminar flow in the line from the valve to the actuator. Equation block 4 gives the force balance at the piston.</p><p><b>Equation Block 4</b></p><p><img src="sldemo_hydcyl_eq11938.png" alt="$$x=p_3\frac{A_c}{K}$$"></p><p><img src="sldemo_hydcyl_eq00448.png" alt="$$\frac{dx}{dt}=\frac{dp_3}{dt} \frac{A_c}{K}$$"></p><p><img src="sldemo_hydcyl_eq83578.png" alt="$$q_{23}=q_{12}=C_1 \left( p_2-p_3 \right)$$"></p><p><img src="sldemo_hydcyl_eq35139.png" alt="$$ p_2=p_3 + \frac{q_{12}}{C_1} $$"></p><p><img src="sldemo_hydcyl_eq53137.png" alt="$$ K   = \mbox{ spring constant} $$"></p><p><img src="sldemo_hydcyl_eq84235.png" alt="$$ C_1 = \mbox{ laminar flow coefficient} $$"></p><h2>Modeling<a name="11"></a></h2><p>Figure 2 shows the top level diagram of the model. The pump flow and the control valve orifice area are simulation inputs. The model is organized as two subsystems: the 'Pump' and the 'Valve/Cylinder/Piston/Spring Assembly'.</p><h2>Opening the Model and Running the Simulation<a name="12"></a></h2><p>To <a href="matlab:open_system('sldemo_hydcyl')">open this model</a>, type <tt>sldemo_hydcyl</tt> at MATLAB&reg; terminal (click on the hyperlink if you are using MATLAB Help). Press the "Play" button on the model toolbar to run the simulation.</p><div><ul><li>Note: The model logs relevant data to MATLAB workspace in a structure called <tt>sldemo_hydcyl_output</tt>. Logged signals have a blue indicator (<a href="matlab:open_system('sldemo_hydcyl')">see the model</a>). Read more about Signal Logging in Simulink Help.</li></ul></div><img vspace="5" hspace="5" src="sldemo_hydcyl_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_hydcyl_02.png" alt=""> <p><b>Figure 2:</b> Single cylinder model and simulation results</p><h2>'Pump' Subsystem<a name="14"></a></h2><p>Right click on the 'Pump' masked subsystem and select "Look Under Mask" to see its components. The pump model computes the supply pressure as a function of the pump flow and the load (output) flow (Figure 3). <tt>Qpump</tt> is the pump flow data (saved in the model workspace). A matrix with column vectors of time points and the corresponding flow rates <tt>[T, Q]</tt> specifies the flow data. The model calculates pressure <tt>p1</tt> as indicated in Equation Block 1. Because <tt>Qout = q12</tt> is a direct function of <tt>p1</tt> (via the control valve), an algebraic loop is formed. An estimate of the initial value, <tt>p10</tt>, enables a more efficient solution.</p><img vspace="5" hspace="5" src="sldemo_hydcyl_03.png" alt=""> <p><b>Figure 3</b>: The pump subsystem</p><p>We masked the 'Pump' subsystem in Simulink to allow the user to easily access the parameters (see Figure 4). The parameters to be specified are <tt>T</tt>, <tt>Q</tt>, <tt>p10</tt>, and <tt>C2</tt>. We then assigned the masked block the icon shown in Figure 2, and saved it in a Simulink library.</p><p><img vspace="5" hspace="5" src="sldemo_hydcyl_figure2.png" alt=""> </p><p><b>Figure 4:</b> Entering pump parameters</p><h2>'Valve/Cylinder/Piston/Spring Assembly' Subsystem<a name="18"></a></h2><p>Right click on the 'Valve/Cylinder/Piston/Spring Assembly' in the model and select "Look Under Mask" to see the Actuator subsystem (see Figure 5).  A system of differential-algebraic equations models the cylinder pressurization with the pressure <tt>p3</tt>, which appears as a derivative in Equation Block 3 and is used as the state (integrator). If we neglect piston mass, the spring force and piston position are direct multiples of <tt>p3</tt> and the velocity is a direct multiple of <tt>p3</tt>'s time derivative. This latter relationship forms an algebraic loop around the 'Beta' Gain block. The intermediate pressure <tt>p2</tt> is the sum of <tt>p3</tt> and the pressure drop due to the flow from the valve to the cylinder (Equation Block 4). This relationship also imposes an algebraic constraint through the control valve and the <tt>1/C1</tt> gain.</p><p>The control valve subsystem computes the orifice (Equation Block2). It uses as inputs the upstream and downstream pressures and the variable orifice area. The 'Control Valve Flow' Subsystem computes the signed square root:</p><p><img src="sldemo_hydcyl_eq73475.png" alt="$$y=sgn(u)\sqrt{|u|}$$"></p><p>Three nonlinear functions are used, two of which are discontinuous. In combination, however, <tt>y</tt> is a continuous function of <tt>u</tt>.</p><img vspace="5" hspace="5" src="sldemo_hydcyl_04.png" alt=""> <p><b>Figure 5:</b> The valve/cylinder/piston/spring subsystem</p><h2>Results<a name="20"></a></h2><p><b>Simulation Parameters</b></p><p>We simulated the model using the following data. The information is loaded from a MAT-file - <tt>sldemo_hydcyl_data.mat</tt>, which is also used for the other two hydraulic cylinder models. The users can enter data via the Pump and Cylinder Masks shown in Figures 4 and 6.</p><p><img src="sldemo_hydcyl_eq82782.png" alt="$$ C_d   = 0.61 $$"></p><p><img src="sldemo_hydcyl_eq06071.png" alt="$$ \rho  = 800 kg/m^3 $$"></p><p><img src="sldemo_hydcyl_eq90126.png" alt="$$ C_1   = 2e-8 m^3/sec/Pa $$"></p><p><img src="sldemo_hydcyl_eq23365.png" alt="$$ C_2   = 3e-9 m^3/sec/Pa $$"></p><p><img src="sldemo_hydcyl_eq28696.png" alt="$$ \beta = 7e8 Pa $$"></p><p><img src="sldemo_hydcyl_eq47352.png" alt="$$ A_c   = 1e-3 m^2 $$"></p><p><img src="sldemo_hydcyl_eq69488.png" alt="$$ K     = 5e4 N/m $$"></p><p><img src="sldemo_hydcyl_eq30412.png" alt="$$ V_{30}  = 2.5e-5 m^3 $$"></p><p><tt>T = [0      0.04   0.04  0.05  0.05   0.1  ] sec</tt></p><p><tt>Q = [0.005  0.005  0     0     0.005  0.005] m^3/sec</tt></p><p><img vspace="5" hspace="5" src="sldemo_hydcyl_figure3.png" alt=""> </p><p><b>Figure 6:</b> Entering valve/cylinder/piston/spring assembly parameters</p><p><b>Plotting Simulation Results</b></p><p>The system initially steps to a pump flow of <tt>0.005 m^3/sec=300 l/min</tt>, abruptly steps to zero at <tt>t=0.04 sec</tt>, then resumes its initial flow rate at <tt>t=0.05 sec</tt>.</p><p>The control valve starts with zero orifice area and ramps to <tt>1e-4 sq.m.</tt> during the <tt>0.1 sec</tt> simulation time. With the valve closed, all of the pump flow goes to leakage so the initial pump pressure increases to <tt>p10 = Q/C2 = 1667 kPa</tt>.</p><p>As the valve opens, pressures <tt>p2</tt> and <tt>p3</tt> build up while <tt>p1</tt> decreases in response to the load increase as shown in Figure 7. When the pump flow cuts off, the spring and piston act like an accumulator and <tt>p3</tt> decreases continuously. Then the flow reverses direction, so <tt>p2</tt>, though relatively close to <tt>p3</tt>, falls abruptly. At the pump itself, all of the back-flow leaks and <tt>p1</tt> drops radically. The behavior reverses as the flow is restored.</p><p>The piston position is directly proportional to <tt>p3</tt>, where the hydraulic and spring forces balance. Discontinuities in the velocity at <tt>0.04 sec</tt> and <tt>0.05 sec</tt> indicate negligible mass. The model reaches a steady state when all of the pump flow again goes to leakage, now due to zero pressure drop across the control valve (which means <tt>p3 = p2 = p1 = p10</tt>).</p><img vspace="5" hspace="5" src="sldemo_hydcyl_05.png" alt=""> <p><b>Figure 7:</b> Simulation Results: System Pressures</p><img vspace="5" hspace="5" src="sldemo_hydcyl_06.png" alt=""> <p><b>Figure 8:</b> Simulation Results: Hydraulic Cylinder Piston Position</p><h2>Closing the Model<a name="26"></a></h2><p>Close the model and clear generated data.</p><p class="footer">Copyright 2005-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Single Hydraulic Cylinder Simulation
+% 
+% This demo uses Simulink(R) to model a hydraulic cylinder. You can apply these
+% concepts to applications where you need to model hydraulic behavior. See two
+% related demos that use the same basic components:
+% <matlab:open_system('sldemo_hydcyl4') four cylinder model> and
+% <matlab:open_system('sldemo_hydrod') two cylinder model> with load
+% constraints.
+%
+% * Note: This is a basic hydraulics demo. You can more easily build hydraulic
+% and automotive models using SimDriveline(TM) and SimHydraulics(R).
+%
+% * *SimHydraulics* extends Simulink with tools for modeling and simulating
+% hydraulic power and control systems. It enables you to describe multi-domain
+% systems containing connected hydraulic and mechanical components as physical
+% networks.
+%
+% * *SimDriveline* extends Simulink with tools for modeling and simulating the
+% mechanics of driveline (drivetrain) systems. These tools include components
+% such as gears, rotating shafts, and clutches; standard transmission templates;
+% engine and tire models.
+
+% Copyright 2005-2009 The MathWorks, Inc.
+
+%% Analysis and Physics of the Model
+%
+% Figure 1 shows a schematic diagram of the basic model. The model directs the
+% pump flow, |Q|, to supply pressure, |p1|, from which laminar flow, |q1ex|, leaks to
+% exhaust. The control valve for the piston/cylinder assembly is modeled as
+% turbulent flow through a variable-area orifice. Its flow, |q12|, leads to
+% intermediate pressure, |p2|, which undergoes a subsequent pressure drop in the
+% line connecting it to the actuator cylinder. The cylinder pressure, |p3|, moves
+% the piston against a spring load, resulting in position |x|.
+%
+
+%%
+% <<sldemo_hydcyl_figure1.png>>
+%
+% *Figure 1:* Schematic diagram of the basic hydraulic system
+
+%%
+%
+% At the pump output, the flow is split between leakage and flow to the control
+% valve. We model the leakage, |q1ex|, as laminar flow (see Equation Block 1).
+
+
+%%
+% *Equation Block 1*
+%
+% $$Q=q_{12}+q_{1ex}$$
+%
+% $$q_{1ex}=C_2 \cdot p_1 $$
+%
+% $$p_1=\frac{(Q-q_{12})}{C_2}$$
+% 
+% $$ Q = \mbox{ pump flow}$$
+%
+% $$ q_{12} = \mbox{ control valve flow}$$
+%
+% $$ q_{1ex} = \mbox{ leakage}$$
+%
+% $$ C_2 = \mbox{ flow coefficient}$$
+%
+% $$ p_1 = \mbox{ pump pressure}$$
+
+%%
+%
+% We modeled turbulent flow through the control valve with the orifice
+% equation. The sign and absolute value functions accommodate flow in either
+% direction (see Equation Block 2).
+
+%%
+% *Equation Block 2*
+%
+% $$q_{12}=C_d \cdot A \cdot sgn(p_1-p_2) \cdot \sqrt{\frac{2}{\rho}|p_1-p_2|}$$
+%
+% $$ C_d = \mbox{ orifice discharge coefficient} $$
+%
+% $$ A = \mbox{ orifice area} $$
+%
+% $$ p_2 = \mbox{ pressure downstream of control valve} $$
+%
+% $$ \rho = \mbox{ fluid density} $$
+
+%%
+%
+% The fluid within the cylinder pressurizes due to this flow, |q12 = q23|, minus
+% the compliance of the piston motion. We also modeled fluid compressibility in
+% this case (see Equation Block 3).
+
+%%
+% *Equation Block 3*
+%
+% $$\frac{dp_3}{dt}=\frac{\beta}{V_3} \left(q_{12}-A_c \frac{dx}{dt}\right)$$
+%
+% $$V_3=V_{30} + A_c \cdot x$$
+%
+% $$ p_3   = \mbox{ piston pressure} $$
+%
+% $$ \beta = \mbox{ fluid bulk modulus} $$
+%
+% $$ V_3   = \mbox{ fluid volume at } p_3 $$
+%
+% $$ V_{30}= \mbox{ fluid volume in the piston for } x = 0 $$
+%
+% $$ A_c   = \mbox{ cylinder cross-sectional area} $$
+
+%%
+%
+% We neglected the piston and spring masses because of the large hydraulic
+% forces. We completed the system of equations by differentiating this
+% relationship and incorporating the pressure drop between |p2| and
+% |p3|. Equation Block 3 models laminar flow in the line from the valve to the
+% actuator. Equation block 4 gives the force balance at the piston.
+
+%%
+% *Equation Block 4*
+%
+% $$x=p_3\frac{A_c}{K}$$
+%
+% $$\frac{dx}{dt}=\frac{dp_3}{dt} \frac{A_c}{K}$$
+%
+% $$q_{23}=q_{12}=C_1 \left( p_2-p_3 \right)$$
+%
+% $$ p_2=p_3 + \frac{q_{12}}{C_1} $$
+%
+% $$ K   = \mbox{ spring constant} $$
+%
+% $$ C_1 = \mbox{ laminar flow coefficient} $$
+
+%% Modeling
+%
+% Figure 2 shows the top level diagram of the model. The pump flow and
+% the control valve orifice area are simulation inputs. The model is
+% organized as two subsystems: the 'Pump' and the 'Valve/Cylinder/Piston/Spring Assembly'.  
+
+%% Opening the Model and Running the Simulation 
+%
+% To <matlab:open_system('sldemo_hydcyl') open this model>, type
+% |sldemo_hydcyl| at MATLAB(R) terminal (click on the hyperlink if you are
+% using MATLAB Help). Press the "Play" button on the model toolbar to run
+% the simulation. 
+%
+% * Note: The model logs relevant data to MATLAB workspace in a structure
+% called |sldemo_hydcyl_output|. Logged signals have a blue indicator
+% (<matlab:open_system('sldemo_hydcyl') see 
+% the model>). Read more about Signal Logging in Simulink Help.    
+
+open_system('sldemo_hydcyl');   % hidden code, not displayed in HTML demo page
+evalc('sim(''sldemo_hydcyl'')');  % run simulation, don't display output
+
+%%
+% *Figure 2:* Single cylinder model and simulation results
+
+%% 'Pump' Subsystem
+%
+% Right click on the 'Pump' masked subsystem and select "Look Under Mask" to see
+% its components. The pump model computes the supply pressure as a function of
+% the pump flow and the load (output) flow (Figure 3). |Qpump| is the pump flow
+% data (saved in the model workspace). A matrix with column vectors of time
+% points and the corresponding flow rates |[T, Q]| specifies the flow data. The
+% model calculates pressure |p1| as indicated in Equation Block 1. Because |Qout
+% = q12| is a direct function of |p1| (via the control valve), an algebraic loop
+% is formed. An estimate of the initial value, |p10|, enables a more efficient
+% solution.
+%
+
+open_system('sldemo_hydcyl/Pump','force');
+
+%%
+% *Figure 3*: The pump subsystem
+
+%%
+%
+% We masked the 'Pump' subsystem in Simulink to allow the user to easily access
+% the parameters (see Figure 4). The parameters to be specified are |T|, |Q|,
+% |p10|, and |C2|. We then assigned the masked block the icon shown in Figure 2,
+% and saved it in a Simulink library.
+
+
+%%
+% <<sldemo_hydcyl_figure2.png>>
+%
+% *Figure 4:* Entering pump parameters
+
+%% 'Valve/Cylinder/Piston/Spring Assembly' Subsystem
+%
+% Right click on the 'Valve/Cylinder/Piston/Spring Assembly' in the model and
+% select "Look Under Mask" to see the Actuator subsystem (see Figure 5).  A
+% system of differential-algebraic equations models the cylinder pressurization
+% with the pressure |p3|, which appears as a derivative in Equation Block 3 and
+% is used as the state (integrator). If we neglect piston mass, the spring force
+% and piston position are direct multiples of |p3| and the velocity is a direct
+% multiple of |p3|'s time derivative. This latter relationship forms an
+% algebraic loop around the 'Beta' Gain block. The intermediate
+% pressure |p2| is the sum of |p3| and the pressure drop due to the flow from
+% the valve to the cylinder (Equation Block 4). This relationship also imposes
+% an algebraic constraint through the control valve and the |1/C1| gain. 
+%
+% The control valve subsystem computes the orifice (Equation Block2). It uses as
+% inputs the upstream and downstream pressures and the variable orifice
+% area. The 'Control Valve Flow' Subsystem computes the signed square root:
+%
+% $$y=sgn(u)\sqrt{|u|}$$
+%
+% Three nonlinear functions are used, two of which are discontinuous. In
+% combination, however, |y| is a continuous function of |u|.  
+
+open_system('sldemo_hydcyl/Valve//Cylinder//Piston//Spring Assembly','force'); 
+
+%%
+% *Figure 5:* The valve/cylinder/piston/spring subsystem
+
+%% Results
+% 
+% *Simulation Parameters*
+%
+% We simulated the model using the following data. The information is
+% loaded from a MAT-file - |sldemo_hydcyl_data.mat|, which is also used for
+% the other two hydraulic cylinder models. The users can enter data
+% via the Pump and Cylinder Masks shown in Figures 4 and 6.
+
+%%
+% $$ C_d   = 0.61 $$
+%
+% $$ \rho  = 800 kg/m^3 $$
+%
+% $$ C_1   = 2e-8 m^3/sec/Pa $$
+%
+% $$ C_2   = 3e-9 m^3/sec/Pa $$
+%
+% $$ \beta = 7e8 Pa $$
+%
+% $$ A_c   = 1e-3 m^2 $$
+%
+% $$ K     = 5e4 N/m $$
+%
+% $$ V_{30}  = 2.5e-5 m^3 $$
+%
+% |T = [0      0.04   0.04  0.05  0.05   0.1  ] sec|
+%
+% |Q = [0.005  0.005  0     0     0.005  0.005] m^3/sec|
+
+%%
+% <<sldemo_hydcyl_figure3.png>>
+%
+% *Figure 6:* Entering valve/cylinder/piston/spring assembly parameters
+
+%% 
+% *Plotting Simulation Results*
+%
+% The system initially steps to a pump flow of |0.005 m^3/sec=300 l/min|,
+% abruptly steps to zero at |t=0.04 sec|, then resumes its initial flow rate
+% at |t=0.05 sec|. 
+%
+% The control valve starts with zero orifice area and ramps to |1e-4 sq.m.|
+% during the |0.1 sec| simulation time. With the valve closed, all of the
+% pump flow goes to leakage so the initial pump pressure increases to
+% |p10 = Q/C2 = 1667 kPa|.
+%
+% As the valve opens, pressures |p2| and |p3| build up while |p1| decreases in
+% response to the load increase as shown in Figure 7. When the pump flow cuts
+% off, the spring and piston act like an accumulator and |p3| decreases
+% continuously. Then the flow reverses direction, so |p2|, though relatively close to
+% |p3|, falls abruptly. At the pump itself, all of the back-flow leaks
+% and |p1| drops radically. The behavior reverses as the flow is restored.
+%
+% The piston position is directly proportional to |p3|, where the hydraulic and
+% spring forces balance. Discontinuities in the velocity at |0.04 sec| and |0.05 sec| 
+% indicate negligible mass. The model reaches a steady state when all of
+% the pump flow again goes to leakage, now due to zero pressure drop across the
+% control valve (which means |p3 = p2 = p1 = p10|).
+
+% Plot the pressures, hidden code
+plot(sldemo_hydcyl_output.Pressures.p1.Time, sldemo_hydcyl_output.Pressures.p1.Data, 'w', ...
+     sldemo_hydcyl_output.Pressures.p2.Time, sldemo_hydcyl_output.Pressures.p2.Data, 'y', ...
+     sldemo_hydcyl_output.Pressures.p3.Time, sldemo_hydcyl_output.Pressures.p3.Data, 'b' );
+ 
+title('System Pressures');
+xlabel('Time (sec)'); ylabel('System Pressure (Pa)');
+set(gca,'Color','k','XGrid','On','XColor',[0.3 0.3 0.3],...
+                    'YGrid','On','YColor',[0.3 0.3 0.3]);
+h= legend('p_1','p_2','p_3','Location','Best');
+set(h,'TextColor','w','Color','none'); clear h;
+%%
+% *Figure 7:* Simulation Results: System Pressures
+
+% Plot the piston position, hidden code
+plot(sldemo_hydcyl_output.PistonPosition.Time, sldemo_hydcyl_output.PistonPosition.Data, 'y');
+title('Baseline Hydraulic Cylinder Piston Position');
+xlabel('Time (sec)'); ylabel('Piston Position (m)');
+set(gca,'Color','k','XGrid','On','XColor',[0.3 0.3 0.3],...
+                    'YGrid','On','YColor',[0.3 0.3 0.3]);
+
+%%
+% *Figure 8:* Simulation Results: Hydraulic Cylinder Piston Position
+
+
+%% Closing the Model
+%
+% Close the model and clear generated data.
+close_system('sldemo_hydcyl', 0);
+clear sldemo_hydcyl_output; 
+
+displayEndOfDemoMessage(mfilename)
+
+
+##### SOURCE END #####
+--></body></html>

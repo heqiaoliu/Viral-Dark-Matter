@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- 
+   Copyright 2006-2009 The MathWorks, Inc.
+   $Revision: 1.1.6.11 $
+-->
+
+
+<xs:schema
+    xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="MdlFileDependencies" type="mdlfiledeps"/>
+    <xs:element name="DependencyReport" type="depreport"/>
+    <xs:element name="DependencyDifferencesReport" type="diffreport"/>
+
+    <xs:complexType name="depreport">
+        <xs:sequence>
+            <xs:element name="FileList" type="filelist" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="MDLDepSet" type="mdldepset" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="Warnings" type="warnings" minOccurs="0" maxOccurs="1"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+        <xs:attribute name="Version" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <xs:complexType name="diffreport">
+        <xs:sequence>
+            <xs:element name="DepSetDiffs" type="depsetdiffs" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+        <xs:attribute name="Version" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <xs:complexType name="mdlfiledeps">
+        <xs:sequence>
+            <!-- The number of levels we go up to find the "project root" -->
+            <xs:element name="DependenciesRootLevel" type="xs:integer"/>
+            <!-- A list of files required by this block diagram, relative
+                 to the DependenciesRoot defined above. -->
+            <xs:element name="UserDependencies" type="userdeps"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+        <xs:attribute name="version" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <xs:complexType name="userdeps">
+        <xs:sequence>
+            <xs:element name="UserDependency" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType mixed="true">
+                    <xs:attribute name="Excluded" type="true_false" use="optional"/>
+                    <xs:attribute name="UnderProjectRoot" type="true_false" use="optional"/>
+                </xs:complexType>
+             </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:element name="MDLDepSet" type="mdldepset"/>
+    <xs:complexType name="mdldepset">
+        <xs:sequence>
+            <!-- The name of this block diagram -->
+            <xs:element name="MDLName" type="mdlname"/>
+            <!-- The name of this MDL file -->
+            <xs:element name="FileName" type="filename"/>
+            <!-- The date on which this analysis was performed -->
+            <xs:element name="AnalysisDate" type="xs:string"/>
+            <!-- The analysis options which were specified when this analysis
+                 was performed. -->
+            <xs:element name="AnalysisOptions" type="analysisopts"/>
+            <!-- The models referenced by this block diagram. -->
+            <xs:element name="ReferencedModels" type="mdlfilearray"/>
+            <!-- The libraries linked from this block diagram. -->
+            <xs:element name="LinkedLibraries" type="mdlfilearray"/>
+            <!-- The toolboes required this block diagram. -->
+            <xs:element name="Toolboxes" type="toolboxes"/>
+            <!-- The toolboes required this block diagram. -->
+            <xs:element name="AllFiles" type="filestatesornames"/>
+            <!-- The include paths required vy this block diagram. -->
+            <xs:element name="AllIncludeDirs" type="dirrefarray"/>
+            <!-- The toolboxes required this block diagram. -->
+            <xs:element name="AllReferences" type="filerefarray"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="analysisopts">
+        <xs:sequence>
+            <!-- Backwards compatibility restrictions mean that we can only
+                 add new properties to the end of this list. -->
+            <!-- R2007a properties -->
+            <xs:element name="AnalyzeMathWorksFiles" type="true_false"/>
+            <xs:element name="AnalyzeUserToolboxFiles" type="true_false"/>
+            <xs:element name="StoreReferences" type="true_false"/>
+            <xs:element name="FindLibraryLinks" type="true_false"/>
+            <xs:element name="FindModelRefs" type="true_false"/>
+            <xs:element name="FindSFunctions" type="true_false"/>
+            <xs:element name="FindCallbackFiles" type="true_false"/>
+            <xs:element name="FindCodeGenFiles" type="true_false"/>
+            <!-- R2007b properties -->
+            <xs:element name="FindUserDependencies" type="true_false"
+                    minOccurs="0"/>
+            <xs:element name="FindDataFiles" type="true_false"
+                    minOccurs="0"/>
+            <xs:element name="FindRequirementsDocs" type="true_false"
+                    minOccurs="0"/>
+            <xs:element name="AnalyzeStateflow" type="true_false"
+                    minOccurs="0"/>
+            <xs:element name="AnalyzeEML" type="true_false"
+                    minOccurs="0"/>
+            <xs:element name="AnalyzeMFiles" type="true_false"
+                    minOccurs="0"/>
+            <xs:element name="AllowUnsavedChanges" type="true_false"
+                    minOccurs="0"/>
+            <!-- R2009b properties -->
+            <xs:element name="StoreMathWorksReferences" type="true_false"
+                    minOccurs="0"/>
+            <xs:element name="FindSimscapeFiles" type="true_false"
+                    minOccurs="0"/>
+            <!-- R20010b properties -->
+            <xs:element name="StoreWarnings" type="true_false"
+                    minOccurs="0"/>
+            <!-- Future proofing -->
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="depsetdiffs">
+        <xs:sequence>
+            <xs:element name="DepSet1" type="depsetarray"/>
+            <xs:element name="Manifest1" type="xs:string"/>
+            <xs:element name="DepSet2" type="depsetarray"/>
+            <xs:element name="Manifest2" type="xs:string"/>
+            <xs:element name="ProjectRoots" type="projectroots"/>
+            <xs:element name="FilesInFirstOnly" type="filestatesornames"/>
+            <xs:element name="FilesInSecondOnly" type="filestatesornames"/>
+            <xs:element name="ModifiedFilesFirst" type="filestatesornames"/>
+            <xs:element name="ModifiedFilesSecond" type="filestatesornames"/>
+            <xs:element name="UnmodifiedFiles" type="filestatesornames"/>
+            <xs:element name="DirsInFirstOnly" type="dirlist"/>
+            <xs:element name="DirsInSecondOnly" type="dirlist"/>
+            <xs:element name="DirsInBoth" type="dirlist"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="depsetarray">
+        <xs:sequence>
+            <xs:element name="MDLDepSet" type="mdldepset" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:simpleType name="true_false">
+        <!-- Can only be one of the strings "true" or "false" -->
+        <xs:restriction base="xs:string">
+            <xs:pattern value="true|false"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="relative_to">
+        <!-- Can only be one of the strings "projectroot", "matlabroot" or "none" -->
+        <xs:restriction base="xs:string">
+            <xs:pattern value="projectroot|matlabroot|none"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="mdlfilearray">
+        <xs:sequence>
+            <xs:element name="MDLFile" type="mdlfile" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="toolboxes">
+        <xs:sequence>
+            <xs:element name="ToolboxDetails" type="toolbox" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="filelist">
+        <xs:sequence>
+            <xs:element name="FileState" type="filestate" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="ProjectRoot" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <!-- Either a list of FileState elements or a list of FileName elements -->
+    <xs:complexType name="filestatesornames">
+        <xs:sequence>
+            <xs:element name="FileState" type="filestate" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="FileName" type="filename" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="filerefarray">
+        <xs:sequence>
+            <xs:element name="FileReference" type="fileref" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="dirrefarray">
+        <xs:sequence>
+            <xs:element name="DirReference" type="dirref" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="dirlist">
+        <xs:sequence>
+            <xs:element name="DirList" type="dirnames"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="dirnames">
+        <xs:sequence>
+            <xs:element name="DirName" type="filename" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="toolbox">
+        <xs:sequence>
+            <xs:element name="DirectoryName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="Name" type="xs:string" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="Version" type="xs:string" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="Release" type="xs:string" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="Date" type="xs:string" minOccurs="0" maxOccurs="1"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="mdlfile">
+        <xs:sequence>
+            <xs:element name="MDLName" type="mdlname"/>
+            <!-- Either a FileState or a FileName.
+                 This doesn't quite specify that, though. -->
+            <xs:element name="FileState" type="filestate" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="FileName" type="filename" minOccurs="0" maxOccurs="1"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="filestate">
+        <xs:sequence>
+            <xs:element name="FileName" type="filename"/>
+            <xs:element name="Size" type="xs:string"/>
+            <xs:element name="LastModifiedDate" type="xs:string"/>
+            <xs:element name="Exportable" type="true_false" minOccurs="0" maxOccurs="1"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="fileref">
+        <xs:sequence>
+            <xs:element name="FileName" type="filename"/>
+            <xs:element name="ReferenceType" type="xs:string"/>
+            <xs:element name="ReferenceLocation" type="xs:string"/>
+            <xs:element name="Resolved" type="true_false"/>
+            <xs:element name="ToolboxDetails" type="toolbox"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="dirref">
+        <xs:sequence>
+            <xs:element name="DirName" type="filename"/>
+            <xs:element name="ReferenceType" type="xs:string"/>
+            <xs:element name="ReferenceLocation" type="xs:string"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="filename">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <!-- Required in new manifests.  Optional in old ones. -->
+                <xs:attribute name="RelativeTo" type="relative_to" use="optional"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:complexType name="mdlname">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <!-- Required in new manifests.  Optional in old ones. -->
+                <xs:attribute name="IsLibrary" type="true_false" use="optional"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:complexType name="projectroots">
+        <xs:sequence>
+            <xs:element name="FirstProjectRoot" type="xs:string"/>
+            <xs:element name="SecondProjectRoot" type="xs:string"/>
+        </xs:sequence>
+        <xs:attribute name="Different" type="true_false" use="required"/>
+    </xs:complexType>
+
+    <xs:complexType name="warnings">
+        <xs:sequence>
+            <xs:element name="Warning" type="warning"  minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="warning">
+        <xs:sequence>
+            <xs:element name="ReferenceLocation" type="warninglocation"/>
+            <xs:element name="Message" type="xs:string"/>
+        </xs:sequence>
+        <xs:attribute name="ReferenceType" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <xs:complexType name="warninglocation">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <!-- Appears when the warning can be traced to a single line
+                     of code. -->
+                <xs:attribute name="Line" type="xs:integer" use="optional"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+</xs:schema>
+

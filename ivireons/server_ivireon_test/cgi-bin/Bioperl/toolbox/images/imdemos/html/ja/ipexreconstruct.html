@@ -1,0 +1,97 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>投影データからイメージを復元</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipexreconstruct.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexreconstruct">エディターで ipexreconstruct.m を開く</a></div><div class="right"><a href="matlab:echodemo ipexreconstruct">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>投影データからイメージを復元</h1><!--introduction--><p>このデモは、<tt>radon</tt>、<tt>iradon</tt>、<tt>fanbeam</tt>、および <tt>ifanbeam</tt> を使用して、サンプル イメージの投影を行い、映像からイメージを復元する方法を示します。<tt>radon</tt> と <tt>iradon</tt> は、投影にパラレル ビーム形状を使用するのに対し、<tt>fanbeam</tt> と <tt>ifanbeam</tt> はファンビーム形状を使用します。パラレル ビームとファンビームの形状を比較するために、下記の例は、各形状に対する合成投影を作成し、これらの合成投影を使用して元のイメージを復元します。</p><p>イメージの復元が必要な実際のアプリケーションは X 線による吸収断層撮影で、異なる角度で物理的な標本を通過する放射線減衰の測定により投影が行われます。オリジナル イメージは、密度が強度値によって表される標本の断面であると考えることができます。映像は特殊な医療撮像装置で収集され、標本の内部イメージは <tt>iradon</tt> または <tt>ifanbeam</tt> を使用して復元されます。</p><p>関数 <tt>iradon</tt> は、パラレル ビーム投影によりイメージを復元します。パラレル ビーム形状では、各投影は、指定した角度でイメージを通った一連の線積分を組み合わせて形成されます。関数 <tt>ifanbeam</tt> は、ファンビーム投影からイメージを復元します。ファンビーム投影には 1 つのエミッターと複数のセンサーがあります。</p><p>両方の形状を説明する図については、『Image Processing Toolbox™ ユーザーズ ガイド』を参照してください。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">頭蓋骨の作成</a></li><li><a href="#2">パラレル ビーム - 合成投影の計算</a></li><li><a href="#8">パラレル ビーム - 投影データから頭蓋骨を復元</a></li><li><a href="#11">ファン ビーム - 合成投影の計算</a></li><li><a href="#13">ファン ビーム - 投影データから頭蓋骨を復元</a></li></ul></div><h2>頭蓋骨の作成<a name="1"></a></h2><p>テスト イメージは Shepp-Logan の頭蓋骨で、関数 <tt>phantom</tt> を使用して作成できます。頭蓋骨イメージは、人頭の実際の断層撮影イメージで見られるさまざまな要素を示します。外側の明るい楕円の外殻は頭蓋骨と考えられ、内部の多くの楕円は脳の特徴または腫瘍と考えられます。</p><pre class="codeinput">P = phantom(256);
+imshow(P)
+</pre><img vspace="5" hspace="5" src="../ipexreconstruct_01.png" alt=""> <h2>パラレル ビーム - 合成投影の計算<a name="2"></a></h2><p>パラレル ビーム形状を使用して合成投影を計算し、投影角度をさまざまに変えます。<tt>radon</tt> の各呼び出しでは、配列が出力され、各列はいずれかの角度で対応する <tt>theta</tt> のラドン変換になります。</p><pre class="codeinput">theta1 = 0:10:170;
+[R1,xp] = radon(P,theta1);
+num_angles_R1 = size(R1,2)
+</pre><pre class="codeoutput">
+num_angles_R1 =
+
+    18
+
+</pre><pre class="codeinput">theta2 = 0:5:175;
+[R2,xp] = radon(P,theta2);
+num_angles_R2 = size(R2,2)
+</pre><pre class="codeoutput">
+num_angles_R2 =
+
+    36
+
+</pre><pre class="codeinput">theta3 = 0:2:178;
+[R3,xp] = radon(P,theta3);
+num_angles_R3 = size(R3,2)
+</pre><pre class="codeoutput">
+num_angles_R3 =
+
+    90
+
+</pre><p>各角度で、投影は xp 軸沿いの <b>N</b> ポイントで計算されます。<b>N</b> は、可能なすべての投影角度で各ピクセルが投影されるように、イメージの対角距離に基づく定数です。</p><pre class="codeinput">N_R1 = size(R1,1)
+N_R2 = size(R2,1)
+N_R3 = size(R3,1)
+</pre><pre class="codeoutput">
+N_R1 =
+
+   367
+
+
+N_R2 =
+
+   367
+
+
+N_R3 =
+
+   367
+
+</pre><p>そのため、小さな頭蓋骨を使用する場合は、xp 軸のポイントを少なくして計算する必要があります。</p><pre class="codeinput">P_128 = phantom(128);
+[R_128,xp_128] = radon(P_128,theta1);
+N_128 = size(R_128,1)
+</pre><pre class="codeoutput">
+N_128 =
+
+   185
+
+</pre><p>投影データ <tt>R3</tt> を表示します。元の頭蓋骨イメージの一部の特徴が <tt>R3</tt> のイメージで見られます。<tt>R3</tt> の最初の列は 0 度での投影に対応し、水平方向に積分します。真ん中の列は 90 度での投影に対応し、垂直方向に積分します。90 度での投影は、頭蓋骨の最も外側の楕円の垂直半軸が長いため、0 度での投影に比べてプロファイルの幅が広くなります。</p><pre class="codeinput">figure, imagesc(theta3,xp,R3)
+colormap(hot)
+colorbar
+xlabel(<span class="string">'Parallel Rotation Angle - \theta (degrees)'</span>);
+ylabel(<span class="string">'Parallel Sensor Position - x\prime (pixels)'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexreconstruct_02.png" alt=""> <h2>パラレル ビーム - 投影データから頭蓋骨を復元<a name="8"></a></h2><p>各復元のパラレル回転の増分 <tt>dtheta</tt> を上記合成投影で使用した増分と一致させます。実際には、トランスミッターとセンサーの形状はわかりますが、ソース イメージ <tt>P</tt> は認識されません。</p><p>次の 3 つの復元 (<tt>I1</tt>、<tt>I2</tt>、および <tt>I3</tt>) では、投影を行う角度を変えたときの影響を示します。<tt>I1</tt> と <tt>I2</tt> では、オリジナルの頭蓋骨で見られた特徴が不明瞭です。特に、各イメージの底部にある 3 つの楕円を見てください。<tt>I3</tt> の結果は、オリジナル イメージ <tt>P</tt> によく似ています。</p><p><tt>I1</tt> と <tt>I2</tt> には大きなアーチファクトがあります。これらのアーチファクトを回避するには、角度のステップを増やします。</p><pre class="codeinput"><span class="comment">% Constrain the output size of each reconstruction to be the same as the</span>
+<span class="comment">% size of the original image, |P|.</span>
+output_size = max(size(P));
+
+dtheta1 = theta1(2) - theta1(1);
+I1 = iradon(R1,dtheta1,output_size);
+figure, imshow(I1)
+</pre><img vspace="5" hspace="5" src="../ipexreconstruct_03.png" alt=""> <pre class="codeinput">dtheta2 = theta2(2) - theta2(1);
+I2 = iradon(R2,dtheta2,output_size);
+figure, imshow(I2)
+</pre><img vspace="5" hspace="5" src="../ipexreconstruct_04.png" alt=""> <pre class="codeinput">dtheta3 = theta3(2) - theta3(1);
+I3 = iradon(R3,dtheta3,output_size);
+figure, imshow(I3)
+</pre><img vspace="5" hspace="5" src="../ipexreconstruct_05.png" alt=""> <h2>ファン ビーム - 合成投影の計算<a name="11"></a></h2><p>ファンビーム形状を使用して合成投影を計算し、'FanSensorSpacing' をさまざまに変えます。</p><pre class="codeinput">D = 250;
+dsensor1 = 2;
+F1 = fanbeam(P,D,<span class="string">'FanSensorSpacing'</span>,dsensor1);
+
+dsensor2 = 1;
+F2 = fanbeam(P,D,<span class="string">'FanSensorSpacing'</span>,dsensor2);
+
+dsensor3 = 0.25;
+[F3, sensor_pos3, fan_rot_angles3] = fanbeam(P,D,<span class="keyword">...</span>
+                                             <span class="string">'FanSensorSpacing'</span>,dsensor3);
+</pre><p>投影データ <tt>F3</tt> を表示します。ファン回転角の範囲は 0 ～ 360 度で、同じ特徴が両側からサンプリングされているため、180 度のオフセットの位置で同じパターンが得られます。このファンビーム投影イメージの特徴を上記のパラレル ビーム投影イメージの同じ特徴と相互に関連付けることができます。</p><pre class="codeinput">figure, imagesc(fan_rot_angles3, sensor_pos3, F3)
+colormap(hot)
+colorbar
+xlabel(<span class="string">'Fan Rotation Angle (degrees)'</span>)
+ylabel(<span class="string">'Fan Sensor Position (degrees)'</span>)
+</pre><img vspace="5" hspace="5" src="../ipexreconstruct_06.png" alt=""> <h2>ファンビーム - 投影データから頭蓋骨を復元<a name="13"></a></h2><p>各復元のファンとセンサーの間隔を、合成投影の作成時に使用した間隔と一致させます。実際には、トランスミッターとセンサーの形状はわかりますが、ソース イメージ、<tt>P</tt> の形状はわかりません。</p><p>'FanSensorSpacing' の値を変えると、各回転角で使用するセンサーの数が変更されます。これらのファンビーム復元では、同じ回転角を使用します。これは、その都度異なる回転角を使用するパラレル ビーム復元とは対照的です。</p><p>'FanSensorSpacing' は、<tt>fanbeam</tt> と <tt>ifanbeam</tt> を使用するときに制御できる複数のパラメーターの中の 1 つにすぎないことに注意してください。また、関数 <tt>fan2para</tt> と <tt>para2fan</tt> を使用して、パラレル ビーム投影データとファンビーム投影データを切り替えることもできます。</p><pre class="codeinput">Ifan1 = ifanbeam(F1,D,<span class="string">'FanSensorSpacing'</span>,dsensor1,<span class="string">'OutputSize'</span>,output_size);
+figure, imshow(Ifan1)
+</pre><img vspace="5" hspace="5" src="../ipexreconstruct_07.png" alt=""> <pre class="codeinput">Ifan2 = ifanbeam(F2,D,<span class="string">'FanSensorSpacing'</span>,dsensor2,<span class="string">'OutputSize'</span>,output_size);
+figure, imshow(Ifan2)
+</pre><img vspace="5" hspace="5" src="../ipexreconstruct_08.png" alt=""> <pre class="codeinput">Ifan3 = ifanbeam(F3,D,<span class="string">'FanSensorSpacing'</span>,dsensor3,<span class="string">'OutputSize'</span>,output_size);
+figure, imshow(Ifan3)
+</pre><img vspace="5" hspace="5" src="../ipexreconstruct_09.png" alt=""> <p class="footer">Copyright 1993-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Reconstructing an Image from Projection Data % This demo shows how to use |radon|, |iradon|, |fanbeam|, and |ifanbeam| to % form projections from a sample image and then reconstruct the image from % the projections. While |radon| and |iradon| use a parallel-beam geometry % for the projections, |fanbeam| and |ifanbeam| use a fan-beam geometry. To % compare parallel-beam and fan-beam geometries, the examples below create % synthetic projections for each geometry and then use those synthetic % projections to reconstruct the original image. % % A real-world application that requires image reconstruction is X-ray % absorption tomography where projections are formed by measuring the % attenuation of radiation that passes through a physical specimen at % different angles. The original image can be thought of as a cross % section through the specimen in which intensity values represent the % density of the specimen. Projections are collected by special medical % imaging devices and then an internal image of the specimen is % reconstructed using |iradon| or |ifanbeam|. % % The function |iradon| reconstructs an image from parallel-beam % projections. In parallel-beam geometry, each projection is formed by % combining a set of line integrals through an image at a specific % angle. The function |ifanbeam| reconstructs an image from fan-beam % projections, which have one emitter and multiple sensors. % % See the Image Processing Toolbox(TM) User's Guide for diagrams that illustrate % both geometries.  % Copyright 1993-2007 The MathWorks, Inc.    %% Create Head Phantom % The test image is the Shepp-Logan head phantom which can be generated % using the function |phantom|. The phantom image illustrates many % qualities that are found in real-world tomographic imaging of human % heads. The bright elliptical shell along the exterior is analogous to a % skull and the many ellipses inside are analogous to brain features or % tumors.    P = phantom(256); imshow(P)  %% Parallel Beam - Calculate Synthetic Projections  % Calculate synthetic projections using parallel-beam geometry and vary the % number of projection angles. For each of these calls to |radon|, the % output is a matrix in which each column is the Radon transform for one % of the angles in the corresponding |theta|.   theta1 = 0:10:170;  [R1,xp] = radon(P,theta1);  num_angles_R1 = size(R1,2)  %%  theta2 = 0:5:175;   [R2,xp] = radon(P,theta2); num_angles_R2 = size(R2,2)  %%  theta3 = 0:2:178;   [R3,xp] = radon(P,theta3);  num_angles_R3 = size(R3,2)  %%  % Note that for each angle, the projection is computed at *N* points along % the xp-axis, where *N* is a constant that depends on the diagonal distance % of the image such that every pixel will be projected for all possible % projection angles.  N_R1 = size(R1,1) N_R2 = size(R2,1) N_R3 = size(R3,1)  %% % So, if you use a smaller head phantom, the projection needs to be computed % at fewer points along the xp-axis.  P_128 = phantom(128); [R_128,xp_128] = radon(P_128,theta1); N_128 = size(R_128,1)  %%  % Display the projection data |R3|. Some of the features of the original % phantom image are visible in the image of |R3|. The first column of |R3| % corresponds to a projection at 0 degrees, which is integrating in the % vertical direction. The centermost column corresponds to a projection at % 90 degrees, which is integrating in the horizontal directions. The % projection at 90 degrees has a wider profile than the projection at 0 % degrees due to the large vertical semi-axis of the outermost ellipse of % the phantom.  figure, imagesc(theta3,xp,R3) colormap(hot) colorbar xlabel('Parallel Rotation Angle - \theta (degrees)');  ylabel('Parallel Sensor Position - x\prime (pixels)');  %% Parallel Beam - Reconstruct Head Phantom from Projection Data % Match the parallel rotation-increment, |dtheta|, in each reconstruction % with that used above to create the corresponding synthetic projections. In % a real-world case, you would know the geometry of your transmitters and % sensors, but not the source image, |P|. % % The following three reconstructions (|I1|, |I2|, and |I3|) show the effect % of varying the number of angles at which projections are made. For |I1| % and |I2| some features that were visible in the original phantom are not % clear. Specifically, look at the three ellipses at the bottom of each % image. The result in |I3| closely resembles the original image, |P|. % % Notice the significant artifacts present in |I1| and |I2|. To avoid % these artifacts, use a larger number of angles.  % Constrain the output size of each reconstruction to be the same as the % size of the original image, |P|. output_size = max(size(P));  dtheta1 = theta1(2) - theta1(1); I1 = iradon(R1,dtheta1,output_size); figure, imshow(I1)  %%  dtheta2 = theta2(2) - theta2(1); I2 = iradon(R2,dtheta2,output_size); figure, imshow(I2)  %%  dtheta3 = theta3(2) - theta3(1); I3 = iradon(R3,dtheta3,output_size); figure, imshow(I3)  %% Fan Beam - Calculate Synthetic Projections % Calculate synthetic projections using fan-beam geometry and vary the % 'FanSensorSpacing'.  D = 250;  dsensor1 = 2; F1 = fanbeam(P,D,'FanSensorSpacing',dsensor1);  dsensor2 = 1; F2 = fanbeam(P,D,'FanSensorSpacing',dsensor2);  dsensor3 = 0.25; [F3, sensor_pos3, fan_rot_angles3] = fanbeam(P,D,...                                              'FanSensorSpacing',dsensor3);  %%  % Display the projection data |F3|. Notice that the fan rotation angles % range from 0 to 360 degrees and the same patterns occur at an offset of % 180 degrees because the same features are being sampled from both % sides. You can correlate features in this image of fan-beam projections % with the same features in the image of parallel-beam projections, above.   figure, imagesc(fan_rot_angles3, sensor_pos3, F3) colormap(hot) colorbar xlabel('Fan Rotation Angle (degrees)') ylabel('Fan Sensor Position (degrees)')  %% Fan Beam - Reconstruct Head Phantom from Projection Data % Match the fan-sensor-spacing in each reconstruction with that used to % create each of the synthetic projections. In a real-world case, you would % know the geometry of your transmitters and sensors, but not the source % image, |P|. % % Changing the value of the 'FanSensorSpacing' effectively changes the % number of sensors used at each rotation angle. For each of these fan-beam % reconstructions, the same rotation angles are used. This is in contrast to % the parallel-beam reconstructions which each used different rotation % angles. %  % Note that 'FanSensorSpacing' is only one parameter of several that you % can control when using |fanbeam| and |ifanbeam|. You can also convert % back and forth between parallel- and fan-beam projection data using the % functions |fan2para| and |para2fan|.  Ifan1 = ifanbeam(F1,D,'FanSensorSpacing',dsensor1,'OutputSize',output_size); figure, imshow(Ifan1)  %%  Ifan2 = ifanbeam(F2,D,'FanSensorSpacing',dsensor2,'OutputSize',output_size); figure, imshow(Ifan2)  %%  Ifan3 = ifanbeam(F3,D,'FanSensorSpacing',dsensor3,'OutputSize',output_size); figure, imshow(Ifan3)   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,131 @@
+%%
+%% $Revision: 1.1.10.1 $ 
+%% $RCSfile: oseksetalarm.tlc,v $
+%%
+%% Abstract:
+%%      TLC file for the OSEK Set Alarm Block.
+%%
+%% Copyright 2002-2006 The MathWorks, Inc.
+
+%implements "oseksetalarm" "C"
+
+%include "oseklib.tlc"
+
+%% Function: BlockTypeSetup ===================================================
+%% Abstract:
+%%      Add OSEK API headers for the selected implementation to the generated
+%%      model.c file as this block will generate OSEK API calls in model.c.
+%%
+%function BlockTypeSetup(block, system) void
+  %<LibAddToCommonIncludes("myosek.h")>
+%endfunction
+
+%% Function: BlockInstanceSetup ===============================================
+%% Abstract:
+%%      Find the function-call subsystems that are attached to the alarm
+%%      block and
+%%
+%%      o Add a Alarm to the OIL file definitions and generated C code
+%%        The alarm is defined with the parameters specified in the block.
+%%
+%function BlockInstanceSetup(block, system) void
+  
+  %assign sysIdx = system.CallSites[0][2]
+  %assign blkIdx = system.CallSites[0][3]
+  %assign alarmBlock = CompiledModel.System[sysIdx].Block[blkIdx]
+  %assign sourceType = IDNUM(alarmBlock.ControlInputPort.SignalSrc[0])
+  
+  %% Determine masked block name for error reporting
+  %assign sysId = %<SYSNAME(alarmBlock.Name)>[0]
+  %assign idIdx = %<IDNUM(sysId)>[1] - 1
+  %assign parentName = CompiledModel.Subsystem[idIdx].Name
+  %assign alarmBlockName = STRING(LibUnmangledPathName(parentName))
+
+  %% The input to the alarm block is unconnected
+  %if sourceType[0]  == "G"
+    %assign wrnTxt = "The input for OSEK Alarm block '%<alarmBlockName>' is " ...
+      "unconnected."
+    %<LibReportWarning(wrnTxt)>
+  %endif
+  
+  %% Get downstream block if there is one
+  %if "%<SFcnSystemOutputCall[0].BlockToCall>" == "unconnected"
+    %assign wrnTxt = "The output for OSEK Alarm block '%<alarmBlockName>' is " ...
+      "unconnected.  No code will be generated for this block."
+    %<LibReportWarning(wrnTxt)>
+  %else
+    %% Find the downstream function-call subsystem.
+    %% Simulink will have already verified that, if connected at all,  it is 
+    %% a function-call subsystem and that it is the only destination.  The 
+    %% remaining test is whether the destination has other function-call 
+    %% sources besides this Alarm block which is not supported.
+    
+    %% Get downstream block
+    %assign ssBlock = LibGetFcnCallBlock(block,0)
+    %assign block = block + ssBlock
+    %% Check to see if this is a direct connection
+    %if (LibGetRecordWidth(ssBlock.ControlInputPort) != 1)
+      %assign errTxt = "The OSEK Alarm block '%<alarmBlockName>' " ...
+	"output must be directly connected to one function-call subsystem. " ...
+	"Also, no other block can drive the function-call subsystem."
+      %<LibReportError(errTxt)>
+    %endif    
+    
+    %% Assume it is a subsystem block(Simulink checked for a f-c subsys already).
+    %with ssBlock
+      %assign bType     = (Type == "SubSystem") ? "Subsystem" : ""
+      %assign locSysIdx = LibBlockParamSetting(bType, "SystemIdx")
+    %endwith
+    %assign taskSystem = System[locSysIdx]
+    %assign block = block + taskSystem
+    
+    %% Tell Task block that Alarm block is driving it,
+    %% Task block will not generate Outputs code in this case.
+    %assign taskBlock = taskSystem.Block[0]
+    %assign taskBlock.AsyncCallerGenCode = TLC_FALSE
+  %endif
+%endfunction
+  
+%function Start(block, system) Output
+  %if EXISTS("ssBlock")
+    %if SFcnParamSettings.CallAtStartup == "on"
+      %if SFcnParamSettings.AlarmType == "Relative"
+	  SetRelAlarm(%<SFcnParamSettings.AlarmName>,\
+	  %<CAST("Number",SFcnParamSettings.Increment)>,\
+	  %<CAST("Number",SFcnParamSettings.Cyclic)>);
+      %else
+	  SetAbsAlarm(%<SFcnParamSettings.AlarmName>,\
+	  %<CAST("Number",SFcnParamSettings.Increment)>,\
+	  %<CAST("Number",SFcnParamSettings.Cyclic)>);
+      %endif
+    %endif
+  %endif
+%endfunction
+
+%function Outputs(block, system) Output
+  %if EXISTS("ssBlock")
+    %% Define the Alarm in the oil file
+    %openfile buffer
+    ALARM %<SFcnParamSettings.AlarmName> {
+      COUNTER = SystemTimer;
+      ACTION = ACTIVATETASK {
+	TASK = %<taskSystem.TaskName>;
+      };
+    };
+    %closefile buffer
+    %<OSLibOSEKAddAlarmToOil(buffer)>
+    %% Only generate Set Alarm if no for Startup.
+    %if SFcnParamSettings.CallAtStartup == "off"
+      %if SFcnParamSettings.AlarmType == "Relative"
+	  SetRelAlarm(%<SFcnParamSettings.AlarmName>,\
+	  %<CAST("Number",SFcnParamSettings.Increment)>, 0);
+      %else
+	  SetAbsAlarm(%<SFcnParamSettings.AlarmName>,\
+	  %<CAST("Number",SFcnParamSettings.Increment)>, 0);
+      %endif
+    %endif
+   
+  %endif
+%endfunction
+	
+%% [EOF] oseksetalarm.tlc

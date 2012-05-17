@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    ! @(#)src/m_interpreter/mi_util/TC.xsd    Tab Completion Schema
+  -->
+<xsd:schema targetNamespace="urn:mathworks.interpreter.tabcompletion" xmlns="urn:mathworks.interpreter.tabcompletion" xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+    <xsd:simpleType name="tcTagnameType">
+	<xsd:restriction base="xsd:string">
+	    <xsd:maxLength value="80" />
+	</xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="tcBindingNameType">
+	<xsd:restriction base="xsd:token">
+	    <xsd:pattern value="[a-z_0-9]+(/[a-z_0-9]+)?" />
+	</xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="tcPlatformEnumType">
+	<xsd:restriction base="xsd:NMTOKEN">
+	    <xsd:enumeration value="UNIX" />
+	    <xsd:enumeration value="PC" />
+	</xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="tcCompletionEnumType">
+	<xsd:restriction base="xsd:NMTOKEN">
+	    <xsd:enumeration value="FILE" />
+	    <xsd:enumeration value="DIR" />
+	    <xsd:enumeration value="FUN" />
+	    <xsd:enumeration value="SUBFUN" />
+	    <xsd:enumeration value="VAR" />
+	    <xsd:enumeration value="MFILE" />
+	    <xsd:enumeration value="MATFILE" />
+	    <xsd:enumeration value="FIGFILE" />
+	    <xsd:enumeration value="MDLFILE" />
+	    <xsd:enumeration value="MCOSPKG" />
+	    <xsd:enumeration value="MCOSCLASS" />
+	</xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="tcCompletionListType">
+	<xsd:list itemType="tcCompletionEnumType" />
+    </xsd:simpleType>
+    <xsd:simpleType name="tcValueListType">
+	<xsd:list itemType="xsd:token" />
+    </xsd:simpleType>
+    <xsd:simpleType name="tcPreviousType">
+	<xsd:restriction base="xsd:token">
+	    <xsd:pattern value="-[a-z0-9]+" />
+	</xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="tcArgnType">
+	<xsd:restriction base="xsd:token">
+	    <xsd:pattern value="((3[0-2]|[1-2][0-9]|[1-9]):?){1,3}" />
+	</xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="tcArgnListType">
+	<xsd:list itemType="tcArgnType" />
+    </xsd:simpleType>
+    <xsd:complexType name="tcArgType">
+	<xsd:attribute name="previous" type="tcPreviousType" use="optional" />
+	<xsd:attribute name="argn" type="tcArgnListType" use="optional" />
+	<xsd:attribute name="ctype" type="tcCompletionListType" use="required" />
+	<xsd:attribute name="value" type="tcValueListType" use="optional" />
+    </xsd:complexType>
+    <xsd:complexType name="tcBindingType">
+	<xsd:sequence>
+	    <xsd:element name="arg" type="tcArgType" minOccurs="0" maxOccurs="unbounded" />
+	</xsd:sequence>
+	<xsd:attribute name="name" type="tcBindingNameType" />
+	<xsd:attribute name="ctype" type="tcCompletionListType" use="optional" />
+	<xsd:attribute name="platform" type="tcPlatformEnumType" use="optional" />
+    </xsd:complexType>
+    <xsd:complexType name="TCType">
+	<xsd:sequence>
+	    <xsd:element name="binding" type="tcBindingType" minOccurs="1" maxOccurs="unbounded" />
+	</xsd:sequence>
+	<xsd:attribute name="tagname" type="tcTagnameType" use="optional" />
+    </xsd:complexType>
+    <xsd:element name="TC" type="TCType" />
+</xsd:schema>

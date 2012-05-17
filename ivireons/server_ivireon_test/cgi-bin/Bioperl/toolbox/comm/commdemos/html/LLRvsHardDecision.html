@@ -1,0 +1,207 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>LLR vs. Hard Decision Demodulation</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="LLRvsHardDecision.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit LLRvsHardDecision">Open LLRvsHardDecision.m in the Editor</a></div><div class="right"><a href="matlab:echodemo LLRvsHardDecision">Run in the Command Window</a></div></div><div class="content"><h1>LLR vs. Hard Decision Demodulation</h1><!--introduction--><p>This demo illustrates the improvement in BER performance when using log-likelihood ratio (LLR) instead of hard decision demodulation in a convolutionally coded communication link.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Define System Parameters</a></li><li><a href="#2">Set up Modulator-Demodulator Objects</a></li><li><a href="#3">Transmitter Simulation</a></li><li><a href="#4">AWGN Channel</a></li><li><a href="#5">Receiver Simulation</a></li><li><a href="#6">Running Simulation Example</a></li></ul></div><h2>Define System Parameters<a name="1"></a></h2><p>The first step is to set up system parameters for simulation.</p><div><ul><li>M        : Modulation alphabet size</li><li>nSamp    : Number of bits to simulate</li><li>EbNo     : Information bit Eb/No in dB</li><li>codeRate : Code rate of convolutional encoder</li><li>constlen : Constraint length of encoder</li><li>codegen  : Code generator polynomial of encoder</li><li>tblen    : Traceback depth of Viterbi decoder</li></ul></div><pre class="codeinput">M     = 4;
+k     = log2(M);
+nSamp = 9e4;
+EbNo  = 3;
+
+<span class="comment">% Code properties</span>
+codeRate = 1/2;
+constlen = 7;
+codegen  = [171 133];
+tblen    = 32;
+trellis  = poly2trellis(constlen, codegen);
+
+<span class="comment">% Create a local random stream to be used by random number generators for</span>
+<span class="comment">% repeatability.</span>
+hStr = RandStream(<span class="string">'mt19937ar'</span>, <span class="string">'Seed'</span>, 55408);
+</pre><h2>Set up Modulator-Demodulator Objects<a name="2"></a></h2><p>Use MODEM.PSKMOD and MODEM.PSKDEMOD objects to perform QPSK modulation and demodulation, respectively. The signal constellation has Gray mapping and the modulating signal is in binary form. The demodulator object will be used later to compute bitwise hard decision values as well as LLR by setting its DECISIONTYPE property appropriately.</p><pre class="codeinput">modObj   = modem.pskmod(<span class="string">'M'</span>, M, <span class="string">'SymbolOrder'</span>, <span class="string">'Gray'</span>, <span class="string">'InputType'</span>, <span class="string">'Bit'</span>)
+demodObj = modem.pskdemod(modObj)
+</pre><pre class="codeoutput"> 
+modObj =
+ 
+             Type: 'PSK Modulator'
+                M: 4
+      PhaseOffset: 0
+    Constellation: [1 0.0000 + 1.0000i -1.0000 + 0.0000i -0.0000 - 1.0000i]
+      SymbolOrder: 'Gray'
+    SymbolMapping: [0 1 3 2]
+        InputType: 'Bit'
+
+ 
+demodObj =
+ 
+             Type: 'PSK Demodulator'
+                M: 4
+      PhaseOffset: 0
+    Constellation: [1 0.0000 + 1.0000i -1.0000 + 0.0000i -0.0000 - 1.0000i]
+      SymbolOrder: 'Gray'
+    SymbolMapping: [0 1 3 2]
+       OutputType: 'Bit'
+     DecisionType: 'Hard decision'
+
+</pre><h2>Transmitter Simulation<a name="3"></a></h2><p>With the modulator and demodulator initialized, simulate the transmitter of the communication system. Generate an information message consisting of NSAMP bits. Encode the information message using a convolutional encoder, and modulate the encoded message using 8-PSK modulation.</p><pre class="codeinput">infoMsg        = randi(hStr, [0 1], nSamp, 1);
+codedMsg       = convenc(infoMsg, trellis);
+transmittedMsg = modulate(modObj, codedMsg);
+</pre><h2>AWGN Channel<a name="4"></a></h2><p>Pass the modulated signal through an additive white Gaussian noise channel. To achieve the required Eb/No, adjust the signal-to-noise ratio for coded bits and multi-bit symbols.</p><pre class="codeinput">adjSNR      = EbNo - 10*log10(1/codeRate) + 10*log10(k);
+receivedMsg = awgn(transmittedMsg, adjSNR, <span class="string">'measured'</span>, hStr, <span class="string">'dB'</span>);
+</pre><h2>Receiver Simulation<a name="5"></a></h2><p>Demodulate the received signal to get both hard decision demodulation and LLRs. The demodulator object is configured accordingly. To compute the LLR, the demodulator object must be given the variance of noise as seen at its input. The demodulated signals are decoded using a Viterbi decoder. The Viterbi decoder is set up in 'HARD' and 'UNQUANT' modes to process hard decision demodulated signal and LLR outputs of the demodulator, respectively. Compare the input and outputs to determine BER.</p><pre class="codeinput"><span class="comment">% Set up the demodulator object to perform hard decision demodulation</span>
+set(demodObj, <span class="string">'DecisionType'</span>, <span class="string">'Hard decision'</span>);
+demodulatedMsg_HD = demodulate(demodObj, receivedMsg);
+
+<span class="comment">% Set up the demodulator object to compute the LLR</span>
+set(demodObj, <span class="string">'DecisionType'</span>, <span class="string">'LLR'</span>, <span class="string">'NoiseVariance'</span>, 10^(-adjSNR/10));
+demodulatedMsg_LLR = demodulate(demodObj, receivedMsg);
+
+<span class="comment">% Use the Viterbi decoder in hard decision mode</span>
+decodedMsg_HD = vitdec(demodulatedMsg_HD, trellis, tblen, <span class="string">'cont'</span>, <span class="string">'hard'</span>);
+
+<span class="comment">% Use the Viterbi decoder in unquantized mode</span>
+decodedMsg_Unq = vitdec(demodulatedMsg_LLR, trellis, tblen, <span class="string">'cont'</span>, <span class="string">'unquant'</span>);
+
+<span class="comment">% Compute the bit error rate</span>
+[nErrors_HD, ber_HD]   = <span class="keyword">...</span>
+    biterr(decodedMsg_HD(tblen+1:end), infoMsg(1:nSamp-tblen))
+[nErrors_LLR, ber_LLR] = <span class="keyword">...</span>
+    biterr(decodedMsg_Unq(tblen+1:end), infoMsg(1:nSamp-tblen))
+</pre><pre class="codeoutput">
+nErrors_HD =
+
+        2846
+
+
+ber_HD =
+
+    0.0316
+
+
+nErrors_LLR =
+
+    19
+
+
+ber_LLR =
+
+  2.1119e-004
+
+</pre><h2>Running Simulation Example<a name="6"></a></h2><p>The next step simulates the above designed communications system over a range of Eb/No values by executing the example file SIMLLRVSHD. It plots BER results as they are generated. BER results for hard decision demodulation and LLR are plotted in red and blue respectively. A comparison of simulation results with theoretical results is also shown. Note that this example may take some time to compute BER results. To obtain results over a larger range of Eb/No values, modify this example file accordingly. Also, more statistically reliable results can be obtained by collecting more errors.</p><pre class="codeinput">simLLRvsHD(1.5:0.5:5.5);
+</pre><img vspace="5" hspace="5" src="LLRvsHardDecision_01.png" alt=""> <p class="footer">Copyright 2006-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% LLR vs. Hard Decision Demodulation
+% This demo illustrates the improvement in BER performance when using log-likelihood
+% ratio (LLR) instead of hard decision demodulation in a convolutionally
+% coded communication link. 
+
+% Copyright 2006-2008 The MathWorks, Inc.
+% $Revision: 1.1.6.5 $ $Date: 2009/01/05 17:45:47 $
+
+%% Define System Parameters
+% The first step is to set up system parameters for simulation.
+%
+% * M        : Modulation alphabet size
+% * nSamp    : Number of bits to simulate
+% * EbNo     : Information bit Eb/No in dB
+% * codeRate : Code rate of convolutional encoder
+% * constlen : Constraint length of encoder
+% * codegen  : Code generator polynomial of encoder
+% * tblen    : Traceback depth of Viterbi decoder
+%
+
+M     = 4;
+k     = log2(M);
+nSamp = 9e4;
+EbNo  = 3;
+
+% Code properties
+codeRate = 1/2;
+constlen = 7;
+codegen  = [171 133];
+tblen    = 32;     
+trellis  = poly2trellis(constlen, codegen);
+
+% Create a local random stream to be used by random number generators for
+% repeatability.
+hStr = RandStream('mt19937ar', 'Seed', 55408);
+
+%% Set up Modulator-Demodulator Objects
+% Use MODEM.PSKMOD and MODEM.PSKDEMOD objects to perform QPSK modulation and
+% demodulation, respectively. The signal constellation has Gray mapping and
+% the modulating signal is in binary form. The demodulator object will be
+% used later to compute bitwise hard decision values as well as LLR by
+% setting its DECISIONTYPE property appropriately.
+
+modObj   = modem.pskmod('M', M, 'SymbolOrder', 'Gray', 'InputType', 'Bit')
+demodObj = modem.pskdemod(modObj)
+
+%% Transmitter Simulation
+% With the modulator and demodulator initialized, simulate the transmitter of  
+% the communication system. Generate an information message consisting of NSAMP 
+% bits. Encode the information message using a convolutional encoder, and 
+% modulate the encoded message using 8-PSK modulation. 
+
+infoMsg        = randi(hStr, [0 1], nSamp, 1);
+codedMsg       = convenc(infoMsg, trellis);
+transmittedMsg = modulate(modObj, codedMsg);
+
+%% AWGN Channel
+% Pass the modulated signal through an additive white Gaussian noise channel. To
+% achieve the required Eb/No, adjust the signal-to-noise ratio for coded bits and
+% multi-bit symbols.
+
+adjSNR      = EbNo - 10*log10(1/codeRate) + 10*log10(k);
+receivedMsg = awgn(transmittedMsg, adjSNR, 'measured', hStr, 'dB');
+
+%% Receiver Simulation
+% Demodulate the received signal to get both hard decision demodulation and
+% LLRs. The demodulator object is configured accordingly. To compute the LLR,
+% the demodulator object must be given the variance of noise as seen at its
+% input. The demodulated signals are decoded using a Viterbi decoder. The
+% Viterbi decoder is set up in 'HARD' and 'UNQUANT' modes to process hard
+% decision demodulated signal and LLR outputs of the demodulator,
+% respectively. Compare the input and outputs to determine BER.
+
+% Set up the demodulator object to perform hard decision demodulation
+set(demodObj, 'DecisionType', 'Hard decision');
+demodulatedMsg_HD = demodulate(demodObj, receivedMsg);
+
+% Set up the demodulator object to compute the LLR
+set(demodObj, 'DecisionType', 'LLR', 'NoiseVariance', 10^(-adjSNR/10));
+demodulatedMsg_LLR = demodulate(demodObj, receivedMsg);
+
+% Use the Viterbi decoder in hard decision mode
+decodedMsg_HD = vitdec(demodulatedMsg_HD, trellis, tblen, 'cont', 'hard');
+
+% Use the Viterbi decoder in unquantized mode
+decodedMsg_Unq = vitdec(demodulatedMsg_LLR, trellis, tblen, 'cont', 'unquant');
+
+% Compute the bit error rate
+[nErrors_HD, ber_HD]   = ...
+    biterr(decodedMsg_HD(tblen+1:end), infoMsg(1:nSamp-tblen))
+[nErrors_LLR, ber_LLR] = ...
+    biterr(decodedMsg_Unq(tblen+1:end), infoMsg(1:nSamp-tblen))
+
+%% Running Simulation Example
+% The next step simulates the above designed communications system over a
+% range of Eb/No values by executing the example file SIMLLRVSHD. It plots
+% BER results as they are generated. BER results for hard decision
+% demodulation and LLR are plotted in red and blue respectively. A comparison
+% of simulation results with theoretical results is also shown. Note that
+% this example may take some time to compute BER results. To obtain results
+% over a larger range of Eb/No values, modify this example file
+% accordingly. Also, more statistically reliable results can be obtained by
+% collecting more errors. 
+
+simLLRvsHD(1.5:0.5:5.5);
+
+displayEndOfDemoMessage(mfilename)
+
+
+##### SOURCE END #####
+--></body></html>

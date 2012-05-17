@@ -1,0 +1,165 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>固定小数点の正弦および余弦計算</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="fi_sin_cos_demo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit fi_sin_cos_demo">エディターで fi_sin_cos_demo.m を開く</a></div><div class="right"><a href="matlab:echodemo fi_sin_cos_demo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>固定小数点の正弦および余弦計算</h1><!--introduction--><p>固定小数点の正弦および余弦アルゴリズムの効率的な開発は、モーター制御、ナビゲーション、信号処理、ワイヤレス通信などの多数の組み込みアプリケーションで重要です。このデモは、Fixed-Point Toolbox™ によって提供される CORDIC アルゴリズム近似の使用方法を示します。関数 <tt>cordiccexp</tt>、<tt>cordicsincos</tt>、<tt>cordicsin</tt>、および <tt>cordiccos</tt> は、浮動小数点データ型のみをサポートする MATLAB&reg; <tt>sin</tt> および <tt>cos</tt> を近似します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">CORDIC アルゴリズムを使用した正弦と余弦の計算</a></li><li><a href="#2">CORDIC 正弦および余弦コードについて</a></li><li><a href="#3">正弦-余弦回転モードの CORDIC 反復の可視化</a></li><li><a href="#6"><tt>cordicsin</tt> による固定小数点の正弦の計算</a></li><li><a href="#9"><tt>emlmex</tt> による固定小数点の関数 <tt>cordicsincos</tt> の高速化</a></li><li><a href="#15">参考文献</a></li></ul></div><h2>CORDIC アルゴリズムを使用した正弦と余弦の計算<a name="1"></a></h2><p><b>はじめに</b></p><p>CORDIC は、COordinate Rotation DIgital Computer の略語です。Givens 回転に基づく CORDIC アルゴリズム (参考文献 [1、2] を参照) は、反復的な Shift-Add 演算のみを必要とするため、最もハードウェア効率に優れたアルゴリズムの 1 つです。CORDIC アルゴリズムは、明示的な乗数を必要とせず、正弦関数、余弦関数、逆正弦関数、逆余弦関数、逆正接関数、ベクトル振幅関数、除算関数、平方根関数、双曲線関数、対数関数など、さまざまな関数の計算に適しています。</p><p>CORDIC 回転計算モードは、極から直交への変換演算の他に、正弦と余弦の計算にも使用されます。このモードでは、振幅ベクトルおよび回転角がわかっており、座標 (X-Y) コンポーネントが回転後に計算されます。</p><p><b>CORDIC 回転計算モード</b></p><p>CORDIC 回転モード アルゴリズムは、必要な回転角で角度の積和を初期化することによって開始されます。次に、残差角度の積和の大きさを減らす方法で、CORDIC の反復ごとに回転判定が行われます。回転判定は、各反復後に、角度の積和内の残差角度の符号に基づきます。</p><p>回転モードでの CORDIC 方程式は以下のとおりです。</p><p><img src="../fi_sin_cos_demo_eq18839.png" alt="$$ z_{i+1} = z_{i} - d_{i}*atan(2^{-i}) $$"></p><p><img src="../fi_sin_cos_demo_eq96532.png" alt="$$ x_{i+1} = x_{i} - y_{i}*d_{i}*2^{-i} $$"></p><p><img src="../fi_sin_cos_demo_eq21914.png" alt="$$ y_{i+1} = y_{i} + x_{i}*d_{i}*2^{-i} $$"></p><p>ここで、<img src="../fi_sin_cos_demo_eq40472.png" alt="$$ z_{i} &lt; 0 $$"> の場合は <img src="../fi_sin_cos_demo_eq93302.png" alt="$$  d_{i} = -1 $$"> となり、それ以外の場合は、<img src="../fi_sin_cos_demo_eq53244.png" alt="$$ +1  $$"> です。</p><pre> i = 0、1、...、N-1、および N は、反復の合計数です。</pre><p>これにより、N が <img src="../fi_sin_cos_demo_eq22239.png" alt="$$ +\infty $$"> に近づくときの以下の結果が得られます。</p><p><img src="../fi_sin_cos_demo_eq75639.png" alt="$$ z_{N} = 0 $$"></p><p><img src="../fi_sin_cos_demo_eq98082.png" alt="$$ x_{N} = A_{N}(x_{0}\cos{z_{0}} - y_{0}\sin{z_{0}}) $$"></p><p><img src="../fi_sin_cos_demo_eq31126.png" alt="$$ y_{N} = A_{N}(y_{0}\cos{z_{0}} + x_{0}\sin{z_{0}}) $$"></p><p>ここで、</p><p><img src="../fi_sin_cos_demo_eq32928.png" alt="$$ A_{N} = \prod_{i=0}^{N-1}{\sqrt{1+2^{-2i}}} $$"></p><p>回転モードでは、CORDIC アルゴリズムは <img src="../fi_sin_cos_demo_eq37295.png" alt="$$ -\pi/2 $$"> ～ <img src="../fi_sin_cos_demo_eq22444.png" alt="$$ \pi/2 $$"> の回転角に制限されます。その範囲外の角度をサポートするには、CORDIC 反復の完了後に、関数 <tt>cordiccexp</tt>、<tt>cordicsincos</tt>、<tt>cordicsin</tt>、および <tt>cordiccos</tt> で 4 象限 (範囲外の可能性がある否定も含む) を使用します。</p><h2>CORDIC 正弦および余弦コードについて<a name="2"></a></h2><p><b>はじめに</b></p><p>関数 <tt>cordicsincos</tt> は、CORDIC アルゴリズムを使用して、範囲 [-2*pi 2*pi) 内の入力角の正弦と余弦を計算します。この関数は、入力引数として角度 <img src="../fi_sin_cos_demo_eq18343.png" alt="$$ \theta $$"> (ラジアン) および反復回数を取り、正弦および余弦の近似を返します。</p><p>CORDIC 計算出力は、回転ゲインによってスケーリングされます。このゲインは、最初の <img src="../fi_sin_cos_demo_eq56594.png" alt="$$ 1 / A_{N} $$"> 定数値を事前にスケーリングすることによって考慮されます。適切な初期値を選択することにより、アルゴリズムで正弦と余弦の両方を同時に直接計算できるようになります。</p><p><b>初期化</b></p><p>関数 <tt>cordicsincos</tt> は以下の初期化手順を実行します。</p><div><ul><li>角度入力ルックアップ テーブル <tt>inpLUT</tt> を <tt>atan(2 .^ -(0:N-1))</tt> に設定します。</li><li><img src="../fi_sin_cos_demo_eq90178.png" alt="$$ z_{0} $$"> を <img src="../fi_sin_cos_demo_eq18343.png" alt="$$ \theta $$"> 入力引数値に設定します。</li><li><img src="../fi_sin_cos_demo_eq11539.png" alt="$$ x_{0} $$"> を <img src="../fi_sin_cos_demo_eq56594.png" alt="$$ 1 / A_{N} $$"> に設定します。</li><li><img src="../fi_sin_cos_demo_eq18836.png" alt="$$ y_{0} $$"> をゼロに設定します。</li></ul></div><p>N 回の反復の後、これらの初期値は N が <img src="../fi_sin_cos_demo_eq22239.png" alt="$$ +\infty $$"> に近づくときの以下の出力を導きます。</p><p><img src="../fi_sin_cos_demo_eq61370.png" alt="$$ x_{N} = cos(\theta) $$"></p><p><img src="../fi_sin_cos_demo_eq78504.png" alt="$$ y_{N} = sin(\theta) $$"></p><p><b>固定小数点および浮動小数点の共有 CORDIC カーネル コード</b></p><p>CORDIC アルゴリズム (回転モード) のカーネル部分の MATLAB コードは以下のとおりです (スカラー <tt>x</tt>、<tt>y</tt>、および <tt>z</tt> の場合)。固定小数点と浮動小数点の両方の演算には同じコードが使用されます。</p><pre class="codeinput">type(fullfile(matlabroot,<span class="string">'toolbox'</span>,<span class="string">'fixedpoint'</span>,<span class="string">'fixedpoint'</span>,<span class="string">'cordic_kernel_private.m'</span>))
+</pre><pre class="codeoutput">
+function [x, y, z] = cordic_kernel_private(x, y, z, inpLUT, niters)
+% CORDIC_KERNEL_PRIVATE Perform CORDIC iterations.
+
+% Copyright 2009-2010 The MathWorks, Inc.
+%#eml
+
+if ~isempty(eml.target)
+    eml_prefer_const(inpLUT, niters);
+end
+
+xtmp = x;
+ytmp = y;
+
+for idx = 1:niters
+    if z &lt; 0
+        z(:) = z + inpLUT(idx);
+        x(:) = x + ytmp;
+        y(:) = y - xtmp;
+    else
+        z(:) = z - inpLUT(idx);
+        x(:) = x - ytmp;
+        y(:) = y + xtmp;
+    end
+    
+    xtmp = bitsra(x, idx);
+    ytmp = bitsra(y, idx);
+end
+
+% [EOF]
+
+</pre><h2>正弦-余弦回転モードの CORDIC 反復の可視化<a name="3"></a></h2><p>CORDIC アルゴリズムは収束することが保証されていますが、限られた反復回数において常に単調であるとは限りません。通常、反復回数を増加すると、精度を向上させることができます。ただし、以下の例でわかるように、後半の反復に比べ、中間の反復の方がより高い精度の結果を生成することもあります。</p><p>たとえそうであっても、CORDIC アルゴリズムは通常、事前に決められた反復回数を実行します。反復を早く終了させると、パイプライン型のコードがブレークし、<img src="../fi_sin_cos_demo_eq33967.png" alt="$$ n $$"> が変わるのでゲイン <img src="../fi_sin_cos_demo_eq70440.png" alt="$$ A_{n} $$"> は一定にはなりません。</p><p>以下の例では、反復 5 は反復 6 より優れた結果の推定を提供し、CORDIC アルゴリズムは後半の反復で収束します。</p><pre class="codeinput">theta   = pi/5; <span class="comment">% input angle in radians</span>
+niters  = 10;   <span class="comment">% number of iterations</span>
+sinTh   = sin(theta); <span class="comment">% reference result</span>
+cosTh   = cos(theta); <span class="comment">% reference result</span>
+y_sin   = zeros(niters, 1);
+sin_err = zeros(niters, 1);
+x_cos   = zeros(niters, 1);
+cos_err = zeros(niters, 1);
+fprintf(<span class="string">'\n\nNITERS \tERROR\n'</span>);
+fprintf(<span class="string">'------\t----------\n'</span>);
+<span class="keyword">for</span> n = 1:niters
+    [y_sin(n), x_cos(n)] = cordicsincos(theta, n);
+    sin_err(n) = abs(y_sin(n) - sinTh);
+    cos_err(n) = abs(x_cos(n) - cosTh);
+    <span class="keyword">if</span> n &lt; 10
+        fprintf(<span class="string">'   %d \t %1.8f\n'</span>, n, cos_err(n));
+    <span class="keyword">else</span>
+        fprintf(<span class="string">'  %d \t %1.8f\n'</span>, n, cos_err(n));
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+fprintf(<span class="string">'\n'</span>);
+</pre><pre class="codeoutput">
+
+NITERS	ERROR
+------	----------
+   1 	 0.10191021
+   2 	 0.13966630
+   3 	 0.03464449
+   4 	 0.03846157
+   5 	 0.00020393
+   6 	 0.01776952
+   7 	 0.00888037
+   8 	 0.00436052
+   9 	 0.00208192
+  10 	 0.00093798
+
+</pre><p><b>棒グラフでの CORDIC 近似エラーのプロット</b></p><pre class="codeinput">figure(1); clf;
+bar(1:niters, cos_err(1:niters));
+xlabel(<span class="string">'Number of iterations'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+ylabel(<span class="string">'Error'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+title(<span class="string">'CORDIC approximation error for cos(pi/5) computation'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+axis([0 niters 0 0.14]);
+</pre><img vspace="5" hspace="5" src="../fi_sin_cos_demo_01.png" alt=""> <p><b>5 回の反復に対する X-Y 結果のプロット</b></p><pre class="codeinput">Niter2Draw = 5;
+figure(2), clf, hold <span class="string">on</span>
+plot(cos(0:0.1:pi/2), sin(0:0.1:pi/2), <span class="string">'b--'</span>); <span class="comment">% semi-circle</span>
+<span class="keyword">for</span> i=1:Niter2Draw
+    plot([0 x_cos(i)],[0 y_sin(i)], <span class="string">'LineWidth'</span>, 2); <span class="comment">% CORDIC iteration result</span>
+    text(x_cos(i),y_sin(i),int2str(i),<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+<span class="keyword">end</span>
+plot(cos(theta), sin(theta), <span class="string">'r*'</span>, <span class="string">'MarkerSize'</span>, 20); <span class="comment">% IDEAL result</span>
+xlabel(<span class="string">'X (COS)'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>)
+ylabel(<span class="string">'Y (SIN)'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>)
+title(<span class="string">'CORDIC iterations for cos(pi/5) computation'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>)
+axis <span class="string">equal</span>;
+axis <span class="string">square</span>;
+</pre><img vspace="5" hspace="5" src="../fi_sin_cos_demo_02.png" alt=""> <h2><tt>cordicsin</tt> による固定小数点の正弦の計算<a name="6"></a></h2><p><b>[-2*pi, 2*pi) 間に 1024 ポイントを作成</b></p><pre class="codeinput">stepSize = pi/256;
+thRadDbl = (-2*pi):stepSize:(2*pi - stepSize); <span class="comment">% double precision floating-point</span>
+thRadFxp = sfi(thRadDbl, 12);            <span class="comment">% signed, 12-bit fixed-point</span>
+sinThRef = sin(double(thRadFxp));        <span class="comment">% reference results</span>
+<span class="comment">% Use 12-bit quantized inputs and vary number of iterations from 4 to 10.</span>
+<span class="comment">% Compare fixed-point CORDIC vs. double-precision trig function results.</span>
+<span class="keyword">for</span> niters = 4:3:10
+    cdcSinTh  = cordicsin(thRadFxp,  niters);
+    errCdcRef = sinThRef - double(cdcSinTh);
+    figure; hold <span class="string">on</span>; axis([-2*pi 2*pi -1.25 1.25]);
+    plot(thRadFxp, sinThRef,  <span class="string">'b'</span>);
+    plot(thRadFxp, cdcSinTh,  <span class="string">'g'</span>);
+    plot(thRadFxp, errCdcRef, <span class="string">'r'</span>);
+    ylabel(<span class="string">'sin(\Theta)'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+    set(gca,<span class="string">'XTick'</span>,-2*pi:pi/2:2*pi);
+    set(gca,<span class="string">'XTickLabel'</span>,<span class="keyword">...</span>
+        {<span class="string">'-2*pi'</span>, <span class="string">'-3*pi/2'</span>, <span class="string">'-pi'</span>, <span class="string">'-pi/2'</span>, <span class="keyword">...</span>
+        <span class="string">'0'</span>, <span class="string">'pi/2'</span>, <span class="string">'pi'</span>, <span class="string">'3*pi/2'</span>,<span class="string">'2*pi'</span>});
+    set(gca,<span class="string">'YTick'</span>,-1:0.5:1);
+    set(gca,<span class="string">'YTickLabel'</span>,{<span class="string">'-1.0'</span>,<span class="string">'-0.5'</span>,<span class="string">'0'</span>,<span class="string">'0.5'</span>,<span class="string">'1.0'</span>});
+    ref_str = <span class="string">'Reference: sin(double(\Theta))'</span>;
+    cdc_str = sprintf(<span class="string">'12-bit CORDICSIN; N = %d'</span>, niters);
+    err_str = sprintf(<span class="string">'Error (max = %f)'</span>, max(abs(errCdcRef)));
+    legend(ref_str, cdc_str, err_str);
+    title(cdc_str,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="../fi_sin_cos_demo_03.png" alt=""> <img vspace="5" hspace="5" src="../fi_sin_cos_demo_04.png" alt=""> <img vspace="5" hspace="5" src="../fi_sin_cos_demo_05.png" alt=""> <p><b>N = 10 についての LSB エラーの計算</b></p><pre class="codeinput">fracLen = cdcSinTh.FractionLength;
+figure;
+plot(thRadFxp, abs(errCdcRef) * pow2(fracLen));
+set(gca,<span class="string">'XTick'</span>,-2*pi:pi/2:2*pi);
+set(gca,<span class="string">'XTickLabel'</span>,<span class="keyword">...</span>
+    {<span class="string">'-2*pi'</span>, <span class="string">'-3*pi/2'</span>, <span class="string">'-pi'</span>, <span class="string">'-pi/2'</span>, <span class="keyword">...</span>
+    <span class="string">'0'</span>, <span class="string">'pi/2'</span>, <span class="string">'pi'</span>, <span class="string">'3*pi/2'</span>,<span class="string">'2*pi'</span>});
+ylabel(<span class="string">'LSB Error: 1 LSB = 2^{-10}'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+title(<span class="string">'LSB Error: 12-bit CORDICSIN; N=10'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+axis([-2*pi 2*pi 0 6]);
+</pre><img vspace="5" hspace="5" src="../fi_sin_cos_demo_06.png" alt=""> <p><b>ノイズ フロアの計算</b></p><pre class="codeinput">fft_mag = abs(fft(double(cdcSinTh)));
+max_mag = max(fft_mag);
+mag_db  = 20*log10(fft_mag/max_mag);
+figure;
+hold <span class="string">on</span>;
+plot(0:1023, mag_db);
+sfdr = max(mag_db(3:end-1));
+plot(0:1023,sfdr*ones(1,1024),<span class="string">'r--'</span>);
+ylabel(<span class="string">'dB Magnitude'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+title(<span class="string">'63.59 dB Noise Floor:12-bit CORDICSIN; N=10'</span>,<span class="string">'fontsize'</span>,12,<span class="string">'fontweight'</span>,<span class="string">'b'</span>);
+<span class="comment">% axis([0 1023 -120 0]); full FFT</span>
+axis([0 round(1024*(pi/128)) -90 0]); <span class="comment">% zoom in</span>
+set(gca,<span class="string">'XTick'</span>,[0 round(1024*pi/256) round(1024*pi/128)]);
+set(gca,<span class="string">'XTickLabel'</span>,{<span class="string">'0'</span>,<span class="string">'pi/256'</span>,<span class="string">'pi/128'</span>});
+</pre><img vspace="5" hspace="5" src="../fi_sin_cos_demo_07.png" alt=""> <h2><tt>emlmex</tt> <a name="9"></a>による固定小数点の関数 <tt>cordicsincos</tt> の高速化</h2><p>Embedded MATLAB&reg; <a href="matlab:doc('emlmex')">emlmex</a> コマンドを使用して、C-MEX 関数を MATLAB コードから生成できます。通常は、生成された C-MEX 関数を実行すると、シミュレーション速度が向上します (参考文献 [3] を参照)。実際に向上する速度は、使用されるシミュレーション プラットフォームによって異なります。以下の例は、<tt>emlmex</tt> を使用して固定小数点の関数 <tt>cordicsincos</tt> を高速化する方法を示します。</p><p>関数 <tt>emlmex</tt> は、MATLAB コードを C-MEX 関数にコンパイルします。この手順には、一時ディレクトリの作成と、このディレクトリの書き込み権限が必要です。</p><pre class="codeinput">emlmexdir = [tempdir <span class="string">'emlmexdir'</span>];
+<span class="keyword">if</span> ~exist(emlmexdir,<span class="string">'dir'</span>)
+    mkdir(emlmexdir);
+<span class="keyword">end</span>
+emlcurdir = pwd;
+cd(emlmexdir)
+</pre><p><tt>cordicsincos</tt> を C-MEX ファイルにコンパイルします。<tt>emlcoder.egc(10)</tt> を使用して定数 (<tt>10</tt> など) にする反復回数を宣言した場合、角度ルックアップ テーブルも定数になるので、反復ごとに計算されません。さらに、<tt>cordicsincos_mex</tt> を呼び出すと、反復回数の入力引数を指定する必要がありません。反復回数を渡そうとすると、MEX-function でエラーが発生します。</p><p>入力パラメーターのデータ型は、関数 <tt>cordicsincos</tt> で固定小数点または浮動小数点の計算を行うかどうかを決定します。Embedded MATLAB サブセットでこのファイルのコードを生成すると、コードは特定のデータ型についてのみ生成されます。つまり、THETA 入力引数が固定小数点の場合、固定小数点のコードのみが生成されます。</p><pre class="codeinput">inp = {thRadFxp, emlcoder.egc(10)}; <span class="comment">%Example inputs for the function</span>
+emlmex(<span class="string">'cordicsincos'</span>, <span class="string">'-o'</span>, <span class="string">'cordicsincos_mex'</span>,  <span class="string">'-eg'</span>, inp)
+</pre><p>最初に、<tt>cordicsincos</tt> を呼び出して正弦と余弦を計算します。</p><pre class="codeinput">tstart = tic;
+cordicsincos(thRadFxp,10);
+telapsed_Mcordicsincos = toc(tstart);
+</pre><p>次に、MEX-function <tt>cordicsincos_mex</tt> を呼び出して正弦と余弦を計算します。</p><pre class="codeinput">cordicsincos_mex(thRadFxp); <span class="comment">% load the MEX file</span>
+tstart = tic;
+cordicsincos_mex(thRadFxp);
+telapsed_MEXcordicsincos = toc(tstart);
+</pre><p>ここで、速度を比較します。MATLAB コマンド ラインで以下のように入力し、ご使用のプラットフォームで速度が向上したことを確認します。</p><pre class="codeinput">emlmex_speedup = telapsed_Mcordicsincos/telapsed_MEXcordicsincos;
+</pre><p>一時ディレクトリをクリーンアップするには、以下のコマンドを実行します。</p><pre class="codeinput">cd(emlcurdir);
+clear <span class="string">cordicsincos_mex</span>;
+status = rmdir(emlmexdir,<span class="string">'s'</span>);
+
+<span class="comment">% Close all figure windows</span>
+close <span class="string">all</span>;
+</pre><h2>参考文献<a name="15"></a></h2><div><ol><li>Jack E. Volder, The CORDIC Trigonometric Computing Technique, IRE Transactions on Electronic Computers, Volume EC-8, September 1959, pp330-334.</li><li>Ray Andraka, A survey of CORDIC algorithm for FPGA based computers, Proceedings of the 1998 ACM/SIGDA sixth international symposium on Field programmable gate arrays, Feb. 22-24, 1998, pp191-200</li><li>Speeding Up Fixed-Point Execution with the emlmex Function, in section &quot;Working with the Fixed-Point Embedded MATLAB Subset&quot; of Fixed-Point Toolbox User's Guide</li></ol></div><p class="footer">Copyright 2009-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Fixed-Point Sine and Cosine Calculation % Developing efficient fixed-point sine and cosine algorithms is critical % in many embedded applications, including motor controls, navigation, % signal processing, and wireless communications. This demo shows how to % use CORDIC algorithm approximations provided by the % Fixed-Point Toolbox(TM). The |cordiccexp|, |cordicsincos|, |cordicsin|, % and |cordiccos| functions approximate the MATLAB(R) |sin| and |cos| % functions, which only support floating-point data types. % % Copyright 2009-2010 The MathWorks, Inc. % $Revision: 1.1.2.1 $  %% Calculating Sine and Cosine Using the CORDIC Algorithm % % *Introduction* % % CORDIC is an acronym for COordinate Rotation DIgital Computer.  % The Givens rotation-based CORDIC algorithm (see [1,2]) is among one of % the most hardware efficient algorithms because it only requires iterative % shift-add  operations. The CORDIC algorithm eliminates the need for % explicit multipliers, and is suitable for calculating a variety of % functions, such as sine, cosine, arcsine, arccosine, arctangent, vector % magnitude, divide, square root, hyperbolic and logarithmic functions.  % % The CORDIC rotation computing mode is used to calculate sine and cosine, % as well as polar-to-cartesian conversion operations. In this mode, the % vector magnitude and an angle of rotation are known and the coordinate % (X-Y) components are computed after rotation. % % *CORDIC Rotation Computation Mode* % % The CORDIC rotation mode algorithm begins by initializing an angle % accumulator with the desired rotation angle. Next, the rotation decision % at each CORDIC iteration is done in a way that decreases the magnitude of % the residual angle accumulator. The rotation decision is based on the % sign of the residual angle in the angle accumulator after each iteration. % % In rotation mode, the CORDIC equations are: % % $$ z_{i+1} = z_{i} - d_{i}*atan(2^{-i}) $$ % % $$ x_{i+1} = x_{i} - y_{i}*d_{i}*2^{-i} $$ % % $$ y_{i+1} = y_{i} + x_{i}*d_{i}*2^{-i} $$ % % where  %   $$  d_{i} = -1 $$  if  $$ z_{i} < 0 $$, and $$ +1  $$ otherwise; % %   i = 0, 1, ..., N-1, and N is the total number of iterations. % % This provides the following result as N approaches $$ +\infty $$: % % $$ z_{N} = 0 $$ % % $$ x_{N} = A_{N}(x_{0}\cos{z_{0}} - y_{0}\sin{z_{0}}) $$ % % $$ y_{N} = A_{N}(y_{0}\cos{z_{0}} + x_{0}\sin{z_{0}}) $$ % % Where: % % $$ A_{N} = \prod_{i=0}^{N-1}{\sqrt{1+2^{-2i}}} $$. % % In rotation mode, the CORDIC algorithm is limited to rotation angles % between $$ -\pi/2 $$ and $$ \pi/2 $$. To support angles outside of that % range, the |cordiccexp|, |cordicsincos|, |cordicsin|, and |cordiccos| % functions use quadrant correction (including possible extra negation) % after the CORDIC iterations are completed.  %% Understanding the CORDIC Sine and Cosine Code % % *Introduction* % % The |cordicsincos| function calculates the sine and cosine of input % angles in the range [-2*pi 2*pi) using the CORDIC algorithm. This function % takes an angle $$ \theta $$ (radians) and a number of iterations as input % arguments. The function returns the approximations of sine and cosine. % % The CORDIC computation outputs are scaled by the rotator gain. This gain % is accounted for by pre-scaling the initial $$ 1 / A_{N} $$ constant % value. The judicious choice of initial values allows the algorithm to % directly compute both sine and cosine simultaneously. % % *Initialization* % % The |cordicsincos| function performs the following initialization steps: % % * The angle input look-up table |inpLUT| is set to |atan(2 .^ -(0:N-1))|. % * $$ z_{0} $$ is set to the $$ \theta $$ input argument value. % * $$ x_{0} $$ is set to $$ 1 / A_{N} $$. % * $$ y_{0} $$ is set to zero. % % After N iterations, these initial values lead to the following outputs as % N approaches $$ +\infty $$: % % $$ x_{N} = cos(\theta) $$ % % $$ y_{N} = sin(\theta) $$ % % *Shared Fixed-Point and Floating-Point CORDIC Kernel Code* % % The MATLAB code for the CORDIC algorithm (rotation mode) kernel portion % is as follows (for the case of scalar |x|, |y|, and |z|). This same code % is used for both fixed-point and floating-point operations: % type(fullfile(matlabroot,'toolbox','fixedpoint','fixedpoint','cordic_kernel_private.m'))  %% Visualizing the Sine-Cosine Rotation Mode CORDIC Iterations % % The CORDIC algorithm is guaranteed to converge, but not always  % monotonically in a finite number of iterations. You can typically  % achieve greater accuracy by increasing the number of iterations.  % However, as you can see in the following example, intermediate  % iterations occasionally produce more accurate results than later % iterations. % % Even so, the CORDIC algorithm is usually run through a predetermined % number of iterations. Ending the iterations early would break pipelined % code, and the gain $$ A_{n} $$ would not be constant because $$ n $$  % would vary. % % In the following example, iteration 5 provides a better estimate  % of the result than iteration 6, and the CORDIC algorithm converges in % later iterations. % theta   = pi/5; % input angle in radians niters  = 10;   % number of iterations sinTh   = sin(theta); % reference result cosTh   = cos(theta); % reference result y_sin   = zeros(niters, 1); sin_err = zeros(niters, 1); x_cos   = zeros(niters, 1); cos_err = zeros(niters, 1); fprintf('\n\nNITERS \tERROR\n'); fprintf('REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH\tREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH\n'); for n = 1:niters     [y_sin(n), x_cos(n)] = cordicsincos(theta, n);     sin_err(n) = abs(y_sin(n) - sinTh);     cos_err(n) = abs(x_cos(n) - cosTh);     if n < 10         fprintf('   %d \t %1.8f\n', n, cos_err(n));     else         fprintf('  %d \t %1.8f\n', n, cos_err(n));     end end fprintf('\n');  %% % *Plot the CORDIC approximation error on a bar graph* % figure(1); clf; bar(1:niters, cos_err(1:niters)); xlabel('Number of iterations','fontsize',12,'fontweight','b'); ylabel('Error','fontsize',12,'fontweight','b'); title('CORDIC approximation error for cos(pi/5) computation','fontsize',12,'fontweight','b'); axis([0 niters 0 0.14]);  %% % *Plot the X-Y results for 5 iterations* % Niter2Draw = 5; figure(2), clf, hold on plot(cos(0:0.1:pi/2), sin(0:0.1:pi/2), 'bREPLACE_WITH_DASH_DASH'); % semi-circle for i=1:Niter2Draw     plot([0 x_cos(i)],[0 y_sin(i)], 'LineWidth', 2); % CORDIC iteration result     text(x_cos(i),y_sin(i),int2str(i),'fontsize',12,'fontweight','b'); end plot(cos(theta), sin(theta), 'r*', 'MarkerSize', 20); % IDEAL result xlabel('X (COS)','fontsize',12,'fontweight','b') ylabel('Y (SIN)','fontsize',12,'fontweight','b') title('CORDIC iterations for cos(pi/5) computation','fontsize',12,'fontweight','b') axis equal; axis square;  %% Computing Fixed-point Sine with |cordicsin| % % *Create 1024 points between [-2*pi, 2*pi)* stepSize = pi/256; thRadDbl = (-2*pi):stepSize:(2*pi - stepSize); % double precision floating-point thRadFxp = sfi(thRadDbl, 12);            % signed, 12-bit fixed-point sinThRef = sin(double(thRadFxp));        % reference results % Use 12-bit quantized inputs and vary number of iterations from 4 to 10. % Compare fixed-point CORDIC vs. double-precision trig function results. for niters = 4:3:10     cdcSinTh  = cordicsin(thRadFxp,  niters);     errCdcRef = sinThRef - double(cdcSinTh);     figure; hold on; axis([-2*pi 2*pi -1.25 1.25]);     plot(thRadFxp, sinThRef,  'b');     plot(thRadFxp, cdcSinTh,  'g');     plot(thRadFxp, errCdcRef, 'r');     ylabel('sin(\Theta)','fontsize',12,'fontweight','b');     set(gca,'XTick',-2*pi:pi/2:2*pi);     set(gca,'XTickLabel',...         {'-2*pi', '-3*pi/2', '-pi', '-pi/2', ...         '0', 'pi/2', 'pi', '3*pi/2','2*pi'});     set(gca,'YTick',-1:0.5:1);     set(gca,'YTickLabel',{'-1.0','-0.5','0','0.5','1.0'});     ref_str = 'Reference: sin(double(\Theta))';     cdc_str = sprintf('12-bit CORDICSIN; N = %d', niters);     err_str = sprintf('Error (max = %f)', max(abs(errCdcRef)));     legend(ref_str, cdc_str, err_str);     title(cdc_str,'fontsize',12,'fontweight','b'); end  %% % *Compute the LSB Error for N = 10* fracLen = cdcSinTh.FractionLength; figure; plot(thRadFxp, abs(errCdcRef) * pow2(fracLen)); set(gca,'XTick',-2*pi:pi/2:2*pi); set(gca,'XTickLabel',...     {'-2*pi', '-3*pi/2', '-pi', '-pi/2', ...     '0', 'pi/2', 'pi', '3*pi/2','2*pi'}); ylabel('LSB Error: 1 LSB = 2^{-10}','fontsize',12,'fontweight','b'); title('LSB Error: 12-bit CORDICSIN; N=10','fontsize',12,'fontweight','b'); axis([-2*pi 2*pi 0 6]);  %% % *Compute Noise Floor* fft_mag = abs(fft(double(cdcSinTh))); max_mag = max(fft_mag); mag_db  = 20*log10(fft_mag/max_mag); figure; hold on; plot(0:1023, mag_db); sfdr = max(mag_db(3:end-1)); plot(0:1023,sfdr*ones(1,1024),'rREPLACE_WITH_DASH_DASH'); ylabel('dB Magnitude','fontsize',12,'fontweight','b'); title('63.59 dB Noise Floor: 12-bit CORDICSIN; N=10','fontsize',12,'fontweight','b'); % axis([0 1023 -120 0]); full FFT axis([0 round(1024*(pi/128)) -90 0]); % zoom in set(gca,'XTick',[0 round(1024*pi/256) round(1024*pi/128)]); set(gca,'XTickLabel',{'0','pi/256','pi/128'});  %% Accelerating the Fixed-Point |cordicsincos| Function with |emlmex| %  % A C-MEX function can be generated from MATLAB code using the % Embedded MATLAB(R) <matlab:doc('emlmex') emlmex> command. Typically, % running the generated C-MEX function can improve the simulation speed % (see [3]). The actual speed improvement depends on the simulation % platform being used. The following example shows how to accelerate the % fixed-point |cordicsincos| function using |emlmex|. % % The |emlmex| function compiles the MATLAB code into a C-MEX function.  % This step requires the creation of a temporary directory  % and write permissions in this directory. emlmexdir = [tempdir 'emlmexdir']; if ~exist(emlmexdir,'dir')     mkdir(emlmexdir); end emlcurdir = pwd; cd(emlmexdir) %% % Compile |cordicsincos| into a C-MEX file.  When you declare the number of % iterations to be a constant (e.g., |10|) using |emlcoder.egc(10)|, the % angle look-up table will also be constant, and thus won't be computed at % each iteration.  Additionally, when you call |cordicsincos_mex|, you no % longer need to give it the input argument for the number of iterations. % If you do try to pass in the number of iterations, the MEX-function will % error. %  % The data type of the input parameters determines whether the  % |cordicsincos| function performs fixed-point or floating-pointt % calculations. When the Embedded MATLAB subset generates code for this  % file, code is only generated for the specific data type.  In other words,  % if the THETA input argument is fixed point, then only fixed-point code is % generated. % inp = {thRadFxp, emlcoder.egc(10)}; %Example inputs for the function emlmex('cordicsincos', '-o', 'cordicsincos_mex',  '-eg', inp)  %% % First, calculate sine and cosine by calling |cordicsincos|. tstart = tic;  cordicsincos(thRadFxp,10); telapsed_Mcordicsincos = toc(tstart);  %% % Next, calculate sine and cosine by calling the MEX-function |cordicsincos_mex|. cordicsincos_mex(thRadFxp); % load the MEX file tstart = tic;  cordicsincos_mex(thRadFxp); telapsed_MEXcordicsincos = toc(tstart);  %% % Now, compare the speed. Type the following at the MATLAB command line  % to see the speed improvement on your platform: emlmex_speedup = telapsed_Mcordicsincos/telapsed_MEXcordicsincos;  %% % To clean up the temporary directory, run the following commands: cd(emlcurdir); clear cordicsincos_mex; status = rmdir(emlmexdir,'s');  % Close all figure windows close all;  %% References % % # Jack E. Volder, The CORDIC Trigonometric Computing Technique, IRE % Transactions on Electronic Computers, Volume EC-8, September 1959, % pp330-334. % # Ray Andraka, A survey of CORDIC algorithm for FPGA based computers, % Proceedings of the 1998 ACM/SIGDA sixth international symposium on Field % programmable gate arrays, Feb. 22-24, 1998, pp191-200 % # Speeding Up Fixed-Point Execution with the emlmex Function,  % in section "Working with the Fixed-Point Embedded MATLAB Subset" of  % Fixed-Point Toolbox User's Guide   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

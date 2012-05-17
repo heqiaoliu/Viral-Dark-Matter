@@ -1,0 +1,910 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Detailed Workflow for Managing Data with Model Reference</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="sldemo_mdlref_datamngt2.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"></div><div class="right">&nbsp;</div></div><div class="content"><h1>Detailed Workflow for Managing Data with Model Reference</h1><!--introduction--><p>This demo describes a number of tools and techniques that make up a workflow for managing data with model reference.</p><p>For a basic introduction to this topic, see: <a href="sldemo_mdlref_datamngt.html">Introduction to Managing Data with Model Reference</a>.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Demo Requirements</a></li><li><a href="#2">Open the Demo Model</a></li><li><a href="#3">Demo Content</a></li><li><a href="#4">Demo Outline</a></li><li><a href="#5">Referenced Model: Setting Up Parameters</a></li><li><a href="#16">Referenced Model: Defining the Shape of the Output Bus Signal</a></li><li><a href="#27">Referenced Model: Setting Initial Value for Bus Output</a></li><li><a href="#32">Referenced Model: Creating a Masked Model Block</a></li><li><a href="#33">Top Model: Parameterizing Model Blocks</a></li><li><a href="#42">Top Model: Scheduling Calls to the Referenced Model</a></li><li><a href="#43">Simulating the Top Model</a></li><li><a href="#48">Generating Code for the Top Model (Requires Real-Time Workshop)</a></li><li><a href="#50">Controlling the Type Name for the Model Argument</a></li><li><a href="#60">Controlling Representation of Parameters in the Top Model</a></li><li><a href="#64">Regenerate Code for the Top Model (Requires Real-Time Workshop)</a></li></ul></div><h2>Demo Requirements<a name="1"></a></h2><p>During this demo, Simulink&reg; and Real-Time Workshop&reg; generate code in a Simulink project directory created in the current directory. If you do not want to (or if you cannot) generate files in this directory, you should change your working directory. Real-Time Workshop is required to generate model reference binaries to be deployed in standalone applications.</p><p><b>If you plan to alter the demo models:</b></p><p>1. Preserve the demo in its original state by copying the following files from your MATLAB&reg; installation directory, without changing their names, to a different directory:</p><pre>toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_datamngt.mdl
+toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_datamngt_wsdata.m
+toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter_datamngt.mdl
+toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter_datamngt_lib.mdl
+toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter_datamngt_types.m
+toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter_datamngt_wsdata.m</pre><p>2. Change your current directory to the directory to which you copied the files.</p><p>3. Continue with the demo.</p><h2>Open the Demo Model<a name="2"></a></h2><p><a href="matlab:open_system('sldemo_mdlref_datamngt');"><tt>open_system('sldemo_mdlref_datamngt')</tt></a></p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt2_01.png" alt=""> <h2>Demo Content<a name="3"></a></h2><p>This demo uses a top model (<a href="matlab:open_system('sldemo_mdlref_datamngt')"><tt>sldemo_mdlref_datamngt</tt></a>) that contains three Model blocks: Counter1, Counter2, and Counter3. These blocks reference the same model (<a href="matlab:open_system('sldemo_mdlref_counter_datamngt');"><tt>sldemo_mdlref_counter_datamngt</tt></a>).</p><p>The referenced model implements a limited counter algorithm that:</p><div><ul><li>Resets the counter if the first trigger input changes</li><li>Increments the counter by a specified amount if the second input changes</li><li>Saturates the counter between the specified upper and lower limits</li></ul></div><p>The referenced model outputs a bus signal that contains:</p><div><ul><li><b>Count:</b> the value of the counter as an 8-bit integer</li><li><b>OverflowState:</b> an enumerated value that indicates whether the counter is at the upper limit, lower limit, or in range</li></ul></div><p>This model is configured to show a number of Simulink features working together:</p><div><ul><li><b>Tunable parameter structures:</b> Collect variables into a MATLAB structure that parameterizes the model. In this demo, the model arguments of the referenced model are defined as parameter structures.</li><li><b>Model arguments:</b> Pass different parameter values to each model reference instance.</li><li><b>Bus objects:</b> Define the "shape" of structures for signals and parameters used in the model reference interface. Define type name for structure parameters and signals in generated code.</li><li><b>Simulink.Bus.createMATLABStruct:</b> Static method for creating a MATLAB structure that matches the shape of the bus object.</li><li><b>Bus initialization:</b> Uses a parameter structure to initialize bus signals and states.</li><li><b>Masked Model block:</b> Creates a customized interface for a model reference block.</li><li><b>Triggered model reference:</b> Explicit control over scheduling of components.</li></ul></div><p>This demo also uses other features that are useful for managing data in Simulink:</p><div><ul><li><b>Simulink.saveVars:</b> Serialize workspace variables to a MATLAB script. Supports incremental modification, data differencing, and version control.</li><li><b>Simulink.findVars:</b> Discover how workspace variables are used by a model.</li></ul></div><h2>Demo Outline<a name="4"></a></h2><p><b>The sequence of steps in the demo is as follows:</b></p><p>1. Prepare the referenced model (<tt>sldemo_mdlref_counter_datamngt</tt>) to use structures for the signals and parameters in its external interface.</p><p>2. Prepare the top model (<tt>sldemo_mdlref_datamngt</tt>) to call the referenced model.</p><p>3. Simulate the top model and examine the results.</p><p>4. Generate code to create a standalone executable for the top model.</p><h2>Referenced Model: Setting Up Parameters<a name="5"></a></h2><p>The referenced model has two model arguments (CounterParams, CounterICs) that parameterize the blocks in the model. Model arguments provide different parameter values to each instance of a referenced model. In this model, the arguments are defined as parameter structures to reduce the number of arguments being passed to the referenced model.</p><p><b>The process for defining the model arguments is as follows:</b></p><p>1. Open the referenced model (<a href="matlab:open_system('sldemo_mdlref_counter_datamngt');"><tt>sldemo_mdlref_counter_datamngt</tt></a>).</p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt2_02.png" alt=""> <p>2. Define MATLAB structures to parameterize the referenced model.</p><pre>CounterParams.Increment  = int8(1);
+CounterParams.LowerLimit = int8(-10);
+CounterParams.UpperLimit = int8(10);</pre><pre>CounterICs.Count         = int8(0);
+CounterICs.OverflowState = SlDemoRangeCheck.InRange;</pre><p><b>NOTE:</b> This demo uses an 8-bit integer for the counter, so the numeric fields also use 8-bit integers.</p><p>3. Use the MATLAB structures as model arguments.</p><p>Model arguments are defined as variables in the model workspace of a referenced model.  You can use the <a href="matlab:daexplr;">Model Explorer</a> to view and edit the contents of the model workspace.</p><p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt_snapshot_01.png" alt=""> </p><p>You can initialize the model workspace from a number of different data sources. This demo uses a MATLAB script (<a href="matlab:edit('sldemo_mdlref_counter_datamngt_wsdata');"><tt>sldemo_mdlref_counter_datamngt_wsdata</tt></a>) to create the parameter structures to define the model arguments.  Using a MATLAB script makes it easy to create and modify the parameter structure outside the model.  It also facilitates incremental changes, version control, and data differencing.</p><p>You can create the MATLAB script manually, or use <b>Simulink.saveVars</b>:</p><pre>Simulink.saveVars('sldemo_mdlref_counter_datamngt_wsdata.m', 'CounterParams', 'CounterICs');</pre><p>Set the workspace's <b>Data source</b> to create the MATLAB structure in the model workspace and enter the variable name (CounterParams) into the <b>Model arguments</b> field in the model workspace's dialog box.</p><p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt_snapshot_02.png" alt=""> </p><p>Alternatively, you can configure the model workspace from the MATLAB command line:</p><pre>hWS = get_param('sldemo_mdlref_counter_datamngt', 'ModelWorkspace');
+hWS.DataSource = 'MATLAB Code';
+hWS.MATLABCode = 'sldemo_mdlref_counter_datamngt_wsdata';
+hWS.reload;
+set_param('sldemo_mdlref_counter_datamngt', ...
+          'ParameterArgumentNames', 'CounterParams,CounterICs');</pre><p>4. Explore how the referenced model uses the model arguments.</p><p>A number of blocks in the referenced model use the model arguments:</p><div><ul><li>A Constant block specifies the increment amount (CounterParams.Increment).</li><li>Various blocks inside the "Range Check" subsystem use the values of the lower and upper limits (CounterParams.LowerLimit and CounterParams.UpperLimit).</li><li>Various blocks use the initial condition of the counter (CounterICs.Count).</li><li>The root Outport block uses the initial condition structure (CounterICs) to initialize the system output prior to execution.</li></ul></div><p>You can use <b>Simulink.findVars</b> to discover the blocks that use the model argument.</p><pre>paramInfo = Simulink.findVars('sldemo_mdlref_counter_datamngt', ...
+                              'Name', 'CounterParams');
+icInfo    = Simulink.findVars('sldemo_mdlref_counter_datamngt', ...
+                              'SearchMethod', 'cached', ...
+                              'Name',         'CounterICs');
+paramBlks = paramInfo.UsedByBlocks
+icBlks    = icInfo.UsedByBlocks</pre><pre class="codeoutput">
+paramBlks = 
+
+    'sldemo_mdlref_counter_datamngt/Increment'
+    'sldemo_mdlref_counter_datamngt/Range Check/Detect Overflow'
+    'sldemo_mdlref_counter_datamngt/Range Check/Saturate Count'
+
+
+icBlks = 
+
+    'sldemo_mdlref_counter_datamngt/Initial Count'
+    'sldemo_mdlref_counter_datamngt/Previous Count'
+    'sldemo_mdlref_counter_datamngt/outputs'
+
+</pre><p><b>NOTE:</b> Once you have compiled the model, you can use Simulink.findVars to retrieve the <b>'cached'</b> variable usage information.</p><h2>Referenced Model: Defining the Shape of the Output Bus Signal<a name="16"></a></h2><p>The referenced model produces two results and packages them into a bus signal:</p><div><ul><li><b>Count:</b> the value of the counter as an 8-bit integer</li><li><b>OverflowState:</b> an enumerated value that indicates whether the counter is at the upper limit, lower limit, or in range</li></ul></div><p><b>To define the bus type for the root output of the referenced model:</b></p><p>1. Use the <a href="matlab:buseditor">Bus Editor</a> to define the bus object (OutputType).</p><p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt_snapshot_03.png" alt=""> </p><p>Alternatively, you can create the bus object at the MATLAB command line:</p><pre>OutputType = Simulink.Bus;
+OutputType.Elements = Simulink.BusElement;
+OutputType.Elements(1).Name = 'Count';
+OutputType.Elements(1).DataType = 'int8';
+OutputType.Elements(2) = Simulink.BusElement;
+OutputType.Elements(2).Name = 'OverflowState';
+OutputType.Elements(2).DataType = 'Enum: SlDemoRangeCheck';</pre><p>2. Configure the root outport of the referenced model to output a nonvirtual bus signal based on this bus object (OutputType).</p><p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt_snapshot_04.png" alt=""> </p><p>Alternatively, you can set the block parameters from the MATLAB command line:</p><pre>set_param('sldemo_mdlref_counter_datamngt/outputs', ...
+          'UseBusObject',      'on', ...
+          'BusObject',         'OutputType', ...
+          'BusOutputAsStruct', 'on');</pre><p>3. Create a MATLAB script to recreate this bus object.</p><p>This demo uses a MATLAB script (<a href="matlab:edit('sldemo_mdlref_datamngt_types');"><tt>sldemo_mdlref_datamngt_types</tt></a>) to recreate the bus objects used by the referenced model.</p><p>You can create this MATLAB script manually, or use <b>Simulink.saveVars</b>:</p><pre>Simulink.saveVars('sldemo_mdlref_counter_datamngt_types.m', 'OutputType');</pre><p>4. Configure the referenced model to create the global data that it uses.</p><p>It is common practice for a model to recreate all of the global data and types that it uses.  In this demo, the referenced model's <b>PreLoadFcn</b> is used to execute the MATLAB script that creates the bus objects for the referenced model. The referenced model does not use any other global variables.</p><p>To set the model's <b>PreLoadFcn</b>, open the <b>Model Properties</b> dialog box from the model's <b>File</b> menu or set it from the MATLAB command line.</p><pre>set_param('sldemo_mdlref_counter_datamngt', ...
+          'PreLoadFcn', 'sldemo_mdlref_counter_datamngt_types');</pre><p>5. Explore how the bus type is used in the model hierarchy.</p><p>This bus type forms part of the interface for the referenced model and is referred to by blocks in both the top and referenced models.  Use <b>find_mdlrefs</b> and <b>Simulink.findVars</b> to find out about all the places where this bus object is used in the model reference hierarchy.</p><pre>models = find_mdlrefs('sldemo_mdlref_datamngt');
+open_system(models);
+varInfo = Simulink.findVars(models, 'Name', 'OutputType');
+blks = vars.UsedByBlocks</pre><pre class="codeoutput">
+models = 
+
+    'sldemo_mdlref_counter_datamngt'
+    'sldemo_mdlref_datamngt'
+
+
+blks = 
+
+    'sldemo_mdlref_counter_datamngt/Initial Count'
+    'sldemo_mdlref_counter_datamngt/Previous Count'
+    'sldemo_mdlref_counter_datamngt/Range Check/Bus Creator'
+    'sldemo_mdlref_counter_datamngt/outputs'
+    'sldemo_mdlref_datamngt/Counter1'
+    'sldemo_mdlref_datamngt/Counter2'
+    'sldemo_mdlref_datamngt/Counter3'
+
+</pre><h2>Referenced Model: Setting Initial Value for Bus Output<a name="27"></a></h2><p>In general, the initial values for bus signals and states can be specified as '0', in which case all of the elements of the bus will be initialized to zero (or the relevant ground value). However, in certain cases, it is desirable to specify nonzero initial values for bus signals and states.  In this demo, the initial condition of the counter is tunable, so the initial value of output signal must be set consistently.</p><p><b>To specify the initial value of the output of the referenced model:</b></p><p>1. Create a parameter structure that is compatible with the bus signal that you want to initialize.  One of the model arguments (CounterICs) is a parameter structure that matches the shape of the output signal.  This structure was defined as follows:</p><pre>CounterICs.Count         = int8(0);
+CounterICs.OverflowState = SlDemoRangeCheck.InRange;</pre><p>Alternatively, you could have used the static method, <b>Simulink.Bus.createMATLABStruct</b> to create the structure using the ground value of the OutputType.</p><pre>CounterICs = Simulink.Bus.createMATLABStruct('OutputType');</pre><p>2. Open the dialog box for the root outport and enter the name of the structure (CounterICs) into the <b>Initial output</b> field.</p><p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt_snapshot_05.png" alt=""> </p><p>Alternatively, you can set the block parameters from the MATLAB command line:</p><pre>set_param('sldemo_mdlref_counter_datamngt/outputs', ...
+          'InitialOutput', 'CounterICs');</pre><p><b>NOTE:</b> In general, when initializing a bus signal or state, the parameter structure does not need to match the bus type exactly, but its fields must be a subset of the elements in the bus object and the attributes of these fields must match the elements in the bus object.</p><h2>Referenced Model: Creating a Masked Model Block<a name="32"></a></h2><p>It is often useful to mask Model blocks to customize the user interface. This demo creates a mask with a single mask parameter, for the model argument of the underlying Model block.  To facilitate reuse, you can put the masked Model block into a library and define the mask on the library block.</p><p>Open the library to see the masked Model block (<a href="matlab:open_system('sldemo_mdlref_counter_datamngt_lib')"><tt>sldemo_mdlref_counter_datamngt_lib</tt></a>).</p><h2>Top Model: Parameterizing Model Blocks<a name="33"></a></h2><p>The referenced model is configured to accept a structure for its model argument. This demo calls each instance of the referenced model with different parameter values.</p><p>1. Open the top model (<a href="matlab:open_system('sldemo_mdlref_datamngt');"><tt>sldemo_mdlref_datamngt</tt></a>).</p><p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt2_01.png" alt=""> </p><p>2. Create parameter structures with the same "shape" as the model arguments defined in the referenced model.</p><pre>Param1.Increment  = int8(1);
+Param1.LowerLimit = int8(-20);
+Param1.UpperLimit = int8(20);</pre><pre>Param2 = Param1;
+Param2.Increment  = int8(2);</pre><pre>IC1.Count         = int8(0);
+IC1.OverflowState = SlDemoRangeCheck.InRange;</pre><pre>IC2 = IC1;
+IC2.Count = int8(-10);</pre><p>3. Set the mask parameters on the masked Model blocks to use these parameters.</p><p>For example, the parameters of the first Model block (<a href="matlab:open_system('sldemo_mdlref_datamngt/Counter1');"><tt>'sldemo_mdlref_datamngt/Counter1'</tt></a>) are set as:</p><div><ul><li><b>Param1</b> for the <b>Counter parameters</b></li><li><b>IC1</b> for the <b>Initial conditions</b></li></ul></div><p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt_snapshot_06.png" alt=""> </p><p>Alternatively, you can set the block parameters from the MATLAB command line:</p><pre>set_param('sldemo_mdlref_datamngt/Counter1', ...
+          'Params', 'Param1', ...
+          'ICs',    'IC1');</pre><p>3. Create a MATLAB script to recreate these workspace variables.</p><p>This demo uses a MATLAB script (<a href="matlab:edit('sldemo_mdlref_datamngt_wsdata');"><tt>sldemo_mdlref_datamngt_wsdata</tt></a>) to recreate these workspace variables.</p><p>You can create this MATLAB script manually, or use <b>Simulink.saveVars</b>:</p><pre>Simulink.saveVars('sldemo_mdlref_datamngt_wsdata.m', 'Param*');</pre><p>4. Configure the top model to create all global variables.</p><p>It is good practice for the top model to recreate all of the global data and types used throughout the model reference hierarchy.  This configuration avoids loading referenced models when simulating the top model.</p><p>In this demo, the top model's <b>PreLoadFcn</b> is used to execute the MATLAB scripts that create the workspace data for the top model and the types for the referenced model.  The referenced model does not use any global data.</p><pre>set_param('sldemo_mdlref_datamngt', ...
+          'PreLoadFcn', ['sldemo_mdlref_datamngt_wsdata; ', ...
+                         'sldemo_mdlref_counter_datamngt_types']);</pre><h2>Top Model: Scheduling Calls to the Referenced Model<a name="42"></a></h2><p>As mentioned earlier, the referenced model implements a limited counter algorithm with two trigger inputs.  The algorithm detects "rising edges" in the trigger inputs and reacts as follows:</p><div><ul><li>Resets the counter if the first trigger input changes.</li><li>Increments the counter by a specified amount if the second input changes.</li></ul></div><p>In this demo, you drive all three instances of the counter algorithm with the same trigger inputs, generated by the Stimulus subsystem.  The period and sample time of the trigger inputs are defined by the values entered for the mask parameters of the Stimulus subsystem:</p><div><ul><li>Reset counter every 4 seconds.</li><li>Increment counter 5 times per second (period = 0.2 second).</li><li>Sample time is 0.1 second.</li></ul></div><p><b>NOTE:</b> Reset and increment periods must be at least 2 times the sample time.</p><h2>Simulating the Top Model<a name="43"></a></h2><p>1. Save or close the referenced model.</p><p>You need to save the referenced model before it can be used by the top model. Alternatively, you can close the referenced model and use the original version of the model provided with this demo.</p><p>2. Simulate the top model by selecting <b>Start</b> from the <b>Simulation</b> menu or by typing <b>Ctrl+T</b>.</p><p><a href="matlab:sim('sldemo_mdlref_datamngt');"><tt>sim('sldemo_mdlref_datamngt')</tt></a></p><p><b>NOTE:</b> Simulating the top model automatically generates a simulation target for the referenced model.</p><p>3. Review the simulation results as displayed by the Scope blocks.</p><img vspace="5" hspace="5" src="sldemo_mdlref_datamngt2_03.png" alt=""> <img vspace="5" hspace="5" src="sldemo_mdlref_datamngt2_04.png" alt=""> <img vspace="5" hspace="5" src="sldemo_mdlref_datamngt2_05.png" alt=""> <h2>Generating Code for the Top Model (Requires Real-Time Workshop)<a name="48"></a></h2><p>Generate code and build a standalone executable for the top model by selecting <b>Real-Time Workshop &gt; Build Model</b> from the <b>Tools</b> menu or by typing <b>Ctrl+B</b>.</p><p><a href="matlab:rtwbuild('sldemo_mdlref_datamngt');"><tt>rtwbuild('sldemo_mdlref_datamngt')</tt></a></p><p><b>NOTE:</b> When you generate code for the top model, Real-Time Workshop automatically generates code for the referenced model. Use Real-Time Workshop&reg; Embedded Coder&#8482; to generate embedded code for production deployment.</p><h2>Controlling the Type Name for the Model Argument<a name="50"></a></h2><p>By default, Real-Time Workshop generates an automatic name for the type of the parameter structures.  This name is unique and deterministic, but not easy to recognize.  You can control this type name by using Simulink.Parameter objects to define the parameter structures and Simulink.Bus objects to define the type.</p><p>1. Define the bus type for the model argument by using the <a href="matlab:buseditor">Bus Editor</a> or by typing the following commands at the MATLAB command line:</p><pre>CounterParamType = Simulink.Bus;
+CounterParamType.Elements = Simulink.BusElement;
+CounterParamType.Elements(1).Name     = 'Increment';
+CounterParamType.Elements(1).DataType = 'int8';
+CounterParamType.Elements(2) = Simulink.BusElement;
+CounterParamType.Elements(2).Name     = 'LowerLimit';
+CounterParamType.Elements(2).DataType = 'int8';
+CounterParamType.Elements(3) = Simulink.BusElement;
+CounterParamType.Elements(3).Name     = 'UpperLimit';
+CounterParamType.Elements(3).DataType = 'int8';</pre><p>2. Modify the existing MATLAB script to recreate this bus object.</p><p>This bus type must be defined in the base workspace, along with the bus type for the referenced model's output.  You can manually modify the MATLAB script that defines the types for the referenced model or use <b>Simulink.saveVars</b> to append this variable to the existing MATLAB script.</p><pre>Simulink.saveVars('sldemo_mdlref_counter_datamngt_types.m', 'CounterParamType', '-append');</pre><p>3. Create Simulink.Parameters to define the model arguments.</p><p>To associate the bus types with the model arguments, you must use Simulink.Parameter objects in place of the MATLAB structures in the model workspace of the referenced model.</p><pre>CounterParams = Simulink.Parameter;
+CounterParams.Value.Increment  = 1;
+CounterParams.Value.LowerLimit = -10;
+CounterParams.Value.UpperLimit = 10;
+CounterParams.DataType = 'Bus: CounterParamType';</pre><pre>CounterICs = Simulink.Parameter;
+CounterICs.Value.Count         = 0;
+CounterICs.Value.OverflowState = SlDemoRangeCheck.InRange;
+CounterICs.DataType = 'Bus: OutputType';</pre><p><b>NOTE:</b> When you set the data type of a parameter object to be a bus, you can use double-precision values for the numeric fields of the parameter structure.  Simulink converts these double-precision values to the appropriate numeric data type during model compilation.</p><p>You can manually modify the MATLAB script that defines the model argument or use <b>Simulink.saveVars</b> to update the existing MATLAB script.</p><pre>Simulink.saveVars('sldemo_mdlref_counter_datamngt_wsdata.m', '-update');</pre><p><b>NOTE:</b> When you use the <b>-update</b> option, you do not need to specify the variables to be written out because <b>Simulink.saveVars</b> writes out only the values of variables already defined in the MATLAB script.</p><p>5. Reload the contents of the model workspace.</p><p>You have modified the data source that is used by the referenced model's workspace. If this model is open, you must reload the contents of the model workspace.</p><p>You can reload by using the model workspace's dialog box or at the MATLAB command line.</p><pre>hWS = get_param('sldemo_mdlref_counter_datamngt', 'ModelWorkspace');
+hWS.reload;</pre><h2>Controlling Representation of Parameters in the Top Model<a name="60"></a></h2><p>You can use a similar approach to convert the parameter structures in the top model to use Simulink.Parameter objects. This configuration gives you control over the type name and enables you to control how these parameters appear in the generated code.</p><p>1. Create Simulink.Parameter objects with the ExportedGlobal storage class to define the parameter structures for the top model as a exported, tunable variables in the generated code.</p><pre>Param1 = Simulink.Parameter;
+Param1.Value.Increment  = 1;
+Param1.Value.LowerLimit = -10;
+Param1.Value.UpperLimit = 10;
+Param1.DataType = 'Bus: CounterParamType';
+Param1.RTWInfo.StorageClass = 'ExportedGlobal';</pre><pre>Param2 = Param1.deepCopy;
+Param2.Value.Increment = 2;</pre><pre>IC1 = Simulink.Parameter;
+IC1.Value.Count = 0;
+IC1.Value.OverflowState = SlDemoRangeCheck.InRange;
+IC1.DataType = 'Bus: OutputType';
+IC1.RTWInfo.StorageClass = 'ExportedGlobal';</pre><pre>IC2 = IC1.deepCopy;
+IC2.Value.Count = -10;</pre><p>2. Modify the existing MATLAB script to recreate these workspace variables.</p><p>You can manually modify the MATLAB script that defines the parameters for the top model or use <b>Simulink.saveVars</b> to update the existing MATLAB script.</p><pre>Simulink.saveVars('sldemo_mdlref_datamngt_wsdata.m', '-update');</pre><p><b>NOTE:</b> When you use the <b>-update</b> option, you do not need to specify the variables to be written out because <b>Simulink.saveVars</b> writes out only the values of variables already defined in the MATLAB script.</p><h2>Regenerate Code for the Top Model (Requires Real-Time Workshop)<a name="64"></a></h2><p>Generate code and build a standalone executable for the top model by selecting <b>Real-Time Workshop &gt; Build Model</b> from the <b>Tools</b> menu or by typing <b>Ctrl+B</b>.</p><p><a href="matlab:rtwbuild('sldemo_mdlref_datamngt');"><tt>rtwbuild('sldemo_mdlref_datamngt')</tt></a></p><p class="footer">Copyright 1990-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Detailed Workflow for Managing Data with Model Reference
+% This demo describes a number of tools and techniques that make up
+% a workflow for managing data with model reference.
+%
+% For a basic introduction to this topic, see: <sldemo_mdlref_datamngt.html Introduction to Managing Data with Model Reference>.
+
+%   Copyright 1990-2010 The MathWorks, Inc.
+%   $Revision: 1.1.10.5.2.1 $  $Date: 2010/06/07 13:34:21 $
+
+%% Demo Requirements
+% During this demo, Simulink(R) and Real-Time Workshop(R) generate code
+% in a Simulink project directory created in the current directory.
+% If you do not want to (or if you cannot) generate files in this
+% directory, you should change your working directory. Real-Time Workshop
+% is required to generate model reference binaries to be deployed in
+% standalone applications.
+% 
+% *If you plan to alter the demo models:*
+% 
+% 1. Preserve the demo in its original state by copying the following files
+% from your MATLAB(R) installation directory, without changing their names,
+% to a different directory:     
+%
+%  toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_datamngt.mdl
+%  toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_datamngt_wsdata.m
+%  toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter_datamngt.mdl
+%  toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter_datamngt_lib.mdl
+%  toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter_datamngt_types.m
+%  toolbox/simulink/simdemos/simfeatures/sldemo_mdlref_counter_datamngt_wsdata.m
+%
+% 2. Change your current directory to the directory to which you copied the files.
+%
+% 3. Continue with the demo.
+
+% DEVELOPER COMMENT:
+% REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH
+% CANNOT TAKE QT SNAPSHOTS IN BaT BECAUSE IT RELIES ON SCREEN CAPTURE.
+% ==> TAKE SNAPSHOTS IN A PC SANDBOX AND SUBMIT WITH DEMO.
+takeSnapshots = false;
+if evalin('base', 'exist(''TakeDemoSnapshots'', ''var'');');
+  takeSnapshots = evalin('base', 'TakeDemoSnapshots');
+end
+
+origPath = addpath(fullfile(matlabroot, 'toolbox', 'simulink', 'internal'));
+workDir = tempname;
+mkdir(workDir);
+origDir  = cd(workDir);
+addpath(origDir);
+
+%% Open the Demo Model
+% <matlab:open_system('sldemo_mdlref_datamngt'); |open_system('sldemo_mdlref_datamngt')|>
+open_system('sldemo_mdlref_datamngt');
+
+close_system('sldemo_mdlref_datamngt/Scope1');
+close_system('sldemo_mdlref_datamngt/Scope2');
+close_system('sldemo_mdlref_datamngt/Scope3');
+
+%% Demo Content
+% This demo uses a top model (<matlab:open_system('sldemo_mdlref_datamngt') |sldemo_mdlref_datamngt|>)
+% that contains three Model blocks: Counter1, Counter2, and Counter3.
+% These blocks reference the same model
+% (<matlab:open_system('sldemo_mdlref_counter_datamngt'); |sldemo_mdlref_counter_datamngt|>).
+%
+% The referenced model implements a limited counter algorithm that:
+%
+% * Resets the counter if the first trigger input changes
+% * Increments the counter by a specified amount if the second input changes
+% * Saturates the counter between the specified upper and lower limits
+%
+% The referenced model outputs a bus signal that contains:
+%
+% * *Count:* the value of the counter as an 8-bit integer
+% * *OverflowState:* an enumerated value that indicates whether the counter is
+% at the upper limit, lower limit, or in range
+%
+% This model is configured to show a number of Simulink features working together:
+% 
+% * *Tunable parameter structures:* Collect variables into a MATLAB structure
+% that parameterizes the model. In this demo, the model arguments of the referenced
+% model are defined as parameter structures.
+% * *Model arguments:* Pass different parameter values to each model
+% reference instance.
+% * *Bus objects:* Define the "shape" of structures for signals and parameters
+% used in the model reference interface. Define type name for structure
+% parameters and signals in generated code.
+% * *Simulink.Bus.createMATLABStruct:* Static method for creating a MATLAB
+% structure that matches the shape of the bus object.
+% * *Bus initialization:* Uses a parameter structure to initialize bus signals
+% and states.
+% * *Masked Model block:* Creates a customized interface for a model
+% reference block.
+% * *Triggered model reference:* Explicit control over scheduling of components.
+%
+% This demo also uses other features that are useful for managing data in
+% Simulink:
+%
+% * *Simulink.saveVars:* Serialize workspace variables to a MATLAB script.
+% Supports incremental modification, data differencing, and version control.
+% * *Simulink.findVars:* Discover how workspace variables are used by a model.
+
+%% Demo Outline
+% *The sequence of steps in the demo is as follows:*
+%
+% 1. Prepare the referenced model (|sldemo_mdlref_counter_datamngt|) to use
+% structures for the signals and parameters in its external interface.
+%
+% 2. Prepare the top model (|sldemo_mdlref_datamngt|) to call the
+% referenced model.
+%
+% 3. Simulate the top model and examine the results.
+%
+% 4. Generate code to create a standalone executable for the top model.
+
+%% Referenced Model: Setting Up Parameters
+% The referenced model has two model arguments (CounterParams, CounterICs)
+% that parameterize the blocks in the model. Model arguments provide
+% different parameter values to each instance of a referenced model. In
+% this model, the arguments are defined as parameter structures to reduce
+% the number of arguments being passed to the referenced model.
+%
+% *The process for defining the model arguments is as follows:*
+
+%%
+% 1. Open the referenced model (<matlab:open_system('sldemo_mdlref_counter_datamngt'); |sldemo_mdlref_counter_datamngt|>).
+open_system('sldemo_mdlref_counter_datamngt');
+
+%%
+% 2. Define MATLAB structures to parameterize the referenced model.
+%
+%  CounterParams.Increment  = int8(1);
+%  CounterParams.LowerLimit = int8(-10);
+%  CounterParams.UpperLimit = int8(10);
+%
+%  CounterICs.Count         = int8(0);
+%  CounterICs.OverflowState = SlDemoRangeCheck.InRange;
+CounterParams.Increment  = int8(1);
+CounterParams.LowerLimit = int8(-10);
+CounterParams.UpperLimit = int8(10);
+
+CounterICs.Count         = int8(0);
+CounterICs.OverflowState = SlDemoRangeCheck.InRange;
+
+clear CounterParams CounterICs;
+
+%%
+% *NOTE:* This demo uses an 8-bit integer for the counter, so the numeric fields
+% also use 8-bit integers.
+
+%%
+% 3. Use the MATLAB structures as model arguments.
+%
+% Model arguments are defined as variables in the model workspace of a referenced
+% model.  You can use the <matlab:daexplr; Model Explorer> to view and edit the
+% contents of the model workspace.
+%
+% <<sldemo_mdlref_datamngt_snapshot_01.png>>
+
+if takeSnapshots
+  modelObj = get_param('sldemo_mdlref_counter_datamngt', 'Object');
+  children = modelObj.getChildren;
+  wsNode   = children(1);
+  assert(isa(wsNode, 'DAStudio.WorkspaceNode'));
+  
+  me = daexplr;
+  imme = DAStudio.imExplorer(me);
+  imme.selectTreeViewNode(wsNode);
+  me.showDialogView(false);
+  me.position = [0 0 840 400];
+
+  take_qt_snapshot(me, [origDir, filesep, 'sldemo_mdlref_datamngt_snapshot_01.png'], 'png');
+end
+
+%%
+% You can initialize the model workspace from a number of different data sources.
+% This demo uses a MATLAB script (<matlab:edit('sldemo_mdlref_counter_datamngt_wsdata'); |sldemo_mdlref_counter_datamngt_wsdata|>)
+% to create the parameter structures to define the model arguments.  Using a
+% MATLAB script makes it easy to create and modify the parameter structure
+% outside the model.  It also facilitates incremental changes, version control,
+% and data differencing.
+%
+% You can create the MATLAB script manually, or use *Simulink.saveVars*:
+%
+%  Simulink.saveVars('sldemo_mdlref_counter_datamngt_wsdata.m', 'CounterParams', 'CounterICs');
+
+%%
+% Set the workspace's *Data source* to create the MATLAB structure in the
+% model workspace and enter the variable name (CounterParams) into the
+% *Model arguments* field in the model workspace's dialog box.
+%
+% <<sldemo_mdlref_datamngt_snapshot_02.png>>
+
+if takeSnapshots
+  dlg = DAStudio.Dialog(wsNode);
+  take_qt_snapshot(dlg, [origDir, filesep, 'sldemo_mdlref_datamngt_snapshot_02.png'], 'png');
+end
+
+%%
+% Alternatively, you can configure the model workspace from the MATLAB command line:
+%
+%  hWS = get_param('sldemo_mdlref_counter_datamngt', 'ModelWorkspace');
+%  hWS.DataSource = 'MATLAB Code';
+%  hWS.MATLABCode = 'sldemo_mdlref_counter_datamngt_wsdata';
+%  hWS.reload;
+%  set_param('sldemo_mdlref_counter_datamngt', ...
+%            'ParameterArgumentNames', 'CounterParams,CounterICs');
+hWS = get_param('sldemo_mdlref_counter_datamngt', 'ModelWorkspace');
+hWS.DataSource = 'MATLAB Code';
+hWS.MATLABCode = 'sldemo_mdlref_counter_datamngt_wsdata';
+hWS.reload;
+set_param('sldemo_mdlref_counter_datamngt', ...
+          'ParameterArgumentNames', 'CounterParams,CounterICs');
+
+%%
+% 4. Explore how the referenced model uses the model arguments.
+%%
+% A number of blocks in the referenced model use the model arguments:
+%
+% * A Constant block specifies the increment amount (CounterParams.Increment).
+% * Various blocks inside the "Range Check" subsystem use the values of the
+% lower and upper limits (CounterParams.LowerLimit and CounterParams.UpperLimit).
+% * Various blocks use the initial condition of the counter (CounterICs.Count).
+% * The root Outport block uses the initial condition structure (CounterICs)
+% to initialize the system output prior to execution.
+%
+% You can use *Simulink.findVars* to discover the blocks that use the
+% model argument.
+%
+%  paramInfo = Simulink.findVars('sldemo_mdlref_counter_datamngt', ...
+%                                'Name', 'CounterParams');
+%  icInfo    = Simulink.findVars('sldemo_mdlref_counter_datamngt', ...
+%                                'SearchMethod', 'cached', ...
+%                                'Name',         'CounterICs');
+%  paramBlks = paramInfo.UsedByBlocks
+%  icBlks    = icInfo.UsedByBlocks
+paramInfo = Simulink.findVars('sldemo_mdlref_counter_datamngt', ...
+                              'Name', 'CounterParams');
+icInfo    = Simulink.findVars('sldemo_mdlref_counter_datamngt', ...
+                              'SearchMethod', 'cached', ...
+                              'Name',         'CounterICs');
+paramBlks = paramInfo.UsedByBlocks %#ok PUBLISH COMMAND-LINE OUTPUT
+icBlks    = icInfo.UsedByBlocks    %#ok PUBLISH COMMAND-LINE OUTPUT
+
+%%
+% *NOTE:* Once you have compiled the model, you can use Simulink.findVars to retrieve the
+% *'cached'* variable usage information.
+
+%% Referenced Model: Defining the Shape of the Output Bus Signal
+% The referenced model produces two results and packages them into a bus signal:
+%
+% * *Count:* the value of the counter as an 8-bit integer
+% * *OverflowState:* an enumerated value that indicates whether the counter is
+% at the upper limit, lower limit, or in range
+
+%%
+% *To define the bus type for the root output of the referenced model:*
+%
+% 1. Use the <matlab:buseditor Bus Editor> to define the bus object (OutputType).
+%
+% <<sldemo_mdlref_datamngt_snapshot_03.png>>
+
+if takeSnapshots
+  buseditor;
+  be = BusEditor.getexplorer;
+  be.position = [0 0 840 400];
+  be.showDialogView(false);
+  imme = DAStudio.imExplorer(be);
+  imme.selectTreeViewNode(helpgetvtnofname(imme,'OutputType'));
+
+  take_qt_snapshot(be, [origDir, filesep, 'sldemo_mdlref_datamngt_snapshot_03.png'], 'png');
+end
+
+%%
+% Alternatively, you can create the bus object at the MATLAB command line:
+%
+%  OutputType = Simulink.Bus;
+%  OutputType.Elements = Simulink.BusElement;
+%  OutputType.Elements(1).Name = 'Count';
+%  OutputType.Elements(1).DataType = 'int8';
+%  OutputType.Elements(2) = Simulink.BusElement;
+%  OutputType.Elements(2).Name = 'OverflowState';
+%  OutputType.Elements(2).DataType = 'Enum: SlDemoRangeCheck';
+OutputType = Simulink.Bus;
+OutputType.Elements = Simulink.BusElement;
+OutputType.Elements(1).Name = 'Count';
+OutputType.Elements(1).DataType = 'int8';
+OutputType.Elements(2) = Simulink.BusElement;
+OutputType.Elements(2).Name = 'OverflowState';
+OutputType.Elements(2).DataType = 'Enum: SlDemoRangeCheck';
+
+%%
+% 2. Configure the root outport of the referenced model to output a nonvirtual
+% bus signal based on this bus object (OutputType).
+%
+% <<sldemo_mdlref_datamngt_snapshot_04.png>>
+
+if takeSnapshots
+  open_system('sldemo_mdlref_counter_datamngt/outputs');
+  
+  dlg = DAStudio.ToolRoot.getOpenDialogs;
+  dlg = find(dlg, 'dialogTag', 'Outport');
+  imd = DAStudio.imDialog.getIMWidgets(dlg);
+  tabs = get(find(imd, '-isa', 'DAStudio.imTabBar'), 'Tag');
+  dlg.setActiveTab(tabs, 1);
+
+  take_qt_snapshot(dlg, [origDir, filesep, 'sldemo_mdlref_datamngt_snapshot_04.png'], 'png');
+
+  close_system('sldemo_mdlref_counter_datamngt/outputs');
+end
+
+%%
+% Alternatively, you can set the block parameters from the MATLAB command line:
+%
+%  set_param('sldemo_mdlref_counter_datamngt/outputs', ...
+%            'UseBusObject',      'on', ...
+%            'BusObject',         'OutputType', ...
+%            'BusOutputAsStruct', 'on');
+set_param('sldemo_mdlref_counter_datamngt/outputs', ...
+          'UseBusObject',      'on', ...
+          'BusObject',         'OutputType', ...
+          'BusOutputAsStruct', 'on');
+
+%%
+% 3. Create a MATLAB script to recreate this bus object.
+%%
+% This demo uses a MATLAB script (<matlab:edit('sldemo_mdlref_datamngt_types'); |sldemo_mdlref_datamngt_types|>)
+% to recreate the bus objects used by the referenced model.
+%
+% You can create this MATLAB script manually, or use *Simulink.saveVars*:
+%
+%  Simulink.saveVars('sldemo_mdlref_counter_datamngt_types.m', 'OutputType');
+
+%%
+% 4. Configure the referenced model to create the global data that it uses.
+%%
+% It is common practice for a model to recreate all of the global data and
+% types that it uses.  In this demo, the referenced model's *PreLoadFcn* is used
+% to execute the MATLAB script that creates the bus objects for the referenced model.
+% The referenced model does not use any other global variables.
+%
+% To set the model's *PreLoadFcn*, open the *Model Properties* dialog box from
+% the model's *File* menu or set it from the MATLAB command line.
+%
+%  set_param('sldemo_mdlref_counter_datamngt', ...
+%            'PreLoadFcn', 'sldemo_mdlref_counter_datamngt_types');
+set_param('sldemo_mdlref_counter_datamngt', ...
+          'PreLoadFcn', 'sldemo_mdlref_counter_datamngt_types');
+
+%%
+% 5. Explore how the bus type is used in the model hierarchy.
+%%
+% This bus type forms part of the interface for the referenced model and is
+% referred to by blocks in both the top and referenced models.  Use
+% *find_mdlrefs* and *Simulink.findVars* to find out about all the places
+% where this bus object is used in the model reference hierarchy.
+%
+%  models = find_mdlrefs('sldemo_mdlref_datamngt');
+%  open_system(models);
+%  varInfo = Simulink.findVars(models, 'Name', 'OutputType');
+%  blks = vars.UsedByBlocks
+models = find_mdlrefs('sldemo_mdlref_datamngt') %#ok PUBLISH COMMAND-LINE OUTPUT
+open_system(models);
+
+% DEVELOPER COMMENT: NEED TO USE EVALC TO HIDE COMMAND-LINE OUTPUT WHEN PUBLISHING
+evalc('varInfo = Simulink.findVars(models, ''Name'', ''OutputType'');');
+
+blks = varInfo.UsedByBlocks                           %#ok PUBLISH COMMAND-LINE OUTPUT
+
+%% Referenced Model: Setting Initial Value for Bus Output
+% In general, the initial values for bus signals and states can be specified as '0',
+% in which case all of the elements of the bus will be initialized to zero (or the
+% relevant ground value). However, in certain cases, it is desirable to specify
+% nonzero initial values for bus signals and states.  In this demo, the initial
+% condition of the counter is tunable, so the initial value of output signal must
+% be set consistently.
+%
+% *To specify the initial value of the output of the referenced model:*
+%
+% 1. Create a parameter structure that is compatible with the bus signal that
+% you want to initialize.  One of the model arguments (CounterICs) is a parameter
+% structure that matches the shape of the output signal.  This structure was
+% defined as follows:
+%
+%  CounterICs.Count         = int8(0);
+%  CounterICs.OverflowState = SlDemoRangeCheck.InRange;
+CounterICs.Count         = int8(0);
+CounterICs.OverflowState = SlDemoRangeCheck.InRange;
+
+%%
+% Alternatively, you could have used the static method, *Simulink.Bus.createMATLABStruct*
+% to create the structure using the ground value of the OutputType.
+%
+%  CounterICs = Simulink.Bus.createMATLABStruct('OutputType');
+CounterICs = Simulink.Bus.createMATLABStruct('OutputType'); %#ok
+
+%%
+% 2. Open the dialog box for the root outport and enter the name of the
+% structure (CounterICs) into the *Initial output* field.
+%
+% <<sldemo_mdlref_datamngt_snapshot_05.png>>
+
+if takeSnapshots
+  open_system('sldemo_mdlref_counter_datamngt/outputs');
+  
+  dlg = DAStudio.ToolRoot.getOpenDialogs;
+  dlg = find(dlg, 'dialogTag', 'Outport');
+  imd = DAStudio.imDialog.getIMWidgets(dlg);
+  tabs = get(find(imd, '-isa', 'DAStudio.imTabBar'), 'Tag');
+  dlg.setActiveTab(tabs, 0);
+
+  take_qt_snapshot(dlg, [origDir, filesep, 'sldemo_mdlref_datamngt_snapshot_05.png'], 'png');
+
+  close_system('sldemo_mdlref_counter_datamngt/outputs');
+end
+
+%%
+% Alternatively, you can set the block parameters from the MATLAB command line:
+%
+%  set_param('sldemo_mdlref_counter_datamngt/outputs', ...
+%            'InitialOutput', 'CounterICs');
+set_param('sldemo_mdlref_counter_datamngt/outputs', ...
+          'InitialOutput', 'CounterICs');
+
+%%
+% *NOTE:* In general, when initializing a bus signal or state, the parameter
+% structure does not need to match the bus type exactly, but its fields must be
+% a subset of the elements in the bus object and the attributes of these fields
+% must match the elements in the bus object.
+
+%% Referenced Model: Creating a Masked Model Block
+% It is often useful to mask Model blocks to customize the user interface.
+% This demo creates a mask with a single mask parameter, for the model argument
+% of the underlying Model block.  To facilitate reuse, you can put the masked
+% Model block into a library and define the mask on the library block.
+%
+% Open the library to see the masked Model block
+% (<matlab:open_system('sldemo_mdlref_counter_datamngt_lib') |sldemo_mdlref_counter_datamngt_lib|>).
+
+%% Top Model: Parameterizing Model Blocks
+% The referenced model is configured to accept a structure for its model
+% argument. This demo calls each instance of the referenced model with
+% different parameter values.
+%
+% 1. Open the top model (<matlab:open_system('sldemo_mdlref_datamngt'); |sldemo_mdlref_datamngt|>).
+
+% DEVELOPER COMMENT: HARD-CODED FILE NAME = SAME AS FIRST IMAGE IN THE DOCUMENT
+
+%%
+% <<sldemo_mdlref_datamngt2_01.png>>
+
+%%
+% 2. Create parameter structures with the same "shape" as the model
+% arguments defined in the referenced model.
+%
+%  Param1.Increment  = int8(1);
+%  Param1.LowerLimit = int8(-20);
+%  Param1.UpperLimit = int8(20);
+%  
+%  Param2 = Param1;
+%  Param2.Increment  = int8(2);
+%
+%  IC1.Count         = int8(0);
+%  IC1.OverflowState = SlDemoRangeCheck.InRange;
+%
+%  IC2 = IC1;
+%  IC2.Count = int8(-10);
+clear Param1 Param2 IC1 IC2;
+Param1.Increment  = int8(1);
+Param1.LowerLimit = int8(-20);
+Param1.UpperLimit = int8(20);
+
+Param2 = Param1;
+Param2.Increment  = int8(2);
+
+IC1.Count         = int8(0);
+IC1.OverflowState = SlDemoRangeCheck.InRange;
+
+IC2 = IC1;
+IC2.Count = int8(-10);
+
+%%
+% 3. Set the mask parameters on the masked Model blocks to use these parameters.
+%
+% For example, the parameters of the first Model block
+% (<matlab:open_system('sldemo_mdlref_datamngt/Counter1'); |'sldemo_mdlref_datamngt/Counter1'|>)
+% are set as:
+% 
+% * *Param1* for the *Counter parameters*
+% * *IC1* for the *Initial conditions*
+%
+% <<sldemo_mdlref_datamngt_snapshot_06.png>>
+
+if takeSnapshots
+  open_system('sldemo_mdlref_datamngt/Counter1');
+  
+  dlg = DAStudio.ToolRoot.getOpenDialogs;
+  dlg = find(dlg, 'dialogTag', 'ModelReference.SlDemoMdlRefCounter');
+
+  take_qt_snapshot(dlg, [origDir, filesep, 'sldemo_mdlref_datamngt_snapshot_06.png'], 'png');
+
+  close_system('sldemo_mdlref_datamngt/Counter1');
+end
+
+%%
+% Alternatively, you can set the block parameters from the MATLAB command line:
+%
+%  set_param('sldemo_mdlref_datamngt/Counter1', ...
+%            'Params', 'Param1', ...
+%            'ICs',    'IC1');
+set_param('sldemo_mdlref_datamngt/Counter1', 'Params', 'Param1', 'ICs', 'IC1');
+set_param('sldemo_mdlref_datamngt/Counter2', 'Params', 'Param2', 'ICs', 'IC1');
+set_param('sldemo_mdlref_datamngt/Counter3', 'Params', 'Param2', 'ICs', 'IC2');
+
+%%
+% 3. Create a MATLAB script to recreate these workspace variables.
+%%
+% This demo uses a MATLAB script (<matlab:edit('sldemo_mdlref_datamngt_wsdata'); |sldemo_mdlref_datamngt_wsdata|>)
+% to recreate these workspace variables.
+%
+% You can create this MATLAB script manually, or use *Simulink.saveVars*:
+%
+%  Simulink.saveVars('sldemo_mdlref_datamngt_wsdata.m', 'Param*');
+
+%%
+% 4. Configure the top model to create all global variables.
+%%
+% It is good practice for the top model to recreate all of the global data
+% and types used throughout the model reference hierarchy.  This configuration
+% avoids loading referenced models when simulating the top model.
+%
+% In this demo, the top model's *PreLoadFcn* is used to execute the MATLAB
+% scripts that create the workspace data for the top model and the types for
+% the referenced model.  The referenced model does not use any global data.
+%
+%  set_param('sldemo_mdlref_datamngt', ...
+%            'PreLoadFcn', ['sldemo_mdlref_datamngt_wsdata; ', ...
+%                           'sldemo_mdlref_counter_datamngt_types']);
+set_param('sldemo_mdlref_datamngt', ...
+          'PreLoadFcn', ['sldemo_mdlref_datamngt_wsdata; ', sprintf('\n'), ...
+                         'sldemo_mdlref_counter_datamngt_types']);
+
+%% Top Model: Scheduling Calls to the Referenced Model
+% As mentioned earlier, the referenced model implements a limited counter
+% algorithm with two trigger inputs.  The algorithm detects "rising edges"
+% in the trigger inputs and reacts as follows:
+%
+% * Resets the counter if the first trigger input changes.
+% * Increments the counter by a specified amount if the second input changes.
+%
+% In this demo, you drive all three instances of the counter algorithm with
+% the same trigger inputs, generated by the Stimulus subsystem.  The period
+% and sample time of the trigger inputs are defined by the values entered
+% for the mask parameters of the Stimulus subsystem:
+%
+% * Reset counter every 4 seconds.
+% * Increment counter 5 times per second (period = 0.2 second).
+% * Sample time is 0.1 second.
+%
+% *NOTE:* Reset and increment periods must be at least 2 times the sample time.
+
+%% Simulating the Top Model
+% 1. Save or close the referenced model.
+%
+% You need to save the referenced model before it can be used by the top model.
+% Alternatively, you can close the referenced model and use the original
+% version of the model provided with this demo.
+
+% DEVELOPMENT COMMENT:
+% Clear dirty flag rather than closing referenced model so that we can 
+% test the code in this demo.
+set_param('sldemo_mdlref_counter_datamngt', 'Dirty', 'off');
+
+%%
+% 2. Simulate the top model by selecting *Start* from the *Simulation*
+% menu or by typing *Ctrl+T*.
+%
+% <matlab:sim('sldemo_mdlref_datamngt'); |sim('sldemo_mdlref_datamngt')|>
+
+%%
+% *NOTE:* Simulating the top model automatically generates a simulation
+% target for the referenced model.
+
+%%
+% 3. Review the simulation results as displayed by the Scope blocks.
+open_system('sldemo_mdlref_datamngt/Scope1');
+open_system('sldemo_mdlref_datamngt/Scope2');
+open_system('sldemo_mdlref_datamngt/Scope3');
+
+% DEVELOPER COMMENT: NEED TO USE EVALC TO HIDE COMMAND-LINE OUTPUT WHEN PUBLISHING
+evalc('sim(''sldemo_mdlref_datamngt'');');
+
+%%
+close_system('sldemo_mdlref_datamngt/Scope1');
+close_system('sldemo_mdlref_datamngt/Scope2');
+close_system('sldemo_mdlref_datamngt/Scope3');
+
+%% Generating Code for the Top Model (Requires Real-Time Workshop) 
+% Generate code and build a standalone executable for the top model by
+% selecting *Real-Time Workshop > Build Model* from the *Tools* menu or
+% by typing *Ctrl+B*.
+%
+% <matlab:rtwbuild('sldemo_mdlref_datamngt'); |rtwbuild('sldemo_mdlref_datamngt')|>
+
+% DEVELOPER COMMENT: NEED TO USE EVALC TO HIDE COMMAND-LINE OUTPUT WHEN PUBLISHING
+evalc('rtwbuild(''sldemo_mdlref_datamngt'');');
+
+%%
+% *NOTE:* When you generate code for the top model, Real-Time Workshop
+% automatically generates code for the referenced model. Use 
+% Real-Time Workshop(R) Embedded Coder(TM) to generate embedded code for 
+% production deployment.
+
+%% Controlling the Type Name for the Model Argument
+% By default, Real-Time Workshop generates an automatic name for the type
+% of the parameter structures.  This name is unique and deterministic, but
+% not easy to recognize.  You can control this type name by using
+% Simulink.Parameter objects to define the parameter structures and
+% Simulink.Bus objects to define the type.
+%
+% 1. Define the bus type for the model argument by using the <matlab:buseditor Bus Editor>
+% or by typing the following commands at the MATLAB command line:
+%
+%  CounterParamType = Simulink.Bus;
+%  CounterParamType.Elements = Simulink.BusElement;
+%  CounterParamType.Elements(1).Name     = 'Increment';
+%  CounterParamType.Elements(1).DataType = 'int8';
+%  CounterParamType.Elements(2) = Simulink.BusElement;
+%  CounterParamType.Elements(2).Name     = 'LowerLimit';
+%  CounterParamType.Elements(2).DataType = 'int8';
+%  CounterParamType.Elements(3) = Simulink.BusElement;
+%  CounterParamType.Elements(3).Name     = 'UpperLimit';
+%  CounterParamType.Elements(3).DataType = 'int8';
+CounterParamType = Simulink.Bus;
+CounterParamType.Elements = Simulink.BusElement;
+CounterParamType.Elements(1).Name     = 'Increment';
+CounterParamType.Elements(1).DataType = 'int8';
+CounterParamType.Elements(2) = Simulink.BusElement;
+CounterParamType.Elements(2).Name     = 'LowerLimit';
+CounterParamType.Elements(2).DataType = 'int8';
+CounterParamType.Elements(3) = Simulink.BusElement;
+CounterParamType.Elements(3).Name     = 'UpperLimit';
+CounterParamType.Elements(3).DataType = 'int8';
+
+%%
+% 2. Modify the existing MATLAB script to recreate this bus object.
+%%
+% This bus type must be defined in the base workspace, along with the bus type
+% for the referenced model's output.  You can manually modify the MATLAB script
+% that defines the types for the referenced model or use *Simulink.saveVars* to
+% append this variable to the existing MATLAB script.
+%
+%  Simulink.saveVars('sldemo_mdlref_counter_datamngt_types.m', 'CounterParamType', '-append');
+
+%%
+% 3. Create Simulink.Parameters to define the model arguments.
+%%
+% To associate the bus types with the model arguments, you must use
+% Simulink.Parameter objects in place of the MATLAB structures in
+% the model workspace of the referenced model.
+%  
+%  CounterParams = Simulink.Parameter;
+%  CounterParams.Value.Increment  = 1;
+%  CounterParams.Value.LowerLimit = -10;
+%  CounterParams.Value.UpperLimit = 10;
+%  CounterParams.DataType = 'Bus: CounterParamType';
+%  
+%  CounterICs = Simulink.Parameter;
+%  CounterICs.Value.Count         = 0;
+%  CounterICs.Value.OverflowState = SlDemoRangeCheck.InRange;
+%  CounterICs.DataType = 'Bus: OutputType';
+CounterParams = Simulink.Parameter;
+CounterParams.Value.Increment  = 1;
+CounterParams.Value.LowerLimit = -10;
+CounterParams.Value.UpperLimit = 10;
+CounterParams.DataType = 'Bus: CounterParamType';
+
+CounterICs = Simulink.Parameter;
+CounterICs.Value.Count         = 0;
+CounterICs.Value.OverflowState = SlDemoRangeCheck.InRange;
+CounterICs.DataType = 'Bus: OutputType';
+
+clear CounterParams CounterICs;
+
+%%
+% *NOTE:* When you set the data type of a parameter object to be a bus, you can
+% use double-precision values for the numeric fields of the parameter
+% structure.  Simulink converts these double-precision values to the
+% appropriate numeric data type during model compilation.
+
+%%
+% You can manually modify the MATLAB script that defines the model argument or
+% use *Simulink.saveVars* to update the existing MATLAB script.
+%
+%  Simulink.saveVars('sldemo_mdlref_counter_datamngt_wsdata.m', '-update');
+
+%%
+% *NOTE:* When you use the *-update* option, you do not need to specify the
+% variables to be written out because *Simulink.saveVars* writes out only
+% the values of variables already defined in the MATLAB script.
+
+%%
+% 5. Reload the contents of the model workspace.
+%%
+% You have modified the data source that is used by the referenced model's workspace.
+% If this model is open, you must reload the contents of the model workspace.
+%
+% You can reload by using the model workspace's dialog box or at the MATLAB command line.
+%
+%  hWS = get_param('sldemo_mdlref_counter_datamngt', 'ModelWorkspace');
+%  hWS.reload;
+hWS = get_param('sldemo_mdlref_counter_datamngt', 'ModelWorkspace');
+hWS.reload;
+
+%% Controlling Representation of Parameters in the Top Model
+% You can use a similar approach to convert the parameter structures in the
+% top model to use Simulink.Parameter objects. This configuration gives you
+% control over the type name and enables you to control how these parameters
+% appear in the generated code.
+%
+% 1. Create Simulink.Parameter objects with the ExportedGlobal storage class
+% to define the parameter structures for the top model as a exported, tunable
+% variables in the generated code.
+%
+%  Param1 = Simulink.Parameter;
+%  Param1.Value.Increment  = 1;
+%  Param1.Value.LowerLimit = -10;
+%  Param1.Value.UpperLimit = 10;
+%  Param1.DataType = 'Bus: CounterParamType';
+%  Param1.RTWInfo.StorageClass = 'ExportedGlobal';
+%  
+%  Param2 = Param1.deepCopy;
+%  Param2.Value.Increment = 2;
+%  
+%  IC1 = Simulink.Parameter;
+%  IC1.Value.Count = 0;
+%  IC1.Value.OverflowState = SlDemoRangeCheck.InRange;
+%  IC1.DataType = 'Bus: OutputType';
+%  IC1.RTWInfo.StorageClass = 'ExportedGlobal';
+%  
+%  IC2 = IC1.deepCopy;
+%  IC2.Value.Count = -10;
+Param1 = Simulink.Parameter;
+Param1.Value.Increment  = 1;
+Param1.Value.LowerLimit = -10;
+Param1.Value.UpperLimit = 10;
+Param1.DataType = 'Bus: CounterParamType';
+Param1.RTWInfo.StorageClass = 'ExportedGlobal';
+
+Param2 = Param1.deepCopy;
+Param2.Value.Increment = 2;
+
+IC1 = Simulink.Parameter;
+IC1.Value.Count = 0;
+IC1.Value.OverflowState = SlDemoRangeCheck.InRange;
+IC1.DataType = 'Bus: OutputType';
+IC1.RTWInfo.StorageClass = 'ExportedGlobal';
+
+IC2 = IC1.deepCopy;
+IC2.Value.Count = -10;
+
+%%
+% 2. Modify the existing MATLAB script to recreate these workspace variables.
+%%
+% You can manually modify the MATLAB script that defines the parameters for the
+% top model or use *Simulink.saveVars* to update the existing MATLAB script.
+%
+%  Simulink.saveVars('sldemo_mdlref_datamngt_wsdata.m', '-update');
+
+%%
+% *NOTE:* When you use the *-update* option, you do not need to specify the
+% variables to be written out because *Simulink.saveVars* writes out only
+% the values of variables already defined in the MATLAB script.
+
+%% Regenerate Code for the Top Model (Requires Real-Time Workshop) 
+% Generate code and build a standalone executable for the top model by
+% selecting *Real-Time Workshop > Build Model* from the *Tools* menu or
+% by typing *Ctrl+B*.
+%
+% <matlab:rtwbuild('sldemo_mdlref_datamngt'); |rtwbuild('sldemo_mdlref_datamngt')|>
+
+% DEVELOPER COMMENT: NEED TO USE EVALC TO HIDE COMMAND-LINE OUTPUT WHEN PUBLISHING
+evalc('rtwbuild(''sldemo_mdlref_datamngt'');');
+
+%%
+if takeSnapshots
+  me.showDialogView(true);
+  be.showDialogView(true);
+  me.delete;
+  be.delete;
+end
+
+cd(origDir);
+path(origPath);
+bdclose all
+clear
+
+##### SOURCE END #####
+--></body></html>

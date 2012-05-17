@@ -1,0 +1,88 @@
+%% File: sb1varpoly.tlc
+%% Abstract:
+%% This block defines a polynomial in one variable or a set of polynomials
+%% teach described by one variable.
+%%
+
+%%
+%% Initial coding by A S Bozin
+%% Copyright 1997-2010 The MathWorks, Inc.
+%% $Revision: 1.1.6.1 $ $Date: 2010/02/08 22:56:21 $
+%%
+%implements sb1varpoly "C"
+
+%% Function: Outputs ==========================================================
+%% Abstract:
+%%
+%function Outputs(block, system) Output
+  %assign sfcnName = ParamSettings.FunctionName
+  /* Polynomail in 1 Var Block */
+  /* %<Type> Block: (%<sfcnName>): %<LibParentMaskBlockName(block)> */
+  {
+    %assign mode = SFcnParamSettings.pMode
+    %assign lenPoly = SFcnParamSettings.pOrder
+    %assign numOutputs = SFcnParamSettings.pOutputs
+    %assign pptr = LibBlockParameterAddr(pCoeff,"0", "", "")
+    real_T const *p = %<pptr>;
+    int_T         j;
+    %assign rollVars = ["Y"]
+    %roll idx = RollRegions, lcv = RollThreshold, block, "Roller", rollVars
+      %assign y = LibBlockOutputSignal(0, "", lcv, "%<tRealPart>%<idx>")
+      %<y> = 0.0;
+    %endroll
+    
+    %switch(mode)
+      %case 1
+	{
+	  real_T ui = %<LibBlockInputSignal(0, "%<tRealPart>0", "", "")>;
+
+	  %assign yi = LibBlockOutputSignal(0, "0", "", "")
+	  for (j = 0; j < %<lenPoly>; ++j){
+	    %<yi> = %<yi> * ui + *p++;
+	  }
+	}
+	%break
+      %case 2
+	{
+	  real_T pj;
+
+	  for (j = 0, pj = *p; j < %<lenPoly>; ++j, pj = *(++p)) {
+	    %assign rollVars = ["U","Y"]
+	    %roll idx = RollRegions, lcv = RollThreshold, block, "Roller", rollVars
+	      %assign ui = LibBlockInputSignal(0, "", lcv, "%<tRealPart>%<idx>")
+	      %assign yi = LibBlockOutputSignal(0, "", lcv, "%<tRealPart>%<idx>")
+	      %<yi> = %<yi> * %<ui> + pj;
+	    %endroll
+	  }
+	}
+	%break
+      %case 3
+	{
+	  real_T ui = %<LibBlockInputSignal(0, "%<tRealPart>0", "", "")>;
+	  int_T  i;
+	  
+	  for (j = 0; j < %<lenPoly>; ++j) {
+	    %assign rollVars = ["Y"]
+	    %roll idx = RollRegions, lcv = RollThreshold, block, "Roller", rollVars
+	      %assign yi = LibBlockOutputSignal(0, "", lcv, "%<tRealPart>%<idx>")
+	      %<yi> = %<yi> * ui + *p++;
+	    %endroll
+	  }
+	}
+	%break
+      %case 4
+	for (j = 0; j < %<lenPoly>; ++j) {
+	    %assign rollVars = ["U","Y"]
+	    %roll idx = RollRegions, lcv = RollThreshold, block, "Roller", rollVars
+	      %assign ui = LibBlockInputSignal(0, "", lcv, "%<tRealPart>%<idx>")
+	      %assign yi = LibBlockOutputSignal(0, "", lcv, "%<tRealPart>%<idx>")
+	      %<yi> = %<yi> * %<ui> + *p++;
+	    %endroll
+	  }
+	%break
+      %default
+    %endswitch
+  }
+%endfunction  %% Outputs
+
+%% [EOF] sb1varpoly.tlc

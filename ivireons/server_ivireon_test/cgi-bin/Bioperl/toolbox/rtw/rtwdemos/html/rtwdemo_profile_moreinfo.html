@@ -1,0 +1,81 @@
+<!-- $Revision $ -->
+<html><head><title>RTW System Profiling Demo</title>
+<link rel=stylesheet href="docstyle1.css" type="text/css">
+</head>
+<body bgcolor=#ffffff>
+
+<!-- H1 --><a name="7373"></a><h3><font color="#990000">
+Profiling Hooks for Generated Code</font></h3>
+<p><a name="9484"></a><font size=+1><b>How to run this demo?</b></font><br><br>
+The following are the steps for running this demo: (Please note that the demo
+will build and run only on PC and Linux platforms)
+<ul> 
+<li> Change your working directory to one for which you have write permission.
+<li> Double-click on one of the "Generate Code" blocks. This will
+configure the selected RTW target options with the profiling hooks and build the
+model using Real-Time Workshop. Once the build process is completed, a window
+should pop-up and this window should allow you to browse through the generated
+code. Browse through the code to see the profile-specific C code that has been
+generated.
+<li> Type in !rtwdemo_profile at the MATLAB prompt to run the generated
+executable file. You should see a textual report of the number of calls made to
+each system in the demo model and the number of CPU cycles that were spent in
+each system.
+</ul>
+</p>
+
+<p><a name="9484"></a><font size=+1><b>How does this demo work?</b></font><br><br>
+This demo uses special hooks provided by Real-Time Workshop 
+to add profiling code snippets to the generated code for your models. 
+In particular these hooks allow such snippets to be added within 
+non-virtual (atomic) systems in the model. By using appropriate code
+snippets, you can perform profiling of the atomic systems in the model.
+
+In order to use the hooks provided by Real-Time Workshop to implement a profiler
+for a given target, you need to follow two essential steps:
+<ul> 
+<li> First, write a TLC file containing a set of pre-determined
+functions. Each function and its contents are specified in the table below:
+ <table border="1">
+    <tr><th>Function<th>InputArgs<th>OutputType</th> </tr> 
+    <tr ALIGN="center"><td>ProfilerHeaders</td><td>void</td><td>Return array of
+    header file names which are to be included in the generated code</td> </tr> 
+    <tr ALIGN="center"><td>ProfilerTypedefs</td><td>void</td><td>Generate code
+    statements for profiler-specific typedefs</td> </tr>
+    <tr ALIGN="center"><td>ProfilerGlobalData</td><td>system</td><td>Generate code
+    statements that declare global data</td> </tr>     
+    <tr ALIGN="center"><td>ProfilerExternDataDecls</td><td>system</td><td>Generate code
+    statements that create global extern declarations</td> </tr>     
+    <tr ALIGN="center"><td>ProfilerSysDecl</td><td>system,
+    functionType</td><td>Generate code for any variable declarations that are
+    needed within the scope of an atomic system's Output, Update, OutputUpdate, 
+    or Derivatives function. </td> </tr>
+    <tr ALIGN="center"><td>ProfilerSysStart</td><td>system,
+    functionType</td><td>Generate code for starting the profiler
+    within the scope of an atomic system's Output, Update, OutputUpdate, or
+    Derivatives function. </td> </tr>
+    <tr ALIGN="center"><td>ProfilerSysEnd</td><td>system,
+    functionType</td><td>Generate code for stopping the profiler within the
+    scope of an atomic system's Output, Update, OutputUpdate, or Derivatives 
+    function. </td>
+    </tr>
+    <tr ALIGN="center"><td>ProfilerSysTerminate</td><td>system</td><td>Generate code
+    that terminates profiling (and possibly reports results) for an atomic
+    system.</td> </tr>
+    </table> <br>
+For this demo, we have implemented the above profiling functions in the file 
+<a href="matlab:edit rtwdemo_profile_hook.tlc">rtwdemo_profile_hook.tlc</a>. Inspecting this
+file should provide more information on each of the profiling functions.<br><br>
+
+<li> In the second step, you need to create a global variable called
+'ProfilerTLC' in your target.tlc file. This variable should be assigned the
+name of the TLC file that was created in the previous step.  To turn profiling
+On/Off from your target TLC file, use another global variable called
+'ProfileGenCode'. Make this variable have a value of 'TLC_TRUE' to turn on
+profiling.
+</ul>
+Once the two above steps have been accomplished, you can build a model
+in their target and embed profiler-specific code into the generated code.
+
+
+

@@ -1,0 +1,74 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>不均一な照明の補正</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="ipexrice.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexrice">エディターで ipexrice.m を開く</a></div><div class="right"><a href="matlab:echodemo ipexrice">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>不均一な照明の補正</h1><!--introduction--><p>米粒のイメージを使って、この例は、不均一な照明を補正するためのイメージを どのように強調するか、個々の粒を均一にするために強調したイメージをどのように使用するかを説明します。その後、粒の特性について知ることができ、イメージ内のすべての粒に対する統計を簡単に計算します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">手順 1: イメージの読み込み</a></li><li><a href="#2">手順 2: 形態学的オープン処理を使用した背景の推定</a></li><li><a href="#3">手順 3: オリジナル イメージからの背景イメージの抽出</a></li><li><a href="#5">手順 4: イメージ コントラストの増加</a></li><li><a href="#6">手順 5: イメージのしきい値処理</a></li><li><a href="#7">手順 6: イメージでのオブジェクトの識別</a></li><li><a href="#8">手順 7: 1 つのオブジェクトの分析</a></li><li><a href="#9">手順 8: すべてのオブジェクトの表示</a></li><li><a href="#11">手順 9: 各オブジェクトの面積の計算</a></li><li><a href="#13">手順 10: 領域ベースの統計の計算</a></li><li><a href="#15">手順 11: 領域ヒストグラムの作成</a></li></ul></div><h2>手順 1: イメージの読み込み<a name="1"></a></h2><pre class="codeinput">I = imread(<span class="string">'rice.png'</span>);
+imshow(I)
+</pre><img vspace="5" hspace="5" src="../ipexrice_01.png" alt=""> <h2>手順 2: 形態学的オープン処理を使用した背景の推定<a name="2"></a></h2><p>背景は、イメージの下部の部分より、中央部が明るくなっていることに注意してください。関数 <tt>imopen</tt> を使用して背景の明るさを推定します。</p><pre class="codeinput">background = imopen(I,strel(<span class="string">'disk'</span>,15));
+
+<span class="comment">% Display the Background Approximation as a Surface</span>
+figure, surf(double(background(1:8:end,1:8:end))),zlim([0 255]);
+set(gca,<span class="string">'ydir'</span>,<span class="string">'reverse'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexrice_02.png" alt=""> <h2>手順 3: オリジナル イメージからの背景イメージの抽出<a name="3"></a></h2><pre class="codeinput">I2 = I - background;
+imshow(I2)
+</pre><img vspace="5" hspace="5" src="../ipexrice_03.png" alt=""> <p>手順 2 および手順 3 は、最初に形態学的なオープン処理を計算し、次にオリジナル イメージから抽出する関数 <tt>imtophat</tt> を使用したシングル ステップに置換できることに注意してください。</p><p>I2 = imtophat(I,strel('disk',15));</p><h2>手順 4: イメージ コントラストの増加<a name="5"></a></h2><pre class="codeinput">I3 = imadjust(I2);
+imshow(I3);
+</pre><img vspace="5" hspace="5" src="../ipexrice_04.png" alt=""> <h2>手順 5: イメージのしきい値処理<a name="6"></a></h2><p>調整されたイメージをしきい値処理することにより、新しいバイナリ イメージを作成します。関数 <tt>bwareaopen</tt> を使用して背景ノイズを除去します。</p><pre class="codeinput">level = graythresh(I3);
+bw = im2bw(I3,level);
+bw = bwareaopen(bw, 50);
+imshow(bw)
+</pre><img vspace="5" hspace="5" src="../ipexrice_05.png" alt=""> <h2>手順 6: イメージでのオブジェクトの識別<a name="7"></a></h2><p>関数 <tt>bwconncomp</tt> は、バイナリ イメージ内のすべての連結要素 (オブジェクト) を検出します。結果の正確度は、オブジェクトのサイズ、接続性パラメーター (4、8、または任意数)、およびオブジェクトが接しているかどうか (その場合、1 つのオブジェクトとしてラベル付けされます) によって異なります。関数 <tt>bw</tt> の米粒のいくつかは接しています。</p><pre class="codeinput">cc = bwconncomp(bw, 4)
+</pre><pre class="codeoutput">
+cc = 
+
+    Connectivity: 4
+       ImageSize: [256 256]
+      NumObjects: 95
+    PixelIdxList: {1x95 cell}
+
+</pre><h2>手順 7: 1 つのオブジェクトの分析<a name="8"></a></h2><p>独立したオブジェクトはそれぞれ、同じ整数値でラベル付けされます。50 番目の連結要素である粒を表示します。</p><pre class="codeinput">grain = false(size(bw));
+grain(cc.PixelIdxList{50}) = true;
+imshow(grain);
+</pre><img vspace="5" hspace="5" src="../ipexrice_06.png" alt=""> <h2>手順 8: すべてのオブジェクトの表示<a name="9"></a></h2><p>連結要素を表示する方法の 1 つは、ラベル行列を作成して、疑似色のインデックス付きイメージとして表示することです。</p><p>関数 <tt>labelmatrix</tt> を使用して、関数 <tt>bwconncomp</tt> の出力からラベル行列を作成します。関数 <tt>labelmatrix</tt> は、オブジェクト数に必要な最小の数値クラスでラベル行列を保存することに注意してください。</p><pre class="codeinput">labeled = labelmatrix(cc);
+whos <span class="string">labeled</span>
+</pre><pre class="codeoutput">  Name           Size             Bytes  Class    Attributes
+
+  labeled      256x256            65536  uint8              
+
+</pre><p>疑似色イメージでは、ラベル行列の各オブジェクトを識別するラベルは、関連するカラーマップ行列の異なる色にマップされます。関数 <tt>label2rgb</tt> を使用して、カラーマップ、背景色、ラベル行列の中のオブジェクトがカラーマップの中の色にどのようにマップされるかを指定します。</p><pre class="codeinput">RGB_label = label2rgb(labeled, @spring, <span class="string">'c'</span>, <span class="string">'shuffle'</span>);
+imshow(RGB_label)
+</pre><img vspace="5" hspace="5" src="../ipexrice_07.png" alt=""> <h2>手順 9: 各オブジェクトの面積の計算<a name="11"></a></h2><p>各米粒は <tt>cc</tt> 構造内では 1 つの連結要素です。<tt>cc</tt> で <tt>regionprops</tt> を使用して、領域の特性を取得します。</p><pre class="codeinput">graindata = regionprops(cc,<span class="string">'basic'</span>)
+</pre><pre class="codeoutput">
+graindata = 
+
+95x1 struct array with fields:
+    Area
+    Centroid
+    BoundingBox
+
+</pre><p>50 番目の要素の面積を検出するには、ドット表記法を使用して <tt>graindata</tt> 構造配列の 50 番目の要素の Area フィールドにアクセスします。</p><pre class="codeinput">graindata(50).Area
+</pre><pre class="codeoutput">
+ans =
+
+   194
+
+</pre><h2>手順 10: 領域ベースの統計の計算<a name="13"></a></h2><p>新しいベクトル <tt>allgrains</tt> を作成します。これは各粒の測定面積を保持します。</p><pre class="codeinput">grain_areas = [graindata.Area];
+</pre><p>最小領域の粒を探します。</p><pre class="codeinput">[min_area, idx] = min(grain_areas)
+grain = false(size(bw));
+grain(cc.PixelIdxList{idx}) = true;
+imshow(grain);
+</pre><pre class="codeoutput">
+min_area =
+
+    61
+
+
+idx =
+
+    16
+
+</pre><img vspace="5" hspace="5" src="../ipexrice_08.png" alt=""> <h2>手順 11: 領域ヒストグラムの作成<a name="15"></a></h2><pre class="codeinput">nbins = 20;
+figure, hist(grain_areas,nbins)
+title(<span class="string">'Histogram of Rice Grain Area'</span>);
+</pre><img vspace="5" hspace="5" src="../ipexrice_09.png" alt=""> <p class="footer">Copyright 1993-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Correcting Nonuniform Illumination % Using an image of rice grains, this example illustrates how you can % enhance an image to correct for nonuniform illumination, then use the % enhanced image to identify individual grains. You can then learn about the % characteristics of the grains and easily compute statistics for all the % grains in the image. % % Copyright 1993-2009 The MathWorks, Inc.  %% Step 1: Read Image  I = imread('rice.png'); imshow(I)  %% Step 2: Use Morphological Opening to Estimate the Background % Notice that the background illumination is brighter in the center of the % image than at the bottom. Use |imopen| to estimate the background % illumination.  background = imopen(I,strel('disk',15));  % Display the Background Approximation as a Surface figure, surf(double(background(1:8:end,1:8:end))),zlim([0 255]); set(gca,'ydir','reverse');  %% Step 3: Subtract the Background Image from the Original Image  I2 = I - background; imshow(I2)  %% % Note that step 2 and step 3 together could be replaced by a single step % using |imtophat| which first calculates the morphological opening and then % subtracts it from the original image. % % I2 = imtophat(I,strel('disk',15));  %% Step 4: Increase the Image Contrast  I3 = imadjust(I2); imshow(I3);  %% Step 5: Threshold the Image % Create a new binary image by thresholding the adjusted image. Remove % background noise with |bwareaopen|.  level = graythresh(I3); bw = im2bw(I3,level); bw = bwareaopen(bw, 50); imshow(bw)  %% Step 6: Identify Objects in the Image % The function |bwconncomp| finds all the connected components (objects) in % the binary image. The accuracy of your results depend on the size of the % objects, the connectivity parameter (4,8,or arbitrary), and whether or % not any objects are touching (in which case they may be labeled as one % object). Some of the rice grains in |bw| are touching.  cc = bwconncomp(bw, 4)  %% Step 7: Examine One Object % Each distinct object is labeled with the same integer value. Show the % grain that is the 50th connected component.  grain = false(size(bw)); grain(cc.PixelIdxList{50}) = true; imshow(grain);  %% Step 8: View All Objects % One way to visualize connected components is to create a label matrix and % then display it as a pseudo-color indexed image. % % Use  |labelmatrix| to create a label matrix from the output of % |bwconncomp|. Note that |labelmatrix| stores the label matrix in the % smallest numeric class necessary for the number of objects.  labeled = labelmatrix(cc); whos labeled  %% % In the pseudo-color image, the label identifying each object in the label % matrix maps to a different color in the associated colormap matrix. Use % |label2rgb| to choose the colormap, the background color, and how objects % in the label matrix map to colors in the colormap.   RGB_label = label2rgb(labeled, @spring, 'c', 'shuffle'); imshow(RGB_label)  %% Step 9: Compute Area of Each Object % Each rice grain is one connected component in the |cc| structure.  Use % |regionprops| on |cc| to get the area.  graindata = regionprops(cc,'basic')  %% % To find the area of the 50th component, use dot notation to access the % Area field in the 50th element of |graindata| structure array.  graindata(50).Area   %% Step 10: Compute Area-based Statistics % Create a new vector |allgrains|, which holds the area measurement for % each grain.    grain_areas = [graindata.Area];  %% % Find the grain with the smallest area.  [min_area, idx] = min(grain_areas) grain = false(size(bw)); grain(cc.PixelIdxList{idx}) = true; imshow(grain);  %% Step 11: Create Histogram of the Area  nbins = 20; figure, hist(grain_areas,nbins) title('Histogram of Rice Grain Area');  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

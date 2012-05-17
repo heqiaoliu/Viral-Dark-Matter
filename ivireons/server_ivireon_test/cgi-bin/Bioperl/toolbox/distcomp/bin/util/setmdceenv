@@ -1,0 +1,429 @@
+#!/bin/sh
+
+# Copyright 2004-2010 The MathWorks, Inc.
+
+#================================================================
+#
+# This file assumes that a variable called BASE has been defined
+# and that the current directory is BASE. This file will then 
+# define relevent MDCE variables and call mdce_def to get any
+# user defined variables that might be modified.
+#
+#================================================================
+
+#=======================================================================
+# Functions:  Required by call to arch.sh
+#   check_archlist () 
+#=======================================================================
+check_archlist () { 
+    return 0
+}
+
+#=======================================================================
+# Create the specified directories. 
+# Usage: createDirectories -createbase "dir1 ... dirn"
+# where dir1 ... dirn are one of PIDBASE LOCKBASE LOGBASE 
+# CHECKPOINTBASE and SECURITY_DIR.
+# We will then create the directories "$dir1" ... "$dirn"
+#=======================================================================
+createDirectories() {
+    while [ -n "$1" ] ; do
+        case $1 in 
+            -createbase)
+                BASES_TO_CREATE="$2"
+                shift
+                ;;
+        esac
+        shift
+    done    
+    
+    if [ -z "$BASES_TO_CREATE" ]; then
+        # Nothing to do.
+        return;
+    fi
+    TESTFILE=".mdcetestfile"
+
+    # The user running this function should always own pidbase and lockbase.  If
+    # MDCEUSER is non-empty, it should own logbase and checkpointbase.
+    for BASETYPE in $BASES_TO_CREATE; do
+        case $BASETYPE in
+            PIDBASE )
+                BASEDIR="$PIDBASE"
+                OWNER=""
+                PERMISSIONS=
+                ;;
+            LOCKBASE )
+                BASEDIR="$LOCKBASE"
+                OWNER=""
+                PERMISSIONS=
+                ;;
+            LOGBASE )
+                BASEDIR="$LOGBASE"
+                OWNER="$MDCEUSER"
+                PERMISSIONS=
+                ;;
+            CHECKPOINTBASE )
+                BASEDIR="$CHECKPOINTBASE"
+                OWNER="$MDCEUSER"
+                PERMISSIONS=
+                ;;
+            SECURITY_DIR )
+                BASEDIR="$SECURITY_DIR"
+                OWNER="$MDCEUSER"
+                PERMISSIONS="700"
+                ;;
+            * )
+                BASEDIR=
+                OWNER=
+                PERMISSIONS=
+                ;;
+        esac
+        if [ -n "$BASEDIR" -a ! -d "$BASEDIR" ]; then
+            echo "Creating $BASETYPE directory ($BASEDIR)."
+            mkdir -p "$BASEDIR"
+            if [ -n "$OWNER" ]; then
+                chown $OWNER "$BASEDIR"
+            fi
+            if [ -n "$PERMISSIONS" ]; then
+                chmod $PERMISSIONS "$BASEDIR"
+            fi
+        fi
+        # Better check to see if we can actually write a file in these directories
+        if [ -z "$OWNER" ]; then
+            touch "$BASEDIR/$TESTFILE" > /dev/null 2>&1 && rm -f "$BASEDIR/$TESTFILE"
+        else
+            sudo -u $OWNER touch "$BASEDIR/$TESTFILE" > /dev/null 2>&1 && rm -f "$BASEDIR/$TESTFILE"
+        fi
+        if  [ $? -ne 0 ]; then
+            if [ -z "$OWNER" ]; then
+                echo "Unable to write a test file ($TESTFILE) in $BASETYPE directory $BASEDIR."
+            else
+                echo "Unable to write a test file ($TESTFILE) in $BASETYPE directory $BASEDIR as user $OWNER."
+            fi
+            exit 1
+        fi
+    done
+} # End of createDirectories.
+
+#====================================================================    
+# To allow a user to overload the default PIDBASE, LOCKBASE, LOGBASE, 
+# CHECKPOINTBASE, MDCEUSER, BASE_PORT, HOSTNAME, USE_SECURE_COMMUNICATION,
+# SHARED_SECRET_FILE and SECURITY_LEVEL we will test for the existence of
+# some special environment variables which may overload the default
+# values in mdce_def.
+# This function should be called after sourceMdceDef.
+#====================================================================    
+overrideWithMDCEQE() {
+    # -n is a string comparison that is true if the string has 1 or more 
+    # characters
+    if [ -n "$MDCEQE_PIDBASE" ]; then
+        PIDBASE="$MDCEQE_PIDBASE"
+    fi
+    
+    if [ -n "$MDCEQE_LOCKBASE" ]; then
+        LOCKBASE="$MDCEQE_LOCKBASE"
+    fi
+    
+    if [ -n "$MDCEQE_LOGBASE" ]; then
+        LOGBASE="$MDCEQE_LOGBASE"
+        MDCE_SERVICE_LOG_FILE="$LOGBASE/mdce-service.log"
+    fi
+    
+    if [ -n "$MDCEQE_CHECKPOINTBASE" ]; then
+        CHECKPOINTBASE="$MDCEQE_CHECKPOINTBASE"
+    fi
+    
+    if [ -n "$MDCEQE_MDCEUSER" ]; then
+        MDCEUSER="$MDCEQE_MDCEUSER"
+    fi
+    
+    if [ -n "$MDCEQE_BASE_PORT" ]; then
+        BASE_PORT="$MDCEQE_BASE_PORT"
+    fi
+    
+    if [ -n "$MDCEQE_HOSTNAME" ]; then
+        HOSTNAME="$MDCEQE_HOSTNAME"
+    fi
+    
+    if [ -n "$MDCEQE_USE_SECURE_COMMUNICATION" ]; then
+        USE_SECURE_COMMUNICATION="$MDCEQE_USE_SECURE_COMMUNICATION"
+    fi
+    
+    if [ -n "$MDCEQE_SHARED_SECRET_FILE" ]; then
+        SHARED_SECRET_FILE="$MDCEQE_SHARED_SECRET_FILE"
+    fi
+    
+    if [ -n "$MDCEQE_SECURITY_LEVEL" ]; then
+        SECURITY_LEVEL="$MDCEQE_SECURITY_LEVEL"
+    fi
+
+    if [ -n "$MDCEQE_ALLOW_CLIENT_PASSWORD_CACHE" ]; then
+        ALLOW_CLIENT_PASSWORD_CACHE="$MDCEQE_ALLOW_CLIENT_PASSWORD_CACHE"
+    fi
+
+    if [ -n "$MDCEQE_ALLOWED_USERS" ]; then
+        ALLOWED_USERS="$MDCEQE_ALLOWED_USERS"
+    fi
+} # End of overrideWithMDCEQE.
+
+#=======================================================================
+# Call mdce_def to get all the user defined variables defined for MDCE
+# Only use MDCEQE override if MDCE_DEFFILE hasn't been set in the commandline
+# Usage: sourceMdceDef   orgDir
+# where orgDir is the directory in which the user invoked mdce.
+#    or: sourceMdceDef 
+#=======================================================================
+sourceMdceDef() {
+    if [ -n "$MDCEQE_DEFFILE" -a -z "$MDCE_DEFFILE" ]; then
+        MDCE_DEFFILE="$MDCEQE_DEFFILE"
+        echo "MDCEQE_DEFFILE found: setting MDCE_DEFFILE=$MDCEQE_DEFFILE"
+    fi
+    
+    if [ -z "$MDCE_DEFFILE" ]; then
+        MDCE_DEFFILE="$MDCEBASE/bin/mdce_def.sh"
+    fi
+    
+    # Save the current directory and go back to the original directory before
+    # sourcing mdce_def.  This allows us to handle files specified using
+    # relative paths.
+    if [ $# -gt 0 ]; then 
+        currDir=`pwd`
+        cd "$1"
+    fi
+    # Call mdce_def to get all the user defined variables defined
+    # for MDCE - Check any user override to see that it exists
+    if [ -r "$MDCE_DEFFILE" ]; then
+        . "$MDCE_DEFFILE"
+    else
+        echo "Unable to read MDCE definition file ($MDCE_DEFFILE) - exiting"
+        exit 1
+    fi
+    
+    # Restore the current directory.
+    if [ $# -gt 0 ]; then
+        cd "$currDir"
+    fi
+
+    # Test if JOB_MANAGER_HOST string is empty - A dummy non-empty value must
+    # be provided to the Java layer.
+    if [ -z "$JOB_MANAGER_HOST" ]; then
+        JOB_MANAGER_HOST=MDCE_LOOKUP_NOT_SPECIFIED
+    fi
+
+    # Test if SHARED_SECRET_FILE string is empty - A dummy non-empty value must
+    # be provided to the Java layer.
+    if [ -z "$SHARED_SECRET_FILE" ]; then
+        SHARED_SECRET_FILE=KEYSTORE_PATH_NOT_SPECIFIED
+    fi
+
+    # Test if MDCE_ALLOW_GLOBAL_PASSWORDLESS_LOGON string is empty in which
+    # case we set it to false.
+    if [ -z "$MDCE_ALLOW_GLOBAL_PASSWORDLESS_LOGON" ]; then
+        MDCE_ALLOW_GLOBAL_PASSWORDLESS_LOGON="false"
+    fi
+
+    # Test if ADMIN_USER string is empty in which case we set it to "admin".
+    if [ -z "$ADMIN_USER" ]; then
+        ADMIN_USER="admin"
+    fi
+
+    # Test if LOG_LEVEL string is empty. Othwise provide a log level 0f 0.
+    if [ -z "$LOG_LEVEL" ]; then
+        LOG_LEVEL=0
+    fi
+
+    # Define where the service log file is located.
+    MDCE_SERVICE_LOG_FILE="$LOGBASE/mdce-service.log"
+    
+    # Now apply any override's defined by QE
+    overrideWithMDCEQE
+
+    # Set other security relevant properties.
+    SECURITY_DIR=$CHECKPOINTBASE/security
+    DEFAULT_KEYSTORE_PATH=$SECURITY_DIR/secret
+    KEYSTORE_PASSWORD="privatepw"
+
+    # This is only needed on Windows
+    WORKER_DOMAIN=WORKER_DOMAIN_NOT_SPECIFIED
+} # End of source_mdce_def.
+
+#=======================================================================    
+# Define which JRE we should be using - this should be shared
+# with all MDCE services, without question. NOTE this should be called
+# after source_mdce_def is called - this allows a user to overload $ARCH
+# if needed.
+#====================================================================    
+defineJRECMD() {
+    # Some platforms may need a special flag to startup correctly - NOTE that these
+    # flags need to be kept up-to-date with those specified in the wrapper-phoenix.config
+    # and the MDCE_PLATFORM_WRAPPER_CONF file.
+    JREFLAGS=-MDCE_DUMMY
+    if [ "$ARCH" = "sol64" -o "$ARCH" = "maci64" ]; then
+        # sol64 and maci64 need to be told that java should startup in the 64-bit
+        # mode so that our native libraries (which are built ELF-64) can
+        # run correctly
+        JREFLAGS="-d64"
+    elif [ "$ARCH" = "maci" ]; then
+        # We are planning to run in 32-bit mode.  However, java starts by
+        # default in 64-bit mode on 0SX 10.6, so we have to override that
+        # behavior.
+        JREFLAGS="-d32"
+    fi
+
+    if [ "$ARCH" = "maci" -o "$ARCH" = "maci64" ]; then
+        JAVA_HOME_EXE=/usr/libexec/java_home
+        if [ -x $JAVA_HOME_EXE ]; then
+            JREBASE=`$JAVA_HOME_EXE --failfast --version 1.6+ $JREFLAGS`
+            JRECMD="$JREBASE/bin/java"
+            KEYTOOLCMD="$JREBASE/bin/keytool"
+        else
+            JREBASE="/System/Library/Frameworks/JavaVM.framework"
+            JRECMD="$JREBASE/Commands/java"
+            KEYTOOLCMD="$JREBASE/Commands/keytool"
+        fi
+    else
+        JREBASE="$MATBASE/sys/java/jre/$ARCH/jre"
+        JRECMD="$JREBASE/bin/java"
+        KEYTOOLCMD="$JREBASE/bin/keytool"
+    fi
+} # End of defineJRECMD.
+
+
+
+#====================================================================    
+# Verify that the host name does not contain an underscore.  
+# Exit if it does.
+#====================================================================    
+validateHostname() {
+    # expr <string1> : <regexp> returns > 0 if <regexp> is found in string1.
+    if [ `expr "$HOSTNAME" : ".*_"` -ne 0 ]; then
+        echo "The host name  $HOSTNAME  is invalid because it contains an underscore, _."
+        echo "Only letters, digits, and dash characters are legal in host names."
+        echo ""
+        echo "The host name that MDCE uses is obtained from the MDCE definition file"
+        echo "$MDCE_DEFFILE"
+        exit 1;
+    fi
+}
+
+
+#====================================================================    
+# Verify security settings:
+# - security level 3 requires mdce to be run as root
+# - security level 3 requires secure communication
+# - secure communication will need a shared secret (-> warning only)
+# NOTE: must run after sourceMdceDef().
+#====================================================================    
+validateSecuritySettings() {
+    
+    if [ -n "$MDCEUSER" ]; then
+        MDCEUSER_UID=`id -u $MDCEUSER`
+    else
+        MDCEUSER_UID=`id -u`
+    fi
+
+    if [ "$SECURITY_LEVEL" = "3" -a "$MDCEUSER_UID" != "0" ]; then
+        echo "Security Level 3 requires that mdce is started as root and MDCEUSER"
+        echo "is not set in the mdce_def file."
+        exit 1;
+    fi
+
+    if [ "$SECURITY_LEVEL" = "3" -a "$USE_SECURE_COMMUNICATION" != "true" ]; then
+        USE_SECURE_COMMUNICATION="true"
+        echo "NOTE: Security level 3 requires the use of secure communication which has"
+        echo "now been enabled automatically. To avoid this warning in the future adjust"
+        echo "your settings in mdce_def.sh: either choose a lower SECURITY_LEVEL or"
+        echo "enable USE_SECURE_COMMUNICATION by setting it to \"true\"."
+        echo ""
+    fi
+
+    if [ "$USE_SECURE_COMMUNICATION" = "true" ]; then
+        if [ "$SHARED_SECRET_FILE" = "KEYSTORE_PATH_NOT_SPECIFIED" ]; then
+            SECRET_TO_CHECK=$DEFAULT_KEYSTORE_PATH
+        else
+            SECRET_TO_CHECK=$SHARED_SECRET_FILE
+        fi
+        if [ ! -e $SECRET_TO_CHECK ]; then
+            if [ "$SECURITY_LEVEL" = "3" ]; then
+                echo "ERROR: Secure communication requires a shared secret file to be created and"
+                echo "copied to $SECRET_TO_CHECK"
+                echo "on all machines prior to starting any services."
+                echo "Use the script createSharedSecret [-file FILENAME] to create such a file."
+                echo "The location of the secret file can be adjusted by changing the variable"
+                echo "SHARED_SECRET_FILE in mdce_def.sh."
+                exit 1;
+            else
+                echo "Creating a shared secret to be used by secure communication in:"
+                echo "  $SECRET_TO_CHECK"
+                ./createSharedSecret -file $SECRET_TO_CHECK | head -n 2
+            fi
+        fi
+    fi
+}
+
+
+#====================================================================    
+# If applicable, verify that sudo is set up in the way we need it to.
+# Exit if the sudo setup isn't correct.
+#====================================================================    
+verifySudoSetup() {
+    if [ -z "$MDCEUSER" ]; then
+        # No need to verify sudo setup.
+        return;
+    fi
+    # Export test variables that the checkSudo script then tries to read.
+    # This must work in order for the MATLAB workers to start correctly.
+        TESTVAR1=test1
+        TESTVAR2=test2
+        export TESTVAR1
+        export TESTVAR2
+    sudo -u $MDCEUSER "$UTILBASE"/checkSudo.sh
+    stat=$?
+    if [ $stat -eq 0 ]; then
+        return;
+    fi
+    # Sudo failed.
+    currentUser=`id -un`
+    if [ $stat -eq 1 ]; then
+        # Sudo couldn't run the command.
+        echo "Sudo either encountered a configuration or a permission problem, "
+        echo "or it failed to run the specified command as the user '$MDCEUSER'."
+         echo "To resolve this issue, do the following:"
+        echo "1) Make sure that your user account ('$currentUser') is authorized to use sudo."
+        echo "2) If this problem occurs only when starting the mdce service at "
+        echo "   boot time, or when starting it via ssh or rsh, then you should"
+        echo "   check whether your sudo setup requires you to have a tty when"
+        echo "   using sudo.  Look for lines containing 'requiretty' in the sudo "
+        echo "   configuration file (usually /etc/sudoers)."
+        echo "   To give the user account '$currentUser' permission to use sudo without"
+        echo "   having a tty, add the line"
+        echo "      Defaults:$currentUser "'!requiretty' # Single quotes protect bang
+        echo "   to the sudo configuration file."
+    else
+        # checkSudo.sh returned a failure status that environment variables
+        # were not correctly forwarded.
+        echo "Sudo does not correctly forward environment variables from your user"
+        echo "account ('$currentUser') to commands that run as the user '$MDCEUSER'."
+        echo "To resolve this issue, have sudo forward all permissible "
+        echo "environment variables from your user account ('$currentUser').  You can "
+        echo "do this by adding the following  line to the sudo configuration file "
+        echo "(usually /etc/sudoers):"
+        echo "      Defaults:$currentUser "'!env_reset' # Single quotes protect bang
+        echo "If necessary, you should also add the following line"
+        echo "      Defaults:$currentUser "'!env_delete' # Single quotes protect bang
+    fi
+    exit 1;
+}
+
+#====================================================================    
+# Set environment variables to pass LD_LIBRARY_PATH and
+# DYLD_LIBRARY_PATH through sudo.
+# Thus function should be called just after sourcing "$MATBASE/bin/matlab" .
+#====================================================================    
+setLibraryPaths() {
+    MDCE_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+    MDCE_DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH
+    # export must be separate from assignment to support Solaris
+    export MDCE_LD_LIBRARY_PATH
+    export MDCE_DYLD_LIBRARY_PATH
+}

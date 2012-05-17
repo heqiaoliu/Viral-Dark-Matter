@@ -1,0 +1,126 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>因子分析</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="factorandemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit factorandemo">エディターで factorandemo.m を開く</a></div><div class="right"><a href="matlab:echodemo factorandemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>因子分析</h1><!--introduction--><p>多変量データはしばしば多くの測定された変数を含み、場合によっては、それらの変数が &quot;重なる&quot; (変数のグループが依存するという意味で) ことがあります。たとえば、十種競技では、各競技者が 10 の競技を競いますが、その中のいくつかは、&quot;スピード&quot; 競技と見なせるものがある一方、 他の競技は、&quot;強さ&quot; を競う競技などと見なすことができます。したがって、競技者の 10 の競技の得点を、運動能力の 3 つまたは 4 つのタイプのより小さいセットに大きく依存しているものと考えることができます。</p><p>因子分析は、この種の相互依存だけを推定するために、多変量データをモデルで近似する方法です。このデモでは、Statistics Toolbox™ を使用して因子分析を実行する方法を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">因子分析モデル</a></li><li><a href="#2">例: 試験の成績に影響する共通因子の特定</a></li><li><a href="#12">共分散/相関行列からの因子分析</a></li><li><a href="#13">因子回転</a></li><li><a href="#21">因子スコアの予測</a></li><li><a href="#23">因子分析と主成分分析の比較</a></li></ul></div><h2>因子分析モデル<a name="1"></a></h2><p>因子分析モデルでは、測定された変数は、少数の観測されない (潜在的な) 因子に依存します。各因子は、いくつかの変数に共通して影響することがあるため、「共通因子」として知られています。各変数は、共通因子の線形結合に依存すると仮定されます。また、係数は「負荷」として知られています。測定された各変数には、独立したランダムな変動による成分も含まれます。これは、1 つの変数に固有であるという理由から、「独自因子の分散」として知られています。</p><p>特に、因子分析は、データの共分散行列が次の形であると想定します。</p><pre>  SigmaX = Lambda*Lambda' + Psi</pre><p>ここで、Lambda は負荷の行列であり、対角行列 Psi の要素は独自因子の分散です。関数 <tt>factoran</tt> は、最大尤度を使用して因子分析モデルを近似します。</p><h2>例: 試験の成績に影響する共通因子の特定<a name="2"></a></h2><p>120 人の生徒がそれぞれ 5 つの試験を受けました。最初の 2 つの試験は数学、次の 2 つは文学、最後は総合試験です。生徒の 5 段階評価を関連付けることは適切であると思われます。生徒の成績はさまざまで、両科目で優秀な生徒もいれば、一方の科目でのみ優秀な生徒もいます。この分析の目的は、5 つの試験での生徒の成績がほぼ、2 種類の能力によってのみ決まることを示す定量的な証拠が存在するかどうかを判断することです。</p><p>まずデータを読み込み、次に <tt>factoran</tt> を呼び出し、単一の共通因子によるモデルの近似を要求します。</p><pre class="codeinput">load <span class="string">examgrades</span>
+[Loadings1,specVar1,T,stats] = factoran(grades,1);
+</pre><p><tt>factoran</tt> が返す引数の最初の 2 つは、推定された負荷と推定された独自因子の分散です。推定された負荷から見て取れるように、このモデルの 1 つの共通因子が 5 つの変数すべてに対して大きい正の重み与えていますが、最大の重みは 5 番目の総合試験に対するものです。</p><pre class="codeinput">Loadings1
+</pre><pre class="codeoutput">
+Loadings1 =
+
+    0.6021
+    0.6686
+    0.7704
+    0.7204
+    0.9153
+
+</pre><p>この近似の 1 つの解釈は、生徒が &quot;総合的能力&quot; (この尺度として最適なのが総合試験) の観点で評価されているというものです。より科目に特化した試験での生徒の成績は、総合的能力によって決まる可能性がありますが、生徒がその科目が得意であるかどうかによっても左右されます。このことは、最初の 4 つの試験に対して負荷が低いことの理由になり得ます。</p><p>推定された独自因子の分散から見て取れるように、特定の試験での特定の生徒の成績が、共通因子による変動を超えて、かなり変化することをモデルが示しています。</p><pre class="codeinput">specVar1
+</pre><pre class="codeoutput">
+specVar1 =
+
+    0.6375
+    0.5530
+    0.4065
+    0.4810
+    0.1623
+
+</pre><p>独自因子の分散が 1 の場合は、その変数に共通因子がない<i></i>ことを示し、独自因子の分散が 0 の場合は、変数が完全に<i></i>共通因子によって決定されることを示します。総合試験の特定の変動量が最も少ないとはいえ、これらの試験の成績は、ほぼ中間に収まるように思われます。これは、このモデルにおける単一の共通因子についての上記の解釈と一致します。</p><p><tt>stats</tt> 構造体で返される p 値によって、単一の共通因子の帰無仮説が退けられるため、このモデルを修正します。</p><pre class="codeinput">stats.p
+</pre><pre class="codeoutput">
+ans =
+
+    0.0332
+
+</pre><p>次に、2 つの共通因子を使用して、試験の成績をより適切に説明します。複数の因子を使用すると、推定された負荷を回転し、その解釈をより単純なものにすることができます。しかし、ここではとりあえず、非回転の解を求めます。</p><pre class="codeinput">[Loadings2,specVar2,T,stats] = factoran(grades,2,<span class="string">'rotate'</span>,<span class="string">'none'</span>);
+</pre><p>推定された負荷から見て取れるように、第 1 の非回転因子は 5 つの変数すべてに対してほぼ同じ重みを与え、第 2 の因子は第 1 の 2 つの変数を第 2 の 2 つの変数と対比します。</p><pre class="codeinput">Loadings2
+</pre><pre class="codeoutput">
+Loadings2 =
+
+    0.6289    0.3485
+    0.6992    0.3287
+    0.7785   -0.2069
+    0.7246   -0.2070
+    0.8963   -0.0473
+
+</pre><p>これらの因子を &quot;総合能力&quot; および &quot;数量的能力 vs. 質的能力&quot; として解釈して、前述の 1 因子近似の解釈を拡張することができます。</p><p>変数のプロット (各負荷が、対応する因子の軸に沿った座標) が、この解釈を示しています。最初の 2 つの試験では、第 2 の因子に正の負荷があります。これは、これらの試験が &quot;数量的&quot; 能力に依存する一方で、次の 2 つの試験は明らかに質的能力に依存するということを示唆しています。5 番目の試験では、この第 2 因子に対する負荷がほんのわずかです。</p><pre class="codeinput">biplot(Loadings2, <span class="string">'varlabels'</span>,num2str((1:5)'));
+title(<span class="string">'Unrotated Solution'</span>);
+xlabel(<span class="string">'Latent Factor 1'</span>); ylabel(<span class="string">'Latent Factor 2'</span>);
+</pre><img vspace="5" hspace="5" src="../factorandemo_01.png" alt=""> <p>推定された独自因子の分散から見て取れるように、この 2 因子モデルでは、1 因子モデルに比べ、共通因子による変動を超えるような変動がいくぶん少なくなっています。また、5 番目の試験では、独自因子の分散の量が最も少なくなります。</p><pre class="codeinput">specVar2
+</pre><pre class="codeoutput">
+specVar2 =
+
+    0.4829
+    0.4031
+    0.3512
+    0.4321
+    0.1944
+
+</pre><p><tt>stats</tt> 構造体は、この 2 因子モデルに単一の自由度のみが存在することを示しています。</p><pre class="codeinput">stats.dfe
+</pre><pre class="codeoutput">
+ans =
+
+     1
+
+</pre><p>5 つの測定された変数だけでは、3 つ以上の因子を持つモデルを近似することができません。</p><h2>共分散/相関行列からの因子分析<a name="12"></a></h2><p>上記の近似では、試験の生の成績を使用しましたが、データを要約する標本共分散行列しかない場合もあります。<tt>factoran</tt> は、[Xtype] パラメーターを使用して共分散行列または相関行列のいずれかを受け取り、生データから得られるのと同じ結果を提供します。</p><pre class="codeinput">Sigma = cov(grades);
+[LoadingsCov,specVarCov] = <span class="keyword">...</span>
+        factoran(Sigma,2,<span class="string">'Xtype'</span>,<span class="string">'cov'</span>,<span class="string">'rotate'</span>,<span class="string">'none'</span>);
+LoadingsCov
+</pre><pre class="codeoutput">
+LoadingsCov =
+
+    0.6289    0.3485
+    0.6992    0.3287
+    0.7785   -0.2069
+    0.7246   -0.2070
+    0.8963   -0.0473
+
+</pre><h2>因子回転<a name="13"></a></h2><p>場合によっては、因子分析モデルから推定された負荷が、測定された一部の変数の複数の因子に対して大きい重みを与えることがあります。このような場合、これらの因子が何を表しているのかを解釈することが困難になります。因子回転の目的は、各変数について大きい負荷の数が少ないような、つまり、各変数に影響を及ぼす因子の数が少ない (1 つのみであることが好ましい) ような解を求めることです。</p><p>負荷行列の各行を M 次元空間の点の座標と考える場合、各因子は座標軸に相当します。因子回転は、これらの軸を回転し、回転座標系で新しい負荷を計算することに相当します。これを行うさまざまな方法があります。いくつかの方法では軸を直角にしておきます。一方、他の方法は、それらの間の角度を変更する傾斜軸を使うものです。</p><p>バリマックスは、直交回転の一般基準の 1 つです。<tt>factoran</tt> は既定でバリマックス回転を実行するため、バリマックス回転を明示的に要求しなくてもかまいません。</p><pre class="codeinput">[LoadingsVM,specVarVM,rotationVM] = factoran(grades,2);
+</pre><p><tt>factoran</tt> から返されるバリマックス回転行列を調べると、それが直交行列であることがわかります。バリマックスは実際、上図の因子軸を回転させますが、軸間の角度を直角に保ちます。</p><pre class="codeinput">rotationVM'*rotationVM
+</pre><pre class="codeoutput">
+ans =
+
+     1     0
+     0     1
+
+</pre><p>回転された因子上の 5 つの変数のバイプロットは、バリマックス回転の効果を示しています。</p><pre class="codeinput">biplot(LoadingsVM, <span class="string">'varlabels'</span>,num2str((1:5)'));
+title(<span class="string">'Varimax Solution'</span>);
+xlabel(<span class="string">'Latent Factor 1'</span>); ylabel(<span class="string">'Latent Factor 2'</span>);
+</pre><img vspace="5" hspace="5" src="../factorandemo_02.png" alt=""> <p>バリマックスは、すべての負荷を 0 または 1 に近づけるために、軸を剛体回転させます。最初の 2 つの試験は第 2 因子軸に最も近く、3 番目と 4 番目の試験は第 1 軸に最も近く、5 番目の試験は中間位置にあります。これら 2 つの回転された因子を &quot;数量的能力&quot; と &quot;質的能力&quot; として解釈するのが最適でしょう。しかし、これらの変数のいずれも因子軸に近くないため、バイプロットからわかるように、直交回転によって簡単な因子セットを提供することは成功していません。</p><p>直交回転は十分満足のいくものではなかったため、一般的な斜交回転基準であるプロマックスの使用を試みます。</p><pre class="codeinput">[LoadingsPM,specVarPM,rotationPM] = <span class="keyword">...</span>
+                factoran(grades,2,<span class="string">'rotate'</span>,<span class="string">'promax'</span>);
+</pre><p><tt>factoran</tt> から返されるプロマックス回転行列を調べると、それが直交行列でないことがわかります。プロマックスは実際、最初の図の因子軸を個別に回転させて、因子軸間に斜角を持たせることができます。</p><pre class="codeinput">rotationPM'*rotationPM
+</pre><pre class="codeoutput">
+ans =
+
+    1.9405   -1.3509
+   -1.3509    1.9405
+
+</pre><p>新しい回転された因子上の変数のバイプロットは、プロマックス回転の効果を示しています。</p><pre class="codeinput">biplot(LoadingsPM, <span class="string">'varlabels'</span>,num2str((1:5)'));
+title(<span class="string">'Promax Solution'</span>);
+xlabel(<span class="string">'Latent Factor 1'</span>); ylabel(<span class="string">'Latent Factor 2'</span>);
+</pre><img vspace="5" hspace="5" src="../factorandemo_03.png" alt=""> <p>プロマックスは軸の非剛体回転を実行し、&quot;単純な構造&quot; を作成するという作業をバリマックスよりもはるかにうまく行っています。最初の 2 つの試験は第 2 因子軸に近く、3 番目と 4 番目の試験は第 1 軸に近く、5 番目の試験は中間位置にあります。これにより、これらの回転された因子を &quot;数量的能力&quot; と &quot;質的能力&quot; としてより正確に解釈できます。</p><p>回転されたさまざまな軸セット上に変数をプロットする代わりに、回転された軸を非回転のバイプロットに重ね合わせることが可能です。こうすることで、回転された解と非回転の解がどのように関連するのかを理解しやすくなります。</p><pre class="codeinput">h1 = biplot(Loadings2, <span class="string">'varlabels'</span>,num2str((1:5)'));
+xlabel(<span class="string">'Latent Factor 1'</span>); ylabel(<span class="string">'Latent Factor 2'</span>);
+hold <span class="string">on</span>
+invRotVM = inv(rotationVM);
+h2 = line([-invRotVM(1,1) invRotVM(1,1) NaN -invRotVM(2,1) invRotVM(2,1)], <span class="keyword">...</span>
+          [-invRotVM(1,2) invRotVM(1,2) NaN -invRotVM(2,2) invRotVM(2,2)],<span class="string">'Color'</span>,[1 0 0]);
+invRotPM = inv(rotationPM);
+h3 = line([-invRotPM(1,1) invRotPM(1,1) NaN -invRotPM(2,1) invRotPM(2,1)], <span class="keyword">...</span>
+          [-invRotPM(1,2) invRotPM(1,2) NaN -invRotPM(2,2) invRotPM(2,2)],<span class="string">'Color'</span>,[0 1 0]);
+hold <span class="string">off</span>
+axis <span class="string">square</span>
+lgndHandles = [h1(1) h1(end) h2 h3];
+lgndLabels = {<span class="string">'Variables'</span>,<span class="string">'Unrotated Axes'</span>,<span class="string">'Varimax Rotated Axes'</span>,<span class="string">'Promax Rotated Axes'</span>};
+legend(lgndHandles, lgndLabels, <span class="string">'location'</span>,<span class="string">'northeast'</span>, <span class="string">'fontname'</span>,<span class="string">'arial narrow'</span>);
+</pre><img vspace="5" hspace="5" src="../factorandemo_04.png" alt=""> <h2>因子スコアの予測<a name="21"></a></h2><p>観察をその因子得点に基づいて分類できることは有効です。たとえば、2 因子モデルと、プロマックス回転された因子の解釈を受け入れた場合、生徒が将来、数学の試験でどの程度の成績を上げるかを予測できます。</p><p>データは試験の生の成績であり、その共分散行列ではないため、<tt>factoran</tt> を使用して、各生徒について、2 つの回転された共通因子それぞれの予測値を返すことができます。</p><pre class="codeinput">[Loadings,specVar,rotation,stats,preds] = <span class="keyword">...</span>
+              factoran(grades,2,<span class="string">'rotate'</span>,<span class="string">'promax'</span>,<span class="string">'maxit'</span>,200);
+biplot(Loadings, <span class="string">'varlabels'</span>,num2str((1:5)'), <span class="string">'Scores'</span>,preds);
+title(<span class="string">'Predicted Factor Scores for Promax Solution'</span>);
+xlabel(<span class="string">'Ability In Literature'</span>); ylabel(<span class="string">'Ability In Mathematics'</span>);
+</pre><img vspace="5" hspace="5" src="../factorandemo_05.png" alt=""> <p>このプロットは、元の変数 (ベクトル) と各観測の予測スコア (点) の両方を使用して、モデルの近似を示しています。この近似が示唆しているのは、一部の生徒は、一方の科目で良い成績を上げながら他方の科目ではそうでない (第 2 象限と第 4 象限) が、ほとんどの生徒は数学と文学の両方で良い生成または悪い成績のいずれかである (第 1 象限と第 3 象限) ということです。このことは、2 つの因子の推定相関行列を調べることで確認できます。</p><pre class="codeinput">inv(rotation'*rotation)
+</pre><pre class="codeoutput">
+ans =
+
+    1.0000    0.6962
+    0.6962    1.0000
+
+</pre><h2>因子分析と主成分分析の比較<a name="23"></a></h2><p>主成分分析 (PCA) と因子分析 (FA) の用語と目的には、重なるところが多くあります。2 つの方法についての文献の多くでは、それらが区別されておらず、 FA モデルでの近似のアルゴリズムに PCA が含まれている場合もあります。両方とも、観測された変数の大きなセットを新しい変数のより小さなセットに置き換えるのに使用することができるという意味で、次元を減少させる手法です。また、両方の方法で似た結果が得られることもしばしばあります。しかし、2 つの方法は、目的と基礎となるモデルにおいて異なります。大まかに言えば、単純に (たとえば、可視化するために) より少ない次元を使用してデータをまとめたり、近似することが必要な場合、PCA を使用すべきです。一方、データの相関について説明するモデルが必要な場合には FA を使用すべきです。</p><p class="footer">Copyright 2002-2007 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Factor Analysis % Multivariate data often include a large number of measured variables, and % sometimes those variables "overlap" in the sense that groups of them may % be dependent.  For example, in a decathlon, each athlete competes in 10 % events, but several of them can be thought of as "speed" events, while % others can be thought of as "strength" events, etc.  Thus, a competitor's % 10 event scores might be thought of as largely dependent on a smaller set % of 3 or 4 types of athletic ability. % % Factor analysis is a way to fit a model to multivariate data to estimate % just this sort of interdependence.  This is a demonstration of how to % perform factor analysis using the Statistics Toolbox(TM).  %   Copyright 2002-2007 The MathWorks, Inc. %   $Revision: 1.1.8.2.2.1 $  $Date: 2010/07/29 21:29:29 $  %% The Factor Analysis Model % In the factor analysis model, the measured variables depend on a smaller % number of unobserved (latent) factors.  Because each factor may affect % several variables in common, they are known as "common factors". Each % variable is assumed to depend on a linear combination of the common % factors, and the coefficients are known as loadings.  Each measured % variable also includes a component due to independent random variability, % known as "specific variance" because it is specific to one variable. % % Specifically, factor analysis assumes that the covariance matrix of your % data is of the form % %    SigmaX = Lambda*Lambda' + Psi % % where Lambda is the matrix of loadings, and the elements of the diagonal % matrix Psi are the specific variances.  The function |factoran| fits the % factor analysis model using maximum likelihood.   %% Example: Finding Common Factors Affecting Exam Grades % 120 students have each taken five exams, the first two covering % mathematics, the next two on literature, and a comprehensive fifth exam. % It seems reasonable that the five grades for a given student ought to be % related.  Some students are good at both subjects, some are good at only % one, etc.  The goal of this analysis is to determine if there is % quantitative evidence that the students' grades on the five different % exams are largely determined by only two types of ability. % % First load the data, then call |factoran| and request a model fit with % a single common factor. load examgrades [Loadings1,specVar1,T,stats] = factoran(grades,1); %% % |factoran|'s first two return arguments are the estimated loadings and the % estimated specific variances.  From the estimated loadings, you can see % that the one common factor in this model puts large positive weight on % all five variables, but most weight on the fifth, comprehensive exam. Loadings1 %% % One interpretation of this fit is that a student might be thought of in % terms of their "overall ability", for which the comprehensive exam would % be the best available measurement.  A student's grade on a more % subject-specific test would depend on their overall ability, but also on % whether or not the student was strong in that area.  This would explain the % lower loadings for the first four exams. % % From the estimated specific variances, you can see that the model % indicates that a particular student's grade on a particular test varies % quite a lot beyond the variation due to the common factor. specVar1 %% % A specific variance of 1 would indicate that there is _no_ common factor % component in that variable, while a specific variance of 0 would indicate % that the variable is _entirely_ determined by common factors. These exam % grades seem to fall somewhere in between, although there is the least % amount of specific variation for the comprehensive exam.  This is % consistent with the interpretation given above of the single common % factor in this model. % % The p-value returned in the |stats| structure rejects the null hypothesis % of a single common factor, so we refit the model. stats.p %% % Next, use two common factors to try and better explain the exam scores. % With more than one factor, you could rotate the estimated loadings to try % and make their interpretation simpler, but for the moment, ask for an % unrotated solution. [Loadings2,specVar2,T,stats] = factoran(grades,2,'rotate','none'); %% % From the estimated loadings, you can see that the first unrotated factor % puts approximately equal weight on all five variables, while the second % factor contrasts the first two variables with the second two. Loadings2 %% % You might interpret these factors as "overall ability" and "quantitative % vs. qualitative ability", extending the interpretation of the one-factor % fit made earlier. % % A plot of the variables, where each loading is a coordinate along the % corresponding factor's axis, illustrates this interpretation graphically. % The first two exams have a positive loading on the second factor, % suggesting that they depend on "quantitative" ability, while the second % two exams apparently depend on the opposite.  The fifth exam has only a % small loading on this second factor. biplot(Loadings2, 'varlabels',num2str((1:5)')); title('Unrotated Solution'); xlabel('Latent Factor 1'); ylabel('Latent Factor 2'); %% % From the estimated specific variances, you can see that this two-factor % model indicates somewhat less variation beyond that due to the common % factors than the one-factor model did.  Again, the least amount of % specific variance occurs for the fifth exam. specVar2 %% % The |stats| structure shows that there is only a single degree of freedom % in this two-factor model. stats.dfe %% % With only five measured variables, you cannot fit a model with more than % two factors.   %% Factor Analysis from a Covariance/Correlation Matrix % You made the fits above using the raw test scores, but sometimes you might % only have a sample covariance matrix that summarizes your data.  |factoran| % accepts either a covariance or correlation matrix, using the 'Xtype' % parameter, and gives an identical result to that from the raw data. Sigma = cov(grades); [LoadingsCov,specVarCov] = ...         factoran(Sigma,2,'Xtype','cov','rotate','none'); LoadingsCov   %% Factor Rotation % Sometimes, the estimated loadings from a factor analysis model can give a % large weight on several factors for some of the measured variables, % making it difficult to interpret what those factors represent.  The goal % of factor rotation is to find a solution for which each variable has only a % small number of large loadings, i.e., is affected by a small number of % factors, preferably only one. % % If you think of each row of the loadings matrix as coordinates of a point % in M-dimensional space, then each factor corresponds to a coordinate % axis.  Factor rotation is equivalent to rotating those axes, and % computing new loadings in the rotated coordinate system.  There are % various ways to do this.  Some methods leave the axes orthogonal, while % others are oblique methods that change the angles between them.  %% % Varimax is one common criterion for orthogonal rotation.  |factoran| % performs varimax rotation by default, so you do not need to ask for it % explicitly. [LoadingsVM,specVarVM,rotationVM] = factoran(grades,2); %% % A quick check of the varimax rotation matrix returned by |factoran| % confirms that it is orthogonal.  Varimax, in effect, rotates the factor % axes in the figure above, but keeps them at right angles. rotationVM'*rotationVM %% % A biplot of the five variables on the rotated factors shows the % effect of varimax rotation. biplot(LoadingsVM, 'varlabels',num2str((1:5)')); title('Varimax Solution'); xlabel('Latent Factor 1'); ylabel('Latent Factor 2'); %% % Varimax has rigidly rotated the axes in an attempt to make all of the % loadings close to zero or one.  The first two exams are closest to the % second factor axis, while the third and fourth are closest to the first % axis and the fifth exam is at an intermediate position.  These two % rotated factors can probably be best interpreted as "quantitative % ability" and "qualitative ability".  However, because none of the % variables are near a factor axis, the biplot shows that orthogonal rotation % has not succeeded in providing a simple set of factors. % % Because the orthogonal rotation was not entirely satisfactory, you can try % using promax, a common oblique rotation criterion. [LoadingsPM,specVarPM,rotationPM] = ...                 factoran(grades,2,'rotate','promax'); %% % A check on the promax rotation matrix returned by |factoran| shows that it % is not orthogonal. Promax, in effect, rotates the factor axes in the first % figure separately, allowing them to have an oblique angle between them. rotationPM'*rotationPM %% % A biplot of the variables on the new rotated factors shows the effect of % promax rotation. biplot(LoadingsPM, 'varlabels',num2str((1:5)')); title('Promax Solution'); xlabel('Latent Factor 1'); ylabel('Latent Factor 2'); %% % Promax has performed a non-rigid rotation of the axes, and has done a % much better job than varimax at creating a "simple structure".  The first % two exams are close to the second factor axis, while the third and fourth % are close to the first axis, and the fifth exam is in an intermediate % position. This makes an interpretation of these rotated factors as % "quantitative ability" and "qualitative ability" more precise. % % Instead of plotting the variables on the different sets of rotated axes, % it's possible to overlay the rotated axes on an unrotated biplot to get a % better idea of how the rotated and unrotated solutions are related. h1 = biplot(Loadings2, 'varlabels',num2str((1:5)')); xlabel('Latent Factor 1'); ylabel('Latent Factor 2'); hold on invRotVM = inv(rotationVM); h2 = line([-invRotVM(1,1) invRotVM(1,1) NaN -invRotVM(2,1) invRotVM(2,1)], ...           [-invRotVM(1,2) invRotVM(1,2) NaN -invRotVM(2,2) invRotVM(2,2)],'Color',[1 0 0]); invRotPM = inv(rotationPM); h3 = line([-invRotPM(1,1) invRotPM(1,1) NaN -invRotPM(2,1) invRotPM(2,1)], ...           [-invRotPM(1,2) invRotPM(1,2) NaN -invRotPM(2,2) invRotPM(2,2)],'Color',[0 1 0]); hold off axis square lgndHandles = [h1(1) h1(end) h2 h3]; lgndLabels = {'Variables','Unrotated Axes','Varimax Rotated Axes','Promax Rotated Axes'}; legend(lgndHandles, lgndLabels, 'location','northeast', 'fontname','arial narrow');   %% Predicting Factor Scores % Sometimes, it is useful to be able to classify an observation based on % its factor scores.  For example, if you accepted the two-factor model and % the interpretation of the promax rotated factors, you might want to predict % how well a student would do on a mathematics exam in the future. % % Since the data are the raw exam grades, and not just their covariance % matrix, we can have |factoran| return predictions of the value of each % of the two rotated common factors for each student. [Loadings,specVar,rotation,stats,preds] = ...               factoran(grades,2,'rotate','promax','maxit',200); biplot(Loadings, 'varlabels',num2str((1:5)'), 'Scores',preds); title('Predicted Factor Scores for Promax Solution'); xlabel('Ability In Literature'); ylabel('Ability In Mathematics'); %% % This plot shows the model fit in terms of both the original variables % (vectors) and the predicted scores for each observation (points).  The % fit suggests that, while some students do well in one subject but not the % other (second and fourth quadrants), most students do either well or % poorly in both mathematics and literature (first and third quadrants). % You can confirm this by looking at the estimated correlation matrix of % the two factors. inv(rotation'*rotation)   %% A Comparison of Factor Analysis and Principal Components Analysis % There is a good deal of overlap in terminology and goals between % Principal Components Analysis (PCA) and Factor Analysis (FA).  Much of % the literature on the two methods does not distinguish between them, and % some algorithms for fitting the FA model involve PCA.  Both are % dimension-reduction techniques, in the sense that they can be used to % replace a large set of observed variables with a smaller set of new % variables.  They also often give similar results.  However, the two % methods are different in their goals and in their underlying models. % Roughly speaking, you should use PCA when you simply need to summarize or % approximate your data using fewer dimensions (to visualize it, for % example), and you should use FA when you need an explanatory model for % the correlations among your data.   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

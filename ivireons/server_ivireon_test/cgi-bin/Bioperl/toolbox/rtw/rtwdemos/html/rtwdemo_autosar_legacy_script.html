@@ -1,0 +1,155 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>AUTOSAR Code Generation</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_autosar_legacy_script.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_autosar_legacy_script">Open rtwdemo_autosar_legacy_script.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_autosar_legacy_script">Run in the Command Window</a></div></div><div class="content"><h1>AUTOSAR Code Generation</h1><!--introduction--><p>This demonstration shows you how to generate AUTOSAR-compliant code and export AUTOSAR software component description XML files from a Simulink&reg; model.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Prepare the Model</a></li><li><a href="#2">Change the Default AUTOSAR Port Settings</a></li><li><a href="#3">Change the Default AUTOSAR Port Settings: Using the AUTOSAR Interface Dialog</a></li><li><a href="#4">Generate AUTOSAR-Compliant Code</a></li><li><a href="#7">Verify the AUTOSAR Code Using Software-in-the-Loop Testing</a></li><li><a href="#9">Further Information</a></li></ul></div><h2>Prepare the Model<a name="1"></a></h2><p>You can use the rtwdemo_autosar_counter demo model to see the steps needed to generate AUTOSAR-compliant code.</p><div><ol><li>Open the model rtwdemo_autosar_counter.</li><li>Click the <b>Tools</b> menu and select: <b>Real-Time Workshop</b> &gt; <b>Options</b></li><li>Change the system target file to the AUTOSAR target (<tt>autosar.tlc</tt>).</li></ol></div><p>An alternative method to change the system target file is to execute the following commands:</p><pre class="codeinput"><span class="comment">% Model defines</span>
+modelName = <span class="string">'rtwdemo_autosar_counter'</span>;
+
+<span class="comment">% open the model</span>
+open_system( modelName );
+
+<span class="comment">% Programmatically set the system target file to autosar.tlc</span>
+set_param( modelName, <span class="string">'SystemTargetFile'</span>, <span class="string">'autosar.tlc'</span> );
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_legacy_script_01.png" alt=""> <h2>Change the Default AUTOSAR Port Settings<a name="2"></a></h2><p>By default the AUTOSAR port name, data element name, and interface name are the same as the Simulink&reg; port name. You can change these default settings by using the AUTOSAR Interface dialog or command-line objects.</p><h2>Change the Default AUTOSAR Port Settings: Using the AUTOSAR Interface Dialog<a name="3"></a></h2><p><a href="matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'autosar_interface_dialog_box')">Overview of the AUTOSAR Interface dialog</a></p><div><ol><li>Click the <b>Tools</b> menu and select: <b>Real-Time Workshop</b> &gt; <b>Configure Model as AUTOSAR Component</b></li><li>In the AUTOSAR Interface dialog box, click the <b>Get Default Configuration</b> to configure the model interface dialog to the default values.</li><li>After making any changes, click the <b>Validate</b> button to confirm that any changes conform to AUTOSAR identifier naming conventions.</li></ol></div><p>An alternative method to change AUTOSAR port settings is to modify an existing configuration programmatically using an <tt>RTW.AutosarInterface</tt> object.</p><pre class="codeinput"><span class="comment">% Retrieve the RTW.AutosarInterface object</span>
+autosarInterface = RTW.getFunctionSpecification( modelName );
+
+autosarInterface.getDefaultConf;
+autosarInterface.setIOAutosarPortName( <span class="string">'Output'</span>, <span class="string">'Counter'</span> );
+autosarInterface.setIODataAccessMode(  <span class="string">'Output'</span>, <span class="string">'ImplicitSend'</span> );
+autosarInterface.setIODataElement(     <span class="string">'Output'</span>, <span class="string">'data'</span> );
+autosarInterface.setIOInterfaceName(   <span class="string">'Output'</span>, <span class="string">'genericInterface'</span> );
+
+[success, errmsg] = autosarInterface.runValidation();
+<span class="keyword">if</span> ~success
+    error(<span class="string">'rtwdemo:AUTOSAR'</span>, errmsg);
+<span class="keyword">end</span>
+</pre><h2>Generate AUTOSAR-Compliant Code<a name="4"></a></h2><p>Generate AUTOSAR-compliant code from the model by pressing Ctrl-B, or by using the following command.</p><pre class="codeinput">rtwbuild( modelName );
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model: rtwdemo_autosar_counter
+### Generating XML files description for model: rtwdemo_autosar_counter
+### Successful completion of Real-Time Workshop code generation for model: rtwdemo_autosar_counter
+</pre><p><tt>INC</tt>, <tt>K</tt>, <tt>LIMIT</tt>, <tt>RESET</tt> have been configured as AUTOSAR calibration parameters, which are accessed using the AUTOSAR Rte_Calprm function signature in the generated code.</p><p>You can import the resulting generated XML files and C code into an AUTOSAR authoring tool. You will also need to import the calibration interface referenced by the calibration parameters (<a href="matlab:web(fullfile(matlabroot,'toolbox','rtw','rtwdemos','CalibrationComponent.arxml'))">CalibrationComponent.arxml</a>).</p><h2>Verify the AUTOSAR Code Using Software-in-the-Loop Testing<a name="7"></a></h2><p>A common technique to verify the generated code is to wrap the generated code in an S-function. This allows you to verify the generated code in simulation. The AUTOSAR target automatically configures the generated S-function to route simulation data using AUTOSAR run-time environment (RTE) API calls.</p><pre class="codeinput"><span class="comment">% Configure the model for SIL</span>
+set_param( modelName, <span class="string">'GenerateErtSFunction'</span>, <span class="string">'on'</span> );
+set_param( modelName, <span class="string">'GenCodeOnly'</span>, <span class="string">'off'</span> );
+</pre><p>Use the following command to build the SIL block. Once the block has been built, you can create a test harness to verify that the SIL block produces the same data as the original model.  You can view more information about SIL verification in the <b>Testing Real-Time Code</b> section of the Real-Time Workshop&reg; Embedded Coder&#8482; guided introductions demonstration.</p><pre class="codeinput">rtwbuild( modelName );
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model: rtwdemo_autosar_counter
+### Generating XML files description for model: rtwdemo_autosar_counter
+### Successful completion of Real-Time Workshop build procedure for model: rtwdemo_autosar_counter
+</pre><img vspace="5" hspace="5" src="rtwdemo_autosar_legacy_script_02.png" alt=""> <h2>Further Information<a name="9"></a></h2><p><a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_autosar')">AUTOSAR Target documentation</a></p><p class="footer">Copyright 1990-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% AUTOSAR Code Generation
+% This demonstration shows you how to generate AUTOSAR-compliant code and export
+% AUTOSAR software component description XML files from a Simulink(R) model.
+
+%   Copyright 1990-2008 The MathWorks, Inc.
+%   $Revision: 1.1.6.5 $  $Date: 2008/10/08 17:53:56 $
+
+%% Prepare the Model
+% You can use the rtwdemo_autosar_counter demo model to see the steps needed
+% to generate AUTOSAR-compliant code. 
+%
+% # Open the model rtwdemo_autosar_counter.
+% # Click the *Tools* menu and select: *Real-Time Workshop* > *Options*
+% # Change the system target file to the AUTOSAR target (|autosar.tlc|).
+%
+% An alternative method to change the system target file is to execute the
+% following commands:
+%
+
+% Model defines
+modelName = 'rtwdemo_autosar_counter';
+
+% open the model
+open_system( modelName );
+
+% Programmatically set the system target file to autosar.tlc
+set_param( modelName, 'SystemTargetFile', 'autosar.tlc' );
+
+%% Change the Default AUTOSAR Port Settings
+% By default the AUTOSAR port name, data element name, and interface name
+% are the same as the Simulink(R) port name. You can change these default
+% settings by using the AUTOSAR Interface dialog or command-line objects.
+%
+
+%% Change the Default AUTOSAR Port Settings: Using the AUTOSAR Interface Dialog
+% <matlab:helpview([docroot,'/toolbox/ecoder/helptargets.map'],'autosar_interface_dialog_box') Overview of the AUTOSAR Interface dialog>
+%
+% # Click the *Tools* menu and select: *Real-Time Workshop* > *Configure Model
+% as AUTOSAR Component* 
+% # In the AUTOSAR Interface dialog box, click the *Get
+% Default Configuration* to configure the model interface dialog to the default
+% values.  
+% # After making any changes, click the *Validate* button to confirm
+% that any changes conform to AUTOSAR identifier naming conventions.
+%
+% An alternative method to change AUTOSAR port settings is to modify an
+% existing configuration programmatically using an |RTW.AutosarInterface|
+% object.
+
+% Retrieve the RTW.AutosarInterface object
+autosarInterface = RTW.getFunctionSpecification( modelName );
+
+autosarInterface.getDefaultConf;    
+autosarInterface.setIOAutosarPortName( 'Output', 'Counter' );
+autosarInterface.setIODataAccessMode(  'Output', 'ImplicitSend' );
+autosarInterface.setIODataElement(     'Output', 'data' );
+autosarInterface.setIOInterfaceName(   'Output', 'genericInterface' );
+
+[success, errmsg] = autosarInterface.runValidation();
+if ~success
+    error('rtwdemo:AUTOSAR', errmsg);
+end
+
+
+%% Generate AUTOSAR-Compliant Code
+% Generate AUTOSAR-compliant code from the model by pressing Ctrl-B, or by using
+% the following command.
+
+rtwbuild( modelName );
+
+%%
+% |INC|, |K|, |LIMIT|, |RESET| have been configured as AUTOSAR calibration
+% parameters, which are accessed using the AUTOSAR Rte_Calprm function signature
+% in the generated code.
+
+%%
+% You can import the resulting generated XML files and C code into an AUTOSAR
+% authoring tool. You will also need to import the calibration interface
+% referenced by the calibration parameters
+% (<matlab:web(fullfile(matlabroot,'toolbox','rtw','rtwdemos','CalibrationComponent.arxml'))
+% CalibrationComponent.arxml>).
+%
+
+%% Verify the AUTOSAR Code Using Software-in-the-Loop Testing
+% A common technique to verify the generated code is to wrap the generated
+% code in an S-function. This allows you to verify the generated code in
+% simulation. The AUTOSAR target automatically configures the generated
+% S-function to route simulation data using AUTOSAR run-time
+% environment (RTE) API calls.
+
+% Configure the model for SIL
+set_param( modelName, 'GenerateErtSFunction', 'on' );
+set_param( modelName, 'GenCodeOnly', 'off' );
+
+%%
+% Use the following command to build the SIL block. Once the block has been
+% built, you can create a test harness to verify that the SIL block produces the
+% same data as the original model.  You can view more information about SIL
+% verification in the *Testing Real-Time Code* section of the Real-Time
+% Workshop(R) Embedded Coder(TM) guided introductions demonstration.
+%
+
+rtwbuild( modelName );
+
+%% Further Information
+%
+% <matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'ecoder_autosar') AUTOSAR Target documentation>
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

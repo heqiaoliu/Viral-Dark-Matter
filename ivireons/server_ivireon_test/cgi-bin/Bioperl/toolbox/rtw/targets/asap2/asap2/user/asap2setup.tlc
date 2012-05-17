@@ -1,0 +1,72 @@
+%% $RCSfile: asap2setup.tlc,v $
+%% $Revision: 1.9.2.3 $ 
+%% $Date: 2010/04/05 22:30:39 $
+%%
+%% Copyright 1994-2010 The MathWorks, Inc.
+%%
+%% Abstract: ASAP2 setup file.
+%% - Define global variables to be used in ASAP2 generation process.
+%% - Include necessary user-defined TLC files.
+%%
+%selectfile NULL_FILE
+
+%% Define global variables:
+%% ------------------------
+%assign ASAP2FileName               = "%<CompiledModel.Name>.a2l"
+%assign ASAP2ProjectName            = "ProjectName"
+%assign ASAP2ProjectComment         = "Project Comment Goes Here"      
+%assign ASAP2ModuleName             = "ModuleName"
+%assign ASAP2ModuleComment          = "Module Comment Goes Here"
+%assign ASAP2MOD_COMMON_Comment     = "Mod Common Comment Here"
+%assign ASAP2NumberFormat           = "%0.6"
+%assign ASAP2HeaderName             = "Header Name Goes Here"
+%assign ASAP2ModParComment          = "MOD PAR Comment Goes Here"
+%assign ASAP2CompuMethodName_Prefix = "%<CompiledModel.Name>_"
+
+%% Configurations:
+%% ---------------
+%% BYTE_ORDER:          (Motorola="MSB_FIRST" / Intel="MSB_LAST")
+%% Get BYTE_ORDER from model configset (ConfigSet.TargetEndianess)
+%%  BigEndian      ->  MSB_FIRST              (*)
+%%  LittleEndian   ->  LSB_FIRST (MSB_LAST)   
+
+%%%assign ASAP2BYTE_ORDER     = "MSB_FIRST"      %% old
+%if  CompiledModel.ConfigSet.TargetEndianess == "LittleEndian"
+   %assign ASAP2BYTE_ORDER =  "MSB_LAST" 
+%else
+   %% other cases: Unspecified, BigEndian
+   %% The default
+   %assign ASAP2BYTE_ORDER = "MSB_FIRST"    
+%endif
+
+%% Include user-defined TLC files:
+%% -------------------------------
+%addincludepath "."
+%include "asap2userlib.tlc"
+%addincludepath "./templates"
+%include "asap2scalar.tlc"
+%include "asap2lookup1d.tlc"
+%include "asap2lookup2d.tlc"
+
+%% Example of create a GROUPS and SUB_GROUPS
+/%  <--- Remove this line if you would want to group parameters and signals
+%assign ASAP2RootGroup = ...
+  LibASAP2CreateGroup("%<CompiledModel.Name>", "%<CompiledModel.Name>")
+%<LibASAP2SetGroupIsRoot(ASAP2RootGroup)>
+
+%% Create a group for model signals
+%% --------------------------------
+%assign ASAP2SigGroup = ...
+  LibASAP2CreateGroup("Signals", "Measurements in %<CompiledModel.Name>")
+%<LibASAP2AddSubGroupToGroup(ASAP2RootGroup, ASAP2SigGroup)>
+
+%% Create a group for model parameters
+%% -----------------------------------
+%assign ASAP2ParGroup = ...
+  LibASAP2CreateGroup("Parameters", "Characteristics in %<CompiledModel.Name>")
+%<LibASAP2AddSubGroupToGroup(ASAP2RootGroup, ASAP2ParGroup)>
+
+%% Create groups based on graphical hierarchy of the model
+%% -------------------------------------------------------
+%<LibASAP2CreateGraphicalGroups()>
+%/ %%<--- Remove this line if you would want to group parameters and signals

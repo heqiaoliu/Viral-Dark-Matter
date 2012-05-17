@@ -1,0 +1,147 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Two Degree-of-Freedom PID Control for Setpoint Tracking</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_pid2dof.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_pid2dof.mdl</div><div class="right"><a href="matlab:sldemo_pid2dof">Open this model</a></div></div><div class="content"><h1>Two Degree-of-Freedom PID Control for Setpoint Tracking</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Model Description</a></li><li><a href="#6">Two Degree-of-Freedom PID Control</a></li><li><a href="#11">Simulating with <i>b</i> = 1 and <i>c</i> = 1</a></li><li><a href="#14">Simulating with the <i>b</i> = 0 and <i>c</i> = 0</a></li><li><a href="#18">Summary</a></li><li><a href="#19">References</a></li></ul></div><h2>Model Description<a name="1"></a></h2><p>This demo shows two degree-of-freedom PID control using the PID Controller (2DOF) block in Simulink&reg;. The PID controller is used to regulate the speed of an electric motor as shown below.</p><img vspace="5" hspace="5" src="sldemo_pid2dof_01.png" alt=""> <p><b>Figure 1:</b> Simulink model with two degree-of-freedom PID control of a DC motor.</p><p>To open this model, type <tt>sldemo_pid2dof</tt> in a MATLAB&reg; terminal.</p><p>The electric motor is an armature-controlled DC motor. Voltage input controls the shaft speed of the motor. The block diagram of the motor is shown in <b>Figure 2</b>. The motor experiences a load torque <img src="sldemo_pid2dof_eq46183.png" alt="$Td$"> (0-5 Nm).</p><img vspace="5" hspace="5" src="sldemo_pid2dof_02.png" alt=""> <p><b>Figure 2:</b> Block diagram of the motor.</p><h2>Two Degree-of-Freedom PID Control<a name="6"></a></h2><p>In contrast to the PID Controller block, the PID Controller (2DOF) block provides an extra degree of freedom to allow users to weight the setpoint as it passes through the proportional action channel and the derivative action channel. See the PID Controller (2DOF) help page or type <tt>doc('PID Controller 2DOF')</tt> in a MATLAB terminal for more details. The schematic of the PID Controller (2DOF) appearing in the model is shown below.</p><img vspace="5" hspace="5" src="sldemo_pid2dof_03.png" alt=""> <p><b>Figure 3:</b> Under-mask view of the PID Controller (2DOF).</p><p>As shown in Figure 3, the error signal seen by the proportional action is given by</p><p><img src="sldemo_pid2dof_eq69208.png" alt="$$b*r-y$$"></p><p>The signal seen by the derivative action is</p><p><img src="sldemo_pid2dof_eq97932.png" alt="$$c*r-y$$"></p><p>and the signal seen by the integral action is</p><p><img src="sldemo_pid2dof_eq61849.png" alt="$$r-y$$"></p><p>In general, the setpoint weight <i>c</i> is chosen to be 0 to prevent undesirable transients upon a change in the setpoint, which is an effect known as <i>derivative kick</i>. The setpoint <i>b</i> affects the overshoot performance of the controller. Generally, a small <i>b</i> value reduces overshoot. However, smaller <i>b</i> values can also result in slower response to setpoint changes. For more details on picking the right setpoint values, see Reference [1].</p><p>When <img src="sldemo_pid2dof_eq03920.png" alt="$b=1$"> and <img src="sldemo_pid2dof_eq83756.png" alt="$c=1$">, the behavior of the two degree-of-freedom PID controller is identical to a classical PID controller.</p><h2>Simulating with <i>b</i> = 1 and <i>c</i> = 1<a name="11"></a></h2><p>When <img src="sldemo_pid2dof_eq03920.png" alt="$b=1$"> and <img src="sldemo_pid2dof_eq83756.png" alt="$c=1$">, the behavior of the two degree-of-freedom PID controller is identical to a classical PID controller. The setpoint signal, control signal, and closed-loop response of the model are shown in Figure 4.</p><img vspace="5" hspace="5" src="sldemo_pid2dof_04.png" alt=""> <p><b>Figure 4:</b> Setpoint vs. measured output, control signal.</p><p>Figure 4 clearly shows the spikes in the control signal, which are caused by aggressive proportional and derivative response to the setpoint change. Modifying the <i>b</i> and <i>c</i> weights can make this response less aggressive, as shown next.</p><h2>Simulating with the <i>b</i> = 0 and <i>c</i> = 0<a name="14"></a></h2><p>In this case, the two degree-of-freedom PID controller is known as I-PD where only the I action acts on the classical error signal, and the PD action acts only on the measured output.</p><img vspace="5" hspace="5" src="sldemo_pid2dof_05.png" alt=""> <p><b>Figure 5:</b> Setpoint vs. measured output, control signal.</p><p>The simulation results clearly show the absence of large transients in the control signal due to the sudden changes in the setpoint.</p><p>See Reference [1] for more information on how <i>b</i> and <i>c</i> are chosen.</p><h2>Summary<a name="18"></a></h2><p>The PID Controller (2DOF) block in Simulink supports two degree-of-freedom PID control. This block can be used for tracking complex setpoint profiles and moderating the impact of sudden setpoint changes on control signal transients. The PID tuner of Simulink(R)Control Design&#8482; can be used to automatically tune the P, I, and D gains of the PID Controller (2DOF) block.</p><h2>References<a name="19"></a></h2><p>
+[1]  K. &Aring;str&ouml;m, T. H&auml;gglund, <i>Advanced PID
+Control</i>, ISA, Research Triangle Park, NC, August 2005.
+</p><p class="footer">Copyright 2009-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Two Degree-of-Freedom PID Control for Setpoint Tracking
+%
+% Copyright 2009-2010 The MathWorks, Inc.
+% $Revision: 1.1.6.3.2.1 $  $Date: 2010/06/07 13:34:16 $
+
+%% Model Description
+% This demo shows two degree-of-freedom PID control using the PID
+% Controller (2DOF) block in Simulink(R). The PID controller is used to
+% regulate the speed of an electric motor as shown below.
+
+open_system('sldemo_pid2dof')
+
+%%
+% *Figure 1:* Simulink model with two degree-of-freedom PID control of a DC
+% motor.
+
+%%
+% To open this model, type |sldemo_pid2dof| in a MATLAB(R) terminal.
+
+%%
+% The electric motor is an armature-controlled DC motor. Voltage input
+% controls the shaft speed of the motor. The block diagram of the motor is
+% shown in *Figure 2*. The motor experiences a load torque $Td$
+% (0-5 Nm).
+
+open_system('sldemo_pid2dof/DC Motor','force')
+
+%%
+% *Figure 2:* Block diagram of the motor.
+
+%% Two Degree-of-Freedom PID Control
+% In contrast to the PID Controller block, the PID Controller (2DOF) block
+% provides an extra degree of freedom to allow users to weight the setpoint
+% as it passes through the proportional action channel and the derivative
+% action channel. See the PID Controller (2DOF) help page or type |doc('PID
+% Controller 2DOF')| in a MATLAB terminal for more details. The schematic
+% of the PID Controller (2DOF) appearing in the model is shown below.
+
+open_system('sldemo_pid2dof/PID Controller (2DOF)','force')
+
+%%
+% *Figure 3:* Under-mask view of the PID Controller (2DOF).
+
+%%
+% As shown in Figure 3, the error signal seen by the proportional action is
+% given by
+%
+% $$b*r-y$$
+%
+% The signal seen by the derivative action is
+%
+% $$c*r-y$$
+%
+% and the signal seen by the integral action is
+%
+% $$r-y$$
+
+%%
+% In general, the setpoint weight _c_ is chosen to be 0 to prevent
+% undesirable transients upon a change in the setpoint, which is an effect
+% known as _derivative kick_. The setpoint _b_ affects the overshoot
+% performance of the controller. Generally, a small _b_ value reduces
+% overshoot. However, smaller _b_ values can also result in slower response
+% to setpoint changes. For more details on picking the right setpoint
+% values, see Reference [1].
+%
+
+%%
+% When $b=1$ and $c=1$, the behavior of the two degree-of-freedom PID
+% controller is identical to a classical PID controller.
+
+
+%% Simulating with _b_ = 1 and _c_ = 1
+% When $b=1$ and $c=1$, the behavior of the two degree-of-freedom PID
+% controller is identical to a classical PID controller. The setpoint
+% signal, control signal, and closed-loop response of the model are shown
+% in Figure 4.
+ 
+close_system('sldemo_pid2dof/DC Motor');
+close_system('sldemo_pid2dof/PID Controller (2DOF)');
+set_param('sldemo_pid2dof/PID Controller (2DOF)','b','1','c','1');
+open_system('sldemo_pid2dof/Scope');
+sim('sldemo_pid2dof');
+
+%%
+% *Figure 4:* Setpoint vs. measured output, control signal.
+
+%%
+% Figure 4 clearly shows the spikes in the control signal, which are
+% caused by aggressive proportional and derivative response to the setpoint
+% change. Modifying the _b_ and _c_ weights can make this response less
+% aggressive, as shown next.
+
+%% Simulating with the _b_ = 0 and _c_ = 0
+% In this case, the two degree-of-freedom PID controller is known as I-PD
+% where only the I action acts on the classical error signal, and the PD
+% action acts only on the measured output.
+
+set_param('sldemo_pid2dof/PID Controller (2DOF)','b','0','c','0');
+sim('sldemo_pid2dof');
+
+%%
+% *Figure 5:* Setpoint vs. measured output, control signal.
+
+%%
+% The simulation results clearly show the absence of large transients in
+% the control signal due to the sudden changes in the setpoint.
+
+%%
+% See Reference [1] for more information on how _b_ and _c_ are chosen.
+
+%% Summary
+% The PID Controller (2DOF) block in Simulink supports two
+% degree-of-freedom PID control. This block can be used for tracking
+% complex setpoint profiles and moderating the impact of sudden setpoint
+% changes on control signal transients. The PID tuner of 
+% Simulink(R)Control Design(TM) can be used to automatically tune the 
+% P, I, and D gains of the PID Controller (2DOF) block.
+
+bdclose('sldemo_pid2dof')
+
+%% References
+% 
+% <html>
+% [1]  K. &Aring;str&ouml;m, T. H&auml;gglund, <i>Advanced PID
+% Control</i>, ISA, Research Triangle Park, NC, August 2005.
+% </html>
+%
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

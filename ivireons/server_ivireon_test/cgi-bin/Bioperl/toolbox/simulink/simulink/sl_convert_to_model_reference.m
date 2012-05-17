@@ -1,0 +1,16 @@
+function [conversionSuccess,...
+          newTopModelNameOut,...
+          createdModelsNameList,...
+          candidateListNameOnly] = sl_convert_to_model_reference(topModelIn,...
+                                                  saveLocation,... 
+                                                  varargin) %#ok
+% SL_CONVERT_TO_MODEL_REFERENCE Partitions a model into several models using Model blocks
+%
+% sl_convert_to_model_reference has been removed.  To convert subsystems to
+% Model blocks, please use Simulink.SubSystem.convertToModelReference or
+% "Convert to Model block" from the subsystem context menu.
+
+% Copyright 2003-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.24 $
+
+DAStudio.error('Simulink:modelReference:ModelRefConvObsolete');

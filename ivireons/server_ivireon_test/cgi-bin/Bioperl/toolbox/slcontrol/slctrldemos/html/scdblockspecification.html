@@ -1,0 +1,174 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Specifying Custom Linearizations for Simulink Blocks</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdblockspecification.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdblockspecification">Open scdblockspecification.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdblockspecification">Run in the Command Window</a></div></div><div class="content"><h1>Specifying Custom Linearizations for Simulink Blocks</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#2">Linearizing a Model with a PWM Generation Subsystem</a></li><li><a href="#6">Specifying a Custom Linearization for the PWM Subsystem</a></li><li><a href="#14">Comparing the Linearization and Simulation</a></li><li><a href="#15">Other Applications of Specifying Custom Linearizations for Simulink Blocks</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>The command <tt>LINEARIZE</tt> in Simulink&reg; Control Design&#8482; gives a linear approximation of a Simulink model using an exact linearization approach. This linearization is valid in a small region around a given operating point. This approach works well for most Simulink models, but in some cases you need to modify the exact linearization approach to take into account the effects of discontinuities or approximate the dynamics of derivative or delay action.  Many built-in Simulink blocks, such as saturation or the dead zone nonlinearities, provide the ability to select "Treat as gain when linearizing" to control this behavior.  In this demonstration you specify a custom linearization for a subsystem to approximate the linearization of a PWM signal.</p><h2>Linearizing a Model with a PWM Generation Subsystem<a name="2"></a></h2><p>The following example model has a subsystem <tt>scdpwm/Voltage to PWM</tt>, which models a PWM signal that enters a plant model.</p><pre class="codeinput">mdl = <span class="string">'scdpwm'</span>;
+open_system(mdl);
+</pre><img vspace="5" hspace="5" src="scdblockspecification_01.png" alt=""> <p>When you linearize this model using the standard configuration, the resulting linear model has a gain of zero.</p><pre class="codeinput">io = getlinio(mdl);
+sys = linearize(mdl,io)
+</pre><pre class="codeoutput"> 
+d = 
+                Step
+   Plant Model     0
+ 
+Static gain.
+</pre><p>The block <tt>scdpwm/Voltage to PWM/Compare To Zero</tt> causes this linearization to be zero.</p><pre class="codeinput">pwmblk = <span class="string">'scdpwm/Voltage to PWM'</span>;
+open_system(pwmblk)
+</pre><img vspace="5" hspace="5" src="scdblockspecification_02.png" alt=""> <p>The linearization is zero because the block represents is a pure discontinuous nonlinearity.</p><pre class="codeinput">u = [-1:0.1:0,0:0.1:1];
+y = [zeros(11,1);ones(11,1)];
+plot(u,y)
+xlabel(<span class="string">'Block Input - u'</span>)
+ylabel(<span class="string">'Block Output - y'</span>)
+set(gca,<span class="string">'YLim'</span>,[-0.1 1.1])
+</pre><img vspace="5" hspace="5" src="scdblockspecification_03.png" alt=""> <h2>Specifying a Custom Linearization for the PWM Subsystem<a name="6"></a></h2><p>With Simulink Control Design, you can control the linearization of the blocks in a Simulink model.  You can specify the linearization of a block using:</p><div><ul><li>Matrices</li><li>Linear time invariant models, such as transfer functions or state space</li><li>Robust Control uncertain parameters/state space models</li></ul></div><p>In this example, the PWM subsystem contains a time delay</p><p><img src="scdblockspecification_eq49363.png" alt="$$PWM(s) = e^{-sT_s}$$"></p><p>This time delay accounts for the duty cycle frequency of the PWM signal which is at 100 Hz. To specify the delay on the subsystem <tt>scdpwm/Voltage to PWM</tt> right click on the block and select <b>Linear Analysis-&gt;Specify Linearization</b>.  The following block dialog in which you to specify the delay dynamics opens.</p><p><img vspace="5" hspace="5" src="../html_extra/scdblockspecification/specificationdlg.png" alt=""> </p><p>The following code is equivalent to entering the delay into the specification dialog.</p><pre class="codeinput">set_param(pwmblk,<span class="string">'SCDEnableBlockLinearizationSpecification'</span>,<span class="string">'on'</span>);
+rep = struct(<span class="string">'Specification'</span>,<span class="string">'ss(1,''OutputDelay'',1/100)'</span>,<span class="keyword">...</span>
+             <span class="string">'Type'</span>,<span class="string">'Expression'</span>,<span class="keyword">...</span>
+             <span class="string">'ParameterNames'</span>,<span class="string">''</span>,<span class="keyword">...</span>
+             <span class="string">'ParameterValues'</span>,<span class="string">''</span>);
+set_param(pwmblk,<span class="string">'SCDBlockLinearizationSpecification'</span>,rep);
+</pre><p>Linearizing the model with the specified subsystem linearization now gives the expected result.</p><pre class="codeinput">opt = linoptions(<span class="string">'SampleTime'</span>,0);
+sys = zpk(linearize(mdl,io,opt))
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input "Step" to output "Plant Model":
+                     1
+exp(-0.01*s) * -------------
+               (s^2 + s + 1)
+ 
+</pre><h2>Comparing the Linearization and Simulation<a name="14"></a></h2><p>You can compare the linearization of the model to the actual linearization using a <tt>frest.createStep</tt> signal.  It is important to note that the specification of the linearization does not need to be removed to simulate using the original model configuration.  The linearization specification does not have an impact on simulation, only linearization. Visual inspection shows that the linearization accurately represents the dynamics.</p><pre class="codeinput">cla
+instep = frest.createStep(<span class="string">'Ts'</span>,1/10000,<span class="string">'StepTime'</span>,1,<span class="keyword">...</span>
+                          <span class="string">'StepSize'</span>,1e-1,<span class="string">'FinalTime'</span>,15);
+[sysf,simoutstep] = frestimate(mdl,io,instep);
+frest.simCompare(simoutstep,sys,instep)
+legend(<span class="string">'Linearization with PWM Subsystem Specification'</span>,<span class="keyword">...</span>
+            <span class="string">'Simulated Step Response'</span>,<span class="string">'Location'</span>,<span class="string">'East'</span>)
+</pre><img vspace="5" hspace="5" src="scdblockspecification_04.png" alt=""> <h2>Other Applications of Specifying Custom Linearizations for Simulink Blocks<a name="15"></a></h2><p>Block linearization specification is not limited to linear time invariant models.  With the Robust Control Toolbox&#8482;, you can specify uncertain parameters and uncertain state space (USS) models for blocks in a model.  The resulting linearization is then an uncertain model.  The demonstration <a href="../../../robust/rctdemos/html/ulinearize_demo.html">"Linearization of Simulink models with Uncertainty"</a> shows how to compute a linearization with uncertainty (Requires Robust Control Toolbox&#8482;).</p><p>You can also perform analysis of models with discrete controllers and continuous plant dynamics in the continuous domain.  See the demo <a href="scdcompdelay_engspeed.html">"Modeling Computational Delay and Sampling Effects"</a> for more details.</p><p>Close the Simulink model</p><pre class="codeinput">bdclose(mdl)
+</pre><p class="footer">Copyright 2005-2008 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Specifying Custom Linearizations for Simulink Blocks
+%   Copyright 2005-2008 The MathWorks, Inc.
+% $Revision: 1.1.8.2 $ $Date: 2009/11/09 16:35:34 $
+
+%% Introduction 
+% The command |LINEARIZE| in Simulink(R) Control Design(TM) gives a linear
+% approximation of a Simulink model using an exact linearization approach.
+% This linearization is valid in a small region around a given operating
+% point. This approach works well for most Simulink models, but in some
+% cases you need to modify the exact linearization approach to take into
+% account the effects of discontinuities or approximate the dynamics of
+% derivative or delay action.  Many built-in Simulink blocks, such as
+% saturation or the dead zone nonlinearities, provide the ability to select
+% "Treat as gain when linearizing" to control this behavior.  In this
+% demonstration you specify a custom linearization for a
+% subsystem to approximate the linearization of a PWM signal.
+
+%% Linearizing a Model with a PWM Generation Subsystem
+% The following example model has a subsystem |scdpwm/Voltage to PWM|, which
+% models a PWM signal that enters a plant model.  
+mdl = 'scdpwm';
+open_system(mdl);
+
+%% 
+% When you linearize this model using the standard configuration, the
+% resulting linear model has a gain of zero.
+io = getlinio(mdl);
+sys = linearize(mdl,io)
+
+%%
+% The block |scdpwm/Voltage to PWM/Compare To Zero| causes this
+% linearization to be zero.
+pwmblk = 'scdpwm/Voltage to PWM';
+open_system(pwmblk)
+
+%% 
+% The linearization is zero because the block represents is a pure
+% discontinuous nonlinearity.
+u = [-1:0.1:0,0:0.1:1];
+y = [zeros(11,1);ones(11,1)];
+plot(u,y)
+xlabel('Block Input - u')
+ylabel('Block Output - y')
+set(gca,'YLim',[-0.1 1.1])
+
+%% Specifying a Custom Linearization for the PWM Subsystem
+% With Simulink Control Design, you can control the linearization of the
+% blocks in a Simulink model.  You can specify the linearization of a block
+% using:
+%%
+% 
+% * Matrices
+% * Linear time invariant models, such as transfer functions or state space
+% * Robust Control uncertain parameters/state space models
+%% 
+% In this example, the PWM subsystem contains a time delay
+%%
+% 
+% $$PWM(s) = e^{-sT_s}$$
+%
+%%
+% This time delay accounts for the duty cycle frequency of the PWM signal
+% which is at 100 Hz. To specify the delay on the subsystem |scdpwm/Voltage
+% to PWM| right click on the block and select *Linear Analysis->Specify
+% Linearization*.  The following block dialog in which you to specify the
+% delay dynamics opens.
+%%
+% <<../html_extra/scdblockspecification/specificationdlg.png>>
+%
+%%
+% The following code is equivalent to entering the delay into the
+% specification dialog.
+set_param(pwmblk,'SCDEnableBlockLinearizationSpecification','on');
+rep = struct('Specification','ss(1,''OutputDelay'',1/100)',...
+             'Type','Expression',...
+             'ParameterNames','',...
+             'ParameterValues','');
+set_param(pwmblk,'SCDBlockLinearizationSpecification',rep);
+
+%% 
+% Linearizing the model with the specified subsystem linearization now
+% gives the expected result.
+opt = linoptions('SampleTime',0);
+sys = zpk(linearize(mdl,io,opt))
+
+%% Comparing the Linearization and Simulation
+% You can compare the linearization of the model to the actual
+% linearization using a |frest.createStep| signal.  It is important to note
+% that the specification of the linearization does not need to be removed
+% to simulate using the original model configuration.  The linearization
+% specification does not have an impact on simulation, only linearization.
+% Visual inspection shows that the linearization accurately represents the
+% dynamics.
+cla
+instep = frest.createStep('Ts',1/10000,'StepTime',1,...
+                          'StepSize',1e-1,'FinalTime',15);
+[sysf,simoutstep] = frestimate(mdl,io,instep);
+frest.simCompare(simoutstep,sys,instep)
+legend('Linearization with PWM Subsystem Specification',...
+            'Simulated Step Response','Location','East')
+        
+%% Other Applications of Specifying Custom Linearizations for Simulink Blocks
+% Block linearization specification is not limited to linear time
+% invariant models.  With the Robust Control Toolbox(TM), you can specify uncertain
+% parameters and uncertain state space (USS) models for
+% blocks in a model.  The resulting linearization is then an uncertain
+% model.  The demonstration
+% <../../../robust/rctdemos/html/ulinearize_demo.html "Linearization of
+% Simulink models with Uncertainty"> shows how to compute a linearization
+% with uncertainty (Requires Robust Control Toolbox(TM)).
+
+%%
+% You can also perform analysis of models with discrete controllers and
+% continuous plant dynamics in the continuous domain.  See the demo 
+% <scdcompdelay_engspeed.html "Modeling Computational Delay and Sampling
+% Effects"> for more details.
+
+%%
+% Close the Simulink model
+bdclose(mdl)
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

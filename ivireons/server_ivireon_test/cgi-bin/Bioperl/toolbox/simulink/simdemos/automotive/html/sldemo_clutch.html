@@ -1,0 +1,405 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Building a Clutch Lock-Up Model</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sldemo_clutch.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sldemo_clutch.mdl</div><div class="right"><a href="matlab:sldemo_clutch">Open this model</a></div></div><div class="content"><h1>Building a Clutch Lock-Up Model</h1><!--introduction--><p>This example demonstrates the use of Simulink&reg; to model and simulate a rotating clutch system. Although modeling a clutch system is difficult because of topological changes in the system dynamics during lockup, this example shows how Simulink's enabled subsystems easily handle such problems. We illustrate how to employ important Simulink modeling concepts in the creation of the clutch simulation. Designers can apply these concepts to many models with strong discontinuities and constraints that may change dynamically.</p><p>In the demonstration, we use enabled subsystems to build the clutch model. Two enabled subsystems model the clutch dynamics in either the locked or unlocked position. After running the simulation, a GUI opens. Checking any of the boxes on the GUI produces a plot of any of the selected variables (versus time).</p><p>There is an alternative clutch model (<tt>sldemo_clutch_if.mdl</tt>) that uses 'If/Else' blocks instead of enabled subsystems (<a href="matlab:open_system('sldemo_clutch_if')">open the other clutch model</a>).</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analysis and Physics</a></li><li><a href="#13">Modeling</a></li><li><a href="#14">- Opening the Model and Running the Simulation</a></li><li><a href="#17">- The 'Unlocked' Subsystem</a></li><li><a href="#20">- The 'Locked' Subsystem</a></li><li><a href="#22">- The 'Friction Mode Logic' Subsystem</a></li><li><a href="#24">- Other Components</a></li><li><a href="#25">- System Inputs</a></li><li><a href="#27">- Results</a></li><li><a href="#31">Closing Model</a></li><li><a href="#32">Conclusions</a></li></ul></div><h2>Analysis and Physics<a name="1"></a></h2><p>The clutch system in this example consists of two plates that transmit torque between the engine and transmission (see Figure 1). There are two distinct modes of operation:</p><p>1) slipping - the two plates have differing angular velocities</p><p>2) lockup - the two plates rotate together.</p><p>Handling the transition between these two modes presents a modeling challenge. As the system loses a degree of freedom upon lockup, the transmitted torque goes through a step discontinuity. The magnitude of the torque drops from the maximum value supported by the friction capacity to a value that is necessary to keep the two halves of the system spinning at the same rate. The reverse transition, break-apart, is likewise challenging, as the torque transmitted by the clutch plates exceeds the friction capacity.</p><p><img vspace="5" hspace="5" src="sldemo_clutch_figure1.png" alt=""> </p><p><b>Figure 1:</b> The clutch system, analyzed using a lumped-parameter model</p><p><b>Variables Used</b></p><p>The following variables are used in the analysis and modeling.</p><p><img src="sldemo_clutch_eq78790.png" alt="$$ T_{in} = \mbox{input (engine) torque; }$$"></p><p><img src="sldemo_clutch_eq85998.png" alt="$$F_n = \mbox{normal force between friction plates; } $$"></p><p><img src="sldemo_clutch_eq74724.png" alt="$$ I_e, I_v = \mbox{ moments of inertia for the engine and for the&#xA;transmission/vehicle; } $$"></p><p><img src="sldemo_clutch_eq97042.png" alt="$$ b_e, b_v = \mbox{ damping rates at the engine and transmission/vehicle&#xA;sides of the clutch; } $$"></p><p><img src="sldemo_clutch_eq34265.png" alt="$$ \mu_k, \mu_s = \mbox{ kinetic and static coefficients of friction; } $$"></p><p><img src="sldemo_clutch_eq87016.png" alt="$$\omega_e, \omega_v = \mbox{angular speeds of the engine and transmission input shafts; }$$"></p><p><img src="sldemo_clutch_eq17545.png" alt="$$ r_1, r_2 = \mbox{inner and outer radii of the clutch plate friction&#xA;surfaces; } $$"></p><p><img src="sldemo_clutch_eq89210.png" alt="$$R = \mbox{equivalent net radius;}$$"></p><p><img src="sldemo_clutch_eq68180.png" alt="$$T_{cl} = \mbox{torque transmitted through the clutch;}$$"></p><p><img src="sldemo_clutch_eq38057.png" alt="$$T_l = \mbox{friction torque required of the clutch to maintain lockup;}&#xA;$$"></p><p><b>Equation 1</b></p><p>The state equations for the coupled system are derived as follows:</p><p><img src="sldemo_clutch_eq54227.png" alt="$$&#xA;I_e \dot{\omega}_e = T_{in}-b_e\omega_e -T_d&#xA;$$"></p><p><img src="sldemo_clutch_eq49880.png" alt="$$&#xA;I_v \dot{\omega}_v = T_{d}-b_v\omega_v&#xA;$$"></p><p><b>Equation 2</b></p><p>The torque capacity of the clutch is a function of its size, friction characteristics, and the normal force that is applied.</p><p><img src="sldemo_clutch_eq68946.png" alt="$$ (T_f)_{\mbox{max}} = \int \int_{A} \frac{r \times F_f}{A} da&#xA;= \frac{F_n \mu}{\pi (r_2^2-r_1^2)} \int^{r_2}_{r_1} \int^{2\pi}_{0} r^2&#xA;dr d\theta&#xA;= \frac{2}{3}R F_n \mu&#xA;$$"></p><p><img src="sldemo_clutch_eq47746.png" alt="$$R=\frac{r^3_2-r^3_1}{r^2_2-r^2_1}$$"></p><p><b>Equation 3</b></p><p>When the clutch is slipping, the model uses the kinetic coefficient of friction and the full capacity is available, in the direction that opposes slip.</p><p><img src="sldemo_clutch_eq35468.png" alt="$$T_{fmaxk}=\frac{2}{3}R F_n \mu_k$$"></p><p><img src="sldemo_clutch_eq28519.png" alt="$$ T_d = sgn ( \omega_e - \omega_v ) T_{fmaxk} $$"></p><p><b>Equation 4</b></p><p>When the clutch is locked, the angular velocities of the engine and transmission input shafts are the same, and the system torque acts on the combined inertia as a single unit. So, we combine the differential equations (Equation 1) into a single equation for the locked state.</p><p><img src="sldemo_clutch_eq62568.png" alt="$$\omega_e=\omega_v=\omega$$"></p><p><img src="sldemo_clutch_eq13876.png" alt="$$(I_e+I_v)\dot{\omega}=T_{in}-(b_e+b_v)\dot{\omega}$$"></p><p><b>Equation 5</b></p><p>Solving Equation 1 and Equation 4, the torque transmitted by the clutch while locked is:</p><p><img src="sldemo_clutch_eq87727.png" alt="$$T_c=T_f=\frac{I_v T_{in} - (I_v b_e-I_e b_v)\omega }{I_v+I_e}$$"></p><p><b>Equation 6</b></p><p>The clutch thus remains locked unless the magnitude of <tt>Tf</tt> exceeds the static friction capacity, <tt>Tfmaxs</tt>.</p><p><img src="sldemo_clutch_eq64941.png" alt="$$ T_{fmaxs} = \frac{2}{3} R F_n \mu_s $$"></p><p>The state diagram in Figure 2 describes the overall behavior of the clutch.</p><p><img vspace="5" hspace="5" src="sldemo_clutch_figure2.png" alt=""> </p><p><b>Figure 2:</b> A state diagram describing the friction mode transitions</p><h2>Modeling<a name="13"></a></h2><p>There are two methods for solving this type of problem:</p><p>1) Compute the clutch torque transmitted at all times, and employ this value directly in the model</p><p>2) Use two different dynamic models and switch between them at the appropriate times</p><p>Because of its overall capabilities, Simulink can model either method. In this example, we describe a simulation for the second method. In the second method, switching between two dynamic models must be performed with care to ensure that the initialized states of the new model match the state values immediately prior to the switch. But, in either approach, Simulink facilitates accurate simulation due to its ability to recognize the precise moments at which transitions between lockup and slipping occur.</p><p>The simulation model for the clutch system uses enabled subsystems, a particularly useful feature in Simulink. The simulation can use one subsystem while the clutch is slipping and the other when it is locked. A diagram of the Simulink model appears in Figure 3.</p><h2>- Opening the Model and Running the Simulation<a name="14"></a></h2><p>To <a href="matlab:open_system('sldemo_clutch')">open this model</a> type <tt>sldemo_clutch</tt> in MATLAB&reg; terminal (click on the hyperlink if you are using MATLAB Help).</p><p>When the model is open, press the "Play" button on the model toolbar to run the simulation.</p><div><ul><li>Note: If you are using MATLAB Help, you can execute code from the demo page by selecting the code and pressing F9. You can also Select Code &gt; Right Click &gt; Select "Evaluate Selection".</li></ul></div><img vspace="5" hspace="5" src="sldemo_clutch_01.png" alt=""> <img vspace="5" hspace="5" src="sldemo_clutch_02.png" alt=""> <p><b>Figure 3:</b> Top level diagram for the clutch model</p><div><ul><li>Note: The model logs relevant data to MATLAB workspace in a structure called <tt>sldemo_clutch_output</tt>. Logged signals have a blue indicator (<a href="matlab:open_system('sldemo_clutch')">see the model</a>). Read more about Signal Logging in Simulink Help.</li></ul></div><h2>- The 'Unlocked' Subsystem<a name="17"></a></h2><p>Double click on the 'Unlocked' subsystem in the model window to open it.  This subsystem models both sides of the clutch, coupled by the friction torque. It is constructed around the integrator blocks which calculate engine and vehicle speeds (see Figure 4). The model uses gain, multiplication, and summation blocks to compute the speed derivatives (acceleration) from the states and the subsystem inputs of engine torque, <tt>Tin</tt>, and clutch capacity, <tt>Tfmaxk</tt>.</p><img vspace="5" hspace="5" src="sldemo_clutch_03.png" alt=""> <p><b>Figure 4:</b> The 'Unlocked' subsystem</p><p>Enabled subsystems, such as 'Unlocked', feature several other noteworthy characteristics. The 'Enable' block at the top of the diagram in Figure 4, defines the model as an enabled subsystem. To create an enabled subsystem, we group the blocks together like any other subsystem. We then insert an 'Enable' block from the Simulink Connections library. This means that:</p><div><ul><li>An enable input appears on the subsystem block, identified by the pulse-shaped symbol used on the 'Enable' block itself.</li></ul></div><div><ul><li>The subsystem executes only when the signal at the enable input is greater than zero.</li></ul></div><p>In this example, the 'Unlocked' subsystem executes only when the supervising system logic determines that it should be enabled.</p><p>There is another important consideration when using systems that can be enabled or disabled. When the system is enabled, the simulation must reinitialize the integrators to begin simulating from the correct point. In this case, both sides of the clutch are moving at the same velocity the moment it unlocks. The 'Unlocked' subsystem, which had been dormant, needs to initialize both integrators at that speed in order to keep the system speeds continuous.</p><p>The simulation uses 'From' blocks to communicate the state of the locked speed to the initial condition inputs of the two integrators. Each 'From' block represents an invisible connection between itself and a 'Goto' block somewhere else in the system. The 'Goto' blocks connect to the state ports of the integrators so that the model can use these states elsewhere in the system without explicitly drawing in the connecting lines.</p><h2>- The 'Locked' Subsystem<a name="20"></a></h2><p>Open the 'Locked' subsystem by double clicking on it in the model window. This is another enabled subsystem in the clutch model (see Figure 5). It uses a single state to represent the engine and vehicle speeds. It computes acceleration as a function of the speed and input torque. As in the 'Unlocked' case, a 'From' block provides the integrator initial conditions and a 'Goto' block broadcasts the state for use elsewhere in the model. While simulating, either the 'Locked' or the 'Unlocked' subsystem is active at all times. Whenever the control changes, the states are neatly handed off between the two.</p><img vspace="5" hspace="5" src="sldemo_clutch_04.png" alt=""> <p><b>Figure 5:</b> The 'Locked' Subsystem</p><h2>- The 'Friction Mode Logic' Subsystem<a name="22"></a></h2><p>The 'Friction Mode Logic' subsystem (shown in Figure 6) computes the static and kinetic friction (with the appropriate friction coefficient) according to the following formula:</p><p><img src="sldemo_clutch_eq18201.png" alt="$$T_{fmax}=\frac{2}{3} R F_n \mu $$"></p><p>Open the 'Friction Mode Logic' subsystem by double clicking on it in the model window.</p><img vspace="5" hspace="5" src="sldemo_clutch_05.png" alt=""> <p><b>Figure 6:</b> The 'Friction Mode Logic' Subsystem</p><h2>- Other Components<a name="24"></a></h2><p>The remaining blocks calculate the torque required for lockup (Equation 5), and implement the logic  described in Figure 2. One key element is located in the 'Lockup Detection' subsystem within the 'Friction Mode Logic' subsystem. This is the 'Simulink Hit Crossing' block which precisely locates the instant at which the clutch slip reaches zero. This places the mode transition at exactly the right moment.</p><h2>- System Inputs<a name="25"></a></h2><p>The system inputs are normal force, <tt>Fn</tt>, and engine torque, <tt>Tin</tt>. Each of these is represented by a matrix table in the model workspace. The inputs are plotted in Figure 7. You can visualize various signals by checking the corresponding boxes on the 'Clutch Demo Signals' GUI.</p><img vspace="5" hspace="5" src="sldemo_clutch_06.png" alt=""> <p><b>Figure 7:</b> System inputs: normal force and engine torque</p><h2>- Results<a name="27"></a></h2><p>The following parameter values are used to demonstrate the simulation. These are not meant to represent the physical quantities corresponding to an actual system, but rather to facilitate a meaningful baseline demonstration.</p><p><img src="sldemo_clutch_eq05356.png" alt="$$ I_e = 1 kg\cdot m^2$$"></p><p><img src="sldemo_clutch_eq07819.png" alt="$$I_v = 5 kg\cdot m^2 $$"></p><p><img src="sldemo_clutch_eq44976.png" alt="$$b_e = 2 Nm/rad/sec$$"></p><p><img src="sldemo_clutch_eq01638.png" alt="$$b_v = 1 Nm/rad/sec$$"></p><p><img src="sldemo_clutch_eq74813.png" alt="$$\mu_k = 1 $$"></p><p><img src="sldemo_clutch_eq80084.png" alt="$$\mu_s = 1.5 $$"></p><p><img src="sldemo_clutch_eq04519.png" alt="$$R = 1 m$$"></p><p>For the inputs shown above, the system velocities behave as shown in Figure 8 below. The simulation begins in the Unlocked mode, with an initial engine speed flare as the vehicle side accelerates its larger inertia. At about <tt>t = 4 sec</tt>, the velocities come together and remain locked, indicating that the clutch capacity is sufficient to transmit the torque. At <tt>t = 5 sec</tt>, the engine torque begins to decrease, as does the normal force on the friction plates. Consequently, the onset of slip occurs at about <tt>t = 6.25 sec</tt> as indicated by the separation of the engine and vehicle speeds.</p><img vspace="5" hspace="5" src="sldemo_clutch_07.png" alt=""> <p><b>Figure 8:</b> Angular velocities of the engine, vehicle and shaft for default inputs</p><p>Notice that the various states remain constant while they are disabled. At the time instants at which transitions take place, the state hand-off is both continuous and smooth. This is a result of supplying each integrator with the appropriate initial conditions to use when the state is enabled.</p><h2>Closing Model<a name="31"></a></h2><p>Close the model. Clear generated data.</p><h2>Conclusions<a name="32"></a></h2><p>This example shows how to use Simulink and its standard block library to model, simulate, and analyze a system with topological discontinuities. This is a powerful demonstration of the 'Hit Crossing' block and how it can be used to capture specific events during a simulation. The Simulink model of this clutch system can serve as a guide when creating models with similar characteristics. You can apply the principles used in this example to any system with topological discontinuities.</p><p class="footer">Copyright 1984-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Building a Clutch Lock-Up Model
+%
+% This example demonstrates the use of Simulink(R) to model and simulate a
+% rotating clutch system. Although modeling a clutch system is difficult
+% because of topological changes in the system dynamics during lockup, this
+% example shows how Simulink's enabled subsystems easily handle
+% such problems. We illustrate how to employ important Simulink modeling
+% concepts in the creation of the clutch simulation. Designers can apply
+% these concepts to many models with strong discontinuities and constraints
+% that may change dynamically. 
+%
+% In the demonstration, we use enabled subsystems to build the clutch
+% model. Two enabled subsystems model the clutch dynamics in either the
+% locked or unlocked position. After running the simulation, a GUI opens.
+% Checking any of the boxes on the GUI produces a plot of any of the
+% selected variables (versus time).  
+%
+% There is an alternative clutch model (|sldemo_clutch_if.mdl|) that uses
+% 'If/Else' blocks instead of enabled subsystems
+% (<matlab:open_system('sldemo_clutch_if') open the other clutch model>).
+
+
+% Copyright 1984-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.4 $  $Date: 2009/12/07 20:47:17 $
+
+%% Analysis and Physics
+%
+% The clutch system in this example consists
+% of two plates that transmit torque between the engine and transmission
+% (see Figure 1). 
+% There are two distinct modes of operation: 
+%
+% 1) slipping - the two plates have differing angular velocities 
+%
+% 2) lockup - the two plates rotate together. 
+%
+% Handling the transition between these two modes presents
+% a modeling challenge. As the system loses a degree of freedom upon
+% lockup, the transmitted torque goes through a step discontinuity. The
+% magnitude of the torque drops from the maximum value supported by the
+% friction capacity to a value that is necessary to keep the two halves of
+% the system spinning at the same rate. The reverse transition,
+% break-apart, is likewise challenging, as the torque transmitted by the
+% clutch plates exceeds the friction capacity. 
+
+%%
+% <<sldemo_clutch_figure1.png>>
+
+%% 
+% *Figure 1:* The clutch system, analyzed using a lumped-parameter model
+
+%%
+%
+% *Variables Used*
+%
+% The following variables are used in the analysis and modeling.
+%
+% $$ T_{in} = \mbox{input (engine) torque; }$$
+%
+% $$F_n = \mbox{normal force between friction plates; } $$
+%
+% $$ I_e, I_v = \mbox{ moments of inertia for the engine and for the
+% transmission/vehicle; } $$
+%
+% $$ b_e, b_v = \mbox{ damping rates at the engine and transmission/vehicle
+% sides of the clutch; } $$
+%
+% $$ \mu_k, \mu_s = \mbox{ kinetic and static coefficients of friction; } $$
+%
+% $$\omega_e, \omega_v = \mbox{angular speeds of the engine and transmission input shafts; }$$
+%
+% $$ r_1, r_2 = \mbox{inner and outer radii of the clutch plate friction
+% surfaces; } $$
+%
+% $$R = \mbox{equivalent net radius;}$$
+%
+% $$T_{cl} = \mbox{torque transmitted through the clutch;}$$
+%
+% $$T_l = \mbox{friction torque required of the clutch to maintain lockup;}
+% $$
+
+%%
+% *Equation 1*
+%
+% The state equations for the coupled system are derived as follows:
+%
+% $$
+% I_e \dot{\omega}_e = T_{in}-b_e\omega_e -T_d
+% $$
+%
+% $$
+% I_v \dot{\omega}_v = T_{d}-b_v\omega_v
+% $$
+
+%%
+% *Equation 2*
+%
+% The torque capacity of the clutch is a function of its size, friction
+% characteristics, and the normal force that is applied.
+%
+% $$ (T_f)_{\mbox{max}} = \int \int_{A} \frac{r \times F_f}{A} da 
+% = \frac{F_n \mu}{\pi (r_2^2-r_1^2)} \int^{r_2}_{r_1} \int^{2\pi}_{0} r^2
+% dr d\theta
+% = \frac{2}{3}R F_n \mu
+% $$
+%
+% $$R=\frac{r^3_2-r^3_1}{r^2_2-r^2_1}$$
+
+%% 
+% *Equation 3*
+%
+% When the clutch is slipping, the model uses the kinetic coefficient of
+% friction and the full capacity is available, in the direction that
+% opposes slip. 
+%
+% $$T_{fmaxk}=\frac{2}{3}R F_n \mu_k$$
+%
+% $$ T_d = sgn ( \omega_e - \omega_v ) T_{fmaxk} $$
+%
+
+%%
+% *Equation 4*
+%
+% When the clutch is locked, the angular velocities of the engine and
+% transmission input shafts are the same, and the system torque acts on the
+% combined inertia as a single unit. So, we combine the differential
+% equations (Equation 1) into a single equation for the locked state.  
+%
+% $$\omega_e=\omega_v=\omega$$
+%
+% $$(I_e+I_v)\dot{\omega}=T_{in}-(b_e+b_v)\dot{\omega}$$
+
+%%
+% *Equation 5*
+%
+% Solving Equation 1 and Equation 4, the torque transmitted by the
+% clutch while locked is:
+%
+% $$T_c=T_f=\frac{I_v T_{in} - (I_v b_e-I_e b_v)\omega }{I_v+I_e}$$
+
+%%
+% *Equation 6*
+%
+% The clutch thus remains locked unless the magnitude of |Tf| exceeds the
+% static friction capacity, |Tfmaxs|.
+%
+% $$ T_{fmaxs} = \frac{2}{3} R F_n \mu_s $$
+
+%%
+% The state diagram in Figure 2 describes the overall behavior of the clutch.
+%
+% <<sldemo_clutch_figure2.png>>
+%
+%%
+% *Figure 2:* A state diagram describing the friction mode transitions
+%
+
+%% Modeling
+%
+% There are two methods for solving this type of problem: 
+% 
+% 1) Compute the clutch torque transmitted at all times, and employ this value directly in the model
+%
+% 2) Use two different dynamic models and switch between them at the appropriate times
+%
+% Because of its overall capabilities, Simulink can model either method. In
+% this example, we describe a simulation for the second method. In the
+% second method, switching between two dynamic models must be performed
+% with care to ensure that the initialized states of the new model match
+% the state values immediately prior to the switch. But, in either
+% approach, Simulink facilitates accurate simulation due to its ability to
+% recognize the precise moments at which transitions between lockup and
+% slipping occur.
+%
+% The simulation model for the clutch system uses
+% enabled subsystems, a particularly useful feature in Simulink. The
+% simulation can use one subsystem while the clutch is slipping and the
+% other when it is locked. A diagram of the Simulink model appears in
+% Figure 3.
+%
+ 
+%% - Opening the Model and Running the Simulation
+%
+% To <matlab:open_system('sldemo_clutch') open this model> type
+% |sldemo_clutch| in MATLAB(R) terminal (click on the hyperlink if you are
+% using MATLAB Help).
+%
+% When the model is open, press the "Play" button on the model toolbar to
+% run the simulation.
+%
+% * Note: If you are using MATLAB Help, you can execute code from the demo
+% page by selecting the code and pressing F9. You can also Select Code >
+% Right Click > Select "Evaluate Selection".
+
+open_system('sldemo_clutch'); % code does not appear in the demo HTML
+evalc('sim(''sldemo_clutch'')'); %simulate and don't display output
+
+%%
+% *Figure 3:* Top level diagram for the clutch model 
+
+
+%%
+% * Note: The model logs relevant data to MATLAB
+% workspace in a structure called |sldemo_clutch_output|. Logged signals
+% have a blue indicator (<matlab:open_system('sldemo_clutch') see the model>). 
+% Read more about Signal Logging in Simulink Help.
+% 
+%% - The 'Unlocked' Subsystem
+%
+% Double click on the 'Unlocked' subsystem in the model window to open it.  This
+% subsystem models both sides of the clutch, coupled by the friction torque. It
+% is constructed around the integrator blocks which calculate engine and vehicle
+% speeds (see Figure 4). The model uses gain, multiplication, and
+% summation blocks to compute the speed derivatives (acceleration) from the
+% states and the subsystem inputs of engine torque, |Tin|, and clutch capacity,
+% |Tfmaxk|.
+
+
+open_system('sldemo_clutch/Unlocked');
+
+%%
+% *Figure 4:* The 'Unlocked' subsystem
+
+%%
+%
+% Enabled subsystems, such
+% as 'Unlocked', feature several other noteworthy characteristics. The
+% 'Enable' block at the top of the diagram in Figure 4, defines the model as an
+% enabled subsystem. To create an enabled subsystem, we group the blocks
+% together like any other subsystem. We then insert an 'Enable' block from
+% the Simulink Connections library. This means that: 
+%
+% * An enable input appears on the subsystem block, identified by the
+% pulse-shaped symbol used on the 'Enable' block itself. 
+%
+% * The subsystem executes only when the
+% signal at the enable input is greater than zero. 
+%
+% In this example, the 'Unlocked' subsystem executes only when the
+% supervising system logic 
+% determines that it should be enabled.  
+%
+% There is another important consideration when using systems that can be
+% enabled or disabled. When the system is enabled, the simulation must
+% reinitialize the integrators to begin simulating from the correct point.
+% In this case, both sides of the clutch are moving at the same velocity
+% the moment it unlocks. The 'Unlocked' subsystem, which had been dormant,
+% needs to initialize both integrators at that speed in order to keep the
+% system speeds continuous. 
+%
+% The simulation uses 'From' blocks to communicate
+% the state of the locked speed to the initial condition inputs of the two
+% integrators. Each 'From' block represents an invisible connection between
+% itself and a 'Goto' block somewhere else in the system. The 'Goto' blocks
+% connect to the state ports of the integrators so that the model can use
+% these states elsewhere in the system without explicitly drawing in the
+% connecting lines.
+%
+
+%% - The 'Locked' Subsystem
+%
+% Open the 'Locked' subsystem by double clicking on it in the model window. 
+% This is another enabled subsystem in the clutch model (see Figure 5).
+% It uses a single state to represent the engine and vehicle
+% speeds. It computes 
+% acceleration as a function of the speed and input torque. As in the
+% 'Unlocked' case, a 'From' block provides the integrator initial conditions
+% and a 'Goto' block broadcasts the state for use elsewhere in the model.
+% While simulating, either the 'Locked' or the 'Unlocked' subsystem is active
+% at all times. Whenever the control changes, the states are neatly handed
+% off between the two.    
+
+open_system('sldemo_clutch/Locked');
+
+%%
+% *Figure 5:* The 'Locked' Subsystem
+
+%% - The 'Friction Mode Logic' Subsystem
+%
+% The 'Friction Mode Logic' subsystem (shown in Figure 6)
+% computes the static and kinetic friction (with the appropriate friction coefficient) according to the following formula:
+%
+% $$T_{fmax}=\frac{2}{3} R F_n \mu $$
+%
+% Open the 'Friction Mode Logic' subsystem by double clicking on it in the
+% model window. 
+
+open_system('sldemo_clutch/Friction Mode Logic');
+
+%%
+% *Figure 6:* The 'Friction Mode Logic' Subsystem
+
+
+%% - Other Components
+%
+% The remaining blocks calculate the torque required for lockup (Equation
+% 5), and implement the logic  described in Figure 2. One key element
+% is located in the 'Lockup Detection' subsystem within the 'Friction Mode
+% Logic' subsystem. This is the 'Simulink Hit Crossing' block which precisely
+% locates the instant at which the clutch slip reaches zero. This places
+% the mode transition at exactly the right moment. 
+
+%% - System Inputs
+%
+% The system inputs are normal force, |Fn|, and engine torque, |Tin|. Each of
+% these is represented by a matrix table in the model workspace. The inputs are
+% plotted in Figure 7. You can visualize various signals by checking the
+% corresponding boxes on the 'Clutch Demo Signals' GUI.
+%
+
+plot(sldemo_clutch_output.Tin.Time, sldemo_clutch_output.Tin.Data, 'b', ...
+     sldemo_clutch_output.Fn.Time,  sldemo_clutch_output.Fn.Data,  'r'  );
+xlabel('Time (sec)');
+ylabel('System Inputs');
+legend('Engine Torque (Nm)', 'Clutch Normal Force (N)');
+title('Normal Force (Fn) and Engine Torque (Tin)');
+axis([0 10 -.2 2.2]);
+%% 
+% *Figure 7:* System inputs: normal force and engine torque
+
+
+%% - Results
+%
+% The following parameter values are used to demonstrate the simulation.
+% These are not meant to represent the physical quantities corresponding to
+% an actual system, but rather to facilitate a meaningful baseline
+% demonstration. 
+%
+% $$ I_e = 1 kg\cdot m^2$$
+%
+% $$I_v = 5 kg\cdot m^2 $$
+%
+% $$b_e = 2 Nm/rad/sec$$
+%
+% $$b_v = 1 Nm/rad/sec$$
+%
+% $$\mu_k = 1 $$
+%
+% $$\mu_s = 1.5 $$
+%
+% $$R = 1 m$$
+
+%%
+% For the inputs shown above, the system velocities behave as shown in
+% Figure 8 below. The simulation begins in the Unlocked mode, with an
+% initial engine speed flare as the vehicle side accelerates its larger
+% inertia. At about |t = 4 sec|, the velocities come together and remain
+% locked, indicating that the clutch capacity is sufficient to transmit the
+% torque. At |t = 5 sec|, the engine torque begins to decrease, as does the
+% normal force on the friction plates. Consequently, the onset of slip
+% occurs at about |t = 6.25 sec| as indicated by the separation of the
+% engine and vehicle speeds.  
+
+plot(sldemo_clutch_output.EngineSpeed.Time,  sldemo_clutch_output.EngineSpeed.Data,  'r', ...
+     sldemo_clutch_output.VehicleSpeed.Time, sldemo_clutch_output.VehicleSpeed.Data, 'b', ...
+     sldemo_clutch_output.ShaftSpeed.Time,   sldemo_clutch_output.ShaftSpeed.Data,   'g'  );
+xlabel('Time (sec)');
+ylabel('Angular Speed (rad/sec)');
+legend('\omega_e - Engine Speed', '\omega_v - Vehicle Speed', '\omega - Shaft Speed');
+title('Angular Velocities for Default Inputs');
+
+%%
+% *Figure 8:* Angular velocities of the engine, vehicle and shaft for default inputs
+
+%%
+%
+% Notice that the various states remain constant while they are disabled.
+% At the time instants at which transitions take place, the state hand-off
+% is both continuous and smooth. This is a result of supplying each
+% integrator with the appropriate initial conditions to use when the state
+% is enabled. 
+
+%% Closing Model  
+%
+% Close the model. Clear generated data.
+
+close_system('sldemo_clutch',0);
+clear sldemo_clutch_output;
+
+
+%% Conclusions
+%
+% This example shows how to use Simulink and its standard block library to
+% model, simulate, and analyze a system with topological discontinuities.
+% This is a powerful demonstration of the 'Hit Crossing' block and how it can
+% be used to capture specific events during a simulation. The Simulink
+% model of this clutch system can serve as a guide when creating models
+% with similar characteristics. You can apply the principles used in this
+% example to any system with topological discontinuities.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,131 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>微分方程式</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="odedemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit odedemo">エディターで odedemo.m を開く</a></div><div class="right"><a href="matlab:echodemo odedemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>微分方程式</h1><!--introduction--><p>MATLAB&reg; は、広範な微分方程式を解くためのさまざまな数値的アルゴリズムを提供します。このデモは、MATLAB を使用して 3 つの異なる微分方程式に対する公式と解法を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">初期値問題</a></li><li><a href="#4">境界値問題</a></li><li><a href="#9">偏微分方程式</a></li></ul></div><h2>初期値問題<a name="1"></a></h2><p>VANDERPOLDEMO は、van der Pol 方程式を定義する関数です。</p><pre class="codeinput">type <span class="string">vanderpoldemo</span>
+</pre><pre class="codeoutput">
+function dydt = vanderpoldemo(t,y,Mu)
+%VANDERPOLDEMO Defines the van der Pol equation for ODEDEMO.
+
+% Copyright 1984-2002 The MathWorks, Inc.  
+% $Revision: 1.1.6.11.2.1 $  $Date: 2010/07/29 21:28:52 $ 
+
+dydt = [y(2); Mu*(1-y(1)^2)*y(2)-y(1)];
+</pre><p>方程式は 2 つの 1 次 ODE のシステムとして記述されます。これらは、パラメーター Mu のさまざまな値に対して評価されます。より速く積分を行うには、パラメーター Mu の値を元に適切なソルバーを選択します。</p><p>Mu = 1 の場合、MATLAB ODE ソルバーのいずれでも van der Pol 方程式を効率的に解くことができます。以下で使用する ODE45 のソルバーは、そのような例の 1 つです。方程式は、領域 [0, 20] 内で求められます。</p><pre class="codeinput">tspan = [0, 20];
+y0 = [2; 0];
+Mu = 1;
+ode = @(t,y) vanderpoldemo(t,y,Mu);
+[t,y] = ode45(ode, tspan, y0);
+
+<span class="comment">% Plot of the solution</span>
+plot(t,y(:,1))
+xlabel(<span class="string">'t'</span>)
+ylabel(<span class="string">'solution y'</span>)
+title(<span class="string">'van der Pol Equation, \mu = 1'</span>)
+</pre><img vspace="5" hspace="5" src="../odedemo_01.png" alt=""> <p>Mu の大きなゲインに対して、問題はスティッフになります。より速く積分を行うには、特別な数値メソッドが必要になります。ODE15S、ODE23S、ODE23T、ODE23TB は、スティッフな問題を効率よく解くことができます。</p><p>Mu = 1000 の場合の van der Pol 方程式を解くために、ODE15S を使って解を求めます。</p><pre class="codeinput">tspan = [0, 3000];
+y0 = [2; 0];
+Mu = 1000;
+ode = @(t,y) vanderpoldemo(t,y,Mu);
+[t,y] = ode15s(ode, tspan, y0);
+
+plot(t,y(:,1))
+title(<span class="string">'van der Pol Equation, \mu = 1000'</span>)
+axis([0 3000 -3 3])
+xlabel(<span class="string">'t'</span>)
+ylabel(<span class="string">'solution y'</span>)
+</pre><img vspace="5" hspace="5" src="../odedemo_02.png" alt=""> <h2>境界値問題<a name="4"></a></h2><p>BVP4C は、常微分方程式に対する境界値問題を解きます。</p><p>例の関数 TWOODE は、2 つの 1 次の ODE のシステムとして記述された微分方程式になります。</p><pre class="codeinput">type <span class="string">twoode</span>
+</pre><pre class="codeoutput">
+function dydx = twoode(x,y)
+%TWOODE  Evaluate the differential equations for TWOBVP. 
+% 
+%   See also TWOBC, TWOBVP. 
+
+%   Lawrence F. Shampine and Jacek Kierzenka
+%   Copyright 1984-2002 The MathWorks, Inc.  
+%   $Revision: 1.1.6.11.2.1 $  $Date: 2010/07/29 21:28:52 $ 
+
+dydx = [ y(2); -abs(y(1)) ];
+</pre><p>TWOBC は、TWOODE に対する境界条件を持ちます。</p><pre class="codeinput">type <span class="string">twobc</span>
+</pre><pre class="codeoutput">
+function res = twobc(ya,yb)
+%TWOBC  Evaluate the residual in the boundary conditions for TWOBVP. 
+% 
+%   See also TWOODE, TWOBVP. 
+
+%   Lawrence F. Shampine and Jacek Kierzenka
+%   Copyright 1984-2002 The MathWorks, Inc.  
+%   $Revision: 1.1.6.11.2.1 $  $Date: 2010/07/29 21:28:52 $ 
+
+res = [ ya(1); yb(1) + 2 ];
+
+</pre><p>BVP4C を使用する前に、メッシュで表すために解の推定値を与えなければなりません。ソルバーは、その後、解の推定値を絞り込むときにメッシュを適応させます。</p><p>BVPINIT は、ソルバー BVP4C が必要とするフォームで初期推定を作成します。[0 1 2 3 4] の初期メッシュと定数の推定 y(x) = 1, y'(x) = 0 に対して、以下のように BVPINIT を呼び出します。</p><pre class="codeinput">solinit = bvpinit([0 1 2 3 4],[1; 0]);
+</pre><p>この初期推定を使うことで、BVP4C で問題を解くことができます。</p><p>(下記の) 解 sol は、その後、DEVAL を使って点 xint で評価され、プロットされます。</p><pre class="codeinput">sol = bvp4c(@twoode, @twobc, solinit);
+
+xint = linspace(0, 4, 50);
+yint = deval(sol, xint);
+plot(xint, yint(1,:),<span class="string">'b'</span>);
+xlabel(<span class="string">'x'</span>)
+ylabel(<span class="string">'solution y'</span>)
+hold <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="../odedemo_03.png" alt=""> <p>この特定の境界値問題は、正確には 2 つの解を持ちます。もう 1 つの解は、以下の初期推定で得られます。</p><pre>   y(x) = -1, y'(x) = 0</pre><p>前述と同様にプロットされます。</p><pre class="codeinput">solinit = bvpinit([0 1 2 3 4],[-1; 0]);
+sol = bvp4c(@twoode,@twobc,solinit);
+
+xint = linspace(0,4,50);
+yint = deval(sol,xint);
+plot(xint,yint(1,:),<span class="string">'r'</span>);
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="../odedemo_04.png" alt=""> <h2>偏微分方程式<a name="9"></a></h2><p>PDEPE は、1 つの空間変数と時間に対する偏微分方程式を解きます。</p><p>例 PDEX1、PDEX2、PDEX3、PDEX4、PDEX5 は、PDEPE の使用方法に関するミニチュートリアルです。より多くの例については、これらの関数を参照してください。</p><p>この例の問題は、関数 PDEX1PDE、PDEX1IC、PDEX1BC を使用します。</p><p>PDEX1PDE は、微分方程式を定義します。</p><pre class="codeinput">type <span class="string">pdex1pde</span>
+</pre><pre class="codeoutput">
+function [c,f,s] = pdex1pde(x,t,u,DuDx)
+%PDEX1PDE  Evaluate the differential equations components for the PDEX1 problem.
+%
+%   See also PDEPE, PDEX1.
+
+%   Lawrence F. Shampine and Jacek Kierzenka
+%   Copyright 1984-2002 The MathWorks, Inc. 
+%   $Revision: 1.1.6.11.2.1 $  $Date: 2010/07/29 21:28:52 $
+
+c = pi^2;
+f = DuDx;
+s = 0;
+</pre><p>PDEX1IC は、初期条件を設定します。</p><pre class="codeinput">type <span class="string">pdex1ic</span>
+</pre><pre class="codeoutput">
+function u0 = pdex1ic(x)
+%PDEX1IC  Evaluate the initial conditions for the problem coded in PDEX1.
+%
+%   See also PDEPE, PDEX1.
+
+%   Lawrence F. Shampine and Jacek Kierzenka
+%   Copyright 1984-2002 The MathWorks, Inc. 
+%   $Revision: 1.1.6.11.2.1 $  $Date: 2010/07/29 21:28:52 $
+
+u0 = sin(pi*x);
+</pre><p>PDEX1BC は、境界条件を設定します。</p><pre class="codeinput">type <span class="string">pdex1bc</span>
+</pre><pre class="codeoutput">
+function [pl,ql,pr,qr] = pdex1bc(xl,ul,xr,ur,t)
+%PDEX1BC  Evaluate the boundary conditions for the problem coded in PDEX1.
+%
+%   See also PDEPE, PDEX1.
+
+%   Lawrence F. Shampine and Jacek Kierzenka
+%   Copyright 1984-2002 The MathWorks, Inc. 
+%   $Revision: 1.1.6.11.2.1 $  $Date: 2010/07/29 21:28:52 $
+
+pl = ul;
+ql = 0;
+pr = pi * exp(-t);
+qr = 1;
+</pre><p>PDEPE は、空間の離散化 x と、解のスナップショットで必要な時間ベクトル t を必要とします。20 の接点のメッシュを使用してこの問題を解き、t の 5 つの値における解を要求します。最終的に、解の最初の要素を抽出してプロットします。</p><pre class="codeinput">x = linspace(0,1,20);
+t = [0 0.5 1 1.5 2];
+sol = pdepe(0,@pdex1pde,@pdex1ic,@pdex1bc,x,t);
+u1 = sol(:,:,1);
+surf(x,t,u1);
+xlabel(<span class="string">'x'</span>);ylabel(<span class="string">'t'</span>);zlabel(<span class="string">'u'</span>);
+hold <span class="string">on</span>
+
+u1 = sol(:,:,1);
+
+surf(x,t,u1);
+xlabel(<span class="string">'x'</span>); ylabel(<span class="string">'t'</span>); zlabel(<span class="string">'u'</span>);
+</pre><img vspace="5" hspace="5" src="../odedemo_05.png" alt=""> <p class="footer">Copyright 1984-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Differential Equations % MATLAB(R) offers several numerical algorithms to solve a wide variety of % differential equations.  This demo shows the formulation and solution for % three different types of differential equations using MATLAB. % % Copyright 1984-2009 The MathWorks, Inc. % $Revision: 1.1.6.11.2.1 $  %% Initial Value Problem % VANDERPOLDEMO is a function that defines the van der Pol equation.  type vanderpoldemo  %% % The equation is written as a system of two first order ODEs.  These are % evaluated for different values of the parameter Mu.  For faster integration, % we choose an appropriate solver based on the value of the parameter Mu. %  % For Mu = 1, any of the MATLAB ODE solvers can solve the van der Pol equation % efficiently.  The ODE45 solver used below is one such example.  The equation % is solved in the domain [0, 20].   tspan = [0, 20]; y0 = [2; 0]; Mu = 1; ode = @(t,y) vanderpoldemo(t,y,Mu); [t,y] = ode45(ode, tspan, y0);  % Plot of the solution plot(t,y(:,1)) xlabel('t') ylabel('solution y') title('van der Pol Equation, \mu = 1')  %% % For larger magnitudes of Mu, the problem becomes stiff.  Special numerical % methods are needed for fast integration.  ODE15S, ODE23S, ODE23T, and % ODE23TB can solve stiff problems efficiently.  %  % Here is a solution to the van der Pol equation for Mu = 1000 using ODE15S.   tspan = [0, 3000]; y0 = [2; 0]; Mu = 1000; ode = @(t,y) vanderpoldemo(t,y,Mu); [t,y] = ode15s(ode, tspan, y0);  plot(t,y(:,1)) title('van der Pol Equation, \mu = 1000') axis([0 3000 -3 3]) xlabel('t') ylabel('solution y')  %% Boundary Value Problems % BVP4C solves boundary value problems for ordinary differential equations. % % The example function TWOODE has a differential equation written as a system  % of two first order ODEs.  type twoode  %% % TWOBC has the boundary conditions for TWOODE.  type twobc  %% % Prior to using BVP4C, we have to provide a guess for the solution we want  % represented at a mesh. The solver then adapts the mesh as it refines the  % solution. %  % BVPINIT assembles the initial guess in the form that the solver BVP4C will  % need. For an initial mesh of [0 1 2 3 4] and a constant guess of y(x) = 1,  % y'(x) = 0, call BVPINIT like this:  solinit = bvpinit([0 1 2 3 4],[1; 0]);  %% % With this initial guess, we can solve the problem with BVP4C. %  % The solution sol (below) is then evaluated at points xint using DEVAL and % plotted.  sol = bvp4c(@twoode, @twobc, solinit);  xint = linspace(0, 4, 50); yint = deval(sol, xint); plot(xint, yint(1,:),'b'); xlabel('x') ylabel('solution y') hold on  %% % This particular boundary value problem has exactly two solutions.  The other % solution is obtained for an initial guess of  %  %     y(x) = -1, y'(x) = 0  %  % and plotted as before.  solinit = bvpinit([0 1 2 3 4],[-1; 0]); sol = bvp4c(@twoode,@twobc,solinit);  xint = linspace(0,4,50); yint = deval(sol,xint); plot(xint,yint(1,:),'r'); hold off  %% Partial Differential Equations  % PDEPE solves partial differential equations in one space variable and time.  % % The examples PDEX1, PDEX2, PDEX3, PDEX4, PDEX5 form a mini-tutorial on using % PDEPE.  Browse through these functions for more examples. % % This example problem uses functions PDEX1PDE, PDEX1IC, and PDEX1BC.  %% % PDEX1PDE defines the differential equation.  type pdex1pde  %% % PDEX1IC sets up the initial conditions.   type pdex1ic  %% % PDEX1BC sets up the boundary conditions.  type pdex1bc  %% % PDEPE requires x, the spatial discretization, and t, a vector of times at % which you want a snapshot of the solution.  We solve this problem using a mesh % of 20 nodes and request the solution at five values of t. Finally, we extract % and plot the first component of the solution.  x = linspace(0,1,20); t = [0 0.5 1 1.5 2]; sol = pdepe(0,@pdex1pde,@pdex1ic,@pdex1bc,x,t); u1 = sol(:,:,1); surf(x,t,u1); xlabel('x');ylabel('t');zlabel('u'); hold on  u1 = sol(:,:,1);  surf(x,t,u1); xlabel('x'); ylabel('t'); zlabel('u');   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

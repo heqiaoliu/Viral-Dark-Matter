@@ -1,0 +1,271 @@
+#! /bin/sh
+
+# Copyright 2004-2010 The MathWorks, Inc.
+
+#========================= realpath.sh (start) ============================
+#-----------------------------------------------------------------------------
+# Usage: realpath <filename>
+# Returns the actual path in the file system of a file. It follows links. 
+# It returns an empty path if an error occurs.
+# Return status: 0 if successful.
+# If return status is 0, the function echoes out the real path to the file.
+# Return status 1 Exceeded the maximum number of links to follow.
+# Return status 2 Some other error occurred.
+realpath() {
+    filename_rpath=$1
+    SUCCESS_STATUS_rpath=0
+    MAX_LINKS_EXCEEDED_rpath=1
+    OTHER_ERROR_rpath=2
+    #
+    # Now filename_rpath is either a file or a link to a file.
+    #
+    cpath_rpath=`pwd`
+
+    #
+    # Follow up to 8 links before giving up. Same as BSD 4.3
+    # We cd into the directory where the file is located, and do a /bin/pwd 
+    # to get the name of the CWD.  If the file is a symbolic link, we update 
+    # the basename of the file and cd into the directory that the link points 
+    # to and repeat the process.
+    # Once we arrive in a directory where we do not have a soft-link, we are 
+    # done.
+    n_rpath=1
+    maxlinks_rpath=8
+    while [ $n_rpath -le $maxlinks_rpath ]
+    do
+        #
+        # Get directory part of $filename_rpath correctly!
+        #
+        newdir_rpath=`dirname "$filename_rpath"`
+        # dirname shouldn't return empty instead of ".", but let's be paranoid.
+        if [ -z "${newdir_rpath}" ]; then
+            newdir_rpath=".";
+        fi
+        (cd "$newdir_rpath") > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            # This should not happen.  The file is in a non-existing directory.
+            cd "$cpath_rpath"
+            return $OTHER_ERROR_rpath
+        fi
+        cd "$newdir_rpath"
+        #
+        # Need the function pwd - not the shell built-in one.  The command 
+        # /bin/pwd resolves all symbolic links, but the shell built-in one 
+        # does not.
+        #
+        newdir_rpath=`/bin/pwd`
+        # Stip the directories off the filename_rpath.
+        newbase_rpath=`basename "$filename_rpath"`
+
+        lscmd=`ls -l "$newbase_rpath" 2>/dev/null`
+        if [ ! "$lscmd" ]; then
+            # This should not happen, the file does not exist.
+            cd "$cpath_rpath"
+            return $OTHER_ERROR_rpath
+        fi
+        #
+        # Check for link.  The link target is everything after ' -> ' in 
+        # the output of ls.
+        #
+        if [ `expr "$lscmd" : '.*->.*'` -ne 0 ]; then
+            filename_rpath=`echo "$lscmd" | sed 's/.*-> //'`
+        else
+            #
+            # We are done.  We found a file and not a symbolic link.
+            # newdir_rpath contains the directory name, newbase_rpath contains 
+            # the file name.
+            cd "$cpath_rpath"
+            echo "$newdir_rpath/$newbase_rpath"
+            return $SUCCESS_STATUS_rpath
+        fi
+        n_rpath=`expr $n_rpath + 1`
+    done
+    # We exceeded the maximum number of links to follow.
+    cd "$cpath_rpath"
+    return $MAX_LINKS_EXCEEDED_rpath
+}
+#========================= realpath.sh (end) ==============================
+
+#========================= pathsetup.sh (start) ============================
+#-----------------------------------------------------------------------------
+# Usage: warnIfNotInBin <full path> <scriptname>
+warnIfNotInBin() {
+    # Search for toolbox/distcomp/bin in $1.
+    if [ `expr "$1" : ".*toolbox/distcomp/bin$"` -eq 0 ]; then
+        echo "Warning: $2 should be run only from toolbox/distcomp/bin,"
+        echo "or using a symbolic link to toolbox/distcomp/bin/$2."
+        echo ""
+    fi
+}
+
+# THIS MUST BE RUN FIRST BEFORE SETTING UP THE APPLICATION VARIABLES
+# Get the fully qualified path to the script
+SCRIPT="$0"
+REALPATH=`realpath "$SCRIPT"`
+# Get the path to distcomp bin BASE from this by removing the name of the shell
+# script.
+BASE=`echo $REALPATH | sed -e 's;\/[^\/]*$;;g'`
+warnIfNotInBin "$BASE" startworker
+# Make sure we are in the correct directory to run setbase.sh
+cd "$BASE"
+# Set base directory variables
+. util/setbase.sh
+#-----------------------------------------------------------------------------
+#========================= pathsetup.sh (end) ==============================
+
+usage()
+{
+echo
+echo "startworker:    Start a MATLAB worker process under the mdce service, which"
+echo "                maintains it after that.  The worker registers with the"
+echo "                specified job manager, from which it will get tasks for"
+echo "                evaluation. "
+echo "                The mdce service must already be running on the specified "
+echo "                computer."
+echo
+echo "Usage:  startworker [ -name worker_name ] "
+echo "                    [ -jobmanager job_manager_name ]"
+echo "                    [ -jobmanagerhost jmhost | -multicast ]"
+echo "                    [ -remotehost hostname ]"
+echo "                    [ -clean ]"
+echo "                    [ -baseport port_number ]"
+echo "                    [ -v ]"
+echo "                    [ -help ]"
+echo
+echo "-name           Specify the name of the MATLAB worker.  The default is the "
+echo "                value of the DEFAULT_WORKER_NAME parameter in the mdce_def"
+echo "                file. "
+echo
+echo "-jobmanager     Specify the name of the job manager this MATLAB worker will"
+echo "                receive tasks from.  The default is the value of the"
+echo "                DEFAULT_JOB_MANAGER_NAME parameter in the mdce_def file."
+echo
+echo "-jobmanagerhost Specify the host on which the job manager is running by using"
+echo "                -jobmanagerhost.  The worker will then use unicast to contact"
+echo "                the job manager lookup process on that host in order to"
+echo "                register with the job manager."
+echo "                This overrides the setting of JOB_MANAGER_HOST in the mdce_def"
+echo "                file on the worker computer, which would also have the worker"
+echo "                use unicast. "
+echo "-multicast      If you are certain that multicast works on your network, you"
+echo "                can force the worker to use multicast to locate the job manager"
+echo "                lookup process by specifying -multicast."
+echo "                NOTE: If you are using this flag to change the settings of and"
+echo "                restart a stopped worker, then you should also use the -clean"
+echo "                flag."
+echo
+echo "-remotehost     Specify the name of the computer where you want to start the"
+echo "                MATLAB worker.  If omitted, the worker is started on the local"
+echo "                computer."
+echo
+echo "-clean          Delete all checkpoint information associated with this worker"
+echo "                name before starting."
+echo
+echo "-baseport       Specify the base port that the mdce service on the remote host"
+echo "                is using.  You only need to specify this if the value of"
+echo "                BASE_PORT in the local mdce_def file does not match the base"
+echo "                port being used by the mdce service on the remote host. "
+echo
+echo "-v              Be verbose.  Display the progress of the command execution."
+echo
+echo "-help           Print this help information."
+echo
+echo "Examples:       1) Start a worker on the local host, using the default worker "
+echo "                name, registering with the job manager MyJobManager on the host"
+echo "                JMHost."
+echo
+echo "                startworker -jobmanager MyJobManager -jobmanagerhost JMHost"
+echo
+echo "                2) Start a worker on the host WorkerHost, using the default"
+echo "                worker name, and registering with the job manager MyJobManager"
+echo "                on the host JMHost."
+echo
+echo "                startworker -jobmanager MyJobManager "
+echo "                    -jobmanagerhost JMHost -remotehost WorkerHost"
+echo
+echo "                3) Start two workers, named worker1 and worker2, on the host "
+echo "                WorkerHost, registering with the job manager MyJobManager on"
+echo "                the host JMHost.  Note that in order to start two workers on"
+echo "                the same computer, we have to give them different names."
+echo
+echo "                startworker -name worker1 -jobmanager MyJobManager"
+echo "                    -jobmanagerhost JMHost -remotehost WorkerHost"
+echo "                startworker -name worker2 -jobmanager MyJobManager"
+echo "                    -jobmanagerhost JMHost -remotehost WorkerHost"
+echo
+echo "See also:       mdce, nodestatus, startjobmanager, stopjobmanager, and"
+echo "                stopworker."
+echo
+}
+
+SERVICE_CLEAN="false"
+REMOTE_COMMAND_VERBOSITY="false"
+while [ -n "$1" ] ; do
+    case $1 in 
+	-name)
+	    SERVICE_NAME=$2
+	    shift
+	    ;;
+	-jobmanager)
+	    JOB_MANAGER_NAME=$2
+	    shift
+	    ;;
+	-clean)
+	    SERVICE_CLEAN="true"
+	    ;;
+        -remotehost)
+            REMOTE_HOSTNAME=$2
+            shift
+            ;;
+        -baseport)
+            READ_BASE_PORT=$2
+            shift
+            ;;
+        -jobmanagerhost)
+            READ_JOB_MANAGER_HOST=$2
+            shift
+            ;;
+        -multicast)
+            READ_JOB_MANAGER_HOST="USE_MULTICAST"
+            ;;
+        -v)
+            REMOTE_COMMAND_VERBOSITY="true"
+            ;;
+      	-help|-h)
+	    usage
+	    exit 1
+	    ;;
+	*)
+	    echo "Error: unrecognized option: $1"
+	    usage
+	    exit 1
+	    ;;
+    esac
+    shift
+done    
+
+# Set the general MDCE environment
+. "$UTILBASE/setmdceenv" 
+sourceMdceDef
+defineJRECMD
+
+REMOTE_HOSTNAME=${REMOTE_HOSTNAME:-$HOSTNAME}
+BASE_PORT=${READ_BASE_PORT:-$BASE_PORT}
+JOB_MANAGER_HOST=${READ_JOB_MANAGER_HOST:-WORKER_LOOKUP_NOT_SPECIFIED}
+
+$JRECMD \
+    -classpath "$REMOTE_COMMAND_CLASSPATH" \
+    -Djava.security.policy="$CONFIGBASE/jsk-all.policy" \
+    -Dcom.mathworks.toolbox.distcomp.remote_command_type="worker" \
+    -Dcom.mathworks.toolbox.distcomp.remote_command_action="start" \
+    -Dcom.mathworks.toolbox.distcomp.servicename=$SERVICE_NAME \
+    -Dcom.mathworks.toolbox.distcomp.jobmanagername=$JOB_MANAGER_NAME \
+    -Dcom.mathworks.toolbox.distcomp.clean_checkpoint_info=$SERVICE_CLEAN \
+    -Dcom.mathworks.toolbox.distcomp.remote_hostname=$REMOTE_HOSTNAME \
+    -Dcom.mathworks.toolbox.distcomp.base_port=$BASE_PORT \
+    -Dcom.mathworks.toolbox.distcomp.remote_command_verbosity=$REMOTE_COMMAND_VERBOSITY \
+    -Dcom.mathworks.toolbox.distcomp.service_config_file="start-mlworker.config" \
+    -Dcom.mathworks.toolbox.distcomp.lookup_hosts="$JOB_MANAGER_HOST" \
+    com.mathworks.toolbox.distcomp.control.RunCommandSender \
+    "$CONFIGBASE/control-startstop.config"
+

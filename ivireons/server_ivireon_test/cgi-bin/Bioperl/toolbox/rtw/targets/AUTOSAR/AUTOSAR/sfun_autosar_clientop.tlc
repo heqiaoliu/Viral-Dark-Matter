@@ -1,0 +1,58 @@
+%% $Revision: 1.1.14.1 $
+%%
+%%
+%% Copyright 2009 The MathWorks, Inc.
+%%
+%% Abstract: AUTOSAR Client Operation block tlc functions
+%%
+%%
+
+%implements "sfun_autosar_clientop" "C"
+
+%% Function: BlockInstanceSetup ===========================================
+%%
+%function BlockInstanceSetup(block, system) void
+  %%
+  %if IsModelReferenceSimTarget() || CodeFormat=="S-Function"
+  %elseif IsModelReferenceRTWTarget()
+    %<LibBlockReportError(block, "Invoke AUTOSAR Server Operation block resides in a referenced model. This is not supported for the AUTOSAR Target. You must place this block in the top model.")>
+  %else
+    %<LibBlockSetIsExpressionCompliant(block)>
+  %endif
+  %%
+%endfunction
+
+
+%% Function: Outputs ======================================================
+%%
+%function Outputs (block, system) Output
+  %assign fcnCallStr = %<FcnCallFullStr>
+  %%
+  %if IsModelReferenceSimTarget() || CodeFormat=="S-Function"
+    %% Do nothing
+  %else
+    %<fcnCallStr>;
+  %endif
+
+%endfunction
+
+
+%% Function: BlockOutputSignal ============================================
+%%
+%function BlockOutputSignal(block,system,portIdx,ucv,lcv,idx,retType) void
+  %%
+  %assign fcnCallStr = %<FcnCallExprStr>
+  %switch retType
+    %case "Signal"
+        %if IsModelReferenceSimTarget() || CodeFormat=="S-Function"
+          %% Do nothing
+          %return ""
+        %else
+          %return "%<fcnCallStr>"
+        %endif
+    %default
+      %assign errTxt = "Unsupported return type: %<retType>"
+      %<LibBlockReportError(block,errTxt)>
+  %endswitch
+  %%
+%endfunction

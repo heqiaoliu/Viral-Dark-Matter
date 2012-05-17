@@ -1,0 +1,180 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Deblurring Images Using a Regularized Filter</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="ipexregularized.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit ipexregularized">Open ipexregularized.m in the Editor</a></div><div class="right"><a href="matlab:echodemo ipexregularized">Run in the Command Window</a></div></div><div class="content"><h1>Deblurring Images Using a Regularized Filter</h1><!--introduction--><p>Regularized deconvolution can be used effectively when constraints are applied on the recovered image (e.g., smoothness) and limited information is known about the additive noise. The blurred and noisy image is restored by a constrained least square restoration algorithm that uses a regularized filter.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Step 1: Read Image</a></li><li><a href="#2">Step 2: Simulate a Blur and Noise</a></li><li><a href="#4">Step 3: Restore the Blurred and Noisy Image</a></li><li><a href="#8">Step 4: Reduce Noise Amplification and Ringing</a></li><li><a href="#9">Step 5: Use the Lagrange Multiplier</a></li><li><a href="#12">Step 6: Use a Different Constraint</a></li></ul></div><h2>Step 1: Read Image<a name="1"></a></h2><p>The example reads in an RGB image and crops it to be 256-by-256-by-3. The deconvreg function can handle arrays of any dimension.</p><pre class="codeinput">I = imread(<span class="string">'tissue.png'</span>);
+I = I(125+[1:256],1:256,:);
+figure;imshow(I);title(<span class="string">'Original Image'</span>);
+text(size(I,2),size(I,1)+15, <span class="keyword">...</span>
+    <span class="string">'Image courtesy of Alan Partin, Johns Hopkins University'</span>, <span class="keyword">...</span>
+    <span class="string">'FontSize'</span>,7,<span class="string">'HorizontalAlignment'</span>,<span class="string">'right'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_01.png" alt=""> <h2>Step 2: Simulate a Blur and Noise<a name="2"></a></h2><p>Simulate a real-life image that could be blurred (e.g., due to camera motion or lack of focus) and noisy (e.g., due to random disturbances). The example simulates the blur by convolving a Gaussian filter with the true image (using imfilter). The Gaussian filter represents a point-spread function, PSF.</p><pre class="codeinput">PSF = fspecial(<span class="string">'gaussian'</span>,11,5);
+Blurred = imfilter(I,PSF,<span class="string">'conv'</span>);
+figure;imshow(Blurred);
+title(<span class="string">'Blurred'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_02.png" alt=""> <p>We simulate the noise by adding a Gaussian noise of variance V to the blurred image (using imnoise).</p><pre class="codeinput">V = .02;
+BlurredNoisy = imnoise(Blurred,<span class="string">'gaussian'</span>,0,V);
+figure;imshow(BlurredNoisy);
+title(<span class="string">'Blurred &amp; Noisy'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_03.png" alt=""> <h2>Step 3: Restore the Blurred and Noisy Image<a name="4"></a></h2><p>Restore the blurred and noisy image supplying noise power, NP, as the third input parameter. To illustrate how sensitive the algorithm is to the value of noise power, NP, the example performs three restorations.</p><p>The first restoration, reg1, uses the true NP. Note that the example outputs two parameters here. The first return value, reg1, is the restored image. The second return value, LAGRA, is a scalar, Lagrange multiplier, on which the deconvreg has converged. This value is used later in the demo.</p><pre class="codeinput">NP = V*prod(size(I)); <span class="comment">% noise power</span>
+[reg1 LAGRA] = deconvreg(BlurredNoisy,PSF,NP);
+figure,imshow(reg1),title(<span class="string">'Restored with NP'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_04.png" alt=""> <p>The second restoration, reg2, uses a slightly over-estimated noise power, which leads to a poor resolution.</p><pre class="codeinput">reg2 = deconvreg(BlurredNoisy,PSF,NP*1.3);
+figure;imshow(reg2);
+title(<span class="string">'Restored with larger NP'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_05.png" alt=""> <p>The third restoration, reg3, is given an under-estimated NP value. This leads to an overwhelming noise amplification and "ringing" from the image borders.</p><pre class="codeinput">reg3 = deconvreg(BlurredNoisy,PSF,NP/1.3);
+figure;imshow(reg3);
+title(<span class="string">'Restored with smaller NP'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_06.png" alt=""> <h2>Step 4: Reduce Noise Amplification and Ringing<a name="8"></a></h2><p>Reduce the noise amplification and "ringing" along the boundary of the image by calling the edgetaper function prior to deconvolution. Note how the image restoration becomes less sensitive to the noise power parameter. Use the noise power value NP from the previous example.</p><pre class="codeinput">Edged = edgetaper(BlurredNoisy,PSF);
+reg4 = deconvreg(Edged,PSF,NP/1.3);
+figure;imshow(reg4);
+title(<span class="string">'Edgetaper effect'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_07.png" alt=""> <h2>Step 5: Use the Lagrange Multiplier<a name="9"></a></h2><p>Restore the blurred and noisy image, assuming that the optimal solution is already found and the corresponding Lagrange multiplier, LAGRA, is given. In this case, any value passed for noise power, NP, is ignored.</p><p>To illustrate how sensitive the algorithm is to the LAGRA value, the example performs three restorations. The first restoration (reg5) uses the LAGRA output from the earlier solution (LAGRA output from first solution in Step 3).</p><pre class="codeinput">reg5 = deconvreg(Edged,PSF,[],LAGRA);
+figure;imshow(reg5);
+title(<span class="string">'Restored with LAGRA'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_08.png" alt=""> <p>The second restoration (reg6) uses 100*LAGRA which increases the significance of the constraint. By default, this leads to over-smoothing of the image.</p><pre class="codeinput">reg6 = deconvreg(Edged,PSF,[],LAGRA*100);
+figure;imshow(reg6);
+title(<span class="string">'Restored with large LAGRA'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_09.png" alt=""> <p>The third restoration uses LAGRA/100 which weakens the constraint (the smoothness requirement set for the image). It amplifies the noise and eventually leads to a pure inverse filtering for LAGRA = 0.</p><pre class="codeinput">reg7 = deconvreg(Edged,PSF,[],LAGRA/100);
+figure;imshow(reg7);
+title(<span class="string">'Restored with small LAGRA'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_10.png" alt=""> <h2>Step 6: Use a Different Constraint<a name="12"></a></h2><p>Restore the blurred and noisy image using a different constraint (REGOP) in the search for the optimal solution. Instead of constraining the image smoothness (REGOP is Laplacian by default), constrain the image smoothness only in one dimension (1-D Laplacian).</p><pre class="codeinput">REGOP = [1 -2 1];
+reg8 = deconvreg(BlurredNoisy,PSF,[],LAGRA,REGOP);
+figure;imshow(reg8);
+title(<span class="string">'Constrained by 1D Laplacian'</span>);
+</pre><img vspace="5" hspace="5" src="ipexregularized_11.png" alt=""> <p class="footer">Copyright 1993-2005 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Deblurring Images Using a Regularized Filter 
+% Regularized deconvolution can be used effectively when constraints are
+% applied on the recovered image (e.g., smoothness) and limited information
+% is known about the additive noise. The blurred and noisy image is restored
+% by a constrained least square restoration algorithm that uses a regularized
+% filter. 
+
+% Copyright 1993-2005 The MathWorks, Inc.
+%   $Revision: 1.1.6.3 $  $Date: 2005/12/12 23:21:49 $
+
+%% Step 1: Read Image
+% The example reads in an RGB image and crops it to be 256-by-256-by-3. The
+% deconvreg function can handle arrays of any dimension. 
+
+I = imread('tissue.png');
+I = I(125+[1:256],1:256,:);
+figure;imshow(I);title('Original Image');
+text(size(I,2),size(I,1)+15, ...
+    'Image courtesy of Alan Partin, Johns Hopkins University', ...
+    'FontSize',7,'HorizontalAlignment','right');
+
+%% Step 2: Simulate a Blur and Noise 
+% Simulate a real-life image that could be blurred (e.g., due to camera motion
+% or lack of focus) and noisy (e.g., due to random disturbances). The example
+% simulates the blur by convolving a Gaussian filter with the true image (using
+% imfilter). The Gaussian filter represents a point-spread function, PSF. 
+
+PSF = fspecial('gaussian',11,5);
+Blurred = imfilter(I,PSF,'conv');
+figure;imshow(Blurred);
+title('Blurred');
+
+%%
+% We simulate the noise by adding a Gaussian noise of variance V to the blurred
+% image (using imnoise). 
+
+V = .02;
+BlurredNoisy = imnoise(Blurred,'gaussian',0,V);
+figure;imshow(BlurredNoisy);
+title('Blurred & Noisy');
+
+%% Step 3: Restore the Blurred and Noisy Image 
+% Restore the blurred and noisy image supplying noise power, NP, as the third
+% input parameter. To illustrate how sensitive the algorithm is to the value of
+% noise power, NP, the example performs three restorations. 
+%
+% The first restoration, reg1, uses the true NP. Note that the example outputs
+% two parameters here. The first return value, reg1, is the restored image. The
+% second return value, LAGRA, is a scalar, Lagrange multiplier, on which the
+% deconvreg has converged. This value is used later in the demo. 
+
+%%
+NP = V*prod(size(I)); % noise power
+[reg1 LAGRA] = deconvreg(BlurredNoisy,PSF,NP);
+figure,imshow(reg1),title('Restored with NP');
+
+%%
+% The second restoration, reg2, uses a slightly over-estimated noise power,
+% which leads to a poor resolution. 
+
+reg2 = deconvreg(BlurredNoisy,PSF,NP*1.3);
+figure;imshow(reg2);
+title('Restored with larger NP');
+
+%%
+% The third restoration, reg3, is given an under-estimated NP value. This leads
+% to an overwhelming noise amplification and "ringing" from the image borders. 
+
+reg3 = deconvreg(BlurredNoisy,PSF,NP/1.3);
+figure;imshow(reg3);
+title('Restored with smaller NP');
+
+%% Step 4: Reduce Noise Amplification and Ringing 
+% Reduce the noise amplification and "ringing" along the boundary of the image 
+% by calling the edgetaper function prior to deconvolution. Note how the image
+% restoration becomes less sensitive to the noise power parameter. Use the 
+% noise power value NP from the previous example. 
+
+Edged = edgetaper(BlurredNoisy,PSF);
+reg4 = deconvreg(Edged,PSF,NP/1.3);
+figure;imshow(reg4);
+title('Edgetaper effect');
+
+%% Step 5: Use the Lagrange Multiplier 
+% Restore the blurred and noisy image, assuming that the optimal solution
+% is already found and the corresponding Lagrange multiplier, LAGRA, is given.
+% In this case, any value passed for noise power, NP, is ignored. 
+%
+% To illustrate how sensitive the algorithm is to the LAGRA value, the example
+% performs three restorations. The first restoration (reg5) uses the LAGRA
+% output from the earlier solution (LAGRA output from first solution in
+% Step 3).
+
+reg5 = deconvreg(Edged,PSF,[],LAGRA);
+figure;imshow(reg5);
+title('Restored with LAGRA');
+
+%%
+% The second restoration (reg6) uses 100*LAGRA which increases the significance
+% of the constraint. By default, this leads to over-smoothing of the image.
+
+reg6 = deconvreg(Edged,PSF,[],LAGRA*100);
+figure;imshow(reg6);
+title('Restored with large LAGRA');
+
+%%
+% The third restoration uses LAGRA/100 which weakens the constraint (the
+% smoothness requirement set for the image). It amplifies the noise and
+% eventually leads to a pure inverse filtering for LAGRA = 0. 
+
+reg7 = deconvreg(Edged,PSF,[],LAGRA/100);
+figure;imshow(reg7);
+title('Restored with small LAGRA');
+
+%% Step 6: Use a Different Constraint 
+% Restore the blurred and noisy image using a different constraint (REGOP)
+% in the search for the optimal solution. Instead of constraining the image
+% smoothness (REGOP is Laplacian by default), constrain the image smoothness
+% only in one dimension (1-D Laplacian). 
+
+REGOP = [1 -2 1];
+reg8 = deconvreg(BlurredNoisy,PSF,[],LAGRA,REGOP);
+figure;imshow(reg8);
+title('Constrained by 1D Laplacian');
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,148 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Tuning Custom Masked Subsystems</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdcustomblockpad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdcustomblockpad">Open scdcustomblockpad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdcustomblockpad">Run in the Command Window</a></div></div><div class="content"><h1>Tuning Custom Masked Subsystems</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#2">Lead-Lag Library Block</a></li><li><a href="#7">Configuring the Subsystem for a Simulink&reg; Compensator Design Task</a></li><li><a href="#12">Example</a></li><li><a href="#29">Completed Design</a></li><li><a href="#36">Writing the Design to Simulink</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>This demo illustrates how to enable custom masked subsystems in a Simulink&reg; Compensator Design Task.  Once configured a block can be used in the same way as any <a href="matlab:scdguihelp('supported_tunable_blocks');">supported blocks</a> in Simulink Control Design.</p><h2>Lead-Lag Library Block<a name="2"></a></h2><p>The example configured lead-lag block is in the library <tt>scdexblks</tt></p><pre class="codeinput">open_system(<span class="string">'scdexblks'</span>);
+</pre><img vspace="5" hspace="5" src="scdcustomblockpad_01.png" alt=""> <p>The lead-lag block implements a compensator element with a single zero and pole.  There are three parameters <tt>K</tt>, <tt>wz</tt>, and <tt>wp</tt> which are configured in the block dialog:</p><p><img vspace="5" hspace="5" src="../html_extra/scdcustomblock/blockdialog.png" alt=""> </p><p>The parameters are then used inside the mask create an equivalent transfer function:</p><p><img src="scdcustomblockpad_eq38490.png" alt="$$G(s) = K {{{s \over {wz}} + 1} \over {{s \over wp} + 1}}$$"></p><h2>Configuring the Subsystem for a Simulink&reg; Compensator Design Task<a name="7"></a></h2><p>The configuration of a masked subsystem for Simulink Control Design is specified in a configuration function.  In this demonstration the configuration function has been written in the M-Function <a href="matlab:edit('scdleadexample')">scdleadexample.m</a>.  This configuration function specifies that:</p><div><ul><li>There is only a maximum of 1 pole allowed (MaxPoles Constraint)</li><li>There is only a maximum of 1 zero allowed (MaxZeros Constraint)</li><li>The gain is tunable (isStaticGainTunable Constraint)</li></ul></div><p>The configuration is registered in the subsystem using the <tt>SCDConfigFcn</tt> parameter for the block.  This function can be set using the command <tt>set_param</tt> or through the <b>Block Properties</b> dialog which is accessed by right clicking on any subsystem.</p><p><img vspace="5" hspace="5" src="../html_extra/scdcustomblock/setscdconfigfcn.png" alt=""> </p><p>After setting the SCDConfigFcn the block is now ready to be used in a Simulink Compensator Design Task.</p><h2>Example<a name="12"></a></h2><p>The lead-lag block can be used to tune the feedback loop in demo entitled <a href="scdspeedctrldespad.html">"Single Loop Feedback/Prefilter Design"</a>.  To begin the compensator design process:</p><p><b>Step 1</b> Start a new Simulink Compensator Design Task for the model <a href="matlab:open_system('scdspeedctrlleadlag')">scdspeedctrlleadlag</a> by choosing <b>Tools -&gt; Control Design -&gt; Compensator Design</b> from the Simulink model.</p><p><b>Step 2</b> Select the following block to tune by clicking the <b>Select Blocks...</b> button on the <b>Tunable Blocks</b> panel:</p><div><ul><li><tt>scdspeedctrlleadlag/Feedback Controller/Lead-Lag Controller</tt></li></ul></div><pre class="codeinput">load_system(<span class="string">'scdspeedctrlleadlag'</span>)
+open_system(<span class="string">'scdspeedctrlleadlag/Feedback Controller'</span>)
+</pre><img vspace="5" hspace="5" src="scdcustomblockpad_02.png" alt=""> <p>The lead-lag block will show up inside the subsystem <tt>Feedback Controller</tt>.</p><p><img vspace="5" hspace="5" src="../html_extra/scdcustomblock/blockselection.png" alt=""> </p><p><b>Step 3</b> Select the closed loop signals by right clicking and using the Linearization Points menu:</p><div><ul><li>Input: <tt>scdspeedctrlleadlag/Speed Reference</tt> output port 1</li></ul></div><div><ul><li>Output <tt>scdspeedctrlleadlag/Speed Output</tt> output port 1</li></ul></div><p><b>Step 4</b> In the <b>Operating Points</b> panel select <b>Default Operating Point</b>.</p><p><b>Step 5</b> Click on the <b>Tune Blocks...</b> button to launch the Design Configuration Wizard.</p><p>To tune the Open Loop at the outport 1 of <tt>scdspeedctrlleadlag/Feedback Controller/Lead-Lag Controller</tt>, select Open Loop 1 for Plot 1 and select Open-Loop Bode as its Plot Type.</p><p>In the wizard select Closed Loop 1 for Plot 2 and select Closed-Loop Bode as its Plot Type.</p><p>In step 2 of the wizard select Step responses for Plot 1 and Plot 2. Then in the Contents of Plots table</p><div><ul><li>Select Plot 1 for the <tt>Closed Loop from /Speed Reference</tt> to scdspeedctrl/Speed Output|</li></ul></div><p>After completing the wizard a <b>SISO Design Task</b> node is created.  Use this task node to complete the design.  Go to the <b>Compensator Editor</b> tab to tune the lead-lag compensator.  The block parameters for the lead-lag block can now be tuned.</p><p><img vspace="5" hspace="5" src="../html_extra/scdcustomblock/compeditor.png" alt=""> </p><h2>Completed Design<a name="29"></a></h2><p>The design requirements for the reference step response in the demo <a href="scdspeedctrldespad.html">"Single Loop Feedback/Prefilter Design"</a> can be met with the following controller parameters</p><div><ul><li><tt>scdspeedctrlleadlag/Feedback Controller/Lead-Lag Controller</tt> has parameters:</li></ul></div><pre>         Gain = 0.0075426</pre><pre>         Zero Frequency (rad/s) = 2</pre><pre>         Pole Frequency (rad/s) = 103.59</pre><p>The responses of the closed loop system are shown below:</p><p><img vspace="5" hspace="5" src="../html_extra/scdcustomblock/clresponse.png" alt=""> </p><h2>Writing the Design to Simulink<a name="36"></a></h2><p>You can then test the design on the nonlinear model by clicking the <b>Update Simulink Block Parameters</b> button.  This writes the parameters back to the Simulink model.</p><pre class="codeinput">bdclose(<span class="string">'scdexblks'</span>)
+bdclose(<span class="string">'scdspeedctrlleadlag'</span>)
+</pre><p class="footer">Copyright 2005-2006 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Tuning Custom Masked Subsystems
+%
+% Copyright 2005-2006 The MathWorks, Inc.
+% $Revision: 1.1.8.5 $ $Date: 2009/11/09 16:35:38 $
+
+%% Introduction
+% This demo illustrates how to enable custom masked subsystems in a
+% Simulink(R) Compensator Design Task.  Once configured a block can be used in
+% the same way as any
+% <matlab:scdguihelp('supported_tunable_blocks'); supported blocks> in Simulink Control Design.
+
+%% Lead-Lag Library Block
+% The example configured lead-lag block is in the library |scdexblks|
+open_system('scdexblks');
+
+%%
+% The lead-lag block implements a compensator element with a single zero
+% and pole.  There are three parameters |K|, |wz|, and |wp| which are configured
+% in the block dialog:
+%%
+% <<../html_extra/scdcustomblock/blockdialog.png>>
+%%
+% The parameters are then used inside the mask create an equivalent transfer function:
+%%
+% $$G(s) = K {{{s \over {wz}} + 1} \over {{s \over wp} + 1}}$$
+
+%% Configuring the Subsystem for a Simulink(R) Compensator Design Task 
+% The configuration of a masked subsystem for Simulink Control Design
+% is specified in a configuration function.  In this demonstration the
+% configuration function has been written in the M-Function
+% <matlab:edit('scdleadexample') scdleadexample.m>.  This configuration
+% function specifies that:
+%%
+% * There is only a maximum of 1 pole allowed (MaxPoles Constraint)
+% * There is only a maximum of 1 zero allowed (MaxZeros Constraint)
+% * The gain is tunable (isStaticGainTunable Constraint)
+%% 
+% The configuration is registered in the subsystem using the |SCDConfigFcn|
+% parameter for the block.  This function can be set using the command
+% |set_param| or through the *Block Properties* dialog which is accessed
+% by right clicking on any subsystem.
+%%
+% <<../html_extra/scdcustomblock/setscdconfigfcn.png>>
+%%
+% After setting the SCDConfigFcn the block is now ready to be
+% used in a Simulink Compensator Design Task.
+
+%% Example
+% The lead-lag block can be used to tune the feedback loop in demo entitled
+% <scdspeedctrldespad.html "Single Loop Feedback/Prefilter Design">.  To
+% begin the compensator design process:
+%%
+% *Step 1* Start a new Simulink Compensator Design Task for the model
+% <matlab:open_system('scdspeedctrlleadlag') scdspeedctrlleadlag> 
+% by choosing *Tools -> Control Design -> Compensator
+% Design* from the Simulink model.
+%% 
+% *Step 2* Select the following block to tune by clicking the *Select Blocks...*
+% button on the *Tunable Blocks* panel:
+%% 
+% * |scdspeedctrlleadlag/Feedback Controller/Lead-Lag Controller|
+%%
+load_system('scdspeedctrlleadlag')
+open_system('scdspeedctrlleadlag/Feedback Controller')
+%%
+% The lead-lag block will show up inside the subsystem |Feedback
+% Controller|.
+%%
+% <<../html_extra/scdcustomblock/blockselection.png>>
+%% 
+% *Step 3* Select the closed loop signals by right clicking and using the
+% Linearization Points menu:
+%%
+% * Input: |scdspeedctrlleadlag/Speed Reference| output port 1
+%%
+% * Output |scdspeedctrlleadlag/Speed Output| output port 1
+%%
+% *Step 4* In the *Operating Points* panel select *Default
+% Operating Point*.
+%%
+% *Step 5* Click on the *Tune Blocks...* button to launch the Design
+% Configuration Wizard.  
+%%
+% To tune the Open Loop at the outport 1 of |scdspeedctrlleadlag/Feedback
+% Controller/Lead-Lag Controller|, select Open Loop 1 for Plot 1 and select
+% Open-Loop Bode as its Plot Type.
+%%
+% In the wizard select Closed Loop 1 for Plot 2 and select Closed-Loop Bode
+% as its Plot Type.
+% 
+%%
+% In step 2 of the wizard select Step responses for Plot 1 and Plot 2.
+% Then in the Contents of Plots table
+%%
+% * Select Plot 1 for the |Closed Loop from /Speed Reference| to scdspeedctrl/Speed
+% Output|
+
+%%
+% After completing the wizard a *SISO Design Task* node is created.  Use this
+% task node to complete the design.  Go to the *Compensator Editor* tab to
+% tune the lead-lag compensator.  The block parameters for the lead-lag
+% block can now be tuned.
+%
+% <<../html_extra/scdcustomblock/compeditor.png>>
+
+%% Completed Design
+% The design requirements for the reference step response in the demo
+% <scdspeedctrldespad.html "Single Loop Feedback/Prefilter Design"> can be
+% met with the following controller parameters
+%%
+% * |scdspeedctrlleadlag/Feedback Controller/Lead-Lag Controller| has parameters:
+%%
+%           Gain = 0.0075426
+%%
+%           Zero Frequency (rad/s) = 2
+%%
+%           Pole Frequency (rad/s) = 103.59
+%%
+% The responses of the closed loop system are shown below:
+%%
+% <<../html_extra/scdcustomblock/clresponse.png>>
+
+%% Writing the Design to Simulink
+% You can then test the design on the nonlinear model by clicking the
+% *Update Simulink Block Parameters* button.  This writes the parameters
+% back to the Simulink model.
+
+bdclose('scdexblks')
+bdclose('scdspeedctrlleadlag')
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

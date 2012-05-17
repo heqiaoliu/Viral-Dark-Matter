@@ -1,0 +1,161 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>はじめに</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="symintro.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit symintro">エディターで symintro.m を開く</a></div><div class="right"><a href="matlab:echodemo symintro">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>はじめに</h1><p>Symbolic Math Toolbox™ ソフトウェアでは、&quot;sym&quot; 関数によって生成される &quot;シンボリック オブジェクト&quot; を使用します。たとえば、ステートメント</p><pre class="codeinput">x = sym(<span class="string">'x'</span>);
+</pre><p>は、シンボリック変数 x を生成します。</p><p>複数のステートメント</p><pre class="codeinput">a = sym(<span class="string">'a'</span>); t = sym(<span class="string">'t'</span>); x = sym(<span class="string">'x'</span>); y = sym(<span class="string">'y'</span>);
+</pre><p>を &quot;syms&quot; 関数によって 1 つのステートメントにまとめることができます。</p><pre class="codeinput">syms <span class="string">a</span> <span class="string">t</span> <span class="string">x</span> <span class="string">y</span>
+</pre><p>シンボリック変数は、数式で使用したり、さまざまな関数に渡す引数として使用することができます。</p><pre class="codeinput">r = x^2 + y^2
+
+theta = atan(y/x)
+
+e = exp(i*pi*t)
+</pre><pre class="codeoutput"> 
+r =
+ 
+x^2 + y^2
+ 
+ 
+theta=
+ 
+atan(y/x)
+ 
+ 
+e =
+ 
+exp(pi*t*i)
+ 
+</pre><p>&quot;simple&quot; 関数または &quot;simplify&quot; 関数を使用することにより、数式を見やすい形式に変換することもできます。</p><pre class="codeinput">f = cos(x)^2 + sin(x)^2
+
+f = simple(f)
+</pre><pre class="codeoutput"> 
+f =
+ 
+cos(x)^2 + sin(x)^2
+ 
+ 
+f =
+ 
+1
+ 
+</pre><p>微分と積分は、それぞれ &quot;diff&quot; 関数と &quot;int&quot; 関数によって計算されます。</p><pre class="codeinput">diff(x^3)
+
+int(x^3)
+
+int(exp(-t^2))
+</pre><pre class="codeoutput"> 
+ans =
+ 
+3*x^2
+ 
+ 
+ans =
+ 
+x^4/4
+ 
+ 
+ans =
+ 
+(pi^(1/2)*erf(t))/2
+ 
+</pre><p>1 つの式に複数の変数が含まれる場合、アルファベット順で x に最も近い変数が微分と積分で使用されます (ただし、他の変数が 2 番目の引数として指定されていない場合に限ります)。以下のベクトルでは、最初の 2 つの要素が x に関する積分を行い、残りの要素が a に関する積分を行います。</p><pre class="codeinput">[int(x^a), int(a^x), int(x^a,a), int(a^x,a)]
+</pre><pre class="codeoutput"> 
+ans =
+ 
+[ piecewise([a = -1, log(x)], [a &lt;&gt; -1, x^(a + 1)/(a + 1)]), a^x/log(a), x^a/log(x), piecewise([x = -1, log(a)], [x &lt;&gt; -1, a^(x + 1)/(x + 1)])]
+ 
+</pre><p>また、sym 関数を使用してシンボリック定数を作成することもできます。引数として、数値を表す文字列を指定できます。pi = sym('pi') と delta = sym('1/10') のようなステートメントは、浮動小数点による近似値ではなく円周率または 1/10 という有理数として扱うためのシンボリックな数を作成します。この方法で生成された pi は、同じ名前の組み込み数値関数に一時的に置き換わります。</p><pre class="codeinput">pi = sym(<span class="string">'pi'</span>)
+
+delta = sym(<span class="string">'1/10'</span>)
+
+s = sym(<span class="string">'sqrt(2)'</span>)
+</pre><pre class="codeoutput"> 
+pi =
+ 
+pi
+ 
+ 
+delta =
+ 
+1/10
+ 
+ 
+s =
+ 
+2^(1/2)
+ 
+</pre><p>浮動小数点値をシンボリック定数に変換する際は、丸め誤差を考慮に入れなければなりません。たとえば、以下のステートメントのいずれかを使用して t に代入される値は、正確に 10 分の 1 というわけではありません。</p><pre class="codeinput">t = 1/10, t = 0.1
+</pre><pre class="codeoutput">
+t =
+
+    0.1000
+
+
+t =
+
+    0.1000
+
+</pre><p>浮動小数点数を変換する方法は、sym 関数への 2 番目の引数 (オプション) によって指定します。この引数の値として、f、r、e、または d を指定できます。既定値は r です。</p><p>f は、浮動小数点を表します。すべての値は、(2^e+N*2^(e-52)) または -(2^e+N*2^(e-52)) という形式で表されます。ここで、N と e は整数です。これにより、精度の高い浮動小数点値が得られます。</p><pre class="codeinput">sym(t,<span class="string">'f'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+3602879701896397/36028797018963968
+ 
+</pre><p>r は、有理数を表します。適切な整数 p と q をとり、p/q、p*pi/q、sqrt(p)、2^q、および 10^q という各形式の式を評価することで得られる浮動小数点を、対応するシンボリック形式に変換します。これにより、元の評価に伴う丸め誤差が効果的に補われますが、浮動小数点値が正確に表されない場合があります。</p><pre class="codeinput">sym(t,<span class="string">'r'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+1/10
+ 
+</pre><p>簡単な有理近似を求めることができない場合は、大きい整数 p と q を使用した p*2^q という形式の式から、精度の高い浮動小数点値が得られます。</p><pre class="codeinput">sym(1+sqrt(5),<span class="string">'r'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+910872158600853/281474976710656
+ 
+</pre><p>e は、推定誤差を表します。r は、変数 eps を含む項によって補完されます。この変数は、理論的な有理式と実際の浮動小数点値との差を推定します。</p><pre class="codeinput">sym(t,<span class="string">'e'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+eps/40 + 1/10
+ 
+</pre><p>d は、小数を表します。桁数は、VPA で使用される DIGITS を現在の設定から得られます。16 より小さい桁数よりも、一般に 16 桁以上の方が精度が悪くなります。</p><pre class="codeinput">digits(15)
+sym(t,<span class="string">'d'</span>)
+
+digits(25)
+sym(t,<span class="string">'d'</span>)
+</pre><pre class="codeoutput"> 
+ans =
+ 
+0.100000000000364
+ 
+ 
+ans =
+ 
+0.1000000000000000055511151
+ 
+</pre><p>25 桁の場合、0 の文字列で終わるのではなく、1/10 に最も近い浮動小数点数の小数表現となります。</p><p>MATLAB&reg; 言語のベクトルおよび行列の表記法がシンボリック変数にも適用されます。</p><pre class="codeinput">n = 4;
+
+A = x.^((0:n)'*(0:n))
+
+D = diff(log(A))
+</pre><pre class="codeoutput"> 
+A =
+ 
+[ 1,   1,   1,    1,    1]
+[ 1,   x, x^2,  x^3,  x^4]
+[ 1, x^2, x^4,  x^6,  x^8]
+[ 1, x^3, x^6,  x^9, x^12]
+[ 1, x^4, x^8, x^12, x^16]
+ 
+ 
+D =
+ 
+[ 0,   0,   0,    0,    0]
+[ 0, 1/x, 2/x,  3/x,  4/x]
+[ 0, 2/x, 4/x,  6/x,  8/x]
+[ 0, 3/x, 6/x,  9/x, 12/x]
+[ 0, 4/x, 8/x, 12/x, 16/x]
+ 
+</pre><p class="footer">Copyright 1993-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Introduction % %  Copyright 1993-2008 The MathWorks, Inc. %  $Revision: 1.1.4.9.2.1 $  $Date: 2010/07/29 21:29:30 $ % % The Symbolic Math Toolbox(TM) software uses "symbolic objects" produced % by the "sym" function.  For example, the statement  x = sym('x');  %% % % produces a symbolic variable named x.  %% % You can combine the statements  a = sym('a'); t = sym('t'); x = sym('x'); y = sym('y');  %% % % into one statement involving the "syms" function.  syms a t x y  %% % You can use symbolic variables in expressions and as arguments to % many different functions.  r = x^2 + y^2  theta = atan(y/x)  e = exp(i*pi*t)  %% % It is sometimes desirable to use the "simple" or "simplify" function % to transform expressions into more convenient forms.  f = cos(x)^2 + sin(x)^2  f = simple(f)  %% % Derivatives and integrals are computed by the "diff" and "int" functions.  diff(x^3)  int(x^3)  int(exp(-t^2))  %% % If an expression involves more than one variable, differentiation and % integration use the variable which is closest to 'x' alphabetically, % unless some other variable is specified as a second argument. % In the following vector, the first two elements involve integration % with respect to 'x', while the second two are with respect to 'a'.  [int(x^a), int(a^x), int(x^a,a), int(a^x,a)]  %% % You can also create symbolic constants with the sym function.  The % argument can be a string representing a numerical value.  Statements % like pi = sym('pi') and delta = sym('1/10') create symbolic numbers % which avoid the floating point approximations inherent in the values % of pi and 1/10.  The pi created in this way temporarily replaces the % built-in numeric function with the same name.  pi = sym('pi')  delta = sym('1/10')  s = sym('sqrt(2)')  %% % Conversion of floating point values to symbolic constants involves % some consideration of roundoff error.  For example, with either of the % following statements, the value assigned to t is not exactly one-tenth.  t = 1/10, t = 0.1  %% % The technique for converting floating point numbers is specified by an % optional second argument to the sym function.  The possible values of the % argument are 'f', 'r', 'e' or 'd'.  The default is 'r'.  %% % 'f' stands for 'floating point'.  All values are represented in the % form (2^e+N*2^(e-52)) or -(2^e+N*2^(e-52)) where N and e are integers. % This captures the floating point values exactly.  sym(t,'f')  %% % 'r' stands for 'rational'.  Floating point numbers obtained by evaluating % expressions of the form p/q, p*pi/q, sqrt(p), 2^q and 10^q for modest sized % integers p and q are converted to the corresponding symbolic form.  This % effectively compensates for the roundoff error involved in the original evaluation, % but may not represent the floating point value precisely.  sym(t,'r')  %% % If no simple rational approximation can be found, an expression of the form % p*2^q with large integers p and q reproduces the floating point value exactly.  sym(1+sqrt(5),'r')  %% % 'e' stands for 'estimate error'.  The 'r' form is supplemented by a term % involving the variable 'eps' which estimates the difference between the % theoretical rational expression and its actual floating point value.  sym(t,'e')  %% % 'd' stands for 'decimal'.  The number of digits is taken from the current % setting of DIGITS used by VPA.  Fewer than 16 digits loses some accuracy, % while more than 16 digits may not be warranted.  digits(15) sym(t,'d')  digits(25) sym(t,'d')  %% % % The 25 digit result does not end in a string of 0's, but is an accurate % decimal representation of the floating point number nearest to 1/10.  %% % MATLAB(R) language vector and matrix notation extends to symbolic variables.  n = 4;  A = x.^((0:n)'*(0:n))  D = diff(log(A))   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

@@ -1,0 +1,386 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
+<html xmlns:mwsh="http://www.mathworks.com/namespace/mcode/v1/syntaxhighlight.dtd">
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      -->
+      <title>Minimizing Network Traffic</title>
+      <meta name="generator" content="MATLAB 7.6">
+      <meta name="date" content="2007-11-29">
+      <meta name="m-file" content="paralleltutorial_network_traffic">
+      <link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css">
+   </head>
+   <body>
+      <div class="header">
+         <div class="left"><a href="matlab:edit paralleltutorial_network_traffic">Open paralleltutorial_network_traffic.m in the Editor</a></div>
+         <div class="right"><a href="matlab:echodemo paralleltutorial_network_traffic">Run in the Command Window</a></div>
+      </div>
+      <div class="content">
+         <h1>Minimizing Network Traffic</h1>
+         <introduction>
+            <p>In this demo, we look at how we can reduce the run time of our jobs in the Parallel Computing Toolbox&#8482; by minimizing the network
+               traffic.  It is likely that the network bandwidth is severely limited, especially when considered relative to memory transfer
+               speeds, and we therefore have a strong incentive to make the most efficient use of it.  Additionally, the Parallel Computing
+               Toolbox has limitations on the sizes of the MATLAB&reg; objects that the tasks can receive and return, and we will look at how
+               we can work around them. In particular, we will discuss how to use the file system and show some of the advantages and the
+               disadvantages of using it.
+            </p>
+            <p>Prerequisites:</p>
+            <div>
+               <ul>
+                  <li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a></li>
+                  <li><a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB Computations into Tasks</a></li>
+                  <li><a href="paralleltutorial_taskfunctions.html">Writing Task Functions</a></li>
+               </ul>
+            </div>
+            <p>For further reading, see:</p>
+            <div>
+               <ul>
+                  <li><a href="paralleltutorial_callbacks.html">Using Callback Functions</a></li>
+               </ul>
+            </div>
+         </introduction>
+         <h2>Contents</h2>
+         <div>
+            <ul>
+               <li><a href="#1">Reducing the Amount of Data Returned</a></li>
+               <li><a href="#2">Using the JobData Property of the Job</a></li>
+               <li><a href="#8">When to Use a Shared File System</a></li>
+               <li><a href="#10">Handling Delayed Updates of a Shared File System</a></li>
+               <li><a href="#11">Writing to a Shared File System on a Homogeneous Cluster</a></li>
+               <li><a href="#14">Writing to a Shared File System on a Heterogeneous Cluster</a></li>
+               <li><a href="#20">Restoring the Original Settings</a></li>
+            </ul>
+         </div>
+         <h2>Reducing the Amount of Data Returned<a name="1"></a></h2>
+         <p>If heavy network traffic is causing our jobs to slow down, the first question is whether we really need all the data that
+            is being transmitted.  If not, we should write a wrapper task function that drops the redundant data and only returns what
+            is necessary.  You can see an example of that in the <a href="paralleltutorial_taskfunctions.html">Writing Task Functions</a> demo.
+         </p>
+         <h2>Using the JobData Property of the Job<a name="2"></a></h2>
+         <p>When using a job manager, it is possible to use the JobData property of the job to minimize the job and the task creation
+            times by reducing the data transfer over our network. If the task input data is large and it is shared between all the tasks
+            in a job, we may benefit from passing it to the task functions through the <tt>JobData</tt> property of the job rather than as an input argument to all the task functions.  This way, the data is only transmitted once
+            to the job manager instead of being passed once for each task.
+         </p>
+         <p>Let's use a simple example to illustrate the syntax involved.  We let the task function consist of calculating <tt>x.^p</tt>, where <tt>x</tt> is a fixed vector and <tt>p</tt> varies.  This implies that <tt>x</tt> will be stored in the <tt>JobData</tt> property of the job and <tt>p</tt> will be passed as the input argument to the task function. The task function uses the <tt>getCurrentJob</tt> function to obtain the job object, and obtains the <tt>JobData</tt> through that job object.
+         </p><pre class="codeinput">type <span class="string">pctdemo_task_tutorial_network_traffic</span>;
+</pre><pre class="codeoutput">
+function y = pctdemo_task_tutorial_network_traffic(p)
+%PCTDEMO_TASK_TUTORIAL_NETWORK_TRAFFIC Calculate x.^p.
+%   y = pctdemo_task_tutorial_network_traffic(p) uses getCurrentJob to obtain 
+%   the JobData property of the current job.  The function then returns 
+%   the p-th power of the vector found in the JobData property.
+    
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.2 $  $Date: 2007/12/10 21:30:52 $
+    
+    job = getCurrentJob();
+    if isempty(job)
+        % We are not running on a worker, so we do not have any JobData to 
+        % work on.
+        y = [];
+        return;
+    end
+    
+    x = get(job, 'JobData');
+    y = x.^p;
+end % End of pctdemo_task_tutorial_network_traffic.
+
+</pre><p>We can now create a job whose <tt>JobData</tt> property is set to <tt>x</tt>.
+         </p><pre class="codeinput">configName = defaultParallelConfig();
+sched = findResource(<span class="string">'scheduler'</span>, <span class="string">'Configuration'</span>, configName);
+set(sched, <span class="string">'Configuration'</span>, configName);
+job = createJob(sched);
+x = 0:0.1:10;
+set(job, <span class="string">'JobData'</span>, x);
+</pre><p>We create the tasks in the job, one task for each value of <tt>p</tt>.  Note that the tasks' function only has <tt>p</tt> as its input argument.
+         </p><pre class="codeinput">pvec = [0.1, 0.2, 0.3, 0.4, 0.5];
+<span class="keyword">for</span> p = pvec
+    createTask(job, @pctdemo_task_tutorial_network_traffic, 1, {p});
+<span class="keyword">end</span>
+submit(job);
+</pre><p>We can now return to the MATLAB prompt and continue working while waiting for the job to finish.  Alternatively, we can block
+            the prompt until the job has finished:
+         </p><pre class="codeinput">waitForState(job, <span class="string">'finished'</span>);
+</pre><p>Since we have finished using the job object, we destroy it.</p><pre class="codeinput">destroy(job);
+</pre><h2>When to Use a Shared File System<a name="8"></a></h2>
+         <p>If we want the workers to process data that already exists on a shared file system, we use the <tt>PathDependencies</tt> property of the job.  All the directory names that we put into that cell array are added to the path on the workers, thereby
+            making them easy for us to access.  The user that the workers run as must have the permissions required to read from those
+            directories.
+         </p>
+         <p>Regarding the question of when it is appropriate to write data to the shared file system in the MATLAB client to make it available
+            to the workers, or vice versa, we have to keep in mind that shared file systems often have high latency.  Consequently, if
+            we have followed the advice given above and we are transferring only objects that are a few hundred kilobytes in size, we
+            are probably better off not using the file system explicitly, but instead relying on the transfer mechanism that is built
+            into the Parallel Computing Toolbox.  However, when using the job manager, it is probably better to use the file system when
+            transferring objects that are tens of megabytes in size or larger.
+         </p>
+         <h2>Handling Delayed Updates of a Shared File System<a name="10"></a></h2>
+         <p>Some network file systems trade off latency for network efficiency through delayed updates.  Delayed updates can cause problems
+            if the client computer expects files generated on the workers to be immediately available.  For this reason, we recommend
+            avoiding reading task output files in the task finished callback functions.  As a rule of thumb, we  should not expect files
+            written on one computer to be immediately available on all other computers.
+         </p>
+         <h2>Writing to a Shared File System on a Homogeneous Cluster<a name="11"></a></h2>
+         <p>It is easy to communicate through a shared filesystem on a homogeneous cluster by using the <tt>load</tt> and <tt>save</tt> functions in MATLAB.  Of course, the client and the workers must have permission to read and write the input and output files.
+             If the cluster consists of Windows&reg; machines, we also have to remember to use only UNC paths and not the names of mapped
+            network drives. That is, we can only use full filenames of the form
+         </p><pre class="codeinput">f = <span class="string">'\\mycomputer\user\subdir\myfile.mat'</span>;
+</pre><p>and not</p><pre class="codeinput">f = <span class="string">'h:\subdir\myfile.mat'</span>;
+</pre><p>because network mappings, such as that of <tt>\\mycomputer\user</tt> to <tt>h:</tt>, may only work on the client machine and MATLAB may not have access to those mappings on the workers.
+         </p>
+         <h2>Writing to a Shared File System on a Heterogeneous Cluster<a name="14"></a></h2>
+         <p>Using a shared file system can be more difficult if it does not look the same from the workers and the clients.  The Parallel
+            Computing Toolbox demos show one way of solving that problem in the case of a mixed environment of Windows and UNIX&reg; computers.
+             Let's assume that the path names
+         </p><pre class="codeinput">pcdir = <span class="string">'\\mycomputer\user\subdir'</span>;
+unixdir = <span class="string">'/home/user/subdir'</span>;
+</pre><p>refer to the same directory on the file server, and that the former is valid on all of our Windows computers and the latter
+            is valid on all of our UNIX computers.  We can tell the Parallel Computing Toolbox demos about this association and allow
+            it to use this directory for writing temporary files by issuing the command
+         </p><pre class="codeinput">orgconf = paralleldemoconfig();
+paralleldemoconfig(<span class="string">'NetworkDir'</span>, struct(<span class="string">'pc'</span>, pcdir, <span class="string">'unix'</span>, unixdir));
+</pre><p>When the demos need to write a file to the file system, they look at the <tt>NetworkDir</tt> field of the <tt>paralleldemoconfig</tt> structure:
+         </p><pre class="codeinput">conf = paralleldemoconfig();
+netDir = conf.NetworkDir
+</pre><pre class="codeoutput">netDir = 
+      pc: '\\mycomputer\user\subdir'
+    unix: '/home/user/subdir'
+</pre><p>Given a filename, such as <tt>'myfile.mat'</tt> from above, the demos pass the <tt>netDir</tt> structure and <tt>'myfile.mat'</tt> to the workers.  The workers can then choose whether to use
+         </p><pre> fullfile(netDir.pc, 'myfile.mat')</pre><p>or</p><pre> fullfile(netDir.unix, 'myfile.mat')</pre><p>according on what platform they are on.  This platform-dependent choice has been wrapped into the demo function <tt>pctdemo_helper_fullfile</tt>:
+         </p><pre class="codeinput">type <span class="string">pctdemo_helper_fullfile</span>;
+</pre><pre class="codeoutput">
+function filename = pctdemo_helper_fullfile(networkDir, file)
+%PCTDEMO_HELPER_FULLFILE Build full filename from parts.
+%   PCTDEMO_HELPER_FULLFILE(networkDir, file) returns 
+%   FULLFILE(networkDir.pc, file) on the PC Windows platform, and 
+%   FULLFILE(networkDir.unix, file) on other platforms.
+%
+%   networkDir must be a structure with the field names 'pc' and 'unix',
+%   and the field values must be strings.
+%   
+%   See also FULLFILE
+    
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.2 $  $Date: 2007/12/10 21:30:52 $
+    
+    % Verify the input argument
+    error(nargchk(2, 2, nargin, 'struct'));
+    tc = pTypeChecker();
+    if ~(tc.isStructWithFields(networkDir, 'unix', 'pc') ...
+         &amp;&amp; iscellstr(struct2cell(networkDir)))
+        error('distcomp:demo:InvalidArgument', ...
+              ['Network directory must be a structure with the field names '...
+              'pc and unix and the field values must be strings']);
+    end
+    if ~ischar(file) || isempty(file)
+        error('distcomp:demo:InvalidArgument', ...
+              'File must be a non-empty character array');
+    end
+    
+    if ispc
+        base = networkDir.pc;
+    else
+        base = networkDir.unix;
+    end
+    filename = fullfile(base, file);
+end % End of pctdemo_helper_fullfile
+
+</pre><p>so that the workers actually call only</p><pre class="codeinput">f = pctdemo_helper_fullfile(netDir, <span class="string">'myfile.mat'</span>);
+</pre><p>and they will then receive the correct, full filename of <tt>myfile.mat</tt>.
+         </p>
+         <h2>Restoring the Original Settings<a name="20"></a></h2>
+         <p>We do not want this tutorial to change the default demo settings, so we restore their original values.</p><pre class="codeinput">paralleldemoconfig(orgconf);
+</pre><p class="footer">Copyright 2007 The MathWorks, Inc.<br>
+            Published with MATLAB&reg; 7.6
+         </p>
+         <p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks
+            of their respective owners.
+         </p>
+      </div>
+      <!--
+##### SOURCE BEGIN #####
+%% Minimizing Network Traffic
+% In this demo, we look at how we can reduce the run time of our jobs in the
+% Parallel Computing Toolbox(TM) by minimizing the network traffic.  It is
+% likely that the network bandwidth is severely limited, especially when
+% considered relative to memory transfer speeds, and we therefore have a strong
+% incentive to make the most efficient use of it.  Additionally, the Parallel
+% Computing Toolbox has limitations on the sizes of the MATLAB(R) objects that the
+% tasks can receive and return, and we will look at how we can work around them.
+% In particular, we will discuss how to use the file system and show some of the
+% advantages and the disadvantages of using it.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox>
+% * <paralleltutorial_dividing_tasks.html
+% Dividing MATLAB Computations into Tasks>
+% * <paralleltutorial_taskfunctions.html Writing Task Functions>
+%
+% For further reading, see: 
+%
+% * <paralleltutorial_callbacks.html Using Callback Functions>
+
+%   Copyright 2007 The MathWorks, Inc.
+%   $Revision: 1.1.6.2 $  $Date: 2007/12/10 21:30:52 $
+
+%% Reducing the Amount of Data Returned
+% If heavy network traffic is causing our jobs to slow down, the first question
+% is whether we really need all the data that is being transmitted.  If not, we
+% should write a wrapper task function that drops the redundant data and only
+% returns what is necessary.  You can see an example of that in 
+% the <paralleltutorial_taskfunctions.html Writing Task Functions> demo.
+
+%% Using the JobData Property of the Job
+% When using a job manager, it is possible to use the JobData property of the
+% job to minimize the job and the task creation times by reducing the data
+% transfer over our network. If the task input data is large and it is shared
+% between all the tasks in a job, we may benefit from passing it to the task
+% functions through the |JobData| property of the job rather than as an input
+% argument to all the task functions.  This way, the data is only transmitted
+% once to the job manager instead of being passed once for each task.
+
+%%
+% Let's use a simple example to illustrate the syntax involved.  We let
+% the task function consist of calculating |x.^p|, where |x| is a fixed
+% vector and |p| varies.  This implies that |x| will be stored in the
+% |JobData| property of the job and |p| will be passed as the input argument
+% to the task function.   
+% The task function uses the |getCurrentJob| function to obtain the job
+% object, and obtains the |JobData| through that job object.
+type pctdemo_task_tutorial_network_traffic;
+%%
+% We can now create a job whose |JobData| property is set to |x|.
+configName = defaultParallelConfig();
+sched = findResource('scheduler', 'Configuration', configName);
+set(sched, 'Configuration', configName);
+job = createJob(sched);
+x = 0:0.1:10;
+set(job, 'JobData', x);
+
+%%
+% We create the tasks in the job, one task for each value of |p|.  Note that 
+% the tasks' function only has |p| as its input argument.
+pvec = [0.1, 0.2, 0.3, 0.4, 0.5];
+for p = pvec
+    createTask(job, @pctdemo_task_tutorial_network_traffic, 1, {p});
+end
+submit(job);
+%%
+% We can now return to the MATLAB prompt and continue working while waiting for
+% the job to finish.  Alternatively, we can block the prompt until the job has
+% finished:
+waitForState(job, 'finished');
+
+%%
+% Since we have finished using the job object, we destroy it.
+destroy(job);
+
+%% When to Use a Shared File System
+% If we want the workers to process data that already exists on a shared file
+% system, we use the |PathDependencies| property of the job.  All the directory
+% names that we put into that cell array are added to the path on the workers,
+% thereby making them easy for us to access.  The user that the workers run as
+% must have the permissions required to read from those directories.
+
+%%
+% Regarding the question of when it is appropriate to write data to the shared
+% file system in the MATLAB client to make it available to the workers, or vice
+% versa, we have to keep in mind that shared file systems often have high
+% latency.  Consequently, if we have followed the advice given above and we are
+% transferring only objects that are a few hundred kilobytes in size, we are
+% probably better off not using the file system explicitly, but instead relying
+% on the transfer mechanism that is built into the Parallel Computing
+% Toolbox.  However, when using the job manager, it is probably better to use
+% the file system when transferring objects that are tens of megabytes in size
+% or larger.
+
+%% Handling Delayed Updates of a Shared File System
+% Some network file systems trade off latency for network efficiency through
+% delayed updates.  Delayed updates can cause problems if the client computer
+% expects files generated on the workers to be immediately available.  For this
+% reason, we recommend avoiding reading task output files in the task finished
+% callback functions.  As a rule of thumb, we  should not expect files written 
+% on one computer to be immediately available on all other computers.
+
+%% Writing to a Shared File System on a Homogeneous Cluster
+% It is easy to communicate through a shared filesystem on a homogeneous
+% cluster by using the |load| and |save| functions in MATLAB.  Of course, the
+% client and the workers must have permission to read and write the input
+% and output files.  If the cluster consists of Windows(R) machines, we also have
+% to remember to use only UNC paths and not the names of mapped network
+% drives. That is, we can only use full filenames of the form
+f = '\\mycomputer\user\subdir\myfile.mat';
+%%
+% and not
+f = 'h:\subdir\myfile.mat'; 
+
+%%
+% because network mappings, such as that of |\\mycomputer\user| to |h:|, may
+% only work on the client machine and MATLAB may not have access to those
+% mappings on the workers.
+
+%% Writing to a Shared File System on a Heterogeneous Cluster
+% Using a shared file system can be more difficult if it does not look the same
+% from the workers and the clients.  The Parallel Computing Toolbox demos
+% show one way of solving that problem in the case of a mixed environment of
+% Windows and UNIX(R) computers.  Let's assume that the path names
+pcdir = '\\mycomputer\user\subdir';
+unixdir = '/home/user/subdir';
+
+%%
+% refer to the same directory on the file server, and that the former is valid
+% on all of our Windows computers and the latter is valid on all of our UNIX
+% computers.  We can tell the Parallel Computing Toolbox demos about this
+% association and allow it to use this directory for writing temporary files by
+% issuing the command
+orgconf = paralleldemoconfig();
+paralleldemoconfig('NetworkDir', struct('pc', pcdir, 'unix', unixdir));
+
+%%
+% When the demos need to write a file to the file system, they look at the
+% |NetworkDir| field of the |paralleldemoconfig| structure: 
+conf = paralleldemoconfig();
+netDir = conf.NetworkDir
+
+%%
+% Given a filename, such as |'myfile.mat'| from above, the demos pass the 
+% |netDir| structure and |'myfile.mat'| to the workers.  The workers can then
+% choose whether to use
+%
+%   fullfile(netDir.pc, 'myfile.mat')
+%
+% or
+%
+%   fullfile(netDir.unix, 'myfile.mat')
+%
+% according on what platform they are on.  This platform-dependent choice has
+% been wrapped into the demo function |pctdemo_helper_fullfile|:
+type pctdemo_helper_fullfile;
+
+%%
+% so that the workers actually call only
+f = pctdemo_helper_fullfile(netDir, 'myfile.mat');
+
+%%
+% and they will then receive the correct, full filename of |myfile.mat|.
+
+%% Restoring the Original Settings
+% We do not want this tutorial to change the default demo settings, so we
+% restore their original values.
+paralleldemoconfig(orgconf);
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+-->
+   </body>
+</html>

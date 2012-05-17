@@ -1,0 +1,167 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Compensator Design for a Set of Plant Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="MultiModelPlantdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit MultiModelPlantdemo">Open MultiModelPlantdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo MultiModelPlantdemo">Run in the Command Window</a></div></div><div class="content"><h1>Compensator Design for a Set of Plant Models</h1><!--introduction--><p>The SISO Design Tool provide a variety of design and analysis tools. This demo shows how to analyze a controller design for multiple plant models.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Acquiring a Set of Plant Models</a></li><li><a href="#2">Working with Multimodel Systems in the SISO Design Tool</a></li><li><a href="#3">Constructing the LTI Array</a></li><li><a href="#4">Opening the SISO Design Tool</a></li><li><a href="#5">Changing the Nominal Model</a></li><li><a href="#6">Options for Plotting Responses</a></li><li><a href="#7">Summary</a></li></ul></div><h2>Acquiring a Set of Plant Models<a name="1"></a></h2><p>Consider the typical feedback problem, shown in the following figure, where the controller C is designed to satisfy some performance objective.</p><p><img vspace="5" hspace="5" src="../Figures/MultiModelPlantDemoFigures_01.png" alt=""> </p><p>Typically, the dynamics of the system, G, are not exactly known and can vary based on operating conditions.  For example:</p><div><ul><li> The variations in system dynamics may be a result of manufacturing tolerances that are typically defined as a range about the nominal value (e.g. the value of resistance for a resistor 5 ohms  +/-  1%) .</li></ul></div><div><ul><li> The system dynamics vary with operating condition (e.g. aircraft dynamics change based on altitude and speed).</li></ul></div><p>When designing controllers for these types of systems, the performance objectives for all variations of the system must be satisfied.</p><p>You can model such systems as a set of LTI models and create an LTI array to store the collection of these models. Then, use the SISO Design to design a controller for a nominal plant in the array and analyze the controller design for the set of plants.</p><p>The following list summarizes how to obtain an array of LTI models:</p><p>Control System Toolbox&#8482;</p><div><ul><li>Functions: <a href="matlab:doc('stack')">stack</a>, <a href="matlab:doc('tf')">tf</a>, <a href="matlab:doc('zpk')">zpk</a>, <a href="matlab:doc('ss')">ss</a>, <a href="matlab:doc('frd')">frd</a></li></ul></div><p>Simulink&reg; Control Design&#8482;</p><div><ul><li>Functions: <a href="matlab:doc('frestimate')">frestimate</a>, <a href="matlab:doc('linearize')">linearize</a></li><li>Demo: <a href="../../../slcontrol/slctrldemos/html/scddcmotorpad.html">"Reference Tracking of a DC Motor with Parameter Variations"</a>.</li></ul></div><p>Robust Control Toolbox&#8482;</p><div><ul><li>Functions: <a href="matlab:doc('uss')">uss</a>, <a href="matlab:doc('usample')">usample</a>, <a href="matlab:doc('usubs')">usubs</a>.</li></ul></div><p>System Identification Toolbox&#8482;</p><div><ul><li>Functions: <a href="matlab:doc('pem')">pem</a>, <a href="matlab:doc('oe')">oe</a>, <a href="matlab:doc('arx')">arx</a>.</li></ul></div><h2>Working with Multimodel Systems in the SISO Design Tool<a name="2"></a></h2><p>In this example, the plant model is a second order system defined as:</p><p><img src="MultiModelPlantdemo_eq97605.png" alt="$$ G(s) = \frac{\omega_n^2}{s^2 +2\zeta\omega_n s+\omega_n^2} $$"></p><p>with</p><p><img src="MultiModelPlantdemo_eq28654.png" alt="$$ \omega_n = (1,1.5,2) $$"> and <img src="MultiModelPlantdemo_eq85725.png" alt="$$ \zeta = (.2,.5,.8) $$">.</p><h2>Constructing the LTI Array<a name="3"></a></h2><p>The first step is to construct the LTI array for the combinations of <img src="MultiModelPlantdemo_eq47634.png" alt="$\zeta$"> and <img src="MultiModelPlantdemo_eq17080.png" alt="$\omega_n$">.</p><pre class="codeinput">wn = [1,1.5,2];
+zeta = [.2,.5,.8];
+ct = 1;
+<span class="keyword">for</span> ct1 = 1:length(wn)
+    <span class="keyword">for</span> ct2 = 1:length(zeta)
+        zetai = zeta(ct2);
+        wni = wn(ct1);
+        G(1,1,ct) = tf(wni^2,[1,2*zetai*wni,wni^2]);
+        ct = ct+1;
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+size(G)
+
+<span class="comment">% Note that the array must be a row or column array.</span>
+</pre><pre class="codeoutput">9x1 array of transfer functions.
+Each model has 1 outputs and 1 inputs.
+</pre><h2>Opening the SISO Design Tool<a name="4"></a></h2><p>Next, start the SISO Design Tool.</p><p><tt>&gt;&gt; sisotool(G)</tt></p><p>The SISO Design Tool opens with a Bode and Root Locus open-loop editors.</p><p><img vspace="5" hspace="5" src="../Figures/MultiModelPlantDemoFigures_02.png" alt=""> </p><p>By default, the nominal model used for design is the first element in the LTI array.</p><div><ul><li>The root locus editor displays the root locus for the nominal model and the closed loop pole locations associated with the set of plants.</li></ul></div><div><ul><li>The Bode editor displays both the nominal model response and responses of the set of plants.</li></ul></div><p>In these editors, you can interactively tune the gain, poles and zeros of the compensator while simultaneously visualizing the effect on the set of plants.</p><h2>Changing the Nominal Model<a name="5"></a></h2><p>To change the nominal model:</p><p>1. Go to the <b>Architecture</b> tab of the <b>SISO Design Task</b>.</p><p>2. Click <b>Multimodel Configuration</b>.</p><p>The <b>Multimodel Configuration Dialog</b> window allows you to change the nominal model.</p><p><img vspace="5" hspace="5" src="../Figures/MultiModelPlantDemoFigures_03.png" alt=""> </p><p>For example, selecting 5 for the nominal model results in the following changes to the Bode and Root Locus editors.</p><p><img vspace="5" hspace="5" src="../Figures/MultiModelPlantDemoFigures_04.png" alt=""> </p><h2>Options for Plotting Responses<a name="6"></a></h2><p>The options for plotting responses of the set of plants are accessed by right-clicking the plots. Use <b>Multimodel Display</b> to:</p><div><ul><li>Turn off the responses.</li><li>Show them as individual responses or as an envelope encapsulating the individual responses as shown below.</li></ul></div><p><img vspace="5" hspace="5" src="../Figures/MultiModelPlantDemoFigures_05.png" alt=""> </p><h2>Summary<a name="7"></a></h2><p>The SISO Design Tool provides you design and analysis tools for multimodel systems. The tools allow you to analyze the performance and stability of a set of systems simultaneously.</p><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Compensator Design for a Set of Plant Models
+% The SISO Design Tool provide a variety of design and analysis tools. This 
+% demo shows how to analyze a controller design for multiple plant models.
+%
+
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.8.1.2.1 $  $Date: 2010/06/24 19:32:25 $
+
+%% Acquiring a Set of Plant Models
+% Consider the typical feedback problem, shown in the following figure,
+% where the controller C is designed to satisfy some performance objective.
+%
+% <<../Figures/MultiModelPlantDemoFigures_01.png>>
+%
+% Typically, the dynamics of the system, G, are not exactly known and can 
+% vary based on operating conditions.  For example:
+%
+% *  The variations in system dynamics may be a result of manufacturing
+% tolerances that are typically defined as a range about the nominal value
+% (e.g. the value of resistance for a resistor 5 ohms  +/-  1%) .
+%
+% *  The system dynamics vary with operating condition (e.g. aircraft
+% dynamics change based on altitude and speed).
+% 
+% When designing controllers for these types of systems, the performance 
+% objectives for all variations of the system must be satisfied.
+%
+% You can model such systems as a set of LTI models and create an LTI array to 
+% store the collection of these models. Then, use the SISO Design to design a 
+% controller for a nominal plant in the array and analyze the
+% controller design for the set of plants.
+%
+% The following list summarizes how to obtain an array of LTI models:
+%
+% Control System Toolbox(TM)
+%
+% * Functions: <matlab:doc('stack') stack>, <matlab:doc('tf') tf>, <matlab:doc('zpk') zpk>, <matlab:doc('ss') ss>, <matlab:doc('frd') frd>
+%
+% Simulink(R) Control Design(TM)
+%
+% * Functions: <matlab:doc('frestimate') frestimate>, <matlab:doc('linearize') linearize>
+% * Demo: <../../../slcontrol/slctrldemos/html/scddcmotorpad.html "Reference Tracking of a DC Motor with Parameter Variations">.
+%
+% Robust Control Toolbox(TM)
+%
+% * Functions: <matlab:doc('uss') uss>, <matlab:doc('usample') usample>, <matlab:doc('usubs') usubs>.
+%
+% System Identification Toolbox(TM)
+%
+% * Functions: <matlab:doc('pem') pem>, <matlab:doc('oe') oe>, <matlab:doc('arx') arx>.
+%
+
+%% Working with Multimodel Systems in the SISO Design Tool
+% In this example, the plant model is a second order system defined as:
+%
+% $$ G(s) = \frac{\omega_n^2}{s^2 +2\zeta\omega_n s+\omega_n^2} $$
+%
+% with 
+%
+% $$ \omega_n = (1,1.5,2) $$ and $$ \zeta = (.2,.5,.8) $$.
+%
+
+%% Constructing the LTI Array
+% The first step is to construct the LTI array for the combinations of
+% $\zeta$ and $\omega_n$.
+
+wn = [1,1.5,2];
+zeta = [.2,.5,.8];
+ct = 1;
+for ct1 = 1:length(wn)
+    for ct2 = 1:length(zeta)
+        zetai = zeta(ct2);
+        wni = wn(ct1);
+        G(1,1,ct) = tf(wni^2,[1,2*zetai*wni,wni^2]); 
+        ct = ct+1;
+    end
+end
+
+size(G)
+
+% Note that the array must be a row or column array.
+%% Opening the SISO Design Tool
+% Next, start the SISO Design Tool.
+%
+% |>> sisotool(G)|
+%
+% The SISO Design Tool opens with a Bode and Root Locus open-loop editors.
+%
+% <<../Figures/MultiModelPlantDemoFigures_02.png>>
+%
+% By default, the nominal model used for design is the first element in the
+% LTI array.
+%
+% * The root locus editor displays the root locus for the nominal model and
+% the closed loop pole locations associated with the set of plants. 
+%
+% * The Bode editor displays both the nominal model response and responses
+% of the set of plants. 
+%
+% In these editors, you can interactively tune the gain,
+% poles and zeros of the compensator while simultaneously visualizing the
+% effect on the set of plants. 
+
+%% Changing the Nominal Model
+% To change the nominal model:
+%
+% 1. Go to the *Architecture* tab of the *SISO
+% Design Task*.
+%
+% 2. Click *Multimodel Configuration*.  
+%
+% The *Multimodel Configuration Dialog* window allows you to change the nominal model.
+%
+% <<../Figures/MultiModelPlantDemoFigures_03.png>>
+%
+% For example, selecting 5 for the nominal model results in the following
+% changes to the Bode and Root Locus editors.
+%
+% <<../Figures/MultiModelPlantDemoFigures_04.png>>
+
+%% Options for Plotting Responses 
+% The options for plotting responses of the set of plants are accessed by
+% right-clicking the plots. Use *Multimodel Display* to:
+% 
+% * Turn off the responses.
+% * Show them as individual responses or as an envelope encapsulating the
+% individual responses as shown below.
+%
+% <<../Figures/MultiModelPlantDemoFigures_05.png>>
+
+%% Summary
+% The SISO Design Tool provides you design and analysis tools for
+% multimodel systems. The tools allow you to analyze the performance and
+% stability of a set of systems simultaneously. 
+
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

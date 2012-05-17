@@ -1,0 +1,624 @@
+%% $RCSfile: oseklib.tlc,v $
+%% $Revision: 1.1.10.1 $
+%%
+%% Abstract:
+%%   TLC library for OSEK blocks, main.c and OIL file generation.
+%%
+%% Copyright 2002-2006 The MathWorks, Inc.
+
+%if EXISTS("::_OSEK_GENERAL_INCLUDE_") == 0
+%assign ::_OSEK_GENERAL_INCLUDE_ = 1
+
+%selectfile NULL_FILE
+
+%% Static Configuraton for OSEK environment
+%%
+%% The base rate priority value, values monotically decrease for the subrates.
+%assign ::basePriority = 20 
+%% Task stack size in bytes
+%assign ::stackSize = 512
+%% System stack size in bytes
+%assign ::systemStackSize = 1024
+%% Set number of OS ticks per base rate period, 'Auto' indicates automatic configuration.
+%assign ::ticksPerBase = "Auto"
+%% Flag to indicate whether Error Hook function should be generated
+%assign ::IncludeErrHook = 1
+
+
+%% Include OSEK specific tlc functions
+
+%function FcnGenerateMultitaskingOSEKCode() Output
+  TASK(init)
+  {
+    /* Initialize model */
+    %<LibCallModelInitialize()>;
+
+    /* Alarms are set in order from highest to lowest priority of the 
+    associated tasks and all run off of the System Counter. The second
+    argument(increment) to SetRelAlarm() is set to the same value and
+    no code is inserted between the calls to the SetRelAlarm API. These
+    steps are taken to minimize offset effects of model task activations. */
+    
+    %assign numTicks = %<OSLibOSEKAlarmTicksForRate(0)>
+    /* Base rate will run every           : %<OSLibOSEKTimesPerSecondForRate(0)> seconds
+    Original rate specified in model   : %<LibGetSampleTimePeriodAndOffset(0,0)> seconds */
+    SetRelAlarm(baseAlarm, 1, %<numTicks>);
+    
+    %foreach i = LibNumDiscreteSampleTimes()-1
+      %assign idx = i + 1
+      %assign numTicks = %<OSLibOSEKAlarmTicksForRate(idx)>
+      %assign offset   = %<OSLibOSEKOffsetForRate(idx)>
+      /* Sub rate will run every            : %<OSLibOSEKTimesPerSecondForRate(idx)> seconds,
+      Original rate specified in model   : %<LibGetSampleTimePeriodAndOffset(idx,0)> seconds */
+      %if offset
+	/* Offset for this rate               : %<LibGetSampleTimePeriodAndOffset(idx,1)> seconds */
+      %endif
+      SetRelAlarm(subAlarm_%<idx>, %<offset+1>, %<numTicks>);
+
+    %endforeach
+    TerminateTask();
+  }
+
+  /* Using RTW multitasking execution of model */
+  TASK(baseRate)
+  {
+    /* Set model inputs associated with base rate here */
+    %% This will have a call to the rate monotonic scheduler for special sample hits
+    %<LibCallModelStep(0)>\
+    /* Get model outputs associated with base rate here */
+    
+    TerminateTask();
+  }
+  
+  %foreach i = LibNumDiscreteSampleTimes()-1
+    %assign idx = i + 1
+    TASK(subRate_%<idx>)  
+    {
+      /* Set model inputs associated with sub rate here */
+      %<LibCallModelStep(idx)>\
+      /* Get model outputs associated with sub rate here */
+      
+      TerminateTask();
+    }
+
+  %endforeach
+%endfunction
+
+%function FcnGenerateSingletaskingOSEKCode() Output
+  TASK(init)
+  {
+    /* Initialize model */
+    %<LibCallModelInitialize()>;
+
+    %assign numTicks = %<OSLibOSEKAlarmTicksForRate(0)>
+    %assign offset   = %<OSLibOSEKOffsetForRate(0)>
+    /* Base rate will run every           : %<OSLibOSEKTimesPerSecondForRate(0)> seconds
+    Original rate specified in model   : %<LibGetSampleTimePeriodAndOffset(0,0)> seconds */
+    %if offset
+      /* Offset ignored for this rate       : %<LibGetSampleTimePeriodAndOffset(0,1)> seconds */
+    %endif
+    SetRelAlarm(singleAlarm, 1, %<numTicks>);
+    
+    TerminateTask();
+  }
+
+  /* Using RTW singletasking execution of model */
+  TASK(singleRate)
+  {
+    /* Set model inputs associated with base rate here */
+    %if LibNumDiscreteSampleTimes() == 1
+      %<LibCallModelStep("")>\
+    %else
+      %<LibCallModelStep(0)>\
+    %endif
+    /* Get model outputs associated with base rate here */
+    
+    TerminateTask();
+  }
+%endfunction
+
+%function OSLibOSEKDeclareOSEKMain() void
+  %assign cFile = LibCreateSourceFile("Source","OSEK","osek_main")
+  %return cFile
+%endfunction
+  
+%function OSLibOSEKCreateOSEKMain() void
+
+  %assign cFile = OSLibOSEKDeclareOSEKMain()
+  
+  %assign tmpFcnBuf = LibWriteModelData()
+  %<LibSetSourceFileSection(cFile, "Definitions", tmpFcnBuf)>
+
+  %openfile tmpFcnBuf
+  /*
+   * Auto generated OSEK main program for model: %<FcnMdlName()>
+   *
+   * Real-Time Workshop file version      : %<Version>
+   * Real-Time Workshop file generated on : %<GeneratedOn>
+   * C source code generated on           : %<TLC_TIME>
+   *
+   * Description:
+   *    OSEK target top-level, %<Name>.c.
+   *
+   */
+  %closefile tmpFcnBuf
+  %<LibSetSourceFileSection(cFile, "Banner", tmpFcnBuf)>
+  
+  %openfile tmpFcnBuf
+  /* Model's headers */
+  #include "%<Name>.h"
+
+  %% Add OSEK Implementation specific includes
+  #include "myosek.h"
+
+  %closefile tmpFcnBuf
+  %<LibSetSourceFileSection(cFile, "Includes", tmpFcnBuf)>
+  
+  %<OSEKImpSpecificCalcInterruptRateValue()>
+
+  %openfile tmpFcnBuf
+
+  %if LibNumDiscreteSampleTimes() == 1 || LibIsSingleTasking()
+    %<FcnGenerateSingletaskingOSEKCode()>\
+  %else
+    %<FcnGenerateMultitaskingOSEKCode()>\
+  %endif
+
+  %<OSLibOSEKInsertMainFcn()>
+
+%if IncludeErrHook == 1
+ %<OSLibOSEKCreateErrorHook()>
+%endif
+
+  %closefile tmpFcnBuf
+  %<LibSetSourceFileSection(cFile, "Functions", tmpFcnBuf)>
+
+%endfunction
+
+%function OSEKCreateOSEKData() void
+  %createrecord localData { \
+      AddOilTask "" \
+      AddOilAlarm "" \
+      AddOilCounter "" \
+      AddOilISR "" \
+      AddMakeVars "" \
+    }
+  %addtorecord CompiledModel OSEKData localData
+%endfunction
+
+%function OSLibOSEKAddTaskToOil(buffer) void
+    %assign CompiledModel.OSEKData.AddOilTask = CompiledModel.OSEKData.AddOilTask + buffer
+%endfunction
+%function OSLibOSEKDumpAddOilTasks() void
+    %return CompiledModel.OSEKData.AddOilTask
+%endfunction
+
+%function OSLibOSEKAddAlarmToOil(buffer) void
+    %assign CompiledModel.OSEKData.AddOilAlarm = CompiledModel.OSEKData.AddOilAlarm + buffer
+%endfunction
+
+%function OSLibOSEKDumpAddOilAlarms() void
+    %return CompiledModel.OSEKData.AddOilAlarm
+%endfunction
+
+%function OSLibOSEKAddCounterToOil(buffer) void
+    %assign CompiledModel.OSEKData.AddOilCounter = CompiledModel.OSEKData.AddOilCounter + buffer
+%endfunction
+%function OSLibOSEKDumpAddOilCounters() void
+    %return CompiledModel.OSEKData.AddOilCounter
+%endfunction
+
+%function OSLibOSEKAddISRToOil(buffer) void
+    %assign CompiledModel.OSEKData.AddOilISR = CompiledModel.OSEKData.AddOilISR + buffer
+%endfunction
+%function OSLibOSEKDumpAddOilISRs() void
+    %return CompiledModel.OSEKData.AddOilISR
+%endfunction
+
+%function OSLibOSEKAddMakeVars(buffer) void
+    %assign CompiledModel.OSEKData.AddMakeVars = CompiledModel.OSEKData.AddMakeVars + buffer
+%endfunction
+%function OSLibOSEKDumpMakeVars() void
+    %return CompiledModel.OSEKData.AddMakeVars
+%endfunction
+
+%%
+%% Perform library initialization
+%%
+%<OSEKCreateOSEKData()>
+
+%% Add custom code into model terminate function
+%openfile tmpFcnBuf  
+    /* exit the model execution, leave overall OSEK application running */
+    %if LibNumDiscreteSampleTimes() == 1 || LibIsSingleTasking()
+      /* Cancel the alarm for the model task */
+    %else
+      /* Cancel all alarms for the model tasks */
+      CancelAlarm(baseAlarm);
+      %foreach i = LibNumDiscreteSampleTimes()-1
+	%assign idx = i + 1
+	CancelAlarm(subAlarm_%<idx>);
+      %endforeach
+    %endif
+%closefile tmpFcnBuf
+%<LibMdlTerminateCustomCode(tmpFcnBuf,"trailer")>
+
+
+%function OSLibOSEKImplDeclareFPU() void
+  %openfile buffer
+  %% Need to save FPU context incase task is preempted from a non-model task
+  %if !PurelyIntegerCode
+    FPU = TRUE;
+  %else
+    FPU = FALSE;
+  %endif
+  %closefile buffer
+  %return buffer
+%endfunction
+  
+%function OSLibOSEKInsertMainFcn() void
+
+  %openfile tmpIncBuf
+  
+  void main(void)
+  {
+    StartOS(mode0);
+    %% Can return here if ShutdownHook() returns or no ShutdownHook() defined.
+  }
+
+  %closefile tmpIncBuf
+  %return tmpIncBuf
+%endfunction
+
+%function OSEKImpSpecificCalcInterruptRateValue() void
+  %% Setup ticksPerBase which is same as timer interrupts per second
+  %% If implementations vary in TICKSPERBASE definition of 'per second', this code
+  %% will need to be adjusted accordingly.
+  %assign basePeriod = LibGetSampleTimePeriodAndOffset(0,0)
+  %assign tol = 0.01         %% Define a tolerance of 1%
+  %assign fbr = 1.0/basePeriod
+  %assign minpost = fbr * (1.0-tol)
+  %assign maxpost = fbr * (1.0+tol)
+
+  %if TYPE(ticksPerBase) == "String" && (ticksPerBase == "Auto" || ticksPerBase == "auto")
+    %% Setup dynamically if user specifies 'Auto'
+    %assign withintol = 0
+    %assign fic = CAST("Number", ((fbr + 0.5) < 1)? 1:fbr + 0.5)
+    %foreach i = 100 %% Try at most 100 iterations
+      %assign cyclic = CAST("Number", fic * basePeriod + 0.5)
+      %if (fic > cyclic * minpost) && (fic < cyclic * maxpost)
+	%assign withintol = 1
+	%break
+      %else
+	%assign fic = fic + 1
+      %endif
+    %endforeach
+    %if !withintol
+      %assign errTxt = "Unable to Autoselect a TICKSPERBASE OSEK System Counter value within tolerance of %<tol*100>%. Please enter a numeric value for the OSEK System Counter option."
+      %<LibReportError(errTxt)>
+    %endif
+    %assign ::ticksPerBase = fic
+  %else
+    %% User specified the TICKSPERBASE value
+    %assign ::ticksPerBase = CAST("Number",ticksPerBase)
+    %% Perform error checking on OSEK system counter tick value and relation to the base period of the model.
+    %if ticksPerBase < 0
+      %assign errTxt = "TICKSPERBASE OSEK System Counter value which is set to '%<ticksPerBase>' must be a positive integer. Please enter a positive integer value for the OSEK System Counter option or set it to 'Auto'."
+      %<LibReportError(errTxt)>
+    %endif
+    %if (ticksPerBase * basePeriod) < (1 - tol)
+      %assign errTxt = "TICKSPERBASE OSEK System Counter value which is set to '%<ticksPerBase>' is too slow for this models base sample rate of '%<fbr>'. Please increase TICKSPERBASE to at least '%<CAST("Number", fbr + 0.5)>' or set it to 'Auto'."
+      %<LibReportError(errTxt)>
+    %endif
+    %assign cyclic = CAST("Number", ticksPerBase * basePeriod + 0.5)
+    %if !((ticksPerBase > cyclic * minpost) && (ticksPerBase < cyclic * maxpost))
+      %assign wrnTxt = "TICKSPERBASE OSEK counter option which is set to '%<ticksPerBase>' gives a tolerance ouside of %<tol*100>%. Consider increasing TICKSPERBASE or setting it to 'Auto'."
+      %<LibReportWarning(wrnTxt)>
+    %endif
+  %endif
+%endfunction
+
+%function OSLibOSEKAlarmTicksForRate(rate) void
+  %return CAST("Number", ticksPerBase * LibGetSampleTimePeriodAndOffset(rate,0) + 0.5)
+%endfunction
+
+%function OSLibOSEKOffsetForRate(rate) void
+  %return CAST("Number", ticksPerBase * LibGetSampleTimePeriodAndOffset(rate,1) + 0.5)
+%endfunction
+
+%function OSLibOSEKTimesPerSecondForRate(rate)  void
+  %return CAST("Real", OSLibOSEKAlarmTicksForRate(rate))/ticksPerBase
+%endfunction
+
+%function OSLibOSEKCreateOSEKOil(mdlName) void
+{
+  %openfile oilfile = "%<mdlName>.oil"
+  //
+  //OIL file: %<mdlName>.oil
+  //
+  
+  OIL_VERSION = "2.2";
+  
+  CPU %<mdlName> {
+
+    /**************************************************************************/
+    /*             Tasks                                                      */
+    /**************************************************************************/
+    
+    %<OSLibOSEKDumpAddOilTasks()>
+
+    TASK init {
+      SCHEDULE = NON;
+      PRIORITY = %<basePriority + 1>;
+      ACTIVATION = 1;
+      AUTOSTART = TRUE;
+      APPMODE = mode0;
+      STACKSIZE = 40;
+      %<OSLibOSEKImplDeclareFPU()>
+    };
+    
+    %if LibNumDiscreteSampleTimes() == 1 || LibIsSingleTasking()
+      TASK singleRate {
+	SCHEDULE = FULL;
+	PRIORITY = %<basePriority>;
+	ACTIVATION = 1;
+	AUTOSTART = FALSE;
+	APPMODE =  mode0;
+	STACKSIZE = %<stackSize>;
+	%<OSLibOSEKImplDeclareFPU()>
+      };
+    %else
+      TASK baseRate {
+	SCHEDULE = FULL;
+	PRIORITY = %<basePriority>;
+	ACTIVATION = 1;
+	AUTOSTART = FALSE;
+	APPMODE =  mode0;
+	STACKSIZE = %<stackSize>;
+	%<OSLibOSEKImplDeclareFPU()>
+     };
+      
+      %foreach i = LibNumDiscreteSampleTimes()-1
+	%assign idx = i + 1
+	
+	TASK subRate_%<idx>
+	{
+	  SCHEDULE = FULL;
+	  PRIORITY = %<basePriority - idx>;
+	  ACTIVATION = 1;
+	  AUTOSTART = FALSE;
+	  APPMODE = mode0;
+	  STACKSIZE = %<stackSize>;
+	  %<OSLibOSEKImplDeclareFPU()>
+	};
+      %endforeach
+    %endif    
+    
+    /**************************************************************************/
+    /*             Alarms                                                     */
+    /**************************************************************************/
+    
+    %<OSLibOSEKDumpAddOilAlarms()>
+
+    %if LibNumDiscreteSampleTimes() == 1 || LibIsSingleTasking()
+      ALARM singleAlarm {
+	COUNTER = SystemTimer;
+	ACTION = ACTIVATETASK {
+	  TASK = singleRate;
+	};
+      };
+      
+    %else
+      ALARM baseAlarm {
+	COUNTER = SystemTimer;
+	ACTION = ACTIVATETASK {
+	  TASK = baseRate;
+	};
+      };
+      
+      %foreach i = LibNumDiscreteSampleTimes()-1
+	%assign idx = i + 1
+	
+	ALARM subAlarm_%<idx> {
+	  COUNTER = SystemTimer;
+	  ACTION = ACTIVATETASK {
+	    TASK = subRate_%<idx>;
+	  };
+	};
+      %endforeach
+    %endif
+    
+    /**************************************************************************/
+    /*             Counters                                                   */
+    /**************************************************************************/
+
+    %<OSLibOSEKDumpAddOilCounters()>
+    
+    %% The ISR SystemTimerISR is attached to the DECREMENTER vector and will
+    %% increment this COUNTER at interrupt rate/sec of TICKSPERBASE.
+    COUNTER SystemTimer {
+      MAXALLOWEDVALUE = 65535;
+      %% SystemTimer has this as ticks per second
+      TICKSPERBASE = %<ticksPerBase>;
+      MINCYCLE = 1;
+    };
+    
+    
+    /**************************************************************************/
+    /*             Application Modes                                          */
+    /**************************************************************************/
+    
+    APPMODE mode0 {
+      VALUE = AUTO;
+    };
+    
+    /**************************************************************************/
+    /*             ISRs                                                       */
+    /**************************************************************************/
+    
+    %<OSLibOSEKDumpAddOilISRs()>
+    
+    ISR SystemTimerISR {
+      CATEGORY = 2;
+      ENABLE_AT_STARTUP = TRUE;
+      VECTOR = DECREMENTER;
+    };
+    
+    /**************************************************************************/
+    /*             O/S                                                        */
+    /**************************************************************************/
+    
+    OS StdOS {
+      STATUS = EXTENDED;
+      STARTUPHOOK = FALSE;
+%if IncludeErrHook == 1
+      ERRORHOOK = TRUE;
+%else
+      ERRORHOOK = FALSE;
+%endif
+      SHUTDOWNHOOK = FALSE;
+      PRETASKHOOK = FALSE;
+      POSTTASKHOOK = FALSE;
+      SYSTEMSTACKSIZE = %<systemStackSize>;
+    };
+    
+  };
+
+  %closefile oilfile
+
+  %<LibIndentSourceFile("%<mdlName>.oil","")>
+  
+%endfunction
+
+%function OSLibOSEKCreateErrorHook() Output
+
+  %openfile tmpFcnBuf
+  /* Function: ErrorHook ==================================================
+   * Abstract:
+   *	ErrorHook function by OSEK. Will execute model terminate code when 
+   *	that terminate code is provided by the model.
+   */
+  void ErrorHook(StatusType Error)
+  {
+    /* Make these static so they are visible and persistent when not in function */
+    static TaskType TaskID=0;
+    static TaskStateType TaskState=0;
+    static StatusType status=E_OK;
+    static StatusType localError = E_OK;
+
+    localError = Error;
+
+    /* Get and store task id for visibility and call to GetTaskState */
+    if ( (status = GetTaskID( &TaskID )) != E_OK )
+    {
+      /* Insert Error Code Here*/
+    } 
+    
+    /* Get and store task state for visibility */
+    else if ( (status = GetTaskState( TaskID, &TaskState )) != E_OK )
+    {
+      /* Insert Error Code Here*/
+    }
+
+    %if IncludeMdlTerminateFcn == 1
+      /* Call model terminate function */
+      %<LibCallModelTerminate()>;
+    %endif
+
+#ifdef RTW_USER_ERROR_HOOK    
+    /* 
+     * When defined, RTW_USER_ERROR_HOOK must be the name of a function
+     * of the same type as ErrorHook that is called after the model 
+     * terminate code. The function would be provided through USER_SRCS
+     * and the #define would be provided through the rtwoption make 
+     * command field. 
+     */
+    RTW_USER_ERROR_HOOK(localError);
+#endif
+    switch ( localError )
+    {
+
+     /* Possible error codes:
+      *     E_OS_ACCESS    = 1
+      *     E_OS_CALLEVEL  = 2
+      *     E_OS_ID        = 3
+      *     E_OS_LIMIT     = 4
+      *     E_OS_NOFUNC    = 5
+      *     E_OS_RESOURCE  = 6
+      *     E_OS_STATE     = 7
+      *     E_OS_VALUE     = 8
+      *     E_OS_SYS_CHAIN = 10
+      */
+
+      case E_OS_ACCESS:
+#if 0 == 1 /* Change this conditional to something true to have the 
+            * error hook to jump to the restart vector. 
+	    */
+
+	/* No specific handler : go through reset vector to restart */
+        void (*reset_vector)(void) = (void *) 0x0100;
+	reset_vector();
+#else
+        /* Create a branch loop to be seen by a debugger, or logic analyzer */
+	while (1) {
+	  ;
+	}
+#endif
+      break;
+      case E_OS_CALLEVEL:
+        /* Create a branch loop to be seen by a debugger, or logic analyzer */
+	while (1) {
+	  ;
+	}
+      break;
+      case E_OS_ID:
+        /* Create a branch loop to be seen by a debugger, or logic analyzer */
+	while (1) {
+	  ;
+	}
+      break;
+      case E_OS_LIMIT:
+        /* Create a branch loop to be seen by a debugger, or logic analyzer */
+	while (1) {
+	  ;
+	}
+      break;
+      case E_OS_NOFUNC:
+        /* Create a branch loop to be seen by a debugger, or logic analyzer */
+	while (1) {
+	  ;
+	}
+      break;
+      case E_OS_RESOURCE:
+        /* Create a branch loop to be seen by a debugger, or logic analyzer */
+	while (1) {
+	  ;
+	}
+      break;
+      case E_OS_STATE:
+        /* Create a branch loop to be seen by a debugger, or logic analyzer */
+	while (1) {
+	  ;
+	}
+      break;
+      case E_OS_VALUE:
+        /* Create a branch loop to be seen by a debugger, or logic analyzer */
+	while (1) {
+	  ;
+	}
+      break;
+      default:
+        /* Create a branch loop to be seen by a debugger, or logic analyzer */
+	while (1) {
+	  ;
+	}
+      break;
+    }
+  }
+  %closefile tmpFcnBuf
+  %return tmpFcnBuf
+%endfunction
+
+%endif
+
+%% [EOF] oseklib.tlc

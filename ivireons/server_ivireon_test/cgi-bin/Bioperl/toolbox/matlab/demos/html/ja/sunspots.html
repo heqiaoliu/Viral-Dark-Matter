@@ -1,0 +1,38 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>FFT の使用</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="sunspots.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit sunspots">エディターで sunspots.m を開く</a></div><div class="right"><a href="matlab:echodemo sunspots">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>FFT の使用</h1><!--introduction--><p>このデモでは、過去 300 年にわたって太陽の黒点活動における変化を分析するために関数 FFT を使用します。</p><!--/introduction--><p>太陽の黒点は、約 11 年周期で活動がピークになります。これを確かめてみましょう。これは黒点の数とサイズの両方を計測するチューリッヒ相対黒点数と呼ばれるデータ量をプロットしたものです。天文学者は、およそ 300 年の間この量を表にしてきました。</p><pre class="codeinput">load <span class="string">sunspot.dat</span>
+year=sunspot(:,1);
+relNums=sunspot(:,2);
+plot(year,relNums)
+title(<span class="string">'Sunspot Data'</span>)
+</pre><img vspace="5" hspace="5" src="../sunspots_01.png" alt=""> <p>これは、初めの 50 年を取り出して見たものです。</p><pre class="codeinput">plot(year(1:50),relNums(1:50),<span class="string">'b.-'</span>);
+</pre><img vspace="5" hspace="5" src="../sunspots_02.png" alt=""> <p>信号処理の基本的な手段として、FFT (高速有限フーリエ変換) があります。黒点データの FFT を取得するには、以下のように入力します。</p><p>Y の最初の要素 Y(1) は、単なるデータの和なので取り除くことができます。</p><pre class="codeinput">Y = fft(relNums);
+Y(1)=[];
+</pre><p>Y で与えられるフーリエ係数の複素平面上での分布グラフはすっきりしていますが、解釈するのは困難です。Y のデータをより実用的な方法で調査する必要があります。</p><pre class="codeinput">plot(Y,<span class="string">'ro'</span>)
+title(<span class="string">'Fourier Coefficients in the Complex Plane'</span>);
+xlabel(<span class="string">'Real Axis'</span>);
+ylabel(<span class="string">'Imaginary Axis'</span>);
+</pre><img vspace="5" hspace="5" src="../sunspots_03.png" alt=""> <p>Y の複素ゲインの二乗は「パワー (power)」と呼ばれ、周波数に対するパワーをプロットしたものは「ピリオドグラム (Periodogram)」と呼ばれます。</p><pre class="codeinput">n=length(Y);
+power = abs(Y(1:floor(n/2))).^2;
+nyquist = 1/2;
+freq = (1:n/2)/(n/2)*nyquist;
+plot(freq,power)
+xlabel(<span class="string">'cycles/year'</span>)
+title(<span class="string">'Periodogram'</span>)
+</pre><img vspace="5" hspace="5" src="../sunspots_04.png" alt=""> <p>周期/年数でのスケールでは少し不便です。年数/周期のスケールでプロットし、1 周期の長さを推定しましょう。</p><pre class="codeinput">plot(freq(1:40),power(1:40))
+xlabel(<span class="string">'cycles/year'</span>)
+</pre><img vspace="5" hspace="5" src="../sunspots_05.png" alt=""> <p>これは、便宜上、周期に対するパワーをプロットしたものです (ただし、周期 = 1./周波数)。予測通り、約 11 年の長さの周期になっていることがよくわかります。</p><pre class="codeinput">period=1./freq;
+plot(period,power);
+axis([0 40 0 2e+7]);
+ylabel(<span class="string">'Power'</span>);
+xlabel(<span class="string">'Period (Years/Cycle)'</span>);
+</pre><img vspace="5" hspace="5" src="../sunspots_06.png" alt=""> <p>最後に、パワーの最も大きい周波数を抽出することで、もう少し正確に周期の長さを修正できます。赤い点がその点を表しています。</p><pre class="codeinput">hold <span class="string">on</span>;
+index=find(power==max(power));
+mainPeriodStr=num2str(period(index));
+plot(period(index),power(index),<span class="string">'r.'</span>, <span class="string">'MarkerSize'</span>,25);
+text(period(index)+2,power(index),[<span class="string">'Period = '</span>,mainPeriodStr]);
+hold <span class="string">off</span>;
+</pre><img vspace="5" hspace="5" src="../sunspots_07.png" alt=""> <p class="footer">Copyright 1984-2009 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Using FFT % This demonstration uses the FFT function to analyze the variations in sunspot % activity over the last 300 years. % % Copyright 1984-2009 The MathWorks, Inc. % $Revision: 1.1.6.11.2.1 $ $Date: 2010/07/29 21:28:53 $  %% % Sunspot activity is cyclical, reaching a maximum about every 11 years.  Let's % confirm that.  Here is a plot of a quantity called the Zurich sunspot  % relative number, which measures both number and size of sunspots.  % Astronomers have tabulated this number for almost 300 years.  load sunspot.dat year=sunspot(:,1);  relNums=sunspot(:,2); plot(year,relNums) title('Sunspot Data')  %% % Here is a closer look at the first 50 years.   plot(year(1:50),relNums(1:50),'b.-');  %% % The fundamental tool of signal processing is the FFT, or fast Finite Fourier % Transform.  To take the FFT of the sunspot data type the following.  % % The first component of Y, Y(1), is simply the sum of the data, and can be % removed.  Y = fft(relNums); Y(1)=[];  %% % A graph of the distribution of the Fourier coefficients (given by Y) in the % complex plane is pretty, but difficult to interpret.  We need a more useful way % of examining the data in Y.  plot(Y,'ro') title('Fourier Coefficients in the Complex Plane'); xlabel('Real Axis'); ylabel('Imaginary Axis');  %% % The complex magnitude squared of Y is called the power, and a plot of power % versus frequency is a "periodogram".  n=length(Y); power = abs(Y(1:floor(n/2))).^2; nyquist = 1/2; freq = (1:n/2)/(n/2)*nyquist; plot(freq,power) xlabel('cycles/year') title('Periodogram')  %% % The scale in cycles/year is somewhat inconvenient.  We can plot in years/cycle % and estimate the length of one cycle.  plot(freq(1:40),power(1:40)) xlabel('cycles/year')  %% % Now we plot power versus period for convenience (where period=1./freq).  As % expected, there is a very prominent cycle with a length of about 11 years.  period=1./freq; plot(period,power); axis([0 40 0 2e+7]); ylabel('Power'); xlabel('Period (Years/Cycle)');  %% % Finally, we can fix the cycle length a little more precisely by picking out % the strongest frequency.  The red dot locates this point.  hold on; index=find(power==max(power)); mainPeriodStr=num2str(period(index)); plot(period(index),power(index),'r.', 'MarkerSize',25); text(period(index)+2,power(index),['Period = ',mainPeriodStr]); hold off;   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

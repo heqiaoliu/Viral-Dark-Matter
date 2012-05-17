@@ -1,0 +1,294 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Introduction to the Filter Design and Analysis Tool (FDATool)</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="introfdatooldemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit introfdatooldemo">Open introfdatooldemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo introfdatooldemo">Run in the Command Window</a></div></div><div class="content"><h1>Introduction to the Filter Design and Analysis Tool (FDATool)</h1><!--introduction--><p>The Filter Design and Analysis Tool (FDATool) is a powerful graphical user interface (GUI) in the Signal Processing Toolbox&#8482; for designing and analyzing filters.</p><p>FDATool enables you to quickly design digital FIR or IIR filters by setting filter performance specifications, by importing filters from your MATLAB&reg; workspace or by adding, moving or deleting poles and zeros. FDATool also provides tools for analyzing filters, such as magnitude and phase response plots and pole-zero plots.</p><p>You can use FDATool as a convenient alternative to the command line filter design functions.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Getting Started</a></li><li><a href="#2">Designing a Filter</a></li><li><a href="#3">Viewing other Analyses</a></li><li><a href="#4">Comparing the Design to Filter Specifications</a></li><li><a href="#5">Changing Axes Units</a></li><li><a href="#6">Marking Data Points</a></li><li><a href="#7">Optimizing the Design</a></li><li><a href="#8">Using a Different Filter Structure</a></li><li><a href="#9">Changing Analyses Parameters</a></li><li><a href="#10">Exporting the Filter</a></li><li><a href="#11">Generating a MATLAB File</a></li><li><a href="#12">Quantizing a Filter</a></li><li><a href="#13">Targets</a></li><li><a href="#14">Additional Features</a></li></ul></div><h2>Getting Started<a name="1"></a></h2><p>Type fdatool at the MATLAB command prompt:</p><p>&gt;&gt;fdatool</p><p>A <b>Tip of the Day</b> dialog displays with suggestions for using FDATool. Then, the GUI displays with a default filter.</p><p><img vspace="5" hspace="5" src="ifdadefaultscrn.png" alt=""> </p><p>The GUI has three main regions:</p><div><ul><li>The Current Filter Information region</li><li>The Filter Display region and</li><li>The Design panel</li></ul></div><p>The upper half of the GUI displays information on filter specifications and responses for the current filter. The Current Filter Information region, in the upper left, displays filter properties, namely the filter structure, order, number of sections used and whether the filter is stable or not.  It also provides access to the Filter manager for working with multiple filters.</p><p>The Filter Display region, in the upper right, displays various filter responses, such as, magnitude response, group delay and filter coefficients.</p><p>The lower half of the GUI is the interactive portion of FDATool. The Design Panel, in the lower half is where you define your filter specifications.  It controls what is displayed in the other two upper regions.  Other panels can be displayed in the lower half by using the sidebar buttons.</p><p>The tool includes Context-sensitive help.  You can right-click or click the <b>What's This?</b> button to get information on the different parts of the tool.</p><h2>Designing a Filter<a name="2"></a></h2><p>We will design a low pass filter that passes all frequencies less than or equal to 20% of the Nyquist frequency (half the sampling frequency) and attenuates frequencies greater than or equal to 50% of the Nyquist frequency.  We will use an FIR Equiripple filter with these specifications:</p><div><ul><li>Passband attenuation 1 dB</li><li>Stopband attenuation 80 dB</li><li>A passband frequency 0.2 [Normalized (0 to 1)]</li><li>A stopband frequency 0.5 [Normalized (0 to 1)]</li></ul></div><p>To implement this design, we will use the following specifications:</p><p><img vspace="5" hspace="5" src="ifdadesignfir.png" alt=""> </p><p>1. Select <b>Lowpass</b> from the dropdown menu under <b>Response Type</b> and <b>Equiripple</b> under <b>FIR Design Method</b>.  In general, when you change the Response Type or Design Method, the filter parameters and Filter Display region update automatically.</p><p>2. Select <b>Specify order</b> in the <b>Filter Order</b> area and enter <b>30</b>.</p><p>3. The FIR Equiripple filter has a <b>Density Factor</b> option which controls the density of the frequency grid. Increasing the value creates a filter which more closely approximates an ideal equiripple filter, but more time is required as the computation increases.  Leave this value at 20.</p><p>4. Select <b>Normalized (0 to 1)</b> in the Units pull down menu in the <b>Frequency Specifications</b> area.</p><p>5. Enter <b>0.2</b> for <b>wpass</b> and <b>0.5</b> for <b>wstop</b> in the <b>Frequency Specifications</b> area.</p><p>6. <b>Wpass</b> and <b>Wstop</b>, in the <b>Magnitude Specifications</b> area are positive weights, one per band, used during optimization in the FIR Equiripple filter. Leave these values at 1.</p><p>7. After setting the design specifications, click the <b>Design Filter</b> button at the bottom of the GUI to design the filter.</p><p>The magnitude response of the filter is displayed in the Filter Analysis area after the coefficients are computed.</p><p><img vspace="5" hspace="5" src="ifdafirmag.png" alt=""> </p><h2>Viewing other Analyses<a name="3"></a></h2><p>Once you have designed the filter, you can view the following filter analyses in the display window by clicking any of the buttons on the toolbar:</p><p><img vspace="5" hspace="5" src="ifdatoolbar.png" alt=""> </p><p>In order from left to right, the buttons are</p><div><ul><li>Magnitude response</li><li>Phase response</li><li>Magnitude and Phase responses</li><li>Group delay response</li><li>Phase delay response</li><li>Impulse response</li><li>Step response</li><li>Pole-zero plot</li><li>Filter Coefficients</li><li>Filter Information</li></ul></div><h2>Comparing the Design to Filter Specifications<a name="4"></a></h2><p>FDATool allows you to measure how closely your design meets the filter specifications by using Specification masks which overlay the filter specifications on the response plot. In the Display Region, when the Magnitude plot is displayed, select <b>Specification Mask</b> from the <b>View</b> menu to overlay the filter specifications on the response plot.</p><p>The magnitude response of the filter with Specification mask is shown below:</p><p><img vspace="5" hspace="5" src="ifdadesignmask.png" alt=""> </p><h2>Changing Axes Units<a name="5"></a></h2><p>You can change the x- or y-axis units by right-clicking the mouse on an axis label and selecting the desired units.  The current units have a checkmark.</p><p><img vspace="5" hspace="5" src="ifdamagaxis.png" alt=""> </p><h2>Marking Data Points<a name="6"></a></h2><p>In the Display region, you can click on any point in the plot to add a data marker, which displays the values at that point.  Right-clicking on the data marker displays a menu where you can move, delete or adjust the appearance of the data markers.</p><p><img vspace="5" hspace="5" src="ifdadatamarker.png" alt=""> </p><h2>Optimizing the Design<a name="7"></a></h2><p>To minimize the cost of implementation of the filter, we will try to reduce the number of coefficients by using <b>Minimum Order</b> option in the design panel.</p><p>Change the selection in <b>Filter Order</b> to <b>Minimum Order</b> in the Design Region and leave the other parameters as they are.</p><p>Click the <b>Design Filter</b> button to design the new filter.</p><p><img vspace="5" hspace="5" src="ifdafirminorder.png" alt=""> </p><p>As you can see in the Current Filter Information area, the filter order decreased from 30 to 16, the number of ripples decreased and the transition width became wider.  The passband and the stopband specifications still meet the design criteria.</p><h2>Using a Different Filter Structure<a name="8"></a></h2><p>Our filter is a Direct-form FIR.  Typically, the Direct-Form FIR transposed structure is implemented in hardware. You can use Convert Structure dialog from the Edit menu to change the current filter to a new structure. Filters can be converted to the following representations:</p><div><ul><li>State-Space</li><li>Direct-Form FIR</li><li>Direct-Form FIR Transposed</li><li>Direct-Form Symmetric FIR</li></ul></div><h2>Changing Analyses Parameters<a name="9"></a></h2><p>By right-clicking on the plot and selecting Analysis Parameters, you can display a dialog box for changing analysis-specific parameters. (You can also select Analysis Parameters from the Analysis menu.)</p><p><img vspace="5" hspace="5" src="ifdaanalysisparam.png" alt=""> </p><p>To save the displayed parameters as the default values, click <b>Save as Default</b>. To restore the MATLAB-defined default values, click <b>Restore Original Defaults</b>.</p><h2>Exporting the Filter<a name="10"></a></h2><p>Once you are satisfied with your design, you can export your filter to the following destinations:</p><div><ul><li>MATLAB workspace</li><li>MAT-file</li><li>Text-file</li></ul></div><p>Select <b>Export</b> from the <b>File</b> menu.</p><p><img vspace="5" hspace="5" src="ifdaexportcoeff.png" alt=""> </p><p>If exporting to the MATLAB workspace, you can export as coefficients or as an object by selecting from the <b>Export</b> from the pulldown menu.</p><p>If you want to export as an <b>object</b>, the object's properties control many aspects of its apearance and behaviour.  You can use <b>GET</b> and <b>SET</b> commands from the MATLAB command prompt to have access and manipulate the property values of the object.</p><h2>Generating a MATLAB File<a name="11"></a></h2><p>FDATool allows you to generate MATLAB code to re-create your filter. This enables you to embed your design into existing code or automate the creation of your filters in a script.</p><p>Select <b>Generate MATLAB code</b> from the <b>File</b> menu and specify the filename in the Generate MATLAB code dialog box.</p><p>The following code was generated from the minimum order filter we designed above:</p><p><img vspace="5" hspace="5" src="ifdaminordercode.png" alt=""> </p><h2>Quantizing a Filter<a name="12"></a></h2><p>If you have the Filter Design Toolbox&#8482; installed, the <b>Set quantization parameters</b> panel is available on the sidebar:</p><p><img vspace="5" hspace="5" src="ifdaquanpanel.png" alt=""> </p><p>You can use this panel to quantize and analyze double-precision filters. With the Filter Design Toolbox you can quantize from double-precision to single-precision.  If you have the Fixed Point Toolbox, you can quantize filters to fixed-point precision.  Note that you cannot mix floating-point and fixed-point arithmetic in your filter.</p><h2>Targets<a name="13"></a></h2><p>The <b>Targets</b> menu of the FDATool allows you to generate various types of code representing your filter.  For example, you can generate C header files, XILINX coefficients(COE) files (with the Filter Design Toolbox) and VHDL, Verilog along with test benches (with Filter Design HDL Coder&#8482;).</p><h2>Additional Features<a name="14"></a></h2><p>FDATool also integrates additional functionality from these other MathWorks&#8482; products:</p><div><ul><li><b>Embedded Target for Texas Instruments&#8482; C6000&#8482; DSP</b>- Generates   downloadable code for C6000 DSP target board.</li></ul></div><div><ul><li><b>Filter Design HDL Coder</b>- Generates synthesizable VHDL or Verilog   code for fixed-point filters</li></ul></div><div><ul><li><b>Filter Design Toolbox</b>- Adds advanced FIR and IIR design techniques (i.e.   Filter transformations, Multirate filters)</li></ul></div><div><ul><li><b>Embedded IDE Link&#8482; CC Development Tool</b>- Exports code usable by    Code Composer Studio&#8482;</li></ul></div><div><ul><li><b>Signal Processing Blockset&#8482;</b>- Generates equivalent Signal Processing Blockset   block for the filter</li></ul></div><div><ul><li><b>Simulink&reg;</b>- Generates filters from atomic Simulink blocks</li></ul></div><p class="footer">Copyright 2005-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Introduction to the Filter Design and Analysis Tool (FDATool)
+% The Filter Design and Analysis Tool (FDATool) is a powerful graphical
+% user interface (GUI) in the Signal Processing Toolbox(TM) for designing and
+% analyzing filters.
+%
+% FDATool enables you to quickly design digital FIR or IIR filters by
+% setting filter performance specifications, by importing filters from your
+% MATLAB(R) workspace or by adding, moving or deleting poles and zeros.
+% FDATool also provides tools for analyzing filters, such as magnitude and
+% phase response plots and pole-zero plots. 
+%
+% You can use FDATool as a convenient alternative to the command line
+% filter design functions.
+
+% Copyright 2005-2007 The MathWorks, Inc.
+% $Revision: 1.1.6.9 $ $Date: 2010/05/20 03:09:22 $
+
+%% Getting Started
+%
+% Type fdatool at the MATLAB command prompt:
+%
+%
+% >>fdatool 
+%
+%
+% A *Tip of the Day* dialog displays with suggestions for using FDATool.
+% Then, the GUI displays with a default filter. 
+% 
+% <<ifdadefaultscrn.png>>
+%
+% The GUI has three main regions:
+%
+% * The Current Filter Information region
+% * The Filter Display region and 
+% * The Design panel  
+% 
+% The upper half of the GUI displays information on filter specifications
+% and responses for the current filter. The Current Filter Information
+% region, in the upper left, displays filter properties, namely the filter
+% structure, order, number of sections used and whether the filter is
+% stable or not.  It also provides access to the Filter manager for working
+% with multiple filters. 
+%
+% The Filter Display region, in the upper right, displays various filter
+% responses, such as, magnitude response, group delay and filter
+% coefficients.
+%
+% The lower half of the GUI is the interactive portion of FDATool. The
+% Design Panel, in the lower half is where you define your filter
+% specifications.  It controls what is displayed in the other two upper
+% regions.  Other panels can be displayed in the lower half by using the
+% sidebar buttons. 
+%
+% The tool includes Context-sensitive help.  You can right-click or click
+% the *What's This?* button to get information on the different parts of
+% the tool.
+%
+%
+%% Designing a Filter
+%
+% We will design a low pass filter that passes all frequencies less than or
+% equal to 20% of the Nyquist frequency (half the sampling frequency) and
+% attenuates frequencies greater than or equal to 50% of the Nyquist
+% frequency.  We will use an FIR Equiripple filter with these
+% specifications:
+%
+% * Passband attenuation 1 dB 
+% * Stopband attenuation 80 dB 
+% * A passband frequency 0.2 [Normalized (0 to 1)] 
+% * A stopband frequency 0.5 [Normalized (0 to 1)] 
+%
+% To implement this design, we will use the following specifications:
+%
+% <<ifdadesignfir.png>>
+% 
+%
+% 1. Select *Lowpass* from the dropdown menu under *Response Type* and
+% *Equiripple* under *FIR Design Method*.  In general, when you change the
+% Response Type or Design Method, the filter parameters and Filter Display
+% region update automatically.
+%
+% 2. Select *Specify order* in the *Filter Order* area and enter *30*.
+%
+% 3. The FIR Equiripple filter has a *Density Factor* option which controls
+% the density of the frequency grid. Increasing the value creates a filter
+% which more closely approximates an ideal equiripple filter, but more time
+% is required as the computation increases.  Leave this value at 20.
+%
+% 4. Select *Normalized (0 to 1)* in the Units pull down menu in the *Frequency
+% Specifications* area.
+%
+% 5. Enter *0.2* for *wpass* and *0.5* for *wstop* in the *Frequency
+% Specifications* area.
+%
+% 6. *Wpass* and *Wstop*, in the *Magnitude Specifications* area are
+% positive weights, one per band, used during optimization in the FIR
+% Equiripple filter. Leave these values at 1.
+%
+% 7. After setting the design specifications, click the *Design Filter*
+% button at the bottom of the GUI to design the filter.
+%
+% The magnitude response of the filter is displayed in the Filter Analysis
+% area after the coefficients are computed.
+% 
+% <<ifdafirmag.png>>
+%
+%% Viewing other Analyses
+%
+% Once you have designed the filter, you can view the following filter
+% analyses in the display window by clicking any of the buttons on the toolbar:
+%
+% <<ifdatoolbar.png>>
+%
+% In order from left to right, the buttons are
+%
+% * Magnitude response 
+% * Phase response 
+% * Magnitude and Phase responses 
+% * Group delay response 
+% * Phase delay response 
+% * Impulse response 
+% * Step response 
+% * Pole-zero plot 
+% * Filter Coefficients
+% * Filter Information
+%
+%% Comparing the Design to Filter Specifications
+%
+% FDATool allows you to measure how closely your design meets the filter 
+% specifications by using Specification masks which overlay the filter
+% specifications on the response plot. In the Display Region, when the
+% Magnitude plot is displayed, select *Specification Mask* from the *View*
+% menu to overlay the filter specifications on the response plot.
+%
+% The magnitude response of the filter with Specification mask is shown below:
+%
+% <<ifdadesignmask.png>>
+%
+%% Changing Axes Units
+% 
+% You can change the x- or y-axis units by right-clicking the mouse on an
+% axis label and selecting the desired units.  The current units have a
+% checkmark.  
+% 
+% <<ifdamagaxis.png>>
+%
+%% Marking Data Points
+%
+% In the Display region, you can click on any point in the plot to add a
+% data marker, which displays the values at that point.  Right-clicking on
+% the data marker displays a menu where you can move, delete or adjust the
+% appearance of the data markers.
+%
+% <<ifdadatamarker.png>>
+%
+%% Optimizing the Design
+%
+% To minimize the cost of implementation of the filter, we will try to
+% reduce the number of coefficients by using *Minimum Order* option in the
+% design panel.
+% 
+% Change the selection in *Filter Order* to *Minimum Order* in the
+% Design Region and leave the other parameters as they are.
+% 
+% Click the *Design Filter* button to design the new filter.
+%
+% <<ifdafirminorder.png>>
+% 
+% As you can see in the Current Filter Information area, the filter order
+% decreased from 30 to 16, the number of ripples decreased and the
+% transition width became wider.  The passband and the stopband
+% specifications still meet the design criteria.
+%
+%% Using a Different Filter Structure
+%
+% Our filter is a Direct-form FIR.  Typically, the Direct-Form FIR
+% transposed structure is implemented in hardware. You can use Convert
+% Structure dialog from the Edit menu to change the current filter to a new
+% structure. Filters can be converted to the following representations: 
+%
+% * State-Space 
+% * Direct-Form FIR
+% * Direct-Form FIR Transposed
+% * Direct-Form Symmetric FIR
+%
+%
+%% Changing Analyses Parameters
+%
+% By right-clicking on the plot and selecting Analysis Parameters, you can
+% display a dialog box for changing analysis-specific parameters. (You can
+% also select Analysis Parameters from the Analysis menu.)  
+%
+% <<ifdaanalysisparam.png>>
+% 
+% To save the displayed parameters as the default values, click *Save as Default*. 
+% To restore the MATLAB-defined default values, click *Restore Original Defaults*. 
+%
+%% Exporting the Filter
+%
+% Once you are satisfied with your design, you can export your filter to
+% the following destinations:
+%
+% * MATLAB workspace
+% * MAT-file
+% * Text-file
+%
+% Select *Export* from the *File* menu.
+%
+% <<ifdaexportcoeff.png>>
+%
+% If exporting to the MATLAB workspace, you can export as coefficients or
+% as an object by selecting from the *Export* from the pulldown menu.
+%
+% If you want to export as an *object*, the object's properties control
+% many aspects of its apearance and behaviour.  You can use *GET* and *SET*
+% commands from the MATLAB command prompt to have access and manipulate the
+% property values of the object.  
+%
+%
+%% Generating a MATLAB File
+%
+% FDATool allows you to generate MATLAB code to re-create your filter.
+% This enables you to embed your design into existing code or automate the
+% creation of your filters in a script.
+%
+% Select *Generate MATLAB code* from the *File* menu and specify the
+% filename in the Generate MATLAB code dialog box.
+%
+% The following code was generated from the minimum order filter we
+% designed above:
+%
+% <<ifdaminordercode.png>>
+%
+% 
+%% Quantizing a Filter
+% 
+% If you have the Filter Design Toolbox(TM) installed, the *Set quantization
+% parameters* panel is available on the sidebar: 
+%
+% <<ifdaquanpanel.png>>
+%
+% 
+% You can use this panel to quantize and analyze double-precision filters.
+% With the Filter Design Toolbox you can quantize from double-precision to
+% single-precision.  If you have the Fixed Point Toolbox, you can quantize
+% filters to fixed-point precision.  Note that you cannot mix
+% floating-point and fixed-point arithmetic in your filter.
+%
+% 
+%% Targets
+%
+% The *Targets* menu of the FDATool allows you to generate 
+% various types of code representing your filter.  For example, you can
+% generate C header files, XILINX coefficients(COE) files (with the Filter
+% Design Toolbox) and VHDL, Verilog along with test benches (with 
+% Filter Design HDL Coder(TM)).
+%
+%% Additional Features
+% 
+% FDATool also integrates additional functionality from these other
+% MathWorks(TM) products:
+%
+% * *Embedded Target for Texas Instruments(TM) C6000(TM) DSP*- Generates
+%   downloadable code for C6000 DSP target board.
+%
+% * *Filter Design HDL Coder*- Generates synthesizable VHDL or Verilog
+%   code for fixed-point filters
+%
+% * *Filter Design Toolbox*- Adds advanced FIR and IIR design techniques (i.e.
+%   Filter transformations, Multirate filters)
+%
+% * *Embedded IDE Link(TM) CC Development Tool*- Exports code usable by
+%    Code Composer Studio(TM)
+%
+% * *Signal Processing Blockset(TM)*- Generates equivalent Signal Processing Blockset
+%   block for the filter
+%
+% * *Simulink(R)*- Generates filters from atomic Simulink blocks
+   
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

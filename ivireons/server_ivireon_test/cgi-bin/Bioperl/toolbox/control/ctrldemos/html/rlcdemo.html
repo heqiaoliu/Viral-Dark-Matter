@@ -1,0 +1,121 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Analyzing the Response of an RLC Circuit</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="rlcdemo.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rlcdemo">Open rlcdemo.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rlcdemo">Run in the Command Window</a></div></div><div class="content"><h1>Analyzing the Response of an RLC Circuit</h1><!--introduction--><p>This demo shows how to use the Control System Toolbox&#8482; functions to analyze the time and frequency responses of common RLC circuits as a function of their physical parameters.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Bandpass RLC Network</a></li><li><a href="#4">Analyzing the Frequency Response of the Circuit</a></li><li><a href="#8">Analyzing the Time Response of the Circuit</a></li><li><a href="#10">Interactive GUI</a></li></ul></div><h2>Bandpass RLC Network<a name="1"></a></h2><p>The following figure shows the parallel form of a bandpass RLC circuit:</p><p><img vspace="5" hspace="5" src="../Figures/rlc_01.png" alt=""> </p><p><b>Figure 1</b>: Bandpass RLC Network.</p><p>The transfer function from input to output voltage is:</p><p><img src="rlcdemo_eq07497.png" alt="$$ G(s) =  { s / (RC) \over s^2 + s/(RC) + 1/(LC) } $$"></p><p>The product <tt>LC</tt> controls the bandpass frequency while <tt>RC</tt> controls how narrow the passing band is. To build a bandpass filter tuned to the frequency 1 rad/s, set <tt>L=C=1</tt> and use <tt>R</tt> to tune the filter band.</p><h2>Analyzing the Frequency Response of the Circuit<a name="4"></a></h2><p>The Bode plot is a convenient tool for investigating the bandpass characteristics of the RLC network. Use <tt>tf</tt> to specify the circuit's transfer function for the values</p><pre class="codeinput"><span class="comment">%|R=L=C=1|:</span>
+R = 1; L = 1; C = 1;
+G = tf([1/(R*C) 0],[1 1/(R*C) 1/(L*C)])
+</pre><pre class="codeoutput"> 
+Transfer function:
+     s
+-----------
+s^2 + s + 1
+ 
+</pre><p>Next, use <tt>bode</tt> to plot the frequency response of the circuit:</p><pre class="codeinput">bode(G), grid
+</pre><img vspace="5" hspace="5" src="rlcdemo_01.png" alt=""> <p>As expected, the RLC filter has maximum gain at the frequency 1 rad/s. However, the attenuation is only -10dB half a decade away from this frequency. To get a narrower passing band, try increasing values of R as follows:</p><pre class="codeinput">R1 = 5;   G1 = tf([1/(R1*C) 0],[1 1/(R1*C) 1/(L*C)]);
+R2 = 20;  G2 = tf([1/(R2*C) 0],[1 1/(R2*C) 1/(L*C)]);
+bode(G,<span class="string">'b'</span>,G1,<span class="string">'r'</span>,G2,<span class="string">'g'</span>), grid
+legend(<span class="string">'R = 1'</span>,<span class="string">'R = 5'</span>,<span class="string">'R = 20'</span>)
+</pre><img vspace="5" hspace="5" src="rlcdemo_02.png" alt=""> <p>The resistor value <tt>R=20</tt> gives a filter narrowly tuned around the target frequency of 1 rad/s.</p><h2>Analyzing the Time Response of the Circuit<a name="8"></a></h2><p>We can confirm the attenuation properties of the circuit <tt>G2</tt> (<tt>R=20</tt>) by simulating how this filter transforms sine waves with frequency 0.9, 1, and 1.1 rad/s:</p><pre class="codeinput">t = 0:0.05:250;
+subplot(311), lsim(G2,sin(t),t), title(<span class="string">'w = 1'</span>)
+subplot(312), lsim(G2,sin(0.9*t),t), title(<span class="string">'w = 0.9'</span>)
+subplot(313), lsim(G2,sin(1.1*t),t), title(<span class="string">'w = 1.1'</span>)
+</pre><img vspace="5" hspace="5" src="rlcdemo_03.png" alt=""> <p>The waves at 0.9 and 1.1 rad/s are considerably attenuated. The wave at 1 rad/s comes out unchanged once the transients have died off. The long transient results from the poorly damped poles of the filters, which unfortunately are required for a narrow passing band:</p><pre class="codeinput">damp(pole(G2))
+</pre><pre class="codeoutput">                                                         
+        Eigenvalue            Damping     Freq. (rad/s)  
+                                                         
+ -2.50e-002 + 1.00e+000i     2.50e-002      1.00e+000    
+ -2.50e-002 - 1.00e+000i     2.50e-002      1.00e+000    
+                                                         
+</pre><h2>Interactive GUI<a name="10"></a></h2><p>To analyze other standard circuit configurations such as low-pass and high-pass RLC networks, click on the link below to launch an interactive GUI. In this GUI, you can change the R,L,C parameters and see the effect on the time and frequency responses in real time.</p><p><a href="matlab:rlc_gui">Open the RLC Circuit GUI</a></p><pre class="codeinput">rlc_gui
+</pre><img vspace="5" hspace="5" src="rlcdemo_04.png" alt=""> <p class="footer">Copyright 1986-2007 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Analyzing the Response of an RLC Circuit
+% This demo shows how to use the Control System Toolbox(TM) functions
+% to analyze the time and frequency responses of common RLC circuits
+% as a function of their physical parameters.
+
+%   Copyright 1986-2007 The MathWorks, Inc.
+%   $Revision: 1.12.4.5 $  $Date: 2007/11/09 19:48:16 $
+
+%% Bandpass RLC Network
+% The following figure shows the parallel form of a bandpass RLC circuit:
+%
+% <<../Figures/rlc_01.png>>
+
+%%
+% *Figure 1*: Bandpass RLC Network.
+
+%%
+% The transfer function from input to output voltage is:
+%
+% $$ G(s) =  { s / (RC) \over s^2 + s/(RC) + 1/(LC) } $$
+%
+% The product |LC| controls the bandpass frequency while |RC|
+% controls how narrow the passing band is. To build a bandpass filter 
+% tuned to the frequency 1 rad/s, set |L=C=1| and use |R| 
+% to tune the filter band. 
+
+%% Analyzing the Frequency Response of the Circuit
+% The Bode plot is a convenient tool for investigating the 
+% bandpass characteristics of the RLC network. Use |tf| to 
+% specify the circuit's transfer function for the values
+%|R=L=C=1|:
+R = 1; L = 1; C = 1;
+G = tf([1/(R*C) 0],[1 1/(R*C) 1/(L*C)])
+
+%%
+% Next, use |bode| to plot the frequency response of the circuit:
+bode(G), grid
+
+%%
+% As expected, the RLC filter has maximum gain at the frequency 1 rad/s.
+% However, the attenuation is only -10dB half a decade away from this
+% frequency. To get a narrower passing band, try increasing values of R as follows:
+R1 = 5;   G1 = tf([1/(R1*C) 0],[1 1/(R1*C) 1/(L*C)]);
+R2 = 20;  G2 = tf([1/(R2*C) 0],[1 1/(R2*C) 1/(L*C)]);
+bode(G,'b',G1,'r',G2,'g'), grid
+legend('R = 1','R = 5','R = 20')
+
+%% 
+% The resistor value |R=20| gives a filter narrowly tuned around the target
+% frequency of 1 rad/s. 
+
+%% Analyzing the Time Response of the Circuit
+% We can confirm the attenuation properties of the circuit |G2| (|R=20|)
+% by simulating how this filter transforms sine waves with frequency 0.9, 1, and 1.1 rad/s:
+t = 0:0.05:250;
+subplot(311), lsim(G2,sin(t),t), title('w = 1')
+subplot(312), lsim(G2,sin(0.9*t),t), title('w = 0.9')
+subplot(313), lsim(G2,sin(1.1*t),t), title('w = 1.1')
+
+%% 
+% The waves at 0.9 and 1.1 rad/s are considerably attenuated. The wave at 1 rad/s
+% comes out unchanged once the transients have died off. The long transient
+% results from the poorly damped poles of the filters, which unfortunately
+% are required for a narrow passing band:
+damp(pole(G2))
+
+
+%% Interactive GUI
+% To analyze other standard circuit configurations such as 
+% low-pass and high-pass RLC networks, click on the link below
+% to launch an interactive GUI. In this GUI, you can change the R,L,C 
+% parameters and see the effect on the time and frequency responses
+% in real time.
+%
+% <matlab:rlc_gui Open the RLC Circuit GUI>
+rlc_gui
+
+
+displayEndOfDemoMessage(mfilename)
+
+
+
+##### SOURCE END #####
+--></body></html>

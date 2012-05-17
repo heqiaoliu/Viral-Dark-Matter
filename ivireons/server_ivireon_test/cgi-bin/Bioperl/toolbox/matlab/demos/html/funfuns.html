@@ -1,0 +1,106 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Function Functions</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="funfuns.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit funfuns">Open funfuns.m in the Editor</a></div><div class="right"><a href="matlab:echodemo funfuns">Run in the Command Window</a></div></div><div class="content"><h1>Function Functions</h1><!--introduction--><p>In MATLAB&reg;, one function take another as a parameter.  This feature serves a wide variety of purposes.  Here we illustrate its use for finding zeros, optimization, and integration.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">The HUMPS Function</a></li><li><a href="#2">Plot of HUMPS</a></li><li><a href="#3">Zero of HUMPS</a></li><li><a href="#4">Minimum of HUMPS</a></li><li><a href="#5">Integral of HUMPS</a></li></ul></div><h2>The HUMPS Function<a name="1"></a></h2><p>A MATLAB function is a file that starts with the keyword function.  This is what the function HUMPS looks like:</p><pre class="codeinput">type <span class="string">humps</span>
+</pre><pre class="codeoutput">
+function [out1,out2] = humps(x)
+%HUMPS  A function used by QUADDEMO, ZERODEMO and FPLOTDEMO.
+%   Y = HUMPS(X) is a function with strong maxima near x = .3 
+%   and x = .9.  
+%
+%   [X,Y] = HUMPS(X) also returns X.  With no input arguments,
+%   HUMPS uses X = 0:.05:1.
+%
+%   Example:
+%      plot(humps)
+%
+%   See QUADDEMO, ZERODEMO and FPLOTDEMO.
+
+%   Copyright 1984-2002 The MathWorks, Inc. 
+%   $Revision: 5.8 $  $Date: 2002/04/15 03:34:07 $
+
+if nargin==0, x = 0:.05:1; end
+
+y = 1 ./ ((x-.3).^2 + .01) + 1 ./ ((x-.9).^2 + .04) - 6;
+
+if nargout==2, 
+  out1 = x; out2 = y; 
+else 
+  out1 = y;
+end
+
+
+</pre><h2>Plot of HUMPS<a name="2"></a></h2><p>This figure shows a plot of HUMPS in the domain [0,2] using FPLOT.</p><pre class="codeinput">fplot(@humps,[0,2]);
+</pre><img vspace="5" hspace="5" src="funfuns_01.png" alt=""> <h2>Zero of HUMPS<a name="3"></a></h2><p>The FZERO function finds a zeros of a function near an initial estimate. Our guess here for HUMPS is 1.</p><pre class="codeinput">z = fzero(@humps,1,optimset(<span class="string">'Display'</span>,<span class="string">'off'</span>));
+fplot(@humps,[0,2]);
+hold <span class="string">on</span>;
+plot(z,0,<span class="string">'r*'</span>);
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="funfuns_02.png" alt=""> <h2>Minimum of HUMPS<a name="4"></a></h2><p>FMINBND finds the minimum of a function in a given domain.  Here, we search for a minimum for HUMPS in the domain (0.25,1).</p><pre class="codeinput">m = fminbnd(@humps,0.25,1,optimset(<span class="string">'Display'</span>,<span class="string">'off'</span>));
+fplot(@humps,[0 2]);
+hold <span class="string">on</span>;
+plot(m,humps(m),<span class="string">'r*'</span>);
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="funfuns_03.png" alt=""> <h2>Integral of HUMPS<a name="5"></a></h2><p>QUAD finds the definite integral of HUMPS in a given domain.  Here it computes the area in the domain [0.5, 1].</p><pre class="codeinput">q = quad(@humps,0.5,1);
+fplot(@humps,[0,2]);
+title([<span class="string">'Area = '</span>,num2str(q)]);
+</pre><img vspace="5" hspace="5" src="funfuns_04.png" alt=""> <p class="footer">Copyright 1984-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Function Functions
+% In MATLAB(R), one function take another as a parameter.  This feature serves a
+% wide variety of purposes.  Here we illustrate its use for finding zeros,
+% optimization, and integration.
+%
+% Copyright 1984-2010 The MathWorks, Inc. 
+% $Revision: 5.14.4.4 $  $Date: 2010/05/13 17:38:30 $
+
+%% The HUMPS Function
+% A MATLAB function is a file that starts with the keyword function.  This is
+% what the function HUMPS looks like:
+
+type humps
+
+%% Plot of HUMPS
+% This figure shows a plot of HUMPS in the domain [0,2] using FPLOT.
+
+fplot(@humps,[0,2]);
+
+%% Zero of HUMPS
+% The FZERO function finds a zeros of a function near an initial estimate. Our
+% guess here for HUMPS is 1.
+
+z = fzero(@humps,1,optimset('Display','off'));
+fplot(@humps,[0,2]);                          
+hold on;
+plot(z,0,'r*');
+hold off 
+
+%% Minimum of HUMPS
+% FMINBND finds the minimum of a function in a given domain.  Here, we search
+% for a minimum for HUMPS in the domain (0.25,1). 
+ 
+m = fminbnd(@humps,0.25,1,optimset('Display','off'));     
+fplot(@humps,[0 2]);                                      
+hold on; 
+plot(m,humps(m),'r*');
+hold off
+ 
+%% Integral of HUMPS
+% QUAD finds the definite integral of HUMPS in a given domain.  Here it computes
+% the area in the domain [0.5, 1].
+ 
+q = quad(@humps,0.5,1);                
+fplot(@humps,[0,2]);                   
+title(['Area = ',num2str(q)]);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

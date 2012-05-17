@@ -1,0 +1,437 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>Optimization Toolbox™ のチュートリアル</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="tutdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit tutdemo">エディターで tutdemo.m を開く</a></div><div class="right"><a href="matlab:echodemo tutdemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>Optimization Toolbox™ のチュートリアル</h1><!--introduction--><p>このデモでは、2 つの非線形ソルバーとそのオプションを使用する方法を示します。</p><p>このデモで紹介するすべての原理は、FGOALATTAIN、FMINIMAX、LSQNONLIN、FSOLVE といった他の非線形ソルバーにも適用されます。</p><p>デモは、目的関数を最小化することから始まり、追加パラメーターによる同じ関数の最小化に進みます。その後、制約がある場合に目的関数を最小化する方法を示し、最後に、勾配またはヘッセ行列を与えるか、いくつかのオプションを変更することで、より精度の高い解や、より効率的な解を得る方法を示します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">制約なしの最適化の例</a></li><li><a href="#10">追加パラメーターを使用した制約なしの最適化</a></li><li><a href="#20">制約付き最適化の例: 不等式</a></li><li><a href="#33">制約付き最適化の例: ユーザー指定の勾配</a></li><li><a href="#45">既定の終了許容誤差の変更</a></li><li><a href="#56">ユーザー指定のヘッセ行列を使用した制約付き最適化の例</a></li></ul></div><h2>制約なしの最適化の例<a name="1"></a></h2><p>以下の関数の最小値を求めるという問題を考えます。</p><p><img src="../tutdemo_eq74311.png" alt="$$x\exp(-(x^2+y^2))+(x^2+y^2)/20.$$"></p><p>この関数が最小化される位置を知るために、この関数をプロットします。</p><pre class="codeinput">f = @(x,y) x.*exp(-x.^2-y.^2)+(x.^2+y.^2)/20;
+ezsurfc(f,[-2,2])
+</pre><img vspace="5" hspace="5" src="../tutdemo_01.png" alt=""> <p>このプロットは、最小値が点 (-1/2,0) の近くにあることを示しています。</p><p>通常は、目的関数を MATLAB ファイルとして定義します。今のところ、この関数は、無名関数として定義できるほど単純です。</p><pre class="codeinput">fun = @(x) f(x(1),x(2));
+</pre><p>以下の解において推定します。</p><pre class="codeinput">x0 = [-.5; 0];
+</pre><p>fminunc の既定の大規模アルゴリズムを使用しないように最適化オプションを設定します。このアルゴリズムでは、目的関数の勾配を提供しなければならないからです。</p><pre class="codeinput">options = optimset(<span class="string">'LargeScale'</span>,<span class="string">'off'</span>);
+</pre><p>ソルバーによる計算時に反復回数を表示します。</p><pre class="codeinput">options = optimset(options,<span class="string">'Display'</span>,<span class="string">'iter'</span>);
+</pre><p>制約なしの非線形最小化関数 fminunc を呼び出します。</p><pre class="codeinput">[x, fval, exitflag, output] = fminunc(fun,x0,options);
+</pre><pre class="codeoutput">                                                        First-order 
+Iteration  Func-count       f(x)        Step-size       optimality
+     0           3          -0.3769                         0.339
+     1           6        -0.379694              1          0.286  
+     2           9        -0.405023              1         0.0284  
+     3          12        -0.405233              1        0.00386  
+     4          15        -0.405237              1      3.17e-005  
+     5          18        -0.405237              1      3.35e-008  
+
+Local minimum found.
+
+Optimization completed because the size of the gradient is less than
+the default value of the function tolerance.
+
+
+
+</pre><p>ソルバーが、以下において解を見つけました。</p><pre class="codeinput">uncx = x
+</pre><pre class="codeoutput">
+uncx =
+
+   -0.6691
+    0.0000
+
+</pre><p>この解での関数値は以下のとおりです。</p><pre class="codeinput">uncf = fval
+</pre><pre class="codeoutput">
+uncf =
+
+   -0.4052
+
+</pre><p>このデモでは、関数評価の回数を効率の尺度として使用します。関数評価の合計回数は以下のとおりです。</p><pre class="codeinput">output.funcCount
+</pre><pre class="codeoutput">
+ans =
+
+    18
+
+</pre><h2>追加パラメーターを使用した制約なしの最適化<a name="10"></a></h2><p>特別なパラメーターを追加引数として目的関数に渡します。これを行う 2 つの方法を紹介します。MATLAB ファイルを使用するという方法と、入れ子関数を使用するという方法です。</p><p>前の節からの目的関数を考えます。</p><p><img src="../tutdemo_eq68301.png" alt="$$f(x,y) = x\exp(-(x^2+y^2))+(x^2+y^2)/20.$$"></p><p>この関数を以下のように (a,b,c) でパラメーター化します。</p><p><img src="../tutdemo_eq51168.png" alt="$$f(x,y,a,b,c) = (x-a)\exp(-((x-a)^2+(y-b)^2))+((x-a)^2+(y-b)^2)/c.$$"></p><p>この関数は、元の目的関数をシフトおよびスケーリングしたバージョンです。</p><p>方法 1: MATLAB ファイル関数</p><p><tt>bowlpeakfun</tt> という MATLAB ファイルの目的関数が以下のように定義されていると仮定します。</p><pre class="codeinput">type <span class="string">bowlpeakfun</span>
+</pre><pre class="codeoutput">
+function y = bowlpeakfun(x, a, b, c)
+%BOWLPEAKFUN Objective function for parameter passing in TUTDEMO.
+
+%   Copyright 2008 The MathWorks, Inc.
+%   $Revision: 1.1.4.13.2.1 $  $Date: 2010/07/29 21:28:57 $
+
+y = (x(1)-a).*exp(-((x(1)-a).^2+(x(2)-b).^2))+((x(1)-a).^2+(x(2)-b).^2)/c;
+
+</pre><p>パラメーターを定義します。</p><pre class="codeinput">a = 2;
+b = 3;
+c = 10;
+</pre><p>MATLAB ファイルに対する無名関数ハンドルを作成します。</p><pre class="codeinput">f = @(x)bowlpeakfun(x,a,b,c)
+</pre><pre class="codeoutput">
+f = 
+
+    @(x)bowlpeakfun(x,a,b,c)
+
+</pre><p>fminunc を呼び出して、最小値を見つけます。</p><pre class="codeinput">x0 = [-.5; 0];
+options = optimset(<span class="string">'LargeScale'</span>,<span class="string">'off'</span>);
+[x, fval] = fminunc(f,x0,options)
+</pre><pre class="codeoutput">
+Local minimum found.
+
+Optimization completed because the size of the gradient is less than
+the default value of the function tolerance.
+
+
+
+
+x =
+
+    1.3639
+    3.0000
+
+
+fval =
+
+   -0.3840
+
+</pre><p>方法 2: 入れ子関数</p><p>目的関数を入れ子関数として実現する以下の関数を考えます。</p><pre class="codeinput">type <span class="string">nestedbowlpeak</span>
+</pre><pre class="codeoutput">
+function [x,fval] =  nestedbowlpeak(a,b,c,x0,options)
+%NESTEDBOWLPEAK Nested function for parameter passing in TUTDEMO.
+
+%   Copyright 2008 The MathWorks, Inc.
+%   $Revision: 1.1.4.13.2.1 $  $Date: 2010/07/29 21:28:57 $
+
+[x,fval] = fminunc(@nestedfun,x0,options);  
+    function y = nestedfun(x)
+      y = (x(1)-a).*exp(-((x(1)-a).^2+(x(2)-b).^2))+((x(1)-a).^2+(x(2)-b).^2)/c;    
+    end
+end
+</pre><p>この方法では、パラメーター (a,b,c) を <tt>nestedfun</tt> というネスト目的関数が認識できます。外側の関数 <tt>nestedbowlpeak</tt> は fminunc を呼び出し、目的関数 <tt>nestedfun</tt> を渡します。</p><p>パラメーター、初期推定値、およびオプションを定義します。</p><pre class="codeinput">a = 2;
+b = 3;
+c = 10;
+x0 = [-.5; 0];
+options = optimset(<span class="string">'LargeScale'</span>,<span class="string">'off'</span>);
+</pre><p>最適化を実行します。</p><pre class="codeinput">[x,fval] =  nestedbowlpeak(a,b,c,x0,options)
+</pre><pre class="codeoutput">
+Local minimum found.
+
+Optimization completed because the size of the gradient is less than
+the default value of the function tolerance.
+
+
+
+
+x =
+
+    1.3639
+    3.0000
+
+
+fval =
+
+   -0.3840
+
+</pre><p>両方の方法で同一の結果が得られることがわかります。したがって、どちらでも都合の良い方を使用できます。</p><h2>制約付き最適化の例: 不等式<a name="20"></a></h2><p>以下のような制約のある上記の問題を考えます。</p><p><img src="../tutdemo_eq69036.png" alt="$$\mbox{minimize }x\exp(-(x^2+y^2))+(x^2+y^2)/20,$$"></p><p><img src="../tutdemo_eq14550.png" alt="$$\mbox{subject to }xy/2 + (x+2)^2 + (y-2)^2/2 \le 2.$$"></p><p>この制約は、傾いた楕円の内部です。傾いた楕円と一緒にプロットされた目的関数の等高線を見てください。</p><pre class="codeinput">f = @(x,y) x.*exp(-x.^2-y.^2)+(x.^2+y.^2)/20;
+g = @(x,y) x.*y/2+(x+2).^2+(y-2).^2/2-2;
+ezplot(g,[-6,0,-1,7])
+hold <span class="string">on</span>
+ezcontour(f,[-6,0,-1,7])
+plot(-.9727,.4685,<span class="string">'ro'</span>);
+legend(<span class="string">'constraint'</span>,<span class="string">'f contours'</span>,<span class="string">'minimum'</span>);
+hold <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="../tutdemo_02.png" alt=""> <p>このプロットは、楕円内の目的関数の最小値が楕円の右下付近にあることを示しています。プロットしたばかりの最小値を計算します。以下の解において推定します。</p><pre class="codeinput">x0 = [-2; 1];
+</pre><p>最適化オプションを設定します。内点法アルゴリズムを使用し、反復ごとに結果の表示をオンにします。</p><pre class="codeinput">options = optimset(<span class="string">'Algorithm'</span>,<span class="string">'interior-point'</span>,<span class="string">'Display'</span>,<span class="string">'iter'</span>);
+</pre><p>ソルバーには、非線形制約関数からの 2 つの出力が必要です。第 1 の出力は非線形不等式、第 2 の出力は非線形等式に関するものです。このため、両方の出力を提供するために、<tt>deal</tt> 関数を使用して制約を記述します。</p><pre class="codeinput">gfun = @(x) deal(g(x(1),x(2)),[]);
+</pre><p>非線形制約付きソルバーを呼び出します。線形の等式、不等式、または境界が存在しないため、これらの引数として [ ] を渡します。</p><pre class="codeinput">[x,fval,exitflag,output] = fmincon(fun,x0,[],[],[],[],[],[],gfun,options);
+</pre><pre class="codeoutput">                                            First-order      Norm of
+ Iter F-count            f(x)  Feasibility   optimality         step
+    0       3   2.365241e-001   0.000e+000   1.972e-001
+    1       6   1.748504e-001   0.000e+000   1.734e-001   2.260e-001
+    2      10  -1.570560e-001   0.000e+000   2.608e-001   9.347e-001
+    3      14  -6.629160e-002   0.000e+000   1.241e-001   3.103e-001
+    4      17  -1.584082e-001   0.000e+000   7.934e-002   1.826e-001
+    5      20  -2.349124e-001   0.000e+000   1.912e-002   1.571e-001
+    6      23  -2.255299e-001   0.000e+000   1.955e-002   1.993e-002
+    7      26  -2.444225e-001   0.000e+000   4.293e-003   3.821e-002
+    8      29  -2.446931e-001   0.000e+000   8.100e-004   4.035e-003
+    9      32  -2.446933e-001   0.000e+000   1.999e-004   8.126e-004
+   10      35  -2.448531e-001   0.000e+000   4.004e-005   3.289e-004
+   11      38  -2.448927e-001   0.000e+000   4.036e-007   8.156e-005
+
+Local minimum found that satisfies the constraints.
+
+Optimization completed because the objective function is non-decreasing in 
+feasible directions, to within the default value of the function tolerance,
+and constraints were satisfied to within the default value of the constraint tolerance.
+
+
+
+</pre><p>この問題の解が以下において見つかりました。</p><pre class="codeinput">x
+</pre><pre class="codeoutput">
+x =
+
+   -0.9727    0.4686
+
+</pre><p>この解での関数値は以下のとおりです。</p><pre class="codeinput">fval
+</pre><pre class="codeoutput">
+fval =
+
+   -0.2449
+
+</pre><p>関数評価の合計回数は以下のとおりでした。</p><pre class="codeinput">Fevals = output.funcCount
+</pre><pre class="codeoutput">
+Fevals =
+
+    38
+
+</pre><p>不等式制約は、この解において満たされます。</p><pre class="codeinput">[c, ceq] = gfun(x)
+</pre><pre class="codeoutput">
+c =
+
+-2.4608e-006
+
+
+ceq =
+
+     []
+
+</pre><p>c(x) が 0 に近いため、この制約は &quot;アクティブ&quot; です。つまり、解に影響を及ぼします。この制約なしの解が以下において見つかり、</p><pre class="codeinput">uncx
+</pre><pre class="codeoutput">
+uncx =
+
+   -0.6691
+    0.0000
+
+</pre><p>制約なしの目的関数が以下であることがわかったことを思い出してください。</p><pre class="codeinput">uncf
+</pre><pre class="codeoutput">
+uncf =
+
+   -0.4052
+
+</pre><p>この制約は解を移動させ、目的を以下だけ増やしました。</p><pre class="codeinput">fval-uncf
+</pre><pre class="codeoutput">
+ans =
+
+    0.1603
+
+</pre><h2>制約付き最適化の例: ユーザー指定の勾配<a name="33"></a></h2><p>勾配をユーザーが指定すれば、最適化問題をより効率的かつ正確に解くことができます。このデモでは、これを実行する方法を示します。再び、不等式制約付き問題を解きます。</p><p><img src="../tutdemo_eq69036.png" alt="$$\mbox{minimize }x\exp(-(x^2+y^2))+(x^2+y^2)/20,$$"></p><p><img src="../tutdemo_eq14550.png" alt="$$\mbox{subject to }xy/2 + (x+2)^2 + (y-2)^2/2 \le 2.$$"></p><p>f(x) の勾配を fmincon に提供するために、目的関数を MATLAB ファイルの形式で記述します。</p><pre class="codeinput">type <span class="string">onehump</span>
+</pre><pre class="codeoutput">
+function [f,gf] = onehump(x)
+% ONEHUMP Helper function for Tutorial for the Optimization Toolbox demo
+
+%   Copyright 2008-2009 The MathWorks, Inc.
+%   $Revision: 1.1.4.13.2.1 $  $Date: 2010/07/29 21:28:57 $
+
+r = x(1)^2 + x(2)^2;
+s = exp(-r);
+f = x(1)*s+r/20;
+
+if nargout &gt; 1
+   gf = [(1-2*x(1)^2)*s+x(1)/10;
+       -2*x(1)*x(2)*s+x(2)/10];
+end
+
+</pre><p>制約とその勾配は、MATLAB ファイル tiltellipse に含まれています。</p><pre class="codeinput">type <span class="string">tiltellipse</span>
+</pre><pre class="codeoutput">
+function [c,ceq,gc,gceq] = tiltellipse(x)
+% TILTELLIPSE Helper function for Tutorial for the Optimization Toolbox demo
+
+%   Copyright 2008-2009 The MathWorks, Inc.
+%   $Revision: 1.1.4.13.2.1 $  $Date: 2010/07/29 21:28:57 $
+
+c = x(1)*x(2)/2 + (x(1)+2)^2 + (x(2)-2)^2/2 - 2;
+ceq = [];
+
+if nargout &gt; 2
+   gc = [x(2)/2+2*(x(1)+2);
+       x(1)/2+x(2)-2];
+   gceq = [];
+end
+
+</pre><p>以下の解において推定します。</p><pre class="codeinput">x0 = [-2; 1];
+</pre><p>最適化オプションを設定します。比較のために同じアルゴリズムを引き続き使用します。</p><pre class="codeinput">options = optimset(<span class="string">'Algorithm'</span>,<span class="string">'interior-point'</span>);
+</pre><p>また、目的関数と制約関数で勾配情報を使用するようにオプションを設定します。メモ:これらのオプションをオンにしなければなりません。そうしないと、勾配情報が無視されてしまいます。</p><pre class="codeinput">options = optimset(options,<span class="string">'GradObj'</span>,<span class="string">'on'</span>,<span class="string">'GradConstr'</span>,<span class="string">'on'</span>);
+</pre><p>fmincon では、有限差分を使用して勾配を推定する必要がないため、今回は関数計算回数が少なくなるはずです。</p><pre class="codeinput">options = optimset(options,<span class="string">'Display'</span>,<span class="string">'iter'</span>);
+</pre><p>ソルバーを呼び出します。</p><pre class="codeinput">[x,fval,exitflag,output] = fmincon(@onehump,x0,[],[],[],[],[],[], <span class="keyword">...</span>
+                                   @tiltellipse,options);
+</pre><pre class="codeoutput">                                            First-order      Norm of
+ Iter F-count            f(x)  Feasibility   optimality         step
+    0       1   2.365241e-001   0.000e+000   1.972e-001
+    1       2   1.748504e-001   0.000e+000   1.734e-001   2.260e-001
+    2       4  -1.570560e-001   0.000e+000   2.608e-001   9.347e-001
+    3       6  -6.629161e-002   0.000e+000   1.241e-001   3.103e-001
+    4       7  -1.584082e-001   0.000e+000   7.934e-002   1.826e-001
+    5       8  -2.349124e-001   0.000e+000   1.912e-002   1.571e-001
+    6       9  -2.255299e-001   0.000e+000   1.955e-002   1.993e-002
+    7      10  -2.444225e-001   0.000e+000   4.293e-003   3.821e-002
+    8      11  -2.446931e-001   0.000e+000   8.100e-004   4.035e-003
+    9      12  -2.446933e-001   0.000e+000   1.999e-004   8.126e-004
+   10      13  -2.448531e-001   0.000e+000   4.004e-005   3.289e-004
+   11      14  -2.448927e-001   0.000e+000   4.036e-007   8.156e-005
+
+Local minimum found that satisfies the constraints.
+
+Optimization completed because the objective function is non-decreasing in 
+feasible directions, to within the default value of the function tolerance,
+and constraints were satisfied to within the default value of the constraint tolerance.
+
+
+
+</pre><p>前の例で fmincon による勾配の推定が成功したため、現在の例での反復も同様です。</p><p>この問題の解が以下において見つかりました。</p><pre class="codeinput">xold = x
+</pre><pre class="codeoutput">
+xold =
+
+   -0.9727
+    0.4686
+
+</pre><p>この解での関数値は以下のとおりです。</p><pre class="codeinput">minfval = fval
+</pre><pre class="codeoutput">
+minfval =
+
+   -0.2449
+
+</pre><p>関数評価の合計回数は以下のとおりでした。</p><pre class="codeinput">Fgradevals = output.funcCount
+</pre><pre class="codeoutput">
+Fgradevals =
+
+    14
+
+</pre><p>これを、勾配を使用しない場合の関数評価回数を比較します。</p><pre class="codeinput">Fevals
+</pre><pre class="codeoutput">
+Fevals =
+
+    38
+
+</pre><h2>既定の終了許容誤差の変更<a name="45"></a></h2><p>今回は</p><p><img src="../tutdemo_eq69036.png" alt="$$\mbox{minimize }x\exp(-(x^2+y^2))+(x^2+y^2)/20,$$"></p><p><img src="../tutdemo_eq69847.png" alt="$$\mbox{subject to }xy/2 + (x+2)^2 + (y-2)^2/2 \le 2,$$"></p><p>既定の終了基準 (options.TolX と options.TolFun) をオーバーライドすることで、同じ制約付き問題をより正確に解きます。引き続き勾配を使用します。fmincon の内点法アルゴリズムの既定値は、options.TolX = 1e-10、options.TolFun = 1e-6 です。</p><p>2 つの既定終了基準 (X と fval に対する終了許容誤差) をオーバーライドします。</p><pre class="codeinput">options = optimset(options,<span class="string">'TolX'</span>,1e-15,<span class="string">'TolFun'</span>,1e-8);
+</pre><p>ソルバーを呼び出します。</p><pre class="codeinput">[x,fval,exitflag,output] = fmincon(@onehump,x0,[],[],[],[],[],[], <span class="keyword">...</span>
+                                   @tiltellipse,options);
+</pre><pre class="codeoutput">                                            First-order      Norm of
+ Iter F-count            f(x)  Feasibility   optimality         step
+    0       1   2.365241e-001   0.000e+000   1.972e-001
+    1       2   1.748504e-001   0.000e+000   1.734e-001   2.260e-001
+    2       4  -1.570560e-001   0.000e+000   2.608e-001   9.347e-001
+    3       6  -6.629161e-002   0.000e+000   1.241e-001   3.103e-001
+    4       7  -1.584082e-001   0.000e+000   7.934e-002   1.826e-001
+    5       8  -2.349124e-001   0.000e+000   1.912e-002   1.571e-001
+    6       9  -2.255299e-001   0.000e+000   1.955e-002   1.993e-002
+    7      10  -2.444225e-001   0.000e+000   4.293e-003   3.821e-002
+    8      11  -2.446931e-001   0.000e+000   8.100e-004   4.035e-003
+    9      12  -2.446933e-001   0.000e+000   1.999e-004   8.126e-004
+   10      13  -2.448531e-001   0.000e+000   4.004e-005   3.289e-004
+   11      14  -2.448927e-001   0.000e+000   4.036e-007   8.156e-005
+   12      15  -2.448931e-001   0.000e+000   4.000e-009   8.230e-007
+
+Local minimum found that satisfies the constraints.
+
+Optimization completed because the objective function is non-decreasing in 
+feasible directions, to within the selected value of the function tolerance,
+and constraints were satisfied to within the default value of the constraint tolerance.
+
+
+
+</pre><p>新しい許容誤差によって生じる差をより正確に知るために、解における小数をより多く表示することを選択します。</p><pre class="codeinput">format <span class="string">long</span>
+</pre><p>オプティマイザーが、以下において解を見つけました。</p><pre class="codeinput">x
+</pre><pre class="codeoutput">
+x =
+
+  -0.972742227363546
+   0.468569289098342
+
+</pre><p>これを、以前の値を比較します。</p><pre class="codeinput">xold
+</pre><pre class="codeoutput">
+xold =
+
+  -0.972742694488360
+   0.468569966693330
+
+</pre><p>変化は以下のようになります。</p><pre class="codeinput">x - xold
+</pre><pre class="codeoutput">
+ans =
+
+  1.0e-006 *
+
+   0.467124813385844
+  -0.677594988729435
+
+</pre><p>この解での関数値は以下のとおりです。</p><pre class="codeinput">fval
+</pre><pre class="codeoutput">
+fval =
+
+  -0.244893137879894
+
+</pre><p>解が以下のように改良されました。</p><pre class="codeinput">fval - minfval
+</pre><pre class="codeoutput">
+ans =
+
+   -3.996450220755676e-007
+
+</pre><p>(これが負である理由は、新しい解の方が小さいからです)</p><p>関数評価の合計回数は以下のとおりでした。</p><pre class="codeinput">output.funcCount
+</pre><pre class="codeoutput">
+ans =
+
+    15
+
+</pre><p>既定の許容誤差は使用しないで、ユーザー指定の勾配を使用して問題を解いた場合の関数評価の回数と、上記の回数を比較します。</p><pre class="codeinput">Fgradevals
+</pre><pre class="codeoutput">
+Fgradevals =
+
+    14
+
+</pre><h2>ユーザー指定のヘッセ行列を使用した制約付き最適化の例<a name="56"></a></h2><p>勾配だけでなくヘッセ行列も与えると、ソルバーの精度と効率がさらに向上します。</p><p>fmincon の内点ソルバーは、ヘッセ行列を別個の関数 (目的関数の一部ではなく) として受け取ります。ヘッセ行列関数 H(x,lambda) は、ラグランジアンのヘッセ行列を評価しなければなりません。この用語の定義は、ユーザー ガイドを参照してください。</p><p>ソルバーは、値 lambda.ineqnonlin と lambda.eqlin を計算します。ヘッセ行列関数が、これらの値を使用する方法をソルバーに指示します。</p><p>この問題には、不等式制約が 1 つしかありません。したがって、ヘッセ行列は以下のようになります。</p><pre class="codeinput">type <span class="string">hessfordemo</span>
+</pre><pre class="codeoutput">
+function H = hessfordemo(x,lambda)
+% HESSFORDEMO Helper function for Tutorial for the Optimization Toolbox demo
+
+%   Copyright 2008-2009 The MathWorks, Inc.
+%   $Revision: 1.1.4.13.2.1 $  $Date: 2010/07/29 21:28:57 $
+
+s = exp(-(x(1)^2+x(2)^2));
+H = [2*x(1)*(2*x(1)^2-3)*s+1/10, 2*x(2)*(2*x(1)^2-1)*s;
+        2*x(2)*(2*x(1)^2-1)*s, 2*x(1)*(2*x(2)^2-1)*s+1/10];
+hessc = [2,1/2;1/2,1];
+H = H + lambda.ineqnonlin(1)*hessc;
+
+</pre><p>このヘッセ行列を使用するには、オプションを適切に設定しなければなりません。</p><pre class="codeinput">options = optimset(<span class="string">'Algorithm'</span>,<span class="string">'interior-point'</span>,<span class="string">'GradConstr'</span>,<span class="string">'on'</span>,<span class="keyword">...</span>
+    <span class="string">'GradObj'</span>,<span class="string">'on'</span>,<span class="string">'Hessian'</span>,<span class="string">'user-supplied'</span>,<span class="string">'HessFcn'</span>,@hessfordemo);
+</pre><p>許容誤差が既定値に戻されています。 今回は、関数計算回数が少ないはずです。</p><pre class="codeinput">options = optimset(options,<span class="string">'Display'</span>,<span class="string">'iter'</span>);
+</pre><p>ソルバーを呼び出します。</p><pre class="codeinput">[x,fval,exitflag,output] = fmincon(@onehump,x0,[],[],[],[],[],[], <span class="keyword">...</span>
+                                   @tiltellipse,options);
+</pre><pre class="codeoutput">                                            First-order      Norm of
+ Iter F-count            f(x)  Feasibility   optimality         step
+    0       1   2.365241e-001   0.000e+000   1.972e-001
+    1       3   5.821325e-002   0.000e+000   1.443e-001   8.728e-001
+    2       5  -1.218829e-001   0.000e+000   1.007e-001   4.927e-001
+    3       6  -1.421167e-001   0.000e+000   8.486e-002   5.165e-002
+    4       7  -2.261916e-001   0.000e+000   1.989e-002   1.667e-001
+    5       8  -2.433609e-001   0.000e+000   1.537e-003   3.486e-002
+    6       9  -2.446875e-001   0.000e+000   2.057e-004   2.727e-003
+    7      10  -2.448911e-001   0.000e+000   2.068e-006   4.191e-004
+    8      11  -2.448931e-001   0.000e+000   2.001e-008   4.218e-006
+
+Local minimum found that satisfies the constraints.
+
+Optimization completed because the objective function is non-decreasing in 
+feasible directions, to within the default value of the function tolerance,
+and constraints were satisfied to within the default value of the constraint tolerance.
+
+
+
+</pre><p>今回は、反復回数が少なく、また異なっていました。</p><p>この問題の解が以下において見つかりました。</p><pre class="codeinput">x
+</pre><pre class="codeoutput">
+x =
+
+  -0.972742246093537
+   0.468569316215571
+
+</pre><p>この解での関数値は以下のとおりです。</p><pre class="codeinput">fval
+</pre><pre class="codeoutput">
+fval =
+
+  -0.244893121872758
+
+</pre><p>関数評価の合計回数は以下のとおりでした。</p><pre class="codeinput">output.funcCount
+</pre><pre class="codeoutput">
+ans =
+
+    11
+
+</pre><p>この回数を、既定の許容誤差を同じにして、勾配のみを使用した場合の評価回数と比較します。</p><pre class="codeinput">Fgradevals
+</pre><pre class="codeoutput">
+Fgradevals =
+
+    14
+
+</pre><p class="footer">Copyright 1990-2010 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Tutorial for the Optimization Toolbox(TM) % % This is a demonstration of the use of two nonlinear solvers and their % options. %    % All the principles outlined in this demonstration apply to the other  % nonlinear solvers, such as FGOALATTAIN, FMINIMAX, LSQNONLIN, and FSOLVE. % % The demo starts with minimizing an objective function, then proceeds to % minimize the same function with additional parameters. After that, the  % demo shows how to minimize the objective function when there is a  % constraint, and finally shows how to get a more efficient and/or accurate % solution by providing gradients or Hessian, or by changing some options.  % %   Copyright 1990-2010 The MathWorks, Inc. %   $Revision: 1.1.4.13.2.1 $  $Date: 2010/07/29 21:28:57 $  %% Unconstrained Optimization Example % % Consider the problem of finding a minimum of the function: % % $$x\exp(-(x^2+y^2))+(x^2+y^2)/20.$$ % % Plot the function to get an idea of where it is minimized f = @(x,y) x.*exp(-x.^2-y.^2)+(x.^2+y.^2)/20; ezsurfc(f,[-2,2])  %% % The plot shows that the minimum is near the point (-1/2,0). % % Usually you define the objective function as a MATLAB file. For now,  % this function is simple enough to define as an anonymous function:  fun = @(x) f(x(1),x(2));  %% % Take a guess at the solution:  x0 = [-.5; 0];  %% % Set optimization options to not use fminunc's default large-scale % algorithm, since that algorithm requires the objective function % gradient to be provided:  options = optimset('LargeScale','off');  %% % View the iterations as the solver calculates:  options = optimset(options,'Display','iter');  %% % Call fminunc, an unconstrained nonlinear minimizer:  [x, fval, exitflag, output] = fminunc(fun,x0,options);  %% % The solver found a solution at: uncx = x  %% % The function value at the solution is: uncf = fval  %% % We will use the number of function evaluations as a measure of efficiency % in this demo. % The total number of function evaluations is:   output.funcCount   %% Unconstrained Optimization with Additional Parameters % % We will now pass extra parameters as additional arguments % to the objective function. We demonstrate two different ways  % of doing this - using a MATLAB file, or using a nested % function.  %% % Consider the objective function from the previous section: % % $$f(x,y) = x\exp(-(x^2+y^2))+(x^2+y^2)/20.$$ % % We parameterize the function with (a,b,c) in the following way: % % $$f(x,y,a,b,c) = (x-a)\exp(-((x-a)^2+(y-b)^2))+((x-a)^2+(y-b)^2)/c.$$ % % This function is a shifted and scaled version of the original objective % function.  % % Method 1: MATLAB file Function % % Suppose we have a MATLAB file objective function called |bowlpeakfun|  % defined as:  type bowlpeakfun  %% % Define the parameters: a = 2; b = 3; c = 10;  %% % Create an anonymous function handle to the MATLAB file: f = @(x)bowlpeakfun(x,a,b,c)  %% % Call fminunc to find the minimum: x0 = [-.5; 0]; options = optimset('LargeScale','off'); [x, fval] = fminunc(f,x0,options)  %% % Method 2: Nested Function % % Consider the following function that implements the objective as a nested % function type nestedbowlpeak %% % In this method, the parameters (a,b,c) are visible to the nested % objective function called |nestedfun|. % The outer function, |nestedbowlpeak|, calls fminunc and passes the % objective function, |nestedfun|. %% % Define the parameters, initial guess, and options: a = 2; b = 3; c = 10; x0 = [-.5; 0]; options = optimset('LargeScale','off'); %% % Run the optimization: [x,fval] =  nestedbowlpeak(a,b,c,x0,options)  %% % You can see both methods produced identical answers, so use whichever one you find most convenient.  %% Constrained Optimization Example: Inequalities % % Consider the above problem with a constraint: % % $$\mbox{minimize }x\exp(-(x^2+y^2))+(x^2+y^2)/20,$$ % % $$\mbox{subject to }xy/2 + (x+2)^2 + (y-2)^2/2 \le 2.$$  %% % The constraint set is the interior of a tilted ellipse. % Look at the contours of the objective function plotted together with the % tilted ellipse f = @(x,y) x.*exp(-x.^2-y.^2)+(x.^2+y.^2)/20; g = @(x,y) x.*y/2+(x+2).^2+(y-2).^2/2-2; ezplot(g,[-6,0,-1,7]) hold on ezcontour(f,[-6,0,-1,7]) plot(-.9727,.4685,'ro'); legend('constraint','f contours','minimum'); hold off  %% % The plot shows that the lowest value of the objective function within the % ellipse occurs near the lower right part of the ellipse. We are about to  % calculate the minimum that was just plotted. Take a guess at the solution:  x0 = [-2 1];  %% % Set optimization options: use the interior-point algorithm, and turn on  % the display of results at each iteration:  options = optimset('Algorithm','interior-point','Display','iter');  %% % Solvers require that nonlinear constraint functions give two outputs: one % for nonlinear inequalities, the second for nonlinear equalities. So we % write the constraint using the |deal| function to give both outputs:  gfun = @(x) deal(g(x(1),x(2)),[]);  %% % Call the nonlinear constrained solver. There are no linear equalities or  % inequalities or bounds, so pass [ ] for those arguments:  [x,fval,exitflag,output] = fmincon(fun,x0,[],[],[],[],[],[],gfun,options);  %% % A solution to this problem has been found at:  x   %% % The function value at the solution is:   fval  %% % The total number of function evaluations was:   Fevals = output.funcCount  %% % The inequality constraint is satisfied at the solution.  [c, ceq] = gfun(x)  %% % Since c(x) is close to 0, the constraint is "active," meaning  % the constraint affects the solution. % Recall the unconstrained solution was found at  uncx  %% % and the unconstrained objective function was found to be  uncf  %% % The constraint moved the solution, and increased the objective by  fval-uncf  %% Constrained Optimization Example: User-Supplied Gradients % % Optimization problems can be solved more efficiently and accurately if % gradients are supplied by the user. This demo shows how this may be % performed. We again solve the inequality-constrained problem % % $$\mbox{minimize }x\exp(-(x^2+y^2))+(x^2+y^2)/20,$$ % % $$\mbox{subject to }xy/2 + (x+2)^2 + (y-2)^2/2 \le 2.$$  %% % To provide the gradient of f(x) to fmincon, we write the % objective function in the form of a MATLAB file:  type onehump  %% % The constraint and its gradient are contained in % the MATLAB file tiltellipse:  type tiltellipse   %% % Make a guess at the solution:  x0 = [-2; 1];  %% % Set optimization options: we continue to use the same algorithm % for comparison purposes.   options = optimset('Algorithm','interior-point');  %% % We also set options to use the gradient information in the objective % and constraint functions. Note: these options MUST be turned on or % the gradient information will be ignored.  options = optimset(options,'GradObj','on','GradConstr','on');  %% % There should be fewer function counts this time, since fmincon does not % need to estimate gradients using finite differences.   options = optimset(options,'Display','iter');  %% % Call the solver:  [x,fval,exitflag,output] = fmincon(@onehump,x0,[],[],[],[],[],[], ...                                    @tiltellipse,options);  %% % fmincon estimated gradients well in the previous example, % so the iterations in the current example are similar. % % The solution to this problem has been found at:  xold = x   %% % The function value at the solution is:   minfval = fval  %% % The total number of function evaluations was:   Fgradevals = output.funcCount  %% % Compare this to the number of function evaluations without gradients:  Fevals  %% Changing the Default Termination Tolerances % % This time we solve the same constrained problem % % $$\mbox{minimize }x\exp(-(x^2+y^2))+(x^2+y^2)/20,$$ % % $$\mbox{subject to }xy/2 + (x+2)^2 + (y-2)^2/2 \le 2,$$ %% % more accurately by overriding the default termination criteria % (options.TolX and options.TolFun). We continue to use gradients. % The default values  % for fmincon's interior-point algorithm are % options.TolX = 1e-10, options.TolFun = 1e-6. % % Override two default termination criteria: % termination tolerances on X and fval.  options = optimset(options,'TolX',1e-15,'TolFun',1e-8);        %% % Call the solver:  [x,fval,exitflag,output] = fmincon(@onehump,x0,[],[],[],[],[],[], ...                                    @tiltellipse,options);                                 %% % We now choose to see more decimals in the solution, in order to see more % accurately the difference that the new tolerances make.  format long  %% % The optimizer found a solution at:  x  %% % Compare this to the previous value:  xold  %% % The change is  x - xold  %% % The function value at the solution is:   fval   %% % The solution improved by  fval - minfval %% % (this is negative since the new solution is smaller) % % The total number of function evaluations was:   output.funcCount  %% % Compare this to the number of function evaluations  % when the problem is solved with user-provided gradients but % with the default tolerances:  Fgradevals  %% Constrained Optimization Example with User-Supplied Hessian % If you give not only a gradient, but also a Hessian, solvers are even % more accurate and efficient. %  % fmincon's interior-point solver takes a Hessian matrix as a separate  % function (not part of the objective function). The Hessian function % H(x,lambda) should evaluate the Hessian of the Lagrangian; see the User's % Guide for the definition of this term. % % Solvers calculate the values lambda.ineqnonlin and lambda.eqlin; your % Hessian function tells solvers how to use these values. % % In this problem we have but one inequality constraint, so the Hessian is:  type hessfordemo  %% % In order to use the Hessian, you need to set options appropriately:  options = optimset('Algorithm','interior-point','GradConstr','on',...     'GradObj','on','Hessian','user-supplied','HessFcn',@hessfordemo); %% % The tolerances have been set back to the defaults. % There should be fewer function counts this time.  options = optimset(options,'Display','iter');  %% % Call the solver:  [x,fval,exitflag,output] = fmincon(@onehump,x0,[],[],[],[],[],[], ...                                    @tiltellipse,options);                                 %% % There were fewer, and different iterations this time. % % The solution to this problem has been found at:  x   %% % The function value at the solution is:   fval   %% % The total number of function evaluations was:   output.funcCount  %% % Compare this to the number using only gradient evaluations, with the same % default tolerances:  Fgradevals  displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>

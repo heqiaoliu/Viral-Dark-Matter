@@ -1,0 +1,126 @@
+%% $RCSfile: sfun_dwork_struct.tlc,v $
+%%
+%% Abstract:
+%%      TLC-file for matlabroot/simulnk/src/sfun_dwork_struct.c
+%%
+%% Copyright 1990-2010 The MathWorks, Inc.
+%% $Revision: 1.1.6.1 $ 
+
+%implements "sfun_dwork_struct" "C"
+
+%% Function: BlockTypeSetup ====================================================
+%% Abstract:
+%%   Configure the 'CounterStateStruct' for the data type record.
+%%
+%function BlockTypeSetup(block, system) void
+
+  %%
+  %% Create the counter structure and a external reference to its
+  %% startup values.
+  %%
+  
+  %openfile tmpBuffer
+
+  typedef struct {  /* Used by %<Type> %<ParamSettings.FunctionName> blocks */
+    int_T  counter;
+    real_T state;
+  } CounterStateStruct;
+
+  %if ::LangFileExt == "cpp"
+    %assign prefix = "extern \"C\""  
+  %else
+    %assign prefix = "extern"
+  %endif
+  %<prefix> const CounterStateStruct InitCounterStateStruct;
+  
+  %closefile tmpBuffer
+
+  %<LibCacheTypedefs(tmpBuffer)>
+
+  %%
+  %% Create the initial (startup) values for each dwork instance.
+  %%
+  
+  %openfile tmpBuffer
+  %if ::LangFileExt == "cpp"
+    %assign prefix = "extern \"C\""  
+  %else
+    %assign prefix = ""
+  %endif
+  %<prefix> const CounterStateStruct InitCounterStateStruct = {
+    0,
+    0.0
+  };
+  %closefile tmpBuffer  
+
+  %<SLibCacheSourceCode(tmpBuffer)>
+  
+  %%
+  %% Set the data type of the DWork to the CounterStateStruct
+  %%
+  %% Note the block and system arguments refer to the first reference
+  %% of the given block type. You should items in the block/system
+  %% that are invariant for each block instance. In our example, the
+  %% 'sfun_dwork_struct' S-function always has one DWork that is
+  %% a CounterStateStruct.
+  %%
+
+  %assign dtId  = LibBlockDWorkDataTypeId(DWork[0])
+  %assign dtRec = CompiledModel.DataTypes.DataType[dtId]
+  %<SLibSetDataTypeName(dtRec, "CounterStateStruct")>
+
+%endfunction %% BlockTypeSetup
+
+
+
+%% Function: Start =============================================================
+%% Abstract:
+%%   Initialize counter-state struct
+%%
+%function Start(block, system) Output
+  /* %<Type> %<ParamSettings.FunctionName> Block: %<Name> */
+  %assign csStruct = LibBlockDWork(DWork[0], "", "", 0)
+  %<csStruct> = InitCounterStateStruct;
+  
+%endfunction
+  
+
+%% Function: Outputs ===========================================================
+%% Abstract:
+%%    Produce outputs for:
+%%               +--------+
+%%      input -->|  sfcn  |--------> input from last time step (delay)
+%%               |        |--------> number of times we've seen nonzero inputs
+%%               +--------+
+%function Outputs(block, system) Output
+  /* %<Type> %<ParamSettings.FunctionName> Block: %<Name> */
+  %assign csStruct = LibBlockDWork(DWork[0], "", "", 0)
+  %assign y0       = LibBlockOutputSignal(0, "", "", 0)
+  %assign y1       = LibBlockOutputSignal(1, "", "", 0)
+
+  %<y0> = %<csStruct>.state;
+  %<y1> = %<csStruct>.counter;
+
+%endfunction
+
+
+
+%% Function: Update ============================================================
+%% Abstract:
+%%    Update dwork for:
+%%               +--------+
+%%      input -->|  sfcn  |--------> input from last time step (delay)
+%%               |        |--------> number of times we've seen nonzero inputs
+%%               +--------+
+%function Update(block, system) Output
+  /* %<Type> %<ParamSettings.FunctionName> Block: %<Name> */
+  %assign csStruct = LibBlockDWork(DWork[0], "", "", 0)
+  %assign u0       = LibBlockInputSignal(0, "", "", 0)
+
+  %<csStruct>.state = %<u0>;
+  %<csStruct>.counter += (%<u0> != 0);
+
+%endfunction
+
+%% EOF sfun_dwork_struct.tlc
+

@@ -1,0 +1,123 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Tuning Simulink&reg; Blocks in the Compensator Editor</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdcompeditorpad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdcompeditorpad">Open scdcompeditorpad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdcompeditorpad">Run in the Command Window</a></div></div><div class="content"><h1>Tuning Simulink&reg; Blocks in the Compensator Editor</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Opening the Model</a></li><li><a href="#4">Introduction</a></li><li><a href="#11">Creating a SISO Design Task</a></li><li><a href="#12">Exploring the Compensator Editor Tab</a></li><li><a href="#20">Completed Design</a></li><li><a href="#29">Writing the Design to Simulink</a></li></ul></div><h2>Opening the Model<a name="1"></a></h2><p>The following example is the speed control of a spark ignition engine. The initial compensator has been designed in a fashion similar to the demo entitled <a href="scdspeedctrldespad.html">"Single Loop Feedback/Prefilter Design"</a>. Take a few moments to explore the model.</p><p><a href="matlab:open_system('scdspeedctrl')">Open the engine speed control model</a></p><pre class="codeinput">open_system(<span class="string">'scdspeedctrl'</span>);
+</pre><img vspace="5" hspace="5" src="scdcompeditorpad_01.png" alt=""> <img vspace="5" hspace="5" src="scdcompeditorpad_02.png" alt=""> <h2>Introduction<a name="4"></a></h2><p>This demonstration introduces the use of the <b>Compensator Editor</b> when tuning Simulink&reg; blocks.  When tuning a block in Simulink there are two representations available in a SISO Design Task.  These representations are the block parameters and the pole/zero/gain representations.  For example in the speed control demonstration there is a PID controller with filtered derivative <tt>scdspeedctrl/PID Controller</tt>:</p><p><img vspace="5" hspace="5" src="../html_extra/scdcompedit/pidcontroller.png" alt=""> </p><p>This block implements the traditional PID with filtered derivative as:</p><p><img src="scdcompeditorpad_eq76673.png" alt="$$G(s) = P + {I \over s} + {D s \over Ns+1}$$"></p><p>In this block <tt>P</tt>, <tt>I</tt>, <tt>D</tt>, and <tt>N</tt> are the parameters that are available for tuning.  Another approach is to reformulate the block transfer function to be in the form of poles and zeros:</p><p><img src="scdcompeditorpad_eq23049.png" alt="$$G(s) = {Ps(Ns+1) + I(Ns+1) + D s^s \over s(Ns+1)} = {K(s^2+2 \zeta \omega_n+w_n^2) \over s(s + z)}$$"></p><p>This formulation of poles, zeros, and gains allows for direct graphical tuning on design plots such as Bode, root locus, and Nichols plots.  Additionally the SISO Design Task allows for both representations to be tuned using the <b>Compensator Editor</b>. The tuning of both representations is available for all <a href="matlab:scdguihelp('supported_tunable_blocks');">supported</a> blocks in Simulink&reg; Control Design&#8482;.</p><h2>Creating a SISO Design Task<a name="11"></a></h2><p>In this example a Simulink Compensator Design Task will be used to create a SISOTOOL Design Task to tune the compensators in this feedback system. Launch a preconfigured task by double clicking on the subsystem in the lower left hand corner of the model to load a preconfigured Simulink Compensator Design Task.</p><h2>Exploring the Compensator Editor Tab<a name="12"></a></h2><p>The representations of PID compensator can be viewed and edited using the <b>Compensator Editor</b> tab.  The upper portion of this panel allows for all compensators to be viewed and edited.  When selecting this tab for the first time the pole and zero representation is first shown in the lower tabbed panel as shown below:</p><p><img vspace="5" hspace="5" src="../html_extra/scdcompedit/polezeroeditor.png" alt=""> </p><p>Use this panel to add and remove poles and zeros from the compensator. Since the PID with filtered derivative is fixed in structure number of poles and zeros will be limited to having up 2 zeros, 1 pole, and an integrator at <tt>s = 0</tt>.</p><p>The second panel labeled <b>Parameter</b> allows the <tt>P</tt>, <tt>I</tt>, <tt>D</tt>, and <tt>N</tt> parameters to be independently tuned.  This panel is shown below:</p><p><img vspace="5" hspace="5" src="../html_extra/scdcompedit/parametereditor.png" alt=""> </p><p>Use the <b>Value</b> column to specify new values and use the <b>Slider</b> column to interactively tune the gains.  By changing these gains the following will be updated:</p><div><ul><li>The open and closed-loop responses configured in the <b>Graphical Tuning</b> tab</li><li>The responses such as closed loop step responses specified in the <b>Analysis Plots</b> tab</li><li>The poles, zeros, and gains seen in the <b>Pole/Zero</b> tab</li></ul></div><p>Use the <b>Compensator Editor</b> tab to tune the response of the control system.</p><h2>Completed Design<a name="20"></a></h2><p>The design requirements in the demo <a href="scdspeedctrldespad.html">"Single Loop Feedback/Prefilter Design"</a> can be met with the following controller parameters</p><div><ul><li><tt>scdspeedctrl/PID Controller</tt> has parameters:</li></ul></div><pre>         P = 0.0012191</pre><pre>         I = 0.0030038</pre><div><ul><li><tt>scdspeedctrl/Reference Filter</tt>:</li></ul></div><pre>         Numerator = 10;</pre><pre>         Denominator = [1 10];</pre><p>The responses of the closed loop system are shown below:</p><p><img vspace="5" hspace="5" src="../html_extra/scdspeedctrl/analysisresp.png" alt=""> </p><h2>Writing the Design to Simulink<a name="29"></a></h2><p>You can then test the design on the nonlinear model by clicking the <b>Update Simulink Block Parameters</b> button.  This writes the parameters back to the Simulink model.</p><pre class="codeinput">bdclose(<span class="string">'scdspeedctrl'</span>)
+</pre><p class="footer">Copyright 2005 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Tuning Simulink(R) Blocks in the Compensator Editor
+%
+% Copyright 2005 The MathWorks, Inc.
+% $Revision: 1.1.6.6 $ $Date: 2009/11/09 16:35:36 $
+
+%% Opening the Model
+% The following example is the speed control of a spark ignition 
+% engine. The initial compensator has been designed in a fashion similar to the
+% demo entitled
+% <scdspeedctrldespad.html "Single Loop Feedback/Prefilter Design">. 
+% Take a few moments to explore the model. 
+%%
+% <matlab:open_system('scdspeedctrl') Open the engine speed control model>
+open_system('scdspeedctrl');
+%%
+%% Introduction
+% This demonstration introduces the use of the *Compensator Editor* when
+% tuning Simulink(R) blocks.  When tuning a block in Simulink there are two
+% representations available in a SISO Design Task.  These representations
+% are the block parameters and the pole/zero/gain representations.  For
+% example in the speed control demonstration there is a PID controller with
+% filtered derivative |scdspeedctrl/PID Controller|:
+%%
+% <<../html_extra/scdcompedit/pidcontroller.png>>
+%%
+% This block implements the traditional PID with filtered derivative as:
+%%
+% $$G(s) = P + {I \over s} + {D s \over Ns+1}$$
+%% 
+% In this block |P|, |I|, |D|, and |N| are the parameters that are
+% available for tuning.  Another approach is to reformulate the block
+% transfer function to be in the form of poles and zeros:
+%%
+% $$G(s) = {Ps(Ns+1) + I(Ns+1) + D s^s \over s(Ns+1)} = {K(s^2+2 \zeta \omega_n+w_n^2) \over s(s + z)}$$
+%%
+% This formulation of poles, zeros, and gains allows for direct graphical
+% tuning on design plots such as Bode, root locus, and Nichols plots.  Additionally the
+% SISO Design Task allows for both representations to be tuned using the
+% *Compensator Editor*. The tuning of both representations is available for all
+% <matlab:scdguihelp('supported_tunable_blocks'); supported>
+% blocks in Simulink(R) Control Design(TM).
+
+%% Creating a SISO Design Task
+% In this example a Simulink Compensator Design Task will be used to
+% create a SISOTOOL Design Task to tune the compensators in this feedback system.
+% Launch a preconfigured task by double clicking on the subsystem in the
+% lower left hand corner of the model to load a preconfigured Simulink
+% Compensator Design Task.
+
+%% Exploring the Compensator Editor Tab
+% The representations of PID compensator can be viewed and edited using the
+% *Compensator Editor* tab.  The upper portion of this panel allows for all
+% compensators to be viewed and edited.  When selecting this tab for the
+% first time the pole and zero representation is first shown in the lower
+% tabbed panel as shown below:
+%%
+% <<../html_extra/scdcompedit/polezeroeditor.png>>
+%% 
+% Use this panel to add and remove poles and zeros from the compensator.
+% Since the PID with filtered derivative is fixed in structure number of poles and 
+% zeros will be limited to having up 2 zeros, 1 pole, and an integrator at
+% |s = 0|.
+%%
+% The second panel labeled *Parameter* allows the |P|, |I|, |D|, and |N|
+% parameters to be independently tuned.  This panel is shown below:
+%%
+% <<../html_extra/scdcompedit/parametereditor.png>>
+%%
+% Use the *Value* column to specify new values and use the *Slider* column
+% to interactively tune the gains.  By changing these gains the following
+% will be updated:
+%%
+% * The open and closed-loop responses configured in the *Graphical Tuning*
+% tab
+% * The responses such as closed loop step responses specified in the
+% *Analysis Plots* tab
+% * The poles, zeros, and gains seen in the *Pole/Zero* tab
+%% 
+% Use the *Compensator Editor* tab to tune the response of the control
+% system.
+
+%% Completed Design
+% The design requirements in the demo <scdspeedctrldespad.html "Single Loop
+% Feedback/Prefilter Design"> can be met with the following controller
+% parameters
+%%
+% * |scdspeedctrl/PID Controller| has parameters:
+%%
+%           P = 0.0012191
+%%
+%           I = 0.0030038
+%%
+% * |scdspeedctrl/Reference Filter|:
+%%
+%           Numerator = 10;
+%%
+%           Denominator = [1 10];
+%%
+% The responses of the closed loop system are shown below:
+%%
+% <<../html_extra/scdspeedctrl/analysisresp.png>>
+
+%% Writing the Design to Simulink
+% You can then test the design on the nonlinear model by clicking the
+% *Update Simulink Block Parameters* button.  This writes the parameters back to
+% the Simulink model.
+bdclose('scdspeedctrl')
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

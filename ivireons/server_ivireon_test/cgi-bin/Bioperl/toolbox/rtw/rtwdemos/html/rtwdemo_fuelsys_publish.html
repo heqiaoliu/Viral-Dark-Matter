@@ -1,0 +1,188 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Control and Logic Design with Simulink and Stateflow</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="rtwdemo_fuelsys_publish.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_fuelsys_publish">Open rtwdemo_fuelsys_publish.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_fuelsys_publish">Run in the Command Window</a></div></div><div class="content"><h1>Control and Logic Design with Simulink and Stateflow</h1><!--introduction--><p>In this demonstration you will generate code for a fuel rate control system designed using Simulink&reg; and Stateflow&reg;.  See <a href="matlab:showdemo('sldemo_fuelsys')">sldemo_fuelsys</a> for a detailed explanation of the model.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Familiarize Yourself with the Relevant Portions of the Model</a></li><li><a href="#6">Configure and Build the Model Using Real-Time Workshop</a></li><li><a href="#8">Configure and Build the Model Using Real-Time Workshop Embedded Coder</a></li><li><a href="#13">Closing Remarks</a></li></ul></div><h2>Familiarize Yourself with the Relevant Portions of the Model<a name="1"></a></h2><p>Figures 1-3 show relevant portions of the sldemo_fuelsys model, which is a closed-loop system containing a "plant" and "controller".  The plant is used to validate the controller in simulation early in the design cycle. In this example, we'll generate code for the relevant controller subsystem, "fuel_rate_control".  Figure 1 shows the top-level simulation model.</p><pre class="codeinput"><span class="comment">% open sldemo_fuelsys via rtwdemo_fuelsys and compile the diagram to see</span>
+<span class="comment">% see the signal data types.</span>
+rtwdemo_fuelsys
+
+sldemo_fuelsys([],[],[],<span class="string">'compile'</span>);
+sldemo_fuelsys([],[],[],<span class="string">'term'</span>);
+</pre><img vspace="5" hspace="5" src="rtwdemo_fuelsys_publish_01.png" alt=""> <p><b>Figure 1: Top-level model of the "plant" and "controller"</b></p><p>The fuel rate control system is comprised of Simulink and Stateflow blocks, and is the portion of the model for which we'll generated code.</p><pre class="codeinput">open_system(<span class="string">'sldemo_fuelsys/fuel_rate_control'</span>);
+</pre><img vspace="5" hspace="5" src="rtwdemo_fuelsys_publish_02.png" alt=""> <p><b>Figure 2: The fuel rate controller subsystem</b></p><p>The control logic is a Stateflow chart that specifies the different modes of operation.</p><pre class="codeinput">open_system(<span class="string">'sldemo_fuelsys/fuel_rate_control/control_logic'</span>);
+</pre><img vspace="5" hspace="5" src="rtwdemo_fuelsys_publish_03.png" alt=""> <p><b>Figure 3: Fuel rate controller logic</b></p><p>Now let's remove the window clutter.</p><pre class="codeinput">close_system(<span class="string">'sldemo_fuelsys/fuel_rate_control/airflow_calc'</span>);
+close_system(<span class="string">'sldemo_fuelsys/fuel_rate_control/fuel_calc'</span>);
+close_system(<span class="string">'sldemo_fuelsys/fuel_rate_control/control_logic'</span>);
+hDemo.rt=sfroot;hDemo.m=hDemo.rt.find(<span class="string">'-isa'</span>,<span class="string">'Simulink.BlockDiagram'</span>);
+hDemo.c=hDemo.m.find(<span class="string">'-isa'</span>,<span class="string">'Stateflow.Chart'</span>,<span class="string">'-and'</span>,<span class="string">'Name'</span>,<span class="string">'control_logic'</span>);
+hDemo.c.visible=false;
+close_system(<span class="string">'sldemo_fuelsys/fuel_rate_control'</span>);
+</pre><h2>Configure and Build the Model Using Real-Time Workshop<a name="6"></a></h2><p>Real-Time Workshop&reg; and Stateflow Coder&#8482; generate generic ANSI-C code for Simulink and Stateflow models via the Generic Real-Time (GRT) target. Configuring a model for code generation can be done programmatically.</p><pre class="codeinput">rtwconfiguredemo(<span class="string">'sldemo_fuelsys'</span>,<span class="string">'GRT'</span>);
+</pre><p>For this example, let's build the fuel rate control system only.  Once the code generation process is complete, an HTML report detailing the generated code is displayed automatically.  The main body of the code is located in fuel_rate_control.c.</p><pre class="codeinput">rtwbuild(<span class="string">'sldemo_fuelsys/fuel_rate_control'</span>);
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model: fuel_rate_control
+### Successful completion of Real-Time Workshop build procedure for model: fuel_rate_control
+</pre><h2>Configure and Build the Model Using Real-Time Workshop Embedded Coder<a name="8"></a></h2><p>Real-Time Workshop Embedded Coder is used to generate production ANSI-C/C++ code via the Embedded Real-Time (ERT) target. Configuring a model for code generation can be done programmatically.</p><pre class="codeinput">rtwconfiguredemo(<span class="string">'sldemo_fuelsys'</span>,<span class="string">'ERT'</span>);
+</pre><p>Repeat the build process and inspect the generated code.  Figure 4 shows a portion of the generated control logic.  You can navigate to the relevant code segments interactively in the Real-Time Workshop Report using the <b>Previous</b> and <b>Next</b> buttons by selecting <b>Real-Time Workshop &gt; Navigate to Code ...</b> from the charts context menu (i.e., right-click on the Stateflow block), or programmatically using the rtwtrace utility.</p><pre class="codeinput">rtwbuild(<span class="string">'sldemo_fuelsys/fuel_rate_control'</span>);
+rtwtrace(<span class="string">'sldemo_fuelsys/fuel_rate_control/control_logic'</span>)
+</pre><pre class="codeoutput">### Starting Real-Time Workshop build procedure for model: fuel_rate_control
+### Successful completion of Real-Time Workshop build procedure for model: fuel_rate_control
+</pre><p><img vspace="5" hspace="5" src="rtwdemo_fuelsys_control_logic.jpg" alt=""> </p><p><b>Figure 4: Portion of the generated code for the fuel rate controller logic</b></p><p>Close the demo.</p><pre class="codeinput">clear <span class="string">hDemo</span>
+close_system(<span class="string">'sldemo_fuelsys'</span>,0);
+</pre><h2>Closing Remarks<a name="13"></a></h2><p>Refer to Table 1 for related fixed-point demos using sldemo_fuelsys.</p><p>
+<TABLE>
+<table border=2 CELLPADDING=10>
+<TR>
+<TD>Fixed-point design</TD>
+<TD>
+<a
+href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','fxpdemo_fuelsys_publish','Simulink&nbsp;Fixed&nbsp;Point')">
+fxpdemo_fuelsys</a>
+</TD>
+</TR>
+<TR>
+<TD>Fixed-point production C/C++ code generation</TD>
+<TD>
+<a
+href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','rtwdemo_fuelsys_fxp_publish','Real-Time&nbsp;Workshop')">
+rtwdemo_fuelsys_fxp</a>
+</TD>
+</TR>
+</TABLE>
+</p><p><b>Table 1:</b>  Related product demos using sldemo_fuelsys</p><p class="footer">Copyright 1994-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Control and Logic Design with Simulink and Stateflow
+% In this demonstration you will generate code for a fuel rate
+% control system designed using Simulink(R) and Stateflow(R).  See
+% <matlab:showdemo('sldemo_fuelsys') sldemo_fuelsys> for a detailed
+% explanation of the model.
+
+% Copyright 1994-2009 The MathWorks, Inc.
+% $Revision: 1.1.6.1 $  $Date: 2009/05/14 17:30:44 $
+
+%% Familiarize Yourself with the Relevant Portions of the Model
+% Figures 1-3 show relevant portions of the sldemo_fuelsys model, which is
+% a closed-loop system containing a "plant" and "controller".  The plant is
+% used to validate the controller in simulation early in the design cycle.
+% In this example, we'll generate code for the relevant controller
+% subsystem, "fuel_rate_control".  Figure 1 shows the top-level simulation
+% model.
+
+% open sldemo_fuelsys via rtwdemo_fuelsys and compile the diagram to see
+% see the signal data types.
+rtwdemo_fuelsys
+
+sldemo_fuelsys([],[],[],'compile');
+sldemo_fuelsys([],[],[],'term');
+
+%%
+% *Figure 1: Top-level model of the "plant" and "controller"*
+%
+% The fuel rate control system is comprised of Simulink and Stateflow blocks,
+% and is the portion of the model for which we'll generated code.
+
+open_system('sldemo_fuelsys/fuel_rate_control');
+
+%%
+% *Figure 2: The fuel rate controller subsystem*
+%
+% The control logic is a Stateflow chart that specifies the different
+% modes of operation.
+
+open_system('sldemo_fuelsys/fuel_rate_control/control_logic');
+
+%%
+% *Figure 3: Fuel rate controller logic*
+%
+
+%%
+% Now let's remove the window clutter.
+close_system('sldemo_fuelsys/fuel_rate_control/airflow_calc');
+close_system('sldemo_fuelsys/fuel_rate_control/fuel_calc');
+close_system('sldemo_fuelsys/fuel_rate_control/control_logic');
+hDemo.rt=sfroot;hDemo.m=hDemo.rt.find('-isa','Simulink.BlockDiagram');
+hDemo.c=hDemo.m.find('-isa','Stateflow.Chart','-and','Name','control_logic');
+hDemo.c.visible=false;
+close_system('sldemo_fuelsys/fuel_rate_control');
+
+%% Configure and Build the Model Using Real-Time Workshop
+% Real-Time Workshop(R) and Stateflow Coder(TM) generate generic ANSI-C
+% code for Simulink and Stateflow models via the Generic Real-Time (GRT)
+% target. Configuring a model for code generation can be done
+% programmatically.
+
+rtwconfiguredemo('sldemo_fuelsys','GRT');
+
+%%
+% For this example, let's build the fuel rate control system only.  Once
+% the code generation process is complete, an HTML report detailing the generated
+% code is displayed automatically.  The main body of the code is located
+% in fuel_rate_control.c.
+
+rtwbuild('sldemo_fuelsys/fuel_rate_control');
+
+%% Configure and Build the Model Using Real-Time Workshop Embedded Coder
+% Real-Time Workshop Embedded Coder is used to generate production
+% ANSI-C/C++ code via the Embedded Real-Time (ERT) target. Configuring a
+% model for code generation can be done programmatically. 
+
+rtwconfiguredemo('sldemo_fuelsys','ERT');
+
+%%
+% Repeat the build process and inspect the generated code.  Figure 4 shows
+% a portion of the generated control logic.  You can navigate to the
+% relevant code segments interactively in the Real-Time Workshop Report
+% using the *Previous* and *Next* buttons by selecting *Real-Time
+% Workshop > Navigate to Code ...* from the charts context menu (i.e.,
+% right-click on the Stateflow block), or programmatically using the
+% rtwtrace utility.
+
+rtwbuild('sldemo_fuelsys/fuel_rate_control');
+rtwtrace('sldemo_fuelsys/fuel_rate_control/control_logic')
+
+%%
+%
+% <<rtwdemo_fuelsys_control_logic.jpg>>
+
+%%
+% *Figure 4: Portion of the generated code for the fuel rate controller logic*
+
+%%
+% Close the demo.
+clear hDemo
+close_system('sldemo_fuelsys',0);
+
+%% Closing Remarks
+% Refer to Table 1 for related fixed-point demos using sldemo_fuelsys.
+%
+% <html>
+% <TABLE>
+% <table border=2 CELLPADDING=10>
+% <TR>
+% <TD>Fixed-point design</TD>
+% <TD>
+% <a
+% href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','fxpdemo_fuelsys_publish','Simulink&nbsp;Fixed&nbsp;Point')">
+% fxpdemo_fuelsys</a>
+% </TD>
+% </TR>
+% <TR>
+% <TD>Fixed-point production C/C++ code generation</TD>
+% <TD>
+% <a
+% href="matlab:sldemo_fuelsys_data('fxpdemo_fuelsys','showdemo','rtwdemo_fuelsys_fxp_publish','Real-Time&nbsp;Workshop')">
+% rtwdemo_fuelsys_fxp</a>
+% </TD>
+% </TR>
+% </TABLE>
+% </html>
+% 
+% *Table 1:*  Related product demos using sldemo_fuelsys 
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

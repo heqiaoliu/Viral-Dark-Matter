@@ -1,0 +1,463 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Simulink&reg; Bus Signals</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="busdemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">busdemo.mdl</div><div class="right"><a href="matlab:busdemo">Open this model</a></div></div><div class="content"><h1>Simulink&reg; Bus Signals</h1><!--introduction--><p>This interactive demonstration introduces you to the following Simulink&reg; concepts:</p><div><ul><li>Distinguishing vector, matrix, and bus/composite signals</li><li>Understanding signal line formats</li><li>Displaying and understanding signal dimensions</li><li>Using the Bus Creator and the Bus Selector blocks</li><li>Viewing matrix signals on a Simulink Scope</li><li>Highlighting blocks in the Simulink diagram</li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Model Description</a></li><li><a href="#20">Bus signals and line formats in Simulink</a></li><li><a href="#27">Vector signals in Simulink</a></li><li><a href="#34">Row and column matrix signals in Simulink</a></li><li><a href="#37">Matrix signals in Simulink</a></li><li><a href="#40">Using the Bus Creator Block</a></li><li><a href="#47">Using the Bus Selector Block</a></li><li><a href="#53">Interesting Feature: HILITE_SYSTEM</a></li></ul></div><h2>Model Description<a name="1"></a></h2><img vspace="5" hspace="5" src="busdemo_01.png" alt=""> <p>The left side of the busdemo model contains five source blocks from the Simulink Sources library.  Each block generates a scalar output signal, a signal with a width of one, that is appropriately labeled on the diagram.</p><p>The output of the Chirp Signal block is passed into a Goto block whose Tag is set to A.</p><img vspace="5" hspace="5" src="busdemo_02.png" alt=""> <p>The associated From block is found inside of the Subsystem block.</p><img vspace="5" hspace="5" src="busdemo_03.png" alt=""> <p>Also inside the Subsystem block, you'll see that the Chirp signal and the output of the Constant block are bundled together into a bus using a Bus Creator block (found in the Simulink Signal Routing library).</p><img vspace="5" hspace="5" src="busdemo_04.png" alt=""> <p>Similarly, the three signals from the Clock, Pulse Generator, Sine Wave blocks are bundled together using another Bus Creator block.</p><img vspace="5" hspace="5" src="busdemo_05.png" alt=""> <p>This Bus Creator block is labeled Bus Creator2.</p><img vspace="5" hspace="5" src="busdemo_06.png" alt=""> <p>The two bus signals, labeled bus1 and bus2, are then bundled together using a third Bus Creator block to create the nested bus signal labeled main_bus.</p><img vspace="5" hspace="5" src="busdemo_07.png" alt=""> <p>The bundled signal from the final Bus Creator is then passed into the Bus Selector block.</p><img vspace="5" hspace="5" src="busdemo_08.png" alt=""> <p>The Bus Selector block extracts the Pulse and Chirp signals from the original bundle of signals. These two signals are finally displayed on a Simulink Scope with two axes.</p><img vspace="5" hspace="5" src="busdemo_09.png" alt=""> <p>The Pulse signal is shown on the top axis and the Chirp signal on the bottom axis.</p><p>You can run the simulation to see the output of the Chirp and Pulse blocks on the Scope.</p><img vspace="5" hspace="5" src="busdemo_10.png" alt=""> <p>Note: This model uses Bus Creator and Bus Selector blocks instead of Mux and Demux blocks for a variety reasons. One important motivation is that bus signals are very efficient, as only the signals chosen in the Bus Selector are passed around the diagram during a simulation. Another consideration is that the two Bus blocks are configured using the signal names, allowing you to create a Simulink diagram that is easier to read.</p><h2>Bus signals and line formats in Simulink<a name="20"></a></h2><p>After running the simulation, look at the lines in busdemo.mdl. Notice that the signal connecting the Bus Creator and Bus Selector blocks is drawn with three lines, as shown below.</p><img vspace="5" hspace="5" src="busdemo_11.png" alt=""> <p>This line format indicates that the signal is a <b>bus signal</b>. A bus signal represents a set of signals, analogous to a bundle of wires tied together. The bus signal can behave in one of two ways, either as a vector signal or as a composite signal, based on the size and shape of the signals bundled into the bus signal.</p><p>To understand this better, display the signal dimensions by checking the <b>Signal Dimensions</b> item in the <b>Port/Signal Displays</b> submenu of the Simulink diagram's <b>Format</b> menu. You should notice that the label "5{5}" appears on the bus signal, as shown below.</p><img vspace="5" hspace="5" src="busdemo_12.png" alt=""> <p>The number before the braces tells you how many lines were bundled together to create that particular bus signal. For example, the output of the Bus Creator2 block was created from the three lines from the Clock, Pulse, and Sine Wave blocks. The number inside of the braces tells you how many total signals are contained in the bus. In the case of the bus2 signal, each output from the Source blocks is a scalar, so the bus contains a total of three signals, one from each line.</p><p>All the bus signal in this model are treated like vector signals because each individual signal in the bus is a scalar. As such, you can pass the bus signal into any Simulink block that accepts vector inputs, such as a Gain, Sum, Integer, etc.</p><p>Bus signals are also treated as vector signals when all the individual signals in the bus are either scalars or 1-dimensional vectors, as you will see below.</p><h2>Vector signals in Simulink<a name="27"></a></h2><p>You can change the Sine Wave block to output a vector of signals, instead of a scalar.</p><img vspace="5" hspace="5" src="busdemo_13.png" alt=""> <p>To do this, first open the Sine Wave block by double clicking on the block in the diagram. This opens the Block Parameters dialog associated with the Sine Wave block.</p><p>The first field in the Block Parameters dialog is <b>Amplitude</b>. You can change the value in this field to a vector, using the following commands.</p><p>1 Type [1 2] into the Amplitude field.</p><p>2 Apply the changes and close the dialog by clicking the <b>OK</b> button.</p><p>3 Update the Simulink diagram by selecting the <b>Update Diagram</b> command from the model's <b>Edit</b> menu.</p><img vspace="5" hspace="5" src="busdemo_14.png" alt=""> <p>The line coming out of the Sine Wave block now has a "2" above it, indicating that it carries a vector, or 1-dimensional, signal with two elements. Notice, now, that the input signal to the Bus Selector block is labeled with "5{6}". The 5 before the braces tells you that there are still five signals bundled together in the bus signal. Since one of these signals is a vector with two elements, the total width of the bus signal is now six, the value inside the braces.</p><p>The bus signal is still treated as a vector and can be passed to any Simulink block that accepts vector signals. In fact, as long as the bus signal consists solely of scalars and 1-dimensional vectors, it will be treated as a vector signal. As you will soon see, there is one more condition on when bus signals are treated as vectors.</p><h2>Row and column matrix signals in Simulink<a name="34"></a></h2><p>By default, the signals in your Simulink diagram are 1-dimensional vectors. You can, however, introduce 2-dimensional matrices into your diagram. To demonstrate this, change the Sine Wave block so it outputs a matrix signal instead of the vector you previously entered.</p><p>To do this open Sine Wave block by double clicking on the block.  At the bottom of the dialog (and on the bottom of <b>all</b> Source block dialogs) you will see the <b>Interpret vector parameters as 1-D</b> check box.</p><div><ul><li>When this box is checked, Simulink interprets any row or column vector you type into the Block Parameters dialog as a 1-dimensional array.</li><li>When this box is not checked, Simulink interprets any row or column vector you type into the Block Parameters dialog as a 2-dimensional matrix. <b>Note:</b> If you are working in this mode, then all the vectors and matrices you enter into the Block Parameters dialog must have consistent dimensions.</li></ul></div><p>To illustrate this, make the output of the Sine Wave 2-dimensional using the following steps.</p><p>1. Uncheck the <b>Interpret vector parameters as 1-D</b> check box</p><p>2. Apply the changes and close the dialog by clicking the <b>OK</b> button.</p><p>3. Update the Simulink diagram to see the changes take effect in the signal dimension labels.</p><img vspace="5" hspace="5" src="busdemo_15.png" alt=""> <p>Notice that the output signal of the Sine Wave block is now labeled "[1x2]". Simulink is actually carrying a 2-D matrix signal along that line!  The input signal to the Bus Selector block is still labeled with "5{6}" as it contains five signals with a total of six elements. In this case, however, the fifth signal in the bus is actually a row matrix.</p><p>This is the final case where the bus signal is treated as a vector; when all signals in the bus are either scalars, 1-dimensional vectors, or either row or column matrices. If the bus contains both row and column matrix signals then the bus signal is no longer a vector signal. Instead, it is treated as a composite signal, discussed in a moment.</p><h2>Matrix signals in Simulink<a name="37"></a></h2><p>You can enter any 2-dimensional matrix into the Source blocks. For example, to enter a 2x2 matrix open the Sine Wave block dialog, enter [1 2; 3 4] in the <b>Amplitude</b> parameter, and update the diagram.</p><img vspace="5" hspace="5" src="busdemo_16.png" alt=""> <p>The signal coming out of the Sine Wave block now has the dimensions [2x2].</p><p><b>Note:</b> When you enter an m-by-n matrix where neither m nor n is one, the block's output will always be a matrix regardless of the current state of the <b>Interpret vector parameters as 1-D</b> check box. The check box <b>only</b> applies to vector parameters, where either m or n is one.</p><p>The signal going into the Bus Selector is now labeled with "5{8}". It contains 5 signals, but one of those signals has four elements for a total width of eight. In this case, the bus signal is treated as a composite signal. In fact, as soon as any of the signals in the bus contain a 2-dimensional signal that is neither a row nor column matrix, the bus signal is automatically treated as a composite signal.</p><p>A composite signal is useful for bundling data into a single wire to pass through the Simulink diagram. However, a composite signal cannot be passed into most Simulink blocks. In fact, composite signals can only be passed into virtual blocks, such as the Bus Selector, Subsystem, Goto, Demux, etc.</p><p>To summarize, a bus signal is treated as a composite signal when either of the following conditions is met.</p><p>1. The bus contains a signal that is a row matrix and another signal that is a column matrix.</p><p>2. The bus contains one or more [m x n] matrices where both m and n are greater than one.</p><h2>Using the Bus Creator Block<a name="40"></a></h2><p>To understand more about how the bus signal is structured, open the Bus Creator block.</p><img vspace="5" hspace="5" src="busdemo_17.png" alt=""> <p>This block has two inputs, each of which is itself a bus signal. The two bus signals, labeled bus1 and bus2, are listed in the <b>Signals in bus</b> list, preceded by a plus sign. If you expand out the two bus signals by double-clicking in each top level node in the tree, you'll see the nested signals that make up the final bus.</p><p>The names used in the <b>Signals in bus</b> list are inherited from the signal names typed onto the Simulink diagram. If you want to locate the block a particular signal originated from, you can do the following.</p><p>1. Select, for example, the Pulse signal in the bus2 node.</p><p>2. Press the Find button to the right of the <b>Signals in bus</b> list.</p><p>3. Note that the Pulse Generator block is now highlighted.</p><img vspace="5" hspace="5" src="busdemo_18.png" alt=""> <p>The Bus Creator uses the signal name to determine the source of a particular signal in the bus</p><h2>Using the Bus Selector Block<a name="47"></a></h2><p>As the signal label indicates, the output of the Bus Creator block still consists of five signals, where the last element is the 2x2 matrix signal you previously entered. To illustrate this, you can configure the Bus Selector block to output the matrix signal from the Sine Wave block. To do this, first open the Bus Selector block by double clicking on the block.</p><img vspace="5" hspace="5" src="busdemo_19.png" alt=""> <div><ul><li>On the left side of this dialog, you see a list of all the signals passed into the Bus Selector block. You can click on the tree corresponding to a bus to see the source signals that the bus is composed of. The output signal of the Bus Creator is in turn composed of the two bus signals bus1 and bus2.</li><li>On the right side, you see "Selected Signals" - a list of all the input signals that are to serve as the output for the Bus Selector block. To reference a signal corresponding to a specific input bus, use the dot-notation. For example, to access the Chirp input signal from bus1, use bus1.Chirp.</li></ul></div><p>The following steps illustrate how you can specify the output signal list to correspond to the Pulse Generator and Sine Wave sources.</p><p>1. Highlight the bus1.Chirp signal in the <b>Selected signals</b> list and remove it by selecting Remove to the left of the list.</p><p>2. Highlight the bus2.Sine signal in the <b>Signals in the bus</b> list and add it to the <b>Selected signals</b> by choosing <b>Select&gt;&gt;</b>.</p><p>3. Apply these changes and close the dialog by selecting <b>OK</b>.</p><p>Now, run the simulation. The bottom axis on the Scope displays the four signals from the Sine Wave block.</p><img vspace="5" hspace="5" src="busdemo_20.png" alt=""> <h2>Interesting Feature: HILITE_SYSTEM<a name="53"></a></h2><p>Various blocks in the Simulink diagram highlighted when you clicked some of the links in this demonstration. This was done using the hilite_system function. The syntax is hilite_system(sys) where sys is the name of the block you want to highlight. There are a variety of different highlighting schemes, which you can find by looking at the help text for this command. Here are a few samples that highlight the Sine Wave block.</p><div><ul><li><a href="matlab:busdemo;hilite_system(['busdemo/Sine',char(32),'Wave'],'find');">hilite_system('busdemo/Sine Wave','find')</a>  Uses the highlighting scheme used by the Find dialog, which changes the background color.</li><li><a href="matlab:busdemo;hilite_system(['busdemo/Sine',char(32),'Wave'],'unique');">hilite_system('busdemo/Sine Wave','unique')</a>  Uses a highlighting scheme that changes the foreground color.</li><li><a href="matlab:busdemo;hilite_system(['busdemo/Sine',char(32),'Wave'],'none');">hilite_system('busdemo/Sine Wave','none')</a>  Removes any highlighting.</li></ul></div><p class="footer">Copyright 2005-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Simulink(R) Bus Signals
+%
+% This interactive demonstration introduces you to the following Simulink(R)
+% concepts: 
+%
+% * Distinguishing vector, matrix, and bus/composite signals
+% * Understanding signal line formats 
+% * Displaying and understanding signal dimensions 
+% * Using the Bus Creator and the Bus Selector blocks 
+% * Viewing matrix signals on a Simulink Scope 
+% * Highlighting blocks in the Simulink diagram 
+%
+
+% Copyright 2005-2009 The MathWorks, Inc.
+
+
+%% Model Description
+%
+open_system('busdemo');
+
+%%
+% The left side of the busdemo model contains five source blocks from the Simulink
+% Sources library.  Each block generates a scalar output signal, a signal
+% with a width of one, that is appropriately labeled on the diagram. 
+
+%%
+% The output of the Chirp Signal block is passed into a Goto block whose
+% Tag is set to A. 
+
+close_system('busdemo',0);
+
+%%
+open_system('busdemo');
+hilite_system('busdemo/Goto','find')
+
+%%
+% The associated From block is found inside of the Subsystem block. 
+
+hilite_system('busdemo/Goto','none')
+open_system('busdemo/Subsystem');
+hilite_system('busdemo/Subsystem/From','find')
+
+%%
+hilite_system('busdemo/Subsystem/From','none')
+close_system('busdemo/Subsystem',0);
+
+%%
+% Also inside the Subsystem block, you'll see that the Chirp signal and the
+% output of the Constant block are bundled together into a bus using a Bus
+% Creator block (found in the Simulink Signal Routing library). 
+
+open_system('busdemo/Subsystem');
+hilite_system(['busdemo/Subsystem/Bus',char(32),'Creator1'],'find')
+
+%%
+close_system('busdemo',0);
+
+%%
+% Similarly, the three signals from the Clock, Pulse Generator, Sine Wave
+% blocks are bundled together using another Bus Creator block.  
+
+open_system('busdemo');
+hilite_system('busdemo/Clock','find')
+hilite_system(['busdemo/Pulse',char(32),'Generator'],'find')
+hilite_system(['busdemo/Sine',char(32),'Wave'],'find')
+
+%%
+close_system('busdemo',0);
+
+%%
+% This Bus Creator block is labeled Bus Creator2. 
+
+open_system('busdemo');
+hilite_system(['busdemo/Bus',char(32),'Creator2'],'find')
+
+%%
+close_system('busdemo',0);
+
+%%
+% The two bus signals, labeled bus1 and bus2, are then bundled together
+% using a third Bus Creator block to create the nested bus signal labeled
+% main_bus.  
+
+open_system('busdemo');
+hilite_system(['busdemo/Bus',char(32),'Creator'],'find')
+
+%%
+close_system('busdemo',0);
+
+%%
+% The bundled signal from the final Bus Creator is then passed into the Bus
+% Selector block. 
+
+open_system('busdemo');
+hilite_system(['busdemo/Bus',char(32),'Selector'],'find')
+
+%%
+close_system('busdemo',0);
+
+%%
+% The Bus Selector block extracts the Pulse and Chirp signals from the
+% original bundle of signals. These two signals are finally displayed on a
+% Simulink Scope with two axes.
+
+open_system('busdemo');
+hilite_system(['busdemo/Bus',char(32),'Output'],'find')
+
+%%
+% The Pulse signal is shown on the top axis and the Chirp signal on the bottom axis.
+%
+% You can run the simulation to see the output of the Chirp and Pulse blocks on the Scope.
+
+hilite_system(['busdemo/Bus',char(32),'Output'],'none')
+sim('busdemo');
+
+%%
+% Note: This model uses Bus Creator and Bus Selector blocks instead of Mux
+% and Demux blocks for a variety reasons. One important motivation is that
+% bus signals are very efficient, as only the signals chosen in the Bus
+% Selector are passed around the diagram during a simulation. Another
+% consideration is that the two Bus blocks are configured using the signal
+% names, allowing you to create a Simulink diagram that is easier to read. 
+
+
+%% Bus signals and line formats in Simulink
+% 
+% After running the simulation, look at the lines in busdemo.mdl. Notice
+% that the signal connecting the Bus Creator and Bus Selector blocks is
+% drawn with three lines, as shown below. 
+
+open_system('sldemo_help_show_bus.mdl');
+set_param(gcs,'SimulationCommand','update');
+
+%%
+% This line format indicates that the signal is a *bus signal*. A bus signal
+% represents a set of signals, analogous to a bundle of wires tied
+% together. The bus signal can behave in one of two ways, either as a
+% vector signal or as a composite signal, based on the size and shape of
+% the signals bundled into the bus signal. 
+%
+% To understand this better, display the signal dimensions
+% by checking the *Signal Dimensions* item in the *Port/Signal Displays*
+% submenu of the Simulink diagram's *Format* menu. You should notice that the
+% label "5{5}" appears on the bus signal, as shown below.  
+
+%%
+close_system('sldemo_help_show_bus.mdl',0);
+
+%%
+open_system('sldemo_help_show_bus.mdl');
+set_param(gcs,'ShowLineDimensions','on');
+set_param(gcs,'SimulationCommand','update');
+
+%%
+close_system('sldemo_help_show_bus.mdl',0);
+
+%%
+% The number before the braces tells you how many lines were bundled
+% together to create that particular bus signal. For example, the output of
+% the Bus Creator2 block was created from the three lines from the Clock,
+% Pulse, and Sine Wave blocks. The number inside of the braces tells you
+% how many total signals are contained in the bus. In the case of the bus2
+% signal, each output from the Source blocks is a scalar, so the bus
+% contains a total of three signals, one from each line.
+%
+% All the bus signal in this model are treated like vector signals because
+% each individual signal in the bus is a scalar. As such, you can pass the
+% bus signal into any Simulink block that accepts vector inputs, such as a
+% Gain, Sum, Integer, etc.
+%
+% Bus signals are also treated as vector signals when all the individual
+% signals in the bus are either scalars or 1-dimensional vectors, as you
+% will see below.
+
+%%
+close_system('busdemo', 0)
+
+%% Vector signals in Simulink
+% 
+% You can change the Sine Wave block to output a vector of signals, instead
+% of a scalar. 
+
+open_system('busdemo')
+hilite_system('busdemo/Sine Wave','find');
+
+%%
+% To do this, first open the Sine Wave block by double
+% clicking on the block in the diagram. This opens the Block Parameters
+% dialog associated with the Sine Wave block.
+%
+
+%%
+% The first field in the Block Parameters dialog is *Amplitude*. You can
+% change the value in this field to a vector, using the following commands.
+%
+
+close_system('busdemo', 0)
+
+%%
+% 1 Type [1 2] into the Amplitude field.
+%
+% 2 Apply the changes and close the dialog by clicking the *OK* button. 
+%
+% 3 Update the Simulink diagram by selecting the *Update Diagram* command
+% from the model's *Edit* menu. 
+
+%%
+open_system('busdemo')
+set_param('busdemo/Sine Wave','Amplitude','[1 2]');
+set_param('busdemo','ShowLineDimensions','on');
+set_param('busdemo','SimulationCommand','update');
+
+%%
+% The line coming out of the Sine Wave block now has a "2" above it,
+% indicating that it carries a vector, or 1-dimensional, signal with two
+% elements. Notice, now, that the input signal to the Bus Selector block is
+% labeled with "5{6}". The 5 before the braces tells you that there are
+% still five signals bundled together in the bus signal. Since one of these
+% signals is a vector with two elements, the total width of the bus signal
+% is now six, the value inside the braces. 
+%
+% The bus signal is still treated as a vector and can be passed to any
+% Simulink block that accepts vector signals. In fact, as long as the bus
+% signal consists solely of scalars and 1-dimensional vectors, it will be
+% treated as a vector signal. As you will soon see, there is one more
+% condition on when bus signals are treated as vectors.
+
+%%
+close_system('busdemo', 0)
+
+%% Row and column matrix signals in Simulink
+% 
+% By default, the signals in your Simulink diagram are 1-dimensional
+% vectors. You can, however, introduce 2-dimensional matrices into your
+% diagram. To demonstrate this, change the Sine Wave block so it outputs a
+% matrix signal instead of the vector you previously entered.
+%
+% To do this open Sine Wave block by double clicking on the block.  At the
+% bottom of the dialog (and on the bottom of *all* Source block dialogs)
+% you will see the *Interpret vector parameters as 1-D* check box. 
+%
+% * When this box is checked, Simulink interprets any row or column vector you type into the Block Parameters dialog as a 1-dimensional array. 
+% * When this box is not checked, Simulink interprets any row or column vector you type into the Block Parameters dialog as a 2-dimensional matrix. *Note:* If you are working in this mode, then all the vectors and matrices you enter into the Block Parameters dialog must have consistent dimensions.
+%
+% To illustrate this, make the output of the Sine Wave 2-dimensional using
+% the following steps.
+%
+% 1. Uncheck the *Interpret vector parameters as 1-D* check box 
+%
+% 2. Apply the changes and close the dialog by clicking the *OK* button.
+%
+% 3. Update the Simulink diagram to see the changes take effect in the
+% signal dimension labels.  
+
+open_system('busdemo')
+set_param('busdemo/Sine Wave','Amplitude','[1 2]');
+set_param('busdemo','ShowLineDimensions','on');
+set_param('busdemo/Sine Wave','VectorParams1D','off');
+set_param('busdemo','WideLines','on');
+set_param('busdemo','SimulationCommand','update'); 
+
+%%
+% Notice that the output signal of the Sine Wave block is now labeled
+% "[1x2]". Simulink is actually carrying a 2-D matrix signal along that
+% line!  The input signal to the Bus Selector block is still labeled with
+% "5{6}" as it contains five signals with a total of six elements. In this
+% case, however, the fifth signal in the bus is actually a row matrix.
+%
+% This is the final case where the bus signal is treated as a vector; when
+% all signals in the bus are either scalars, 1-dimensional vectors, or
+% either row or column matrices. If the bus contains both row and column
+% matrix signals then the bus signal is no longer a vector signal. Instead,
+% it is treated as a composite signal, discussed in a moment.
+
+%%
+close_system('busdemo', 0)
+
+%% Matrix signals in Simulink
+%
+% You can enter any 2-dimensional matrix into the Source blocks. For
+% example, to enter a 2x2 matrix open the Sine Wave block dialog, enter 
+% [1 2; 3 4] in the *Amplitude* parameter, and update the diagram. 
+
+open_system('busdemo')
+set_param('busdemo','ShowLineDimensions','on');
+set_param('busdemo','WideLines','on');
+set_param('busdemo/Sine Wave','Amplitude','[1 2; 3 4]');
+set_param('busdemo','SimulationCommand','update');
+
+%%
+% The signal coming out of the Sine Wave block now has the dimensions [2x2].
+%
+% *Note:* When you enter an m-by-n matrix where neither m nor n is one, the
+% block's output will always be a matrix regardless of the current state of
+% the *Interpret vector parameters as 1-D* check box. The check box *only*
+% applies to vector parameters, where either m or n is one.
+%
+% The signal going into the Bus Selector is now labeled with "5{8}". It
+% contains 5 signals, but one of those signals has four elements for a
+% total width of eight. In this case, the bus signal is treated as a
+% composite signal. In fact, as soon as any of the signals in the bus
+% contain a 2-dimensional signal that is neither a row nor column matrix,
+% the bus signal is automatically treated as a composite signal.
+%
+% A composite signal is useful for bundling data into a single wire to pass
+% through the Simulink diagram. However, a composite signal cannot be
+% passed into most Simulink blocks. In fact, composite signals can only be
+% passed into virtual blocks, such as the Bus Selector, Subsystem, Goto,
+% Demux, etc. 
+%
+% To summarize, a bus signal is treated as a composite signal when either
+% of the following conditions is met. 
+%
+% 1. The bus contains a signal that is a row matrix and another signal that
+% is a column matrix.
+%
+% 2. The bus contains one or more [m x n] matrices where both m and n are
+% greater than one.
+%
+%%
+close_system('busdemo', 0)
+
+%% Using the Bus Creator Block
+%
+% To understand more about how the bus signal is structured, open the Bus
+% Creator block.
+
+open_system('busdemo')
+
+set_param('busdemo','ShowLineDimensions','on');
+set_param('busdemo','WideLines','on');
+set_param('busdemo/Sine Wave','Amplitude','[1 2; 3 4]');
+set_param('busdemo','SimulationCommand','update');
+hilite_system(['busdemo/Bus',char(32),'Creator'],'find')
+        
+%%
+% This block has two inputs, each of which is itself a bus
+% signal. The two bus signals, labeled bus1 and bus2, are listed in the
+% *Signals in bus* list, preceded by a plus sign. If you expand out the two
+% bus signals by double-clicking in each top level node in the tree, you'll
+% see the nested signals that make up the final bus.
+
+%%
+close_system('busdemo', 0)
+
+%%
+% The names used in the *Signals in bus* list are inherited from the signal
+% names typed onto the Simulink diagram. If you want to locate the block a
+% particular signal originated from, you can do the following.
+%
+% 1. Select, for example, the Pulse signal in the bus2 node. 
+%
+% 2. Press the Find button to the right of the *Signals in bus* list. 
+%
+% 3. Note that the Pulse Generator block is now highlighted. 
+%
+
+%%
+open_system('busdemo')
+set_param('busdemo','ShowLineDimensions','on');
+set_param('busdemo','WideLines','on');
+set_param('busdemo/Sine Wave','Amplitude','[1 2; 3 4]');
+set_param('busdemo','SimulationCommand','update');
+hilite_system(['busdemo/Pulse',char(32),'Generator'],'find')
+
+
+%%
+% The Bus Creator uses the signal name to determine the source of a
+% particular signal in the bus
+
+%%
+close_system('busdemo', 0)
+
+%% Using the Bus Selector Block
+%
+% As the signal label indicates, the output of the Bus Creator block still
+% consists of five signals, where the last element is the 2x2 matrix signal
+% you previously entered. To illustrate this, you can configure the Bus
+% Selector block to output the matrix signal from the Sine Wave block. To
+% do this, first open the Bus Selector block by double clicking on the block. 
+
+%%
+open_system('busdemo')
+set_param('busdemo','ShowLineDimensions','on');
+set_param('busdemo','WideLines','on');
+set_param('busdemo/Sine Wave','Amplitude','[1 2; 3 4]');
+set_param('busdemo','SimulationCommand','update');
+hilite_system(['busdemo/Bus',char(32),'Selector'],'find')
+
+%%
+% * On the left side of this dialog, you see a list of all the signals passed into the Bus Selector block. You can click on the tree corresponding to a bus to see the source signals that the bus is composed of. The output signal of the Bus Creator is in turn composed of the two bus signals bus1 and bus2. 
+% * On the right side, you see "Selected Signals" - a list of all the input signals that are to serve as the output for the Bus Selector block. To reference a signal corresponding to a specific input bus, use the dot-notation. For example, to access the Chirp input signal from bus1, use bus1.Chirp.
+%
+% The following steps illustrate how you can specify the output signal list
+% to correspond to the Pulse Generator and Sine Wave sources.
+%
+% 1. Highlight the bus1.Chirp signal in the *Selected signals* list and
+% remove it by selecting Remove to the left of the list. 
+%
+% 2. Highlight the bus2.Sine signal in the *Signals in the bus* list and add it
+% to the *Selected signals* by choosing *Select>>*.
+%
+% 3. Apply these changes and close the dialog by selecting *OK*. 
+
+%%
+open_system(find_system('busdemo','BlockType','BusSelector'));
+busSelectorDlgObj = FindDdgDlgInDAStudioRootFromFullBlkPath('busdemo/Bus Selector');
+busSelectorDlgObj.setWidgetValue('outputsList',1);
+busSelectorddg_cb(busSelectorDlgObj,'doRemove');
+busSelectorDlgObj.setWidgetValue('outputsList',0);
+busSelectorDlgObj.setWidgetValue('inputsTree','');
+busSelectorDlgObj.setWidgetValue('inputsTree','');
+busSelectorDlgObj.setWidgetValue('inputsTree','bus2/Sine');
+busSelectorddg_cb(busSelectorDlgObj,'doSelect');
+busSelectorDlgObj.apply;
+close_system('busdemo/Bus Selector');
+        
+%%
+% Now, run the simulation. The bottom axis on the Scope displays the four
+% signals from the Sine Wave block.
+
+%%
+sim('busdemo'); 
+
+%
+% *Note:* The labels for the signal name and signal dimension may overlap on
+% the bottom line feeding into the Scope block. If this is the case, just
+% hold the left mouse button down on the signal name while dragging it to
+% another location on the line. Then, you should see that a [2x2] signal
+% feeds into the second input.
+
+%% Interesting Feature: HILITE_SYSTEM
+%
+% Various blocks in the Simulink diagram highlighted when you clicked some
+% of the links in this demonstration. This was done using the 
+% hilite_system function. The syntax is hilite_system(sys) where sys is the
+% name of the block you want to highlight. There are a variety of different
+% highlighting schemes, which you can find by looking at the help text for
+% this command. Here are a few samples that highlight the Sine Wave block.
+%
+% * <matlab:busdemo;hilite_system(['busdemo/Sine',char(32),'Wave'],'find'); hilite_system('busdemo/Sine Wave','find')>  Uses the highlighting scheme used by the Find dialog, which changes the background color. 
+% * <matlab:busdemo;hilite_system(['busdemo/Sine',char(32),'Wave'],'unique'); hilite_system('busdemo/Sine Wave','unique')>  Uses a highlighting scheme that changes the foreground color. 
+% * <matlab:busdemo;hilite_system(['busdemo/Sine',char(32),'Wave'],'none'); hilite_system('busdemo/Sine Wave','none')>  Removes any highlighting. 
+%
+
+%%
+close_system('busdemo',0);
+
+
+
+##### SOURCE END #####
+--></body></html>

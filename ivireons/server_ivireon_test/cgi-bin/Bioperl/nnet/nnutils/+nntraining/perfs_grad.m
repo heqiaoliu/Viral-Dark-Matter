@@ -1,0 +1,73 @@
+function [trainPerf,valPerf,testPerf,gWB,gradient] = perfs_grad(net,data,fcns)
+
+% Copyright 2010 The MathWorks, Inc.
+  % perfy - dperfy/dWB
+  if data.split.count == 1
+    [trainPerfy,valPerfy,testPerfy,gWBy] = singlecalc(net,data,fcns);
+  else
+    [trainPerfy,valPerfy,testPerfy,gWBy] = splitcalc(net,data,fcns);
+  end
+  % perfwb - dperf/dWB
+  fcn = fcns.perform;
+  perfWB = fcn.performance_wb(net,fcn.param);
+  gWBwb = fcn.dperf_dwb(net,fcn.param);
+  % Full Performance
+  trainPerf = trainPerfy + perfWB;
+  valPerf = valPerfy + perfWB;
+  testPerf = testPerfy + perfWB;
+  gWB = gWBy + gWBwb;
+  if nargout > 4
+    gradient= sqrt(sum(gWB.^2));
+  end
+end
+
+function [trainPerfy,valPerfy,testPerfy,gWBy] = splitcalc(net,data,fcns)
+  % Split 1
+  indices = data.split.indices{1};
+  split = nntraining.split_data(data,indices);
+  [trainPerfy,trainN,valPerfy,valN,testPerfy,testN,gWBy] = singlecalc(net,split,fcns);
+  % Split 2, etc
+  fcn = fcns.perform;
+  for i=2:data.split.count
+    indices = data.split.indices{i};
+    split = nntraining.split_data(data,indices);
+    [trainPerfy1,trainN1,valPerfy1,valN1,testPerfy1,testN1,gWBy1] = singlecalc(net,split,fcns);
+    % Combine
+    gWBy = fcn.combine_perf_y_or_grad(net,gWBy,trainN,gWBy1,trainN1,fcn.param);
+    [trainPerfy,trainN] = fcn.combine_perf_y_or_grad(net,trainPerfy,trainN,trainPerfy1,trainN1,fcn.param);
+    [valPerfy,valN] = fcn.combine_perf_y_or_grad(net,valPerfy,valN,valPerfy1,valN1,fcn.param);
+    [testPerfy,testN] = fcn.combine_perf_y_or_grad(net,testPerfy,testN,testPerfy1,testN1,fcn.param);
+  end
+end
+
+function [trainPerfy,valPerfy,testPerfy,gWBy,trainN,valN,testN] = singlecalc(net,data,fcns)
+  [Y,trainPerfy,trainN,gWBy] = calc_Y_trainPerfGrad(net,data,fcns);
+  fcn = fcns.perform;
+  if data.val.enabled
+    maskedT = gmultiply(data.T,data.val.mask);
+    [valPerfy,valN] = fcn.performance_y(net,maskedT,Y,data.EW,fcn.param);
+  else
+    valPerfy = NaN;
+    valN = 0;
+  end
+  if data.test.enabled
+    maskedT = gmultiply(data.T,data.test.mask);
+    [testPerfy,testN] = fcn.performance_y(net,maskedT,Y,data.EW,fcn.param);
+  else
+    testPerfy = NaN;
+    testN = 0;
+  end
+end
+
+function [Y,trainPerfy,trainN,gWBy] = calc_Y_trainPerfGrad(net,data,fcns)
+  % Encapsulate calculation to keep extra "signals" fields temporary.
+  signals = nntraining.y_all(net,data,fcns);
+  Y = signals.Y;
+  signals.T = gmultiply(data.T,data.train.mask);
+  fcn = fcns.perform;
+  [trainPerfy,trainN] = fcn.performance_y(net,signals.T,signals.Y,signals.EW,fcn.param);
+  signals.perf = trainPerfy;
+  gWBy = fcns.deriv.calc_gradient(net,signals,fcns);
+end
+
+

@@ -1,0 +1,234 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>Distributed Value-at-Risk Simulation</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2009-10-09"><meta name="m-file" content="paralleldemo_garch_dist"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit paralleldemo_garch_dist">Open paralleldemo_garch_dist.m in the Editor</a></div><div class="right"><a href="matlab:echodemo paralleldemo_garch_dist">Run in the Command Window</a></div></div><div class="content"><h1>Distributed Value-at-Risk Simulation</h1><!--introduction--><p>This demo uses the Parallel Computing Toolbox&#8482; to assess the value at risk (VaR) of the NASDAQ Composite Index over a 12-month holding period.  Additionally, the demo compares the simulation-based VaR results of two models of the NASDAQ returns.</p><p>We use the Monte Carlo simulation capabilities of the Econometrics Toolbox&#8482; to estimate the VaR of the NASDAQ index.  The first model of the NASDAQ index is the most traditional, and simply assumes a constant mean, constant volatility process with conditionally Gaussian returns.  The second model also assumes a constant mean, but allows for time-varying volatility by fitting the NASDAQ series to a GJR model with conditionally t-distributed returns.</p><p>For details about the value-at-risk model <a href="matlab:edit('pctdemo_setup_garch.m')">view the code for pctdemo_setup_garch</a>.</p><p>Prerequisites:</p><div><ul><li><a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a></li><li><a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB&reg; Computations into Tasks</a></li><li><a href="paralleltutorial_network_traffic.html">Minimizing Network Traffic</a></li></ul></div><p>Related demos:</p><div><ul><li><a href="paralleldemo_garch_seq.html">Sequential Value-at-Risk Simulation</a></li><li><a href="paralleldemo_garch_dist_filedata.html">Distributed Value-at-Risk Simulation Using the File System</a></li></ul></div><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Analyze the Sequential Problem</a></li><li><a href="#2">Load the Demo Settings and the Data</a></li><li><a href="#4">Divide the Work into Smaller Tasks</a></li><li><a href="#5">Create and Submit the Job</a></li><li><a href="#7">Retrieve the Results</a></li><li><a href="#12">Measure the Elapsed Time</a></li><li><a href="#13">Plot the Results</a></li></ul></div><h2>Analyze the Sequential Problem<a name="1"></a></h2><p>First, we look at how the computations in the sequential demo fit into the model introduced in the <a href="paralleltutorial_dividing_tasks.html">Dividing MATLAB Computations into Tasks</a> demo.  The main computations consist of a large number of simulations, where each simulation takes a fairly short amount of time.  We therefore have each task perform many simulations.</p><p>We notice that in the sequential demo, we never used two of the matrices returned by <tt>garchsim</tt>, and we only used the sum of the third matrix.  Following the guidelines in the <a href="paralleltutorial_network_traffic.html">Minimizing Network Traffic</a> demo, we write a wrapper task function that returns only the data that we actually use.</p><h2>Load the Demo Settings and the Data<a name="2"></a></h2><p>The demo uses the default configuration when identifying the scheduler to use. The <a href="matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')">configurations documentation</a> explains how to create new configurations and how to change the default configuration.  See <a href="paralleltutorial_defaults.html">Customizing the Settings for the Demos in the Parallel Computing Toolbox</a> for instructions on how to change the demo difficulty level or the number of tasks created.</p><pre class="codeinput">[difficulty, sched, numTasks] = pctdemo_helper_getDefaults();
+tasksPerModel = max(1, round(numTasks/2)); <span class="comment">% We create tasks for 2 models.</span>
+</pre><p>We call the function <tt>pctdemo_setup_garch</tt> to perform all the initializations for this demo.  The most important function output arguments are the time horizon, the number of simulations to perform, and both models to the NASDAQ index. The demo difficulty level determines the number of simulations we perform. You can <a href="matlab:edit('pctdemo_setup_garch.m')">view the code for pctdemo_setup_garch</a> for full details.</p><pre class="codeinput">[fig, constant, GJR, horizon, nPaths, eFit, sFit] = <span class="keyword">...</span>
+    pctdemo_setup_garch(difficulty);
+
+startTime = clock;
+</pre><img vspace="5" hspace="5" src="paralleldemo_garch_dist_01.png" alt=""> <h2>Divide the Work into Smaller Tasks<a name="4"></a></h2><p>The computationally intensive part of this demo consists of a Monte Carlo simulation.  We divide the <tt>nPaths</tt> simulations among the <tt>tasksPerModel</tt> tasks.</p><pre class="codeinput">[taskSims, tasksPerModel] = pctdemo_helper_split_scalar(nPaths, <span class="keyword">...</span>
+                                                  tasksPerModel);
+fprintf([<span class="string">'This demo will submit a job with %d task(s) '</span> <span class="keyword">...</span>
+         <span class="string">'to the scheduler.\n'</span>], 2*tasksPerModel);
+</pre><pre class="codeoutput">This demo will submit a job with 4 task(s) to the scheduler.
+</pre><h2>Create and Submit the Job<a name="5"></a></h2><p>Let us create the simulation job and the tasks in the job. We let task <tt>i</tt> perform <tt>taskSims(i)</tt> simulations. You can <a href="matlab:edit('pctdemo_task_garch.m')">view the code for pctdemo_task_garch</a> for full details.</p><pre class="codeinput">job = createJob(sched);
+<span class="keyword">for</span> i = 1:tasksPerModel
+    createTask(job, @pctdemo_task_garch, 1, <span class="keyword">...</span>
+               {constant, horizon, taskSims(i)});
+<span class="keyword">end</span>
+<span class="keyword">for</span> i = 1:tasksPerModel
+    createTask(job, @pctdemo_task_garch, 1, <span class="keyword">...</span>
+               {GJR, horizon, taskSims(i), eFit, sFit});
+<span class="keyword">end</span>
+</pre><p>We can now submit the job and wait for the simulations to complete.</p><pre class="codeinput">submit(job);
+waitForState(job, <span class="string">'finished'</span>);
+</pre><h2>Retrieve the Results<a name="7"></a></h2><p>Let us obtain the job results, verify that all the tasks finished successfully, and then destroy the job.  We throw an error if we could not obtain any results, but display a warning if we got only some of the results.</p><pre class="codeinput">jobResults = getAllOutputArguments(job);
+<span class="keyword">if</span> isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job);
+    error(<span class="string">'distcomp:demo:EmptyJobOutput'</span>,  <span class="keyword">...</span>
+          [<span class="string">'Could not obtain any job results.  The following error(s) '</span> <span class="keyword">...</span>
+           <span class="string">'occurred \nduring task execution:\n\n%s'</span>], <span class="keyword">...</span>
+          taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>The first <tt>tasksPerModel</tt> rows correspond to the constant model, while the remaining rows contain the results from the GJR model.</p><pre class="codeinput">constResults = jobResults(1:tasksPerModel, :);
+GJRResults = jobResults(tasksPerModel + 1:2*tasksPerModel, :);
+</pre><p>Combine all the results based on each model into one long vector.</p><pre class="codeinput">constantCumReturns = cat(2, constResults{:});
+GJRCumReturns = cat(2, GJRResults{:});
+</pre><p>Verify that all the tasks finished successfully.</p><pre class="codeinput">numConstResults = numel(constantCumReturns);
+numGJRResults = numel(GJRCumReturns);
+<span class="keyword">if</span> ~(numConstResults == nPaths &amp;&amp; numGJRResults == nPaths)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning(<span class="string">'distcomp:demo:IncompleteJobResults'</span>, <span class="keyword">...</span>
+            [<span class="string">'Some tasks did not finish. Results were obtained for '</span> <span class="keyword">...</span>
+             <span class="string">'%d out of %d \nsimulations using the constant model '</span> <span class="keyword">...</span>
+             <span class="string">'and %d out of %d simulations using \nthe GJR model.  '</span> <span class="keyword">...</span>
+             <span class="string">'The following error(s) '</span> <span class="keyword">...</span>
+             <span class="string">'occurred during task execution:\n\n%s'</span>], <span class="keyword">...</span>
+            numConstResults, nPaths, numGJRResults, nPaths, taskErrorMsgs);
+<span class="keyword">end</span>
+</pre><p>We have now finished all the verifications, so we can destroy the job.</p><pre class="codeinput">destroy(job);
+</pre><h2>Measure the Elapsed Time<a name="12"></a></h2><p>The time used for the distributed computations should be compared against the time it takes to perform the same set of calculations in the <a href="paralleldemo_garch_seq.html">Sequential Value-at-Risk Simulation</a> demo. The elapsed time varies with the underlying hardware and network infrastructure.</p><pre class="codeinput">elapsedTime = etime(clock, startTime);
+fprintf(<span class="string">'Elapsed time is %2.1f seconds\n'</span>, elapsedTime);
+</pre><pre class="codeoutput">Elapsed time is 13.9 seconds
+</pre><h2>Plot the Results<a name="13"></a></h2><p>The first plot illustrates the entire cumulative distribution function. The second plot highlights the lower tail of the distributions, corresponding to portfolio losses, and allows us to compare the predicted value at risk at the high confidence levels, that is at low levels of probability.  You can <a href="matlab:edit('pctdemo_plot_garch.m')">view the code for pctdemo_plot_garch</a> for full details.</p><pre class="codeinput">pctdemo_plot_garch(fig, constantCumReturns, GJRCumReturns);
+</pre><img vspace="5" hspace="5" src="paralleldemo_garch_dist_02.png" alt=""> <p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.10</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Distributed Value-at-Risk Simulation
+% This demo uses the Parallel Computing Toolbox(TM) to assess
+% the value at risk (VaR) of the NASDAQ Composite Index over 
+% a 12-month holding period.  Additionally, the demo compares the 
+% simulation-based VaR results of two models of the NASDAQ returns.  
+% 
+% We use the Monte Carlo simulation capabilities of the 
+% Econometrics Toolbox(TM) to estimate the VaR of the NASDAQ index.  The first
+% model of the NASDAQ index is the most traditional, and simply assumes a
+% constant mean, constant volatility process with conditionally Gaussian
+% returns.  The second model also assumes a constant mean, but allows for
+% time-varying volatility by fitting the NASDAQ series to a GJR model with
+% conditionally t-distributed returns.
+% 
+% For details about the value-at-risk model  
+% <matlab:edit('pctdemo_setup_garch.m') view the code for pctdemo_setup_garch>.
+%
+% Prerequisites:
+% 
+% * <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% * <paralleltutorial_dividing_tasks.html
+% Dividing MATLAB(R) Computations into Tasks>
+% * <paralleltutorial_network_traffic.html Minimizing Network Traffic>
+%
+% Related demos:
+%
+% * <paralleldemo_garch_seq.html Sequential Value-at-Risk Simulation>
+% * <paralleldemo_garch_dist_filedata.html
+% Distributed Value-at-Risk Simulation Using the File System>
+
+%   Copyright 2007-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2009/11/07 20:52:53 $
+
+%% Analyze the Sequential Problem
+% First, we look at how the computations in the sequential demo fit into the
+% model introduced in the <paralleltutorial_dividing_tasks.html Dividing MATLAB
+% Computations into Tasks> demo.  The main computations consist of a
+% large number of simulations, where each simulation takes a fairly short amount
+% of time.  We therefore have each task perform many simulations.
+%
+% We notice that in the sequential demo, we never used two of the 
+% matrices returned by |garchsim|, and we only used the sum of the third 
+% matrix.  Following the guidelines in the
+% <paralleltutorial_network_traffic.html Minimizing Network Traffic> demo, 
+% we write a wrapper task function that returns only the data that we actually 
+% use.
+
+%% Load the Demo Settings and the Data
+% The demo uses the default configuration when identifying the scheduler to use.
+% The
+% <matlab:helpview(fullfile(docroot,'toolbox','distcomp','distcomp_ug.map'),'configurations_help')
+% configurations documentation> 
+% explains how to create new configurations and how to change the default 
+% configuration.  See 
+% <paralleltutorial_defaults.html
+% Customizing the Settings for the Demos in the Parallel Computing Toolbox> 
+% for instructions on how to change the demo difficulty level or the number of
+% tasks created.
+[difficulty, sched, numTasks] = pctdemo_helper_getDefaults();
+tasksPerModel = max(1, round(numTasks/2)); % We create tasks for 2 models.
+
+%%
+% We call the function |pctdemo_setup_garch| to perform all the initializations
+% for this demo.  The most important function output arguments are the time
+% horizon, the number of simulations to perform, and both models to the NASDAQ
+% index. The demo difficulty level determines the number of simulations we
+% perform.
+% You can 
+% <matlab:edit('pctdemo_setup_garch.m') view the code for pctdemo_setup_garch> 
+% for full details.
+[fig, constant, GJR, horizon, nPaths, eFit, sFit] = ...
+    pctdemo_setup_garch(difficulty);
+
+startTime = clock;
+
+%% Divide the Work into Smaller Tasks
+% The computationally intensive part of this demo consists of a
+% Monte Carlo simulation.  We divide the |nPaths| simulations among
+% the |tasksPerModel| tasks.
+[taskSims, tasksPerModel] = pctdemo_helper_split_scalar(nPaths, ...
+                                                  tasksPerModel);
+fprintf(['This demo will submit a job with %d task(s) ' ...
+         'to the scheduler.\n'], 2*tasksPerModel);
+
+%% Create and Submit the Job
+% Let us create the simulation job and the tasks in the job. We let
+% task |i| perform |taskSims(i)| simulations. 
+% You can 
+% <matlab:edit('pctdemo_task_garch.m') view the code for pctdemo_task_garch> 
+% for full details.
+job = createJob(sched);
+for i = 1:tasksPerModel
+    createTask(job, @pctdemo_task_garch, 1, ...
+               {constant, horizon, taskSims(i)});
+end
+for i = 1:tasksPerModel
+    createTask(job, @pctdemo_task_garch, 1, ...
+               {GJR, horizon, taskSims(i), eFit, sFit});
+end
+
+%%
+% We can now submit the job and wait for the simulations to complete.
+submit(job);
+waitForState(job, 'finished');
+
+%% Retrieve the Results
+% Let us obtain the job results, verify that all the tasks finished
+% successfully, and then destroy the job.  We throw an error if we could not
+% obtain any results, but display a warning if we got only some of the results.
+jobResults = getAllOutputArguments(job);
+if isempty(jobResults)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    destroy(job);
+    error('distcomp:demo:EmptyJobOutput',  ...
+          ['Could not obtain any job results.  The following error(s) ' ...
+           'occurred \nduring task execution:\n\n%s'], ...
+          taskErrorMsgs);
+end
+
+%%
+% The first |tasksPerModel| rows correspond to the constant model, while
+% the remaining rows contain the results from the GJR model.
+constResults = jobResults(1:tasksPerModel, :);
+GJRResults = jobResults(tasksPerModel + 1:2*tasksPerModel, :);
+%%
+% Combine all the results based on each model into one long vector. 
+constantCumReturns = cat(2, constResults{:});
+GJRCumReturns = cat(2, GJRResults{:});
+%%
+% Verify that all the tasks finished successfully.
+numConstResults = numel(constantCumReturns);
+numGJRResults = numel(GJRCumReturns);
+if ~(numConstResults == nPaths && numGJRResults == nPaths)
+    taskErrorMsgs = pctdemo_helper_getUniqueErrors(job);
+    warning('distcomp:demo:IncompleteJobResults', ...
+            ['Some tasks did not finish. Results were obtained for ' ...
+             '%d out of %d \nsimulations using the constant model ' ...
+             'and %d out of %d simulations using \nthe GJR model.  ' ...
+             'The following error(s) ' ...
+             'occurred during task execution:\n\n%s'], ...
+            numConstResults, nPaths, numGJRResults, nPaths, taskErrorMsgs);
+end
+
+%%
+% We have now finished all the verifications, so we can destroy the job.
+destroy(job);
+
+%% Measure the Elapsed Time
+% The time used for the distributed computations should be compared
+% against the time it takes to perform the same set of calculations
+% in the <paralleldemo_garch_seq.html Sequential Value-at-Risk Simulation> demo.
+% The elapsed time varies with the underlying hardware and network infrastructure.
+elapsedTime = etime(clock, startTime);
+fprintf('Elapsed time is %2.1f seconds\n', elapsedTime);
+
+%% Plot the Results
+% The first plot illustrates the entire cumulative distribution function.
+% The second plot highlights the lower tail of the distributions, 
+% corresponding to portfolio losses, and allows us to compare the predicted
+% value at risk at the high confidence levels, that is at low levels 
+% of probability.  You can 
+% <matlab:edit('pctdemo_plot_garch.m') view the code for pctdemo_plot_garch> 
+% for full details.
+pctdemo_plot_garch(fig, constantCumReturns, GJRCumReturns);
+
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

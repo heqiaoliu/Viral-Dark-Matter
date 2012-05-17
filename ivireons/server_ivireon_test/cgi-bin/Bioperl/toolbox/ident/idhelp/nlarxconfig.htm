@@ -1,0 +1,123 @@
+<html>
+
+<title>Help: Nonlinear ARX Model Configuration</title>
+
+<body>
+
+<center><h2>Nonlinear ARX Model Configuration</h2></center>
+
+<p>Nonlinear ARX model represents a parallel form of
+nonlinearity where simple transformation of measured inputs and outputs (called
+"regressors") are used in parallel linear and nonlinear blocks to describe the
+observed phenomenon. Configuration of these models involves two steps – setting
+the model regressors and configuring the properties of the nonlinearity. The
+two tabbed panels titled "Regressors" and "Model Properties" facilitate these
+two steps. For multi-output systems, these specifications have to be done
+separately for each output. In multi-output cases, select the output for
+configuration from the outputs popup (this popup is hidden if working data has
+only one output). The check box "apply settings to all outputs" allows
+specifications for regressors and model properties to be applied to all
+outputs.</p><hr>
+
+<center><h3>Regressors</h3></center>
+
+<p>The regressors are specified by entering the delay and
+number of terms in the table under the Regressors panel. Each row in the table
+corresponds to a single input or output channel. The first column lists the
+names of input/output channels. For each channel, specify the delay and
+number of terms in the second and the third columns respectively. The fourth
+column is a visual aid for the list of regressors that will be created for each
+channel. See the <a href="#regressor_table_note">explanation</a> on these
+entries below. </p>
+
+<p>Press Infer Input Delay... button to determine delay from
+each input to each output graphically.</p>
+
+<p>Press Edit Regressor... button to view a list of all
+regressors, select a subset for nonlinear block and create new (custom) regressors.</p>
+
+<p><b><a href="iddelayest.htm">Inferring Input Delay by
+Inspection of Working Data</a></b></p>
+
+<p><b>More Options for Working with Regressors</b>: The
+specification of integers for delay and number of terms creates a default set
+of regressors called "standard regressors". These are simple delayed version of
+measured data signals, such as y(t-1), y(t-2),..., u(t-1), u(t-2),.. etc. By
+default, all of these regressors are used as inputs to both the linear and the
+nonlinear blocks. The choice of the regressors to use may further be customized
+by exercising the following options:</p>
+
+<ul>
+ <li>Creating arbitrary functions of input and output variables
+     (such as y(t-1)^2*u(t-5)) and using them as regressors. These are called
+     "custom regressors".</li>
+ <li>Using only a subset of regressors in the nonlinear block.
+     Note that all regressors (standard + custom) are always used in the linear
+     block. The choice of selection of a subset of regressors is only for the
+     nonlinear block.</li>
+</ul>
+
+<p>Press the Edit Regressors... button to exercise these
+options. Follow the links below for more information:</p>
+
+<p><b><a href="nlarx_customreg.htm">Creating Custom Regressors</a></b></p>
+
+<p><b><a href="nlarx_regconfig.htm#select_regressor">Selecting
+a Subset of Regressors for the Nonlinear Block</a></b></p><hr>
+
+<center><h3>Model Properties</h3></center>
+
+<p>Model properties panel is selected by clicking on the corresponding
+tab. This panel offers choices regarding the configuration of the nonlinearity
+estimator.</p>
+
+<p><b>Nonlinearity estimator</b>: From the Nonlinearity popup,
+select a type of nonlinearity to use in the nonlinear block of the model.
+Available choices are: Wavelet Network (default), Tree Partition, Sigmoid Network, Neural
+Network, Custom Network and None. Properties related to the selected
+nonlinearity are configured in the group box located beneath the popup. </p>
+
+<p><b>Linear Block</b>: You may also include or exclude the
+linear block from the Nonlinear ARX model by using the corresponding checkbox,
+located adjacent to the nonlinearity popup. This choice is available only
+if the selected nonlinearity is one of Wavelet Network, Sigmoid Network or
+Custom Network. There are no configurable properties of the linear block. The
+only choice available, as indicated above, is whether to include it in the
+model or not.</p>
+
+<p><b><a href="nlarx_nonlin.htm">Nonlinearity Configuration</a></b>:
+When a nonlinearity type is selected in the popup, the group box beneath it
+updates to show the properties of the chosen nonlinearity. For most
+nonlinearities, the main choice is the number of units to use. Reasonable
+default settings are available for all properties. For more information on
+nonlinearity configuration, click <a href="nlarx_nonlin.htm">here</a>.</p>
+
+<hr>
+
+<p><a name="regressor_table_note"><b>A note on entries in the
+regressor table:</b></a></p>
+
+<p>For Nonlinear ARX models, the outputs are coupled – the
+prediction of a particular output can make use of past samples of its own
+values, values of all inputs as well as past samples of all <i>other</i>
+outputs. For example, if working data has two outputs y1 and y2, and one
+input u1, then:</p>
+
+<pre>predicted value of y1(t) = f( y1(t-1), y1(t-2), y1(t-3),... y1(t-na1),
+                              y2(t-1), y2(t-2), y1(t-3),... y2(t-na2),
+                              u1(t-nk), u1(t-nk-1), u1(t-nk-2),... u1(t-nk-nb+1)
+                            )
+</pre>
+
+<p>In the above expression, "nk" refers to the input delay. The
+output delay is fixed to 1. There are na1 terms from y1, na2 terms from y2 and
+nb terms from u1. The integers entered in the regressors table have the same
+meaning as in the linear ARX model case. Number of terms for input channels
+corresponds to the coefficient "nb" while the number of terms for output
+channels is "na". Delay on input channels is same as coefficient "nk". </p>
+
+<p><a href="nlmodelestim.htm">Estimation of nonlinear models using System Identification Tool.</a></p>
+
+</body>
+
+</html>

@@ -1,0 +1,370 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Creating a Communications Channel for Target Connectivity</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="rtwdemo_rtiostream.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit rtwdemo_rtiostream">Open rtwdemo_rtiostream.m in the Editor</a></div><div class="right"><a href="matlab:echodemo rtwdemo_rtiostream">Run in the Command Window</a></div></div><div class="content"><h1>Creating a Communications Channel for Target Connectivity</h1><!--introduction--><p>This demo shows how to implement a communication channel for use with the Real-Time Workshop&reg; product and your own custom target support package.</p><p>This communication channel enables exchange of data between different processes. This supports capabilities such as Processor-in-the-Loop (PIL) simulation that require exchange of data between the Simulink&reg; software environment (running on your host machine) and deployed code (running on target hardware).</p><p>You will learn about the rtiostream interface and how it provides a generic communication channel that you can implement in the form of target connectivity drivers for a range of different connection types. This demo explains how to use the default implementation via TCP/IP.</p><p>You will learn how two entities, Station A and Station B can use the rtiostream interface to set up a communication channel and exchange data. For the purposes of this demo, both Station A and Station B are configured within the same process on your desktop computer.</p><p>You will learn how to use the target connectivity drivers to support an on-target PIL simulation. For on-target simulation, Station A and Station B represent the target and host computers that exchange data via the communication channel. On the host side, the target connectivity driver is implemented as a shared library that is loaded and called from within the MATLAB&reg; product. On the target side, the driver must be source code or a library that is linked into the application that runs on the target.</p><p>Additionally, this demo explains the steps required to:</p><div><ul><li>Configure your own target-side driver for TCP/IP to operate with the default   host-side TCP/IP driver</li><li>Configure the supplied host-side driver for serial communications</li><li>Implement custom target connectivity drivers, e.g. using CAN or USB for both   host and target sides of the communication channel.</li></ul></div><p>See also <a href="matlab:showdemo('rtwdemo_sil_pil_script')">rtwdemo_sil_pil_script</a>, <a href="matlab:showdemo('rtwdemo_custom_pil')">rtwdemo_custom_pil</a></p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">View Source Code for the Default TCP/IP Implementation</a></li><li><a href="#2">Location Of Shared Library Files</a></li><li><a href="#3">Testing the Target Connectivity Drivers</a></li><li><a href="#4">Send Some Data from Station B to Station A</a></li><li><a href="#5">Send a Response from Station A to Station B</a></li><li><a href="#6">Close Connection and Unload the Shared Libraries</a></li><li><a href="#7">Using the Host-Side Driver for Serial Communications</a></li><li><a href="#8">Next Steps to Configure Your Own Target-Side Driver</a></li><li><a href="#9">Next Steps to Configure Your Own Host-Side Driver</a></li></ul></div><h2>View Source Code for the Default TCP/IP Implementation<a name="1"></a></h2><p>The file rtiostream_tcpip.c implements both client-side and server-side TCP/IP communication; a startup parameter is used to configure the driver to operate in either client or server mode. You may use this source file as a starting point for a custom implementation. Note that, in general, each side of the communication channel only requires one or other of the server or client implementations; if the client and server drivers will run on different architectures, it may be convenient to place the driver code for each architecture in a separate source file.</p><p>The header file rtiostream.h contains prototypes for the functions rtIOStreamOpen/Send/Recv/Close. It must always be included (using #include) by any custom implementation.</p><pre class="codeinput"><span class="comment">% Location of TCP/IP driver source code</span>
+rtiostreamtcpip_dir=fullfile(matlabroot,<span class="string">'rtw'</span>,<span class="string">'c'</span>,<span class="string">'src'</span>,<span class="string">'rtiostream'</span>,<span class="keyword">...</span>
+                              <span class="string">'rtiostreamtcpip'</span>);
+
+<span class="comment">% View rtiostream_tcpip.c</span>
+edit(fullfile(rtiostreamtcpip_dir,<span class="string">'rtiostream_tcpip.c'</span>));
+
+<span class="comment">% View rtiostream.h</span>
+edit(fullfile(matlabroot,<span class="string">'rtw'</span>,<span class="string">'c'</span>,<span class="string">'src'</span>,<span class="string">'rtiostream.h'</span>));
+</pre><h2>Location Of Shared Library Files<a name="2"></a></h2><p>To access the target connectivity drivers from the MATLAB product they must be compiled to a shared library. The shared library must be located on your system path. A shared library for the default TCP/IP drivers is located in matlabroot/bin/$ARCH (where $ARCH is your system architecture, e.g. win64)</p><pre class="codeinput"><span class="comment">% The shared library filename extension and location depends on your operating</span>
+<span class="comment">% system.</span>
+sharedLibExt=system_dependent(<span class="string">'GetSharedLibExt'</span>);
+<span class="keyword">if</span> ispc
+    prefix = <span class="string">''</span>;
+<span class="keyword">else</span>
+    prefix=<span class="string">'libmw'</span>;
+<span class="keyword">end</span>
+
+<span class="comment">% Shared library for both Station A and Station B</span>
+libTcpip = [prefix <span class="string">'rtiostreamtcpip'</span> sharedLibExt];
+disp(libTcpip)
+</pre><pre class="codeoutput">rtiostreamtcpip.dll
+</pre><h2>Testing the Target Connectivity Drivers<a name="3"></a></h2><p>If you are implementing a custom target connectivity driver, it is helpful to be able to test it from within the MATLAB product. The following example shows how to load the default TCP/IP target connectivity drivers and use them for data exchange between Station A and Station B.</p><p>To access the drivers you can use the MEX-file rtiostream_wrapper. This MEX-file allows you to load the shared library and access the rtiostream functions to open/close an rtiostream channel and send/receive data.</p><p>In this example, both Station A and Station B are running on the host computer. Station A is configured as a TCP/IP server and Station B as a TCP/IP client. For host to target communication, the host is typically configured as a TCP/IP client and the target as a TCP/IP server.</p><pre class="codeinput"><span class="comment">% Choose a port number for TCP</span>
+<span class="keyword">if</span> usejava(<span class="string">'jvm'</span>)
+    <span class="comment">% Find a free port</span>
+    tempSocket = java.net.ServerSocket(0);
+    port = num2str(tempSocket.getLocalPort);
+    tempSocket.close;
+<span class="keyword">else</span>
+    <span class="comment">% Resort to a hard-coded port</span>
+    port = <span class="string">'14646'</span>;
+<span class="keyword">end</span>
+
+<span class="comment">% Open the Station A rtiostream as a TCP/IP server</span>
+stationA = rtiostream_wrapper(libTcpip,<span class="string">'open'</span>,<span class="keyword">...</span>
+                                 <span class="string">'-client'</span>, <span class="string">'0'</span>,<span class="keyword">...</span>
+                                 <span class="string">'-blocking'</span>, <span class="string">'0'</span>,<span class="keyword">...</span>
+                                 <span class="string">'-port'</span>,port);
+
+<span class="comment">% If the communication channel was successfully opened, the return value is a</span>
+<span class="comment">% handle to the connection; a return value of -1 indicates an error.</span>
+assert(stationA~=(-1)) <span class="comment">% Test for expected return value</span>
+
+<span class="comment">% Open the Station B rtiostream as a TCP/IP client</span>
+stationB = rtiostream_wrapper(libTcpip,<span class="string">'open'</span>,<span class="keyword">...</span>
+                                 <span class="string">'-client'</span>,<span class="string">'1'</span>,<span class="keyword">...</span>
+                                 <span class="string">'-blocking'</span>, <span class="string">'0'</span>,<span class="keyword">...</span>
+                                 <span class="string">'-port'</span>,port,<span class="keyword">...</span>
+                                 <span class="string">'-hostname'</span>,<span class="string">'localhost'</span>);
+<span class="comment">% If the communication channel was successfully opened, the return value is a</span>
+<span class="comment">% handle to the connection; a return value of -1 indicates an error.</span>
+assert(stationB~=(-1)) <span class="comment">% Test for expected return value</span>
+</pre><h2>Send Some Data from Station B to Station A<a name="4"></a></h2><p>The target connectivity drivers are designed to send a stream of data in 8-bit bytes. For processors that are not byte-addressable the data is sent in the smallest addressable word size.</p><pre class="codeinput"><span class="comment">% Send Some Data from Station B to Station A</span>
+msgOut = uint8(<span class="string">'Station A, this is Station B. Are you there? OVER'</span>);
+
+[retVal sizeSent] = rtiostream_wrapper(libTcpip,<span class="keyword">...</span>
+                                       <span class="string">'send'</span>,<span class="keyword">...</span>
+                                       stationB,<span class="keyword">...</span>
+                                       msgOut,<span class="keyword">...</span>
+                                       length(msgOut));
+assert(retVal==0); <span class="comment">% A return value of zero indicates success</span>
+assert(sizeSent==length(msgOut)); <span class="comment">% Check that all bytes in the message were sent</span>
+
+<span class="comment">% Allow time to ensure data transmission is complete</span>
+pause(0.2)
+
+<span class="comment">% Receive data on the Station A</span>
+[retVal msgRecvd sizeRecvd] = rtiostream_wrapper(libTcpip,<span class="keyword">...</span>
+                                                 <span class="string">'recv'</span>,<span class="keyword">...</span>
+                                                 stationA,<span class="keyword">...</span>
+                                                 100);
+assert(retVal==0); <span class="comment">% A return value of zero indicates success</span>
+assert(sizeRecvd==sizeSent); <span class="comment">% Check that all bytes in the message were received</span>
+
+<span class="comment">% Display the received data</span>
+disp(char(msgRecvd))
+</pre><pre class="codeoutput">Station A, this is Station B. Are you there? OVER                                                   
+</pre><h2>Send a Response from Station A to Station B<a name="5"></a></h2><pre class="codeinput"><span class="comment">% Send data from Station A to Station B</span>
+msgOut = uint8(<span class="string">'Station B, this is Station A. Yes, I''m here! OVER.'</span>);
+[~, sizeSent] = rtiostream_wrapper(libTcpip,<span class="keyword">...</span><span class="comment"> %#ok</span>
+                                       <span class="string">'send'</span>,<span class="keyword">...</span>
+                                       stationA,<span class="keyword">...</span>
+                                       msgOut,<span class="keyword">...</span>
+                                       length(msgOut));
+<span class="comment">% Allow time to ensure data transmission is complete</span>
+pause(0.2)
+
+<span class="comment">% Receive data on Station B</span>
+[~, msgRecvd, sizeRecvd] = rtiostream_wrapper(libTcpip,<span class="keyword">...</span><span class="comment"> %#ok</span>
+                                                 <span class="string">'recv'</span>,<span class="keyword">...</span>
+                                                 stationB,<span class="keyword">...</span>
+                                                 100);
+
+<span class="comment">% Display the received data</span>
+disp(char(msgRecvd))
+</pre><pre class="codeoutput">Station B, this is Station A. Yes, I'm here! OVER.                                                  
+</pre><h2>Close Connection and Unload the Shared Libraries<a name="6"></a></h2><pre class="codeinput"><span class="comment">% Close rtiostream on the Station B</span>
+retVal = rtiostream_wrapper(libTcpip,<span class="string">'close'</span>,stationB);
+assert(retVal==0); <span class="comment">% A return value of zero indicates no error</span>
+
+<span class="comment">% Close rtiostream on the Station A</span>
+retVal = rtiostream_wrapper(libTcpip,<span class="string">'close'</span>,stationA);
+assert(retVal==0) <span class="comment">% A return value of zero indicates no error</span>
+
+<span class="comment">% Unload the shared library</span>
+rtiostream_wrapper(libTcpip, <span class="string">'unloadlibrary'</span>);
+</pre><h2>Using the Host-Side Driver for Serial Communications<a name="7"></a></h2><p>You can use the supplied host-side driver for serial communications as an alternative to the drivers for TCP/IP. You can configure the serial driver using a similar approach to the TCP/IP driver. For example, to open a serial rtiostream channel, on COM8, enter the command</p><pre>   stationA = rtiostream_wrapper('rtiostreamserial.dll','open','-port','COM8')</pre><p>The syntax for the 'send', 'recv', 'close' and 'unload' operations is the same as for the TCP/IP driver.</p><pre class="codeinput"><span class="comment">% Note that the serial driver is only available on the Windows platform only.</span>
+</pre><h2>Next Steps to Configure Your Own Target-Side Driver<a name="8"></a></h2><p>If your target has an ethernet connection and you have a TCP/IP stack available, follow these steps:</p><p>1. Write a wrapper for your TCP/IP stack that makes it available via the    rtiostream interface defined in rtiostream.h. 2. Write a test application for your target that sends and receives some    data, similar to the example above. 3. You can use the rtiostream_wrapper MEX-file and host-side TCP/IP driver    to test your driver software running on the target. 4. When you have a working target-side driver you must include driver source    files in the build for your code generated by the Real-Time Workshop    product.</p><p>Note that the default host-side driver used by PIL mode is configured as a TCP/IP client; this means that your target-side driver need only be configured to operate as a TCP/IP server.</p><p>If you need to use a communications channel that is not already supported on the host-side, you will have to write drivers for both host and target. In this case you can still use the rtiostream_wrapper MEX-file for testing your rtiostream drivers.</p><h2>Next Steps to Configure Your Own Host-Side Driver<a name="9"></a></h2><p>You can implement the target connectivity drivers using many different communication channels. For example, you may need to implement host-target communications via a special serial connection. In this case you must provide drivers for both the host and target.</p><p>On the host-side, you can test the drivers using the rtiostream_wrapper MEX-file. Note that if your driver includes diagnostic output using printf these must be replaced with mexPrintf if the shared library is being loaded by rtiostream_wrapper.</p><p>When you have a working host-side device driver you must make it available within the Simulink software environment. For PIL simulation, you can do this by registering the shared host-side shared library via sl_customization.</p><p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Creating a Communications Channel for Target Connectivity
+% This demo shows how to implement a communication channel for use with the
+% Real-Time Workshop(R) product and your own custom target support package. 
+%
+% This communication channel enables exchange of data between different
+% processes. This supports capabilities such as Processor-in-the-Loop (PIL)
+% simulation that require exchange of data between the Simulink(R) software
+% environment (running on your host machine) and deployed code (running on
+% target hardware).
+%
+% You will learn about the rtiostream interface and how it provides a generic
+% communication channel that you can implement in the form of target
+% connectivity drivers for a range of different connection types. This demo
+% explains how to use the default implementation via TCP/IP.
+%
+% You will learn how two entities, Station A and Station B can use the
+% rtiostream interface to set up a communication channel and exchange data. For
+% the purposes of this demo, both Station A and Station B are configured within
+% the same process on your desktop computer.
+% 
+% You will learn how to use the target connectivity drivers to support an
+% on-target PIL simulation. For on-target simulation, Station A and Station B
+% represent the target and host computers that exchange data via the
+% communication channel. On the host side, the target connectivity driver is
+% implemented as a shared library that is loaded and called from within the
+% MATLAB(R) product. On the target side, the driver must be source code or a
+% library that is linked into the application that runs on the target.
+%
+% Additionally, this demo explains the steps required to:
+%
+% * Configure your own target-side driver for TCP/IP to operate with the default
+%   host-side TCP/IP driver
+% * Configure the supplied host-side driver for serial communications
+% * Implement custom target connectivity drivers, e.g. using CAN or USB for both
+%   host and target sides of the communication channel.
+%
+% See also <matlab:showdemo('rtwdemo_sil_pil_script') rtwdemo_sil_pil_script>,
+% <matlab:showdemo('rtwdemo_custom_pil') rtwdemo_custom_pil>
+
+%   Copyright 2007-2009 The MathWorks, Inc.
+%   $Revision: 1.1.6.9 $  $Date: 2009/11/13 04:56:18 $
+
+%% View Source Code for the Default TCP/IP Implementation
+% The file rtiostream_tcpip.c implements both client-side and server-side TCP/IP
+% communication; a startup parameter is used to configure the driver to operate
+% in either client or server mode. You may use this source file as a starting
+% point for a custom implementation. Note that, in general, each side of the
+% communication channel only requires one or other of the server or client
+% implementations; if the client and server drivers will run on different
+% architectures, it may be convenient to place the driver code for each
+% architecture in a separate source file.
+%
+% The header file rtiostream.h contains prototypes for the functions
+% rtIOStreamOpen/Send/Recv/Close. It must always be included (using #include) by
+% any custom implementation.
+
+% Location of TCP/IP driver source code
+rtiostreamtcpip_dir=fullfile(matlabroot,'rtw','c','src','rtiostream',...
+                              'rtiostreamtcpip');
+
+% View rtiostream_tcpip.c
+edit(fullfile(rtiostreamtcpip_dir,'rtiostream_tcpip.c'));
+
+% View rtiostream.h
+edit(fullfile(matlabroot,'rtw','c','src','rtiostream.h'));
+
+
+%% Location Of Shared Library Files
+% To access the target connectivity drivers from the MATLAB product they must be
+% compiled to a shared library. The shared library must be located on your
+% system path. A shared library for the default TCP/IP drivers is located in
+% matlabroot/bin/$ARCH (where $ARCH is your system architecture, e.g. win64)
+
+% The shared library filename extension and location depends on your operating
+% system.
+sharedLibExt=system_dependent('GetSharedLibExt');
+if ispc
+    prefix = '';
+else
+    prefix='libmw';
+end
+
+% Shared library for both Station A and Station B
+libTcpip = [prefix 'rtiostreamtcpip' sharedLibExt];
+disp(libTcpip)
+
+%% Testing the Target Connectivity Drivers
+% If you are implementing a custom target connectivity driver, it is helpful to
+% be able to test it from within the MATLAB product. The following example shows
+% how to load the default TCP/IP target connectivity drivers and use them for
+% data exchange between Station A and Station B.
+%
+% To access the drivers you can use the MEX-file rtiostream_wrapper. This
+% MEX-file allows you to load the shared library and access the rtiostream
+% functions to open/close an rtiostream channel and send/receive data.
+%
+% In this example, both Station A and Station B are running on the host
+% computer. Station A is configured as a TCP/IP server and Station B as a TCP/IP
+% client. For host to target communication, the host is typically configured as
+% a TCP/IP client and the target as a TCP/IP server.
+
+% Choose a port number for TCP
+if usejava('jvm')
+    % Find a free port
+    tempSocket = java.net.ServerSocket(0);
+    port = num2str(tempSocket.getLocalPort);
+    tempSocket.close;
+else
+    % Resort to a hard-coded port
+    port = '14646';
+end
+
+% Open the Station A rtiostream as a TCP/IP server
+stationA = rtiostream_wrapper(libTcpip,'open',...
+                                 '-client', '0',...
+                                 '-blocking', '0',...
+                                 '-port',port);
+
+% If the communication channel was successfully opened, the return value is a
+% handle to the connection; a return value of -1 indicates an error.
+assert(stationA~=(-1)) % Test for expected return value
+
+% Open the Station B rtiostream as a TCP/IP client
+stationB = rtiostream_wrapper(libTcpip,'open',...
+                                 '-client','1',...
+                                 '-blocking', '0',...
+                                 '-port',port,...
+                                 '-hostname','localhost');
+% If the communication channel was successfully opened, the return value is a
+% handle to the connection; a return value of -1 indicates an error.
+assert(stationB~=(-1)) % Test for expected return value 
+
+%% Send Some Data from Station B to Station A
+% The target connectivity drivers are designed to send a stream of data in 8-bit
+% bytes. For processors that are not byte-addressable the data is sent in the
+% smallest addressable word size.
+
+% Send Some Data from Station B to Station A
+msgOut = uint8('Station A, this is Station B. Are you there? OVER');
+
+[retVal sizeSent] = rtiostream_wrapper(libTcpip,...
+                                       'send',...
+                                       stationB,...
+                                       msgOut,...
+                                       length(msgOut));
+assert(retVal==0); % A return value of zero indicates success
+assert(sizeSent==length(msgOut)); % Check that all bytes in the message were sent
+
+% Allow time to ensure data transmission is complete
+pause(0.2)
+
+% Receive data on the Station A
+[retVal msgRecvd sizeRecvd] = rtiostream_wrapper(libTcpip,...
+                                                 'recv',...
+                                                 stationA,...
+                                                 100);
+assert(retVal==0); % A return value of zero indicates success
+assert(sizeRecvd==sizeSent); % Check that all bytes in the message were received
+
+% Display the received data
+disp(char(msgRecvd))
+
+%% Send a Response from Station A to Station B
+
+% Send data from Station A to Station B
+msgOut = uint8('Station B, this is Station A. Yes, I''m here! OVER.');
+[~, sizeSent] = rtiostream_wrapper(libTcpip,... %#ok
+                                       'send',...
+                                       stationA,...
+                                       msgOut,...
+                                       length(msgOut));
+% Allow time to ensure data transmission is complete
+pause(0.2)
+
+% Receive data on Station B
+[~, msgRecvd, sizeRecvd] = rtiostream_wrapper(libTcpip,... %#ok
+                                                 'recv',...
+                                                 stationB,...
+                                                 100);
+
+% Display the received data
+disp(char(msgRecvd))
+
+%% Close Connection and Unload the Shared Libraries
+
+% Close rtiostream on the Station B
+retVal = rtiostream_wrapper(libTcpip,'close',stationB);
+assert(retVal==0); % A return value of zero indicates no error
+
+% Close rtiostream on the Station A
+retVal = rtiostream_wrapper(libTcpip,'close',stationA);
+assert(retVal==0) % A return value of zero indicates no error
+
+% Unload the shared library
+rtiostream_wrapper(libTcpip, 'unloadlibrary');
+
+%% Using the Host-Side Driver for Serial Communications
+% You can use the supplied host-side driver for serial communications as an
+% alternative to the drivers for TCP/IP. You can configure the serial driver
+% using a similar approach to the TCP/IP driver. For example, to open a serial
+% rtiostream channel, on COM8, enter the command
+%
+%     stationA = rtiostream_wrapper('rtiostreamserial.dll','open','-port','COM8')
+%
+% The syntax for the 'send', 'recv', 'close' and 'unload' operations is the same
+% as for the TCP/IP driver.
+
+% Note that the serial driver is only available on the Windows platform only.
+
+
+%% Next Steps to Configure Your Own Target-Side Driver
+% If your target has an ethernet connection and you have a TCP/IP stack
+% available, follow these steps:
+% 
+% 1. Write a wrapper for your TCP/IP stack that makes it available via the 
+%    rtiostream interface defined in rtiostream.h.
+% 2. Write a test application for your target that sends and receives some 
+%    data, similar to the example above.
+% 3. You can use the rtiostream_wrapper MEX-file and host-side TCP/IP driver
+%    to test your driver software running on the target.
+% 4. When you have a working target-side driver you must include driver source
+%    files in the build for your code generated by the Real-Time Workshop
+%    product.
+%
+% Note that the default host-side driver used by PIL mode is configured as a
+% TCP/IP client; this means that your target-side driver need only be configured
+% to operate as a TCP/IP server.
+%
+% If you need to use a communications channel that is not already supported 
+% on the host-side, you will have to write drivers for both host and
+% target. In this case you can still use the rtiostream_wrapper MEX-file
+% for testing your rtiostream drivers.
+
+%% Next Steps to Configure Your Own Host-Side Driver
+% You can implement the target connectivity drivers using many different
+% communication channels. For example, you may need to implement host-target
+% communications via a special serial connection. In this case you must provide
+% drivers for both the host and target.
+%
+% On the host-side, you can test the drivers using the rtiostream_wrapper
+% MEX-file. Note that if your driver includes diagnostic output using printf
+% these must be replaced with mexPrintf if the shared library is being loaded by
+% rtiostream_wrapper.
+%
+% When you have a working host-side device driver you must make it available
+% within the Simulink software environment. For PIL simulation, you can do this
+% by registering the shared host-side shared library via sl_customization.
+
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

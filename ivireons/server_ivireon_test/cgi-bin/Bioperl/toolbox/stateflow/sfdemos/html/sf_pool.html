@@ -1,0 +1,212 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling the Opening Shot in Pool</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-07-08"><meta name="DC.source" content="sf_pool.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left">sf_pool.mdl</div><div class="right"><a href="matlab:sf_pool">Open this model</a></div></div><div class="content"><h1>Modeling the Opening Shot in Pool</h1><!--introduction--><p>This is a model of the opening shot of pool. There are 15 balls arranged in a triangular grid near one end of the table and the cue ball is released towards them from the other end of the table. This demonstration is meant as an exercise in explaining how the continuous time features of Stateflow&reg; can be used to very simply express systems which have a large number of discontinuous events which rapidly (and unpredictably) change the evolution of the system.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Physics</a></li><li><a href="#2">Stateflow&reg; Model</a></li><li><a href="#5">Simulation Result</a></li></ul></div><h2>Physics<a name="1"></a></h2><p>We make several simplifying assumptions in simulating the system. Perhaps the most important simplification is that we completely ignore the "spin" of the balls. In other words, the over-all state of the system is described completely by the positions and velocities of the individual balls.</p><p><b>Friction Model</b></p><p>We use a simplified friction model where we assume that a ball which is moving is acted upon by a friction force of constant magnitude which acts opposite to the direction of motion. In other words:</p><p><img src="sf_pool_eq53431.png" alt="$$\dot{\mathbf{x}} = \mathbf{v}$$"></p><p><img src="sf_pool_eq38562.png" alt="$$\dot{\mathbf{v}} = -\mu g \hat{\mathbf{v}}$$"></p><p>where</p><p><img src="sf_pool_eq79563.png" alt="$$\mathbf{x} = \mbox{vector position of the ball}$$"></p><p><img src="sf_pool_eq74520.png" alt="$$\mathbf{v} = \mbox{vector velocity of the ball}$$"></p><p><img src="sf_pool_eq90043.png" alt="$$g = \mbox{acceleration due to gravity}$$"></p><p><img src="sf_pool_eq84389.png" alt="$$\mu = \mbox{coefficient of friction}$$"></p><p><img src="sf_pool_eq69045.png" alt="$$\hat{\mathbf{v}} = \mbox{unit vector in the direction of the velocity of&#xA;the ball.}$$"></p><p>Note however that the friction force acts only as long as the ball is actually moving, not when it is stationary. Thus we should more accurately be saying:</p><p><img src="sf_pool_eq44469.png" alt="$$\dot{\mathbf{v}} =&#xA;\left\{&#xA;\begin{array}{cc}&#xA;-\mu g \hat{\mathbf{v}} &amp; \mbox{when $\|v\| &gt; 0$}\\&#xA;0 &amp; \mbox{otherwise}&#xA;\end{array}&#xA;\right.&#xA;$$"></p><p>This implies that the friction dynamics of the pool balls have an inherent modal description which we need to account for when we model the system.</p><p><b>Collision Dynamics</b></p><p>Collision between balls is modeled using a simple restoring force model. In other words, we model the balls as being very slightly springy. When the balls are in contact, the reaction force between them is given by:</p><p><img src="sf_pool_eq62186.png" alt="$$\mathbf{F}_1 = k_p(2R-\Delta \mathbf{p})\hat{\Delta \mathbf{p}} - k_v\Delta \mathbf{v}$$"></p><p><img src="sf_pool_eq05812.png" alt="$$\mathbf{F}_2 = -\mathbf{F}_1$$"></p><p>where</p><p><img src="sf_pool_eq58457.png" alt="$$F_1 = \mbox{force on the first ball involved in the collision}$$"></p><p><img src="sf_pool_eq86454.png" alt="$$F_2 = \mbox{force on the second ball involved in the collision}$$"></p><p><img src="sf_pool_eq24803.png" alt="$$\Delta \mathbf{p} = \mathbf{p}_1 - \mathbf{p}_2 = \mbox{relative separation of the centers of the&#xA;two balls}.$$"></p><p><img src="sf_pool_eq79804.png" alt="$$R = \mbox{radius of each ball}$$"></p><p><img src="sf_pool_eq39294.png" alt="$$\Delta \mathbf{v} = \mathbf{v}_1 - \mathbf{v}_2 = \mbox{relative velocity of the two balls}$$"></p><p>Note once again that any two balls have a restoring force acting between them only so long as</p><p><img src="sf_pool_eq35651.png" alt="$$\|\Delta \mathbf{p}\| < 2R$$"></p><p>otherwise the restoring force is zero. Note also that since the balls are free to move in two dimensions, we need to account for <tt>N^2/2</tt> potential collisions.</p><h2>Stateflow&reg; Model<a name="2"></a></h2><p>The model consists of three Stateflow charts. The chart <tt>Init</tt> is responsible for the initial setup of the pool balls on the table and interactively letting the user choose the initial position and velocity of the cue ball. Note that this chart is a very thin wrapper around a MATLAB&reg; function <tt>sf_pool_plotter.m</tt> which does the actual work of plotting.</p><p>The middle chart <tt>Pool</tt> is the chart which actually contains the description of the pool ball dynamics. We will explore this chart in greater detail later.</p><p>The final Embedded MATLAB&#8482; block <tt>Plot</tt> is responsible for animating the balls during the simulation. Once again this is a very thin wrapper around <tt>sf_pool_plotter.m</tt></p><img vspace="5" hspace="5" src="sf_pool_01.png" alt=""> <p><b>Chart: Pool</b> This chart is responsible for the majority of the work during the simulation.</p><img vspace="5" hspace="5" src="sf_pool_02.png" alt=""> <p>In order to represent the dynamics of the pool table, we use the following variables</p><p><b>Continuous Time Variables</b></p><div><ul><li><tt>p</tt> An <tt>Nx2</tt> matrix whose <tt>i^th</tt> row represents the position of the <tt>i^th</tt> ball.</li><li><tt>v</tt> An <tt>Nx2</tt> matrix whose <tt>i^th</tt> row represents the velocity of the <tt>i^th</tt> ball.</li></ul></div><p><b>Discrete Time Variables</b></p><div><ul><li><tt>ball_interaction</tt> An <tt>NxN</tt> boolean matrix which represents the interactions between the balls. If <tt>ball_interaction(i,j)</tt> is true, it means that the <tt>i^th</tt> ball and the <tt>j^th</tt> ball are presently in contact. Note that due to the symmetric nature of the system, we only use the upper triangular portion of this matrix.</li><li><tt>stopped</tt> An <tt>Nx1</tt> boolean vector which represents whether a ball is presently moving or whether it is stopped.</li><li><tt>last_vel</tt> An <tt>Nx2</tt> vector which represents the velocity of the balls. We update this vector after each incident which could change the velocity of a ball. <tt>last_vel</tt> and <tt>stopped</tt> are both used in the function <tt>frictionForce</tt> which models the friction between the balls and the table.</li></ul></div><pre class="codeoutput">function f = frictionForce
+% This function calculates the forces on the balls due to friction from the
+% table. We use a simple constant friction force model between the ball
+% and the table.
+
+f = zeros(N,2);
+for i=1:N
+    if stopped(i)
+       continue
+    else
+        % Note that we are using last_vel to calculate the direction of 
+        % the friction force because we are guaranteed that 
+        % |last_vel(i,:)| is large when stopped(i) is false. We cannot
+        % use v(i,:) directly because this function gets called in minor
+        % time steps and v(i,:) can become very small at some minor time 
+        % step even if it was large at the previous major time-step. 
+        f(i,:) = -kfriction*last_vel(i,:)/norm(last_vel(i,:)); %#ok
+    end
+end
+</pre><h2>Simulation Result<a name="5"></a></h2><p>Upon simulation, a very bare-bones GUI of a pool table is shown with 15 balls arranged in a triangular grid at one end of the table. The user is asked to place the cue ball and choose its initial velocity. The system then simulates the evolution of the pool balls while animating their motion.</p><img vspace="5" hspace="5" src="sf_pool_03.png" alt=""> <p class="footer">Copyright 2007-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling the Opening Shot in Pool
+% 
+% This is a model of the opening shot of pool. There are 15 balls arranged
+% in a triangular grid near one end of the table and the cue ball is
+% released towards them from the other end of the table. This demonstration
+% is meant as an exercise in explaining how the continuous time features
+% of Stateflow(R) can be used to very simply express systems which have a
+% large number of discontinuous events which rapidly (and unpredictably)
+% change the evolution of the system.
+% 
+%% Physics
+% We make several simplifying assumptions in simulating the system. Perhaps
+% the most important simplification is that we completely ignore
+% the "spin" of the balls. In other words, the over-all state of the
+% system is described completely by the positions and velocities of the
+% individual balls.
+% 
+% *Friction Model*
+% 
+% We use a simplified friction model where we assume that a ball which is
+% moving is acted upon by a friction force of constant magnitude which acts
+% opposite to the direction of motion. In other words:
+%
+% $$\dot{\mathbf{x}} = \mathbf{v}$$
+% 
+% $$\dot{\mathbf{v}} = -\mu g \hat{\mathbf{v}}$$
+% 
+% where
+% 
+% $$\mathbf{x} = \mbox{vector position of the ball}$$
+% 
+% $$\mathbf{v} = \mbox{vector velocity of the ball}$$
+% 
+% $$g = \mbox{acceleration due to gravity}$$
+% 
+% $$\mu = \mbox{coefficient of friction}$$
+% 
+% $$\hat{\mathbf{v}} = \mbox{unit vector in the direction of the velocity of
+% the ball.}$$
+% 
+% Note however that the friction force acts only as long as the ball is
+% actually moving, not when it is stationary. Thus we should more accurately
+% be saying:
+% 
+% $$\dot{\mathbf{v}} =
+% \left\{
+% \begin{array}{cc}
+% -\mu g \hat{\mathbf{v}} & \mbox{when $\|v\| > 0$}\\ 
+% 0 & \mbox{otherwise}
+% \end{array}
+% \right.
+% $$
+% 
+% This implies that the friction dynamics of the pool balls have an
+% inherent modal description which we need to account for when we model the
+% system.
+% 
+% *Collision Dynamics*
+% 
+% Collision between balls is modeled using a simple restoring force model.
+% In other words, we model the balls as being very slightly springy. When
+% the balls are in contact, the reaction force between them is given by:
+% 
+% $$\mathbf{F}_1 = k_p(2R-\Delta \mathbf{p})\hat{\Delta \mathbf{p}} - k_v\Delta \mathbf{v}$$
+% 
+% $$\mathbf{F}_2 = -\mathbf{F}_1$$
+% 
+% where 
+% 
+% $$F_1 = \mbox{force on the first ball involved in the collision}$$
+% 
+% $$F_2 = \mbox{force on the second ball involved in the collision}$$
+% 
+% $$\Delta \mathbf{p} = \mathbf{p}_1 - \mathbf{p}_2 = \mbox{relative separation of the centers of the
+% two balls}.$$
+% 
+% $$R = \mbox{radius of each ball}$$
+% 
+% $$\Delta \mathbf{v} = \mathbf{v}_1 - \mathbf{v}_2 = \mbox{relative velocity of the two balls}$$
+% 
+% Note once again that any two balls have a restoring force acting between
+% them only so long as
+% 
+% $$\|\Delta \mathbf{p}\| < 2R$$
+% 
+% otherwise the restoring force is zero. Note also that since the balls are
+% free to move in two dimensions, we need to account for |N^2/2| potential 
+% collisions.
+%
+%% Stateflow(R) Model
+% 
+% The model consists of three Stateflow charts. The chart |Init| is
+% responsible for the initial setup of the pool balls on the table and
+% interactively letting the user choose the initial position and velocity
+% of the cue ball. Note that this chart is a very thin wrapper around a
+% MATLAB(R) function |sf_pool_plotter.m| which does the actual work of
+% plotting.
+%
+% The middle chart |Pool| is the chart which actually contains the
+% description of the pool ball dynamics. We will explore this chart in
+% greater detail later.
+%
+% The final Embedded MATLAB(TM) block |Plot| is responsible for animating the
+% balls during the simulation. Once again this is a very thin wrapper
+% around |sf_pool_plotter.m|
+
+%   Copyright 2007-2009 The MathWorks, Inc.
+
+clear all
+close all
+bdclose all
+
+open_system('sf_pool');
+r = sfroot;
+m = r.find('-isa', 'Stateflow.Machine', 'Name', 'sf_pool');
+c = m.find('-isa', 'Stateflow.Chart', 'Name', 'Pool');
+
+% first close the chart.
+c.Visible = 0;
+
+%% 
+% *Chart: Pool*
+% This chart is responsible for the majority of the work during the
+% simulation. 
+
+c.Visible = 1;
+
+%% 
+% In order to represent the dynamics of the pool table, we use
+% the following variables
+% 
+% *Continuous Time Variables*
+%
+% * |p| An |Nx2| matrix whose |i^th| row represents the position of the
+% |i^th| ball.
+% * |v| An |Nx2| matrix whose |i^th| row represents the velocity of the
+% |i^th| ball.
+%
+% *Discrete Time Variables*
+%
+% * |ball_interaction| An |NxN| boolean matrix which represents the
+% interactions between the balls. If |ball_interaction(i,j)| is true, it
+% means that the |i^th| ball and the |j^th| ball are presently in contact.
+% Note that due to the symmetric nature of the system, we only use the
+% upper triangular portion of this matrix.
+% * |stopped| An |Nx1| boolean vector which represents whether a ball is presently
+% moving or whether it is stopped.
+% * |last_vel| An |Nx2| vector which represents the velocity of the balls.
+% We update this vector after each incident which could change the velocity
+% of a ball. |last_vel| and |stopped| are both used in the function
+% |frictionForce| which models the friction between the balls and the
+% table.
+
+% *Friction Force Model*
+% 
+f = c.find('Name', 'frictionForce');
+disp(f.Script);
+
+%% Simulation Result
+%
+% Upon simulation, a very bare-bones GUI of a pool table is shown with 15
+% balls arranged in a triangular grid at one end of the table. The user is
+% asked to place the cue ball and choose its initial velocity. The system
+% then simulates the evolution of the pool balls while animating their
+% motion.
+
+global sf_pool_init_pos sf_pool_init_vel
+sf_pool_init_pos = [-25, -5];
+sf_pool_init_vel = [80, 10]*2.5;
+
+set_param('sf_pool', 'StopTime', '10');
+c.Visible = 0;
+evalc('sim(''sf_pool'')');
+
+%% 
+
+bdclose all;
+clear all;
+close all;
+
+##### SOURCE END #####
+--></body></html>

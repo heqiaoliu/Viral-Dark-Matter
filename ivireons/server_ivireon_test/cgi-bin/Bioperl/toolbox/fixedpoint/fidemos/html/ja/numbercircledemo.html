@@ -1,0 +1,195 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>数値円</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-27"><meta name="DC.source" content="numbercircledemo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit numbercircledemo">エディターで numbercircledemo.m を開く</a></div><div class="right"><a href="matlab:echodemo numbercircledemo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>数値円</h1><!--introduction--><p>符号付き/なしの 2 の補数整数と固定小数点数の定義を説明します。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">固定小数点数の定義</a></li><li><a href="#2">符号なし整数</a></li><li><a href="#3">符号なし整数の数値円</a></li><li><a href="#4">符号なし固定小数点</a></li><li><a href="#5">符号なし固定小数点の数値円</a></li><li><a href="#6">符号なし小数固定小数点</a></li><li><a href="#7">符号なし小数固定小数点の数値円</a></li><li><a href="#8">符号付き 2 の補数整数</a></li><li><a href="#9">符号付き 2 の補数整数の数値円</a></li><li><a href="#10">符号付き固定小数点</a></li><li><a href="#11">符号付き固定小数点の数値円</a></li><li><a href="#12">符号付き小数固定小数点</a></li><li><a href="#13">符号付き小数固定小数点の数値円</a></li></ul></div><h2>固定小数点数の定義<a name="1"></a></h2><p>このデモでは、符号付き/なしの 2 の補数整数と固定小数点数の定義を説明します。</p><h2>符号なし整数<a name="2"></a></h2><p>符号なし整数は、2 進数体系で以下のように表示されます。 </p><pre> b = [b(n) b(n-1) ... b(2) b(1)]</pre><p>を各 b(i) が 1 または 0 のいずれかである、n ビットの符号なし整数の 2 進桁とします。b の値は次のようになります。</p><pre> u = b(n)*2^(n-1) + b(n-1)*2^(n-2) + ...+ b(2)*2^(1) + b(1)*2^(0)</pre><p>たとえば、3 ビット符号なし整数の量子化器を定義して、その範囲を列挙してみましょう。</p><pre class="codeinput">q = quantizer(<span class="string">'ufixed'</span>,[3 0]);
+[a,b] = range(q);
+u = (a:eps(q):b)'
+
+<span class="comment">% Now, let's display those values in binary.</span>
+b = num2bin(q,u)
+</pre><pre class="codeoutput">
+u =
+
+     0
+     1
+     2
+     3
+     4
+     5
+     6
+     7
+
+
+b =
+
+000
+001
+010
+011
+100
+101
+110
+111
+
+</pre><h2>符号なし整数の数値円<a name="3"></a></h2><p>対応する 2 進数値と 10 進数値をもつ時計の文字盤の周りにそれらを配置してみましょう。</p><pre class="codeinput">numbercircle(q);
+</pre><img vspace="5" hspace="5" src="../numbercircledemo_01.png" alt=""> <h2>符号なし固定小数点<a name="4"></a></h2><p>符号なし固定小数点値は、2 の二乗によってスケーリングされる符号なし整数です。2 の二乗の負の表現を「fractionlength」とします。</p><p>符号なし整数 u が前述のように定義され、fractionlength が f の場合、符号なし固定小数点数の値は次のようになります。</p><pre>  uf = u*2^-f</pre><p>たとえば、fractionlength が 1 の 3 ビット符号なし固定小数点の量子化器を定義して、その範囲を列挙してみましょう。</p><pre class="codeinput">q = quantizer(<span class="string">'ufixed'</span>,[3 1]);
+[a,b] = range(q);
+uf = (a:eps(q):b)'
+
+<span class="comment">% Now, let's display those values in binary.</span>
+b = num2bin(q,uf)
+</pre><pre class="codeoutput">
+uf =
+
+                         0
+                       0.5
+                         1
+                       1.5
+                         2
+                       2.5
+                         3
+                       3.5
+
+
+b =
+
+000
+001
+010
+011
+100
+101
+110
+111
+
+</pre><h2>符号なし固定小数点の数値円<a name="5"></a></h2><p>対応する 2 進数値と 10 進数値をもつ時計の文字盤の周りにそれらを配置してみましょう。</p><pre class="codeinput">numbercircle(q);
+</pre><img vspace="5" hspace="5" src="../numbercircledemo_02.png" alt=""> <h2>符号なし小数固定小数点<a name="6"></a></h2><p>符号なし小数固定小数点数は、fractionlength f が wordlength n と等しい固定小数点数で、数の範囲が 0 ～ 1-2^-f までのスケーリングを生成します。これは、固定小数点数では最も一般的な形式です。その理由は、すべての数が 1 より小さく、1 より小さい 2 つの数の積が 1 より小さい数であるといった適切な特性をもち、乗算をしてもオーバーフローにならないためです。</p><p>このように、符号なし固定小数点の定義は、f = n (n はビット単位の wordlength) という制限付きの符号なし固定小数点と同じです。</p><pre>  uf = u*2^-f</pre><p>たとえば、fractionlength が 3 であることを意味する 3 ビット符号なし小数固定小数点の量子化器を定義してみましょう。</p><pre class="codeinput">q = quantizer(<span class="string">'ufixed'</span>,[3 3]);
+[a,b] = range(q);
+uf = (a:eps(q):b)'
+
+<span class="comment">% Now, let's display those values in binary.</span>
+b = num2bin(q,uf)
+</pre><pre class="codeoutput">
+uf =
+
+                         0
+                     0.125
+                      0.25
+                     0.375
+                       0.5
+                     0.625
+                      0.75
+                     0.875
+
+
+b =
+
+000
+001
+010
+011
+100
+101
+110
+111
+
+</pre><h2>符号なし小数固定小数点の数値円<a name="7"></a></h2><p>対応する 2 進数値と 10 進数値をもつ時計の文字盤の周りにそれらを配置してみましょう。</p><pre class="codeinput">numbercircle(q);
+</pre><img vspace="5" hspace="5" src="../numbercircledemo_03.png" alt=""> <h2>符号付き 2 の補数整数<a name="8"></a></h2><p>符号付き整数は、2 進数体系における 2 の補数で以下のように表示されます。 </p><pre> b = [b(n) b(n-1) ... b(2) b(1)]</pre><p>を各 b(i) が 1 または 0 のいずれかである n ビットの符号付き整数の 2 進桁とします。b の値は次のようになります。</p><pre> s = -b(n)*2^(n-1) + b(n-1)*2^(n-2) + ...+ b(2)*2^(1) + b(1)*2^(0)</pre><p>これと符号なし数値の相違は最上位ビット (MSB) の負の重みであることに注意してください。</p><p>たとえば、3 ビット符号付き整数の量子化器を定義して、その範囲を列挙してみましょう。</p><pre class="codeinput">q = quantizer(<span class="string">'fixed'</span>,[3 0]);
+[a,b] = range(q);
+s = (a:eps(q):b)'
+
+<span class="comment">% Now, let's display those values in binary.</span>
+b = num2bin(q,s)
+
+<span class="comment">% Note that the most-significant-bit of negative numbers is 1, and positive</span>
+<span class="comment">% numbers is 0.</span>
+</pre><pre class="codeoutput">
+s =
+
+    -4
+    -3
+    -2
+    -1
+     0
+     1
+     2
+     3
+
+
+b =
+
+100
+101
+110
+111
+000
+001
+010
+011
+
+</pre><h2>符号付き 2 の補数整数の数値円<a name="9"></a></h2><p>対応する 2 進数値と 10 進数値をもつ時計の文字盤の周りにそれらを配置してみましょう。</p><p>負の数の定義が不格好な理由は、正負両方のすべての数の加算があたかもすべての数が正であるように行われ、n+1 キャリー ビットが破棄されるためです。オーバーフローがなければ、結果は正しいということです。</p><pre class="codeinput">numbercircle(q);
+</pre><img vspace="5" hspace="5" src="../numbercircledemo_04.png" alt=""> <h2>符号付き固定小数点<a name="10"></a></h2><p>符号付き固定小数点値は、2 の二乗によってスケーリングされる符号付き整数です。2 の二乗の負の表現を「fractionlength」とします。</p><p>符号付き整数 s が以前と同様に定義され、fractionlength が f の場合、符号付き固定小数点数の値は次のようになります。</p><pre>  sf = s*2^-f</pre><p>たとえば、fractionlength が 1 の 3 ビット符号付き固定小数点の量子化器を定義して、その範囲を列挙しましょう。</p><pre class="codeinput">q = quantizer(<span class="string">'fixed'</span>,[3 1]);
+[a,b] = range(q);
+sf = (a:eps(q):b)'
+
+<span class="comment">% Now, let's display those values in binary.</span>
+b = num2bin(q,sf)
+</pre><pre class="codeoutput">
+sf =
+
+                        -2
+                      -1.5
+                        -1
+                      -0.5
+                         0
+                       0.5
+                         1
+                       1.5
+
+
+b =
+
+100
+101
+110
+111
+000
+001
+010
+011
+
+</pre><h2>符号付き固定小数点の数値円<a name="11"></a></h2><p>対応する 2 進数値と 10 進数値をもつ時計の文字盤の周りにそれらを配置してみましょう。</p><pre class="codeinput">numbercircle(q);
+</pre><img vspace="5" hspace="5" src="../numbercircledemo_05.png" alt=""> <h2>符号付き小数固定小数点<a name="12"></a></h2><p>符号付き小数固定小数点数は、fractionlength f が wordlength n より 1 小さい固定小数点数で、数の範囲が -1 ～ 1-2^-f までのスケーリングを生成します。これは、固定小数点数では最も一般的な形式です。その理由は、1 より小さい 2 つの数の積が 1 より小さい数であるといった適切なプロパティをもち、乗算をしてもオーバーフローにならないためです。唯一の例外は、+1 がこの数体系の要素ではないために -1 &times; -1 の乗算を行う場合です。プロセッサによってはこの場合には特別な乗算の指示があり、余分なビットを積に加算してオーバーフローをガードします。</p><p>このように、符号付き小数固定小数点の定義は、f = n-1 (n はビット単位の wordlength) という制限付きの符号付き固定小数点と同じです。</p><pre>  sf = s*2^-f</pre><p>たとえば、fractionlength が 2 の 3 ビット符号付き小数固定小数点の量子化器を定義しましょう。</p><pre class="codeinput">q = quantizer(<span class="string">'fixed'</span>,[3 2]);
+[a,b] = range(q);
+sf = (a:eps(q):b)'
+
+<span class="comment">% Now, let's display those values in binary.</span>
+b = num2bin(q,sf)
+</pre><pre class="codeoutput">
+sf =
+
+                        -1
+                     -0.75
+                      -0.5
+                     -0.25
+                         0
+                      0.25
+                       0.5
+                      0.75
+
+
+b =
+
+100
+101
+110
+111
+000
+001
+010
+011
+
+</pre><h2>符号付き小数固定小数点の数値円<a name="13"></a></h2><p>対応する 2 進数値と 10 進数値をもつ時計の文字盤の周りにそれらを配置してみましょう。</p><pre class="codeinput">numbercircle(q);
+</pre><img vspace="5" hspace="5" src="../numbercircledemo_06.png" alt=""> <p class="footer">Copyright 1999-2005 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Number Circle  % Illustrates the definitions of unsigned and signed two's complement % integer and fixed-point numbers % % Copyright 1999-2005 The MathWorks, Inc. % $Revision: 1.1.4.2.2.1 $  %% Fixed-Point Number Definitions % % This demo illustrates the definitions of unsigned and signed-two's-complement % integer and fixed-point numbers.  %% Unsigned Integers. % % Unsigned integers are represented in the binary number system in the % following way.  Let % %   b = [b(n) b(n-1) ... b(2) b(1)] % % be the binary digits of an n-bit unsigned integer, where each b(i) is % either one or zero.  Then the value of b is % %   u = b(n)*2^(n-1) + b(n-1)*2^(n-2) + ... + b(2)*2^(1) + b(1)*2^(0) % % For example, let's define a 3-bit unsigned integer quantizer, and % enumerate its range. q = quantizer('ufixed',[3 0]); [a,b] = range(q); u = (a:eps(q):b)'  % Now, let's display those values in binary. b = num2bin(q,u)  %% Unsigned Integer Number Circle. % Let's array them around a clock face with their corresponding binary and % decimal values. numbercircle(q);  %% Unsigned Fixed-Point. % Unsigned fixed-point values are unsigned integers that are scaled by a % power of two.  We call the negative exponent of the power of two the % "fractionlength". % % If the unsigned integer u is defined as before, and the fractionlength is % f, then the value of the unsigned fixed-point number is % %    uf = u*2^-f % % For example, let's define a 3-bit unsigned fixed-point quantizer with a % fractionlength of 1, and enumerate its range. q = quantizer('ufixed',[3 1]); [a,b] = range(q); uf = (a:eps(q):b)'  % Now, let's display those values in binary. b = num2bin(q,uf)  %% Unsigned Fixed-Point Number Circle. % Let's array them around a clock face with their corresponding binary and % decimal values. numbercircle(q);  %% Unsigned Fractional Fixed-Point. % Unsigned fractional fixed-point numbers are fixed-point numbers whos % fractionlength f is equal to the wordlength n, which produces a scaling such % that the range of numbers is between 0 and 1-2^-f, inclusive.  This is the % most common form of fixed-point numbers because it has the nice property that % all of the numbers are less than one, and the product of two numbers less than % one is a number less than one, and so multiplication does not overflow. % % Thus, the definition of unsigned fractional fixed-point is the same as % unsigned fixed-point, with the restriction that f=n, where n is the % wordlength in bits. % %    uf = u*2^-f % % For example, let's define a 3-bit unsigned fractional fixed-point % quantizer, which implies a fractionlength of 3.  q = quantizer('ufixed',[3 3]); [a,b] = range(q); uf = (a:eps(q):b)'  % Now, let's display those values in binary. b = num2bin(q,uf)  %% Unsigned Fractional Fixed-Point Number Circle. % Let's array them around a clock face with their corresponding binary and % decimal values. numbercircle(q);  %% Signed Two's-Complement Integers. % Signed integers are represented in two's-complement in the binary number % system in the following way.  Let % %   b = [b(n) b(n-1) ... b(2) b(1)] % % be the binary digits of an n-bit signed integer, where each b(i) is % either one or zero.  Then the value of b is % %   s = -b(n)*2^(n-1) + b(n-1)*2^(n-2) + ... + b(2)*2^(1) + b(1)*2^(0) % % Note that the difference between this and the unsigned number is the % negative weight on the most-significant-bit (MSB). % % For example, let's define a 3-bit signed integer quantizer, and % enumerate its range. q = quantizer('fixed',[3 0]); [a,b] = range(q); s = (a:eps(q):b)'  % Now, let's display those values in binary. b = num2bin(q,s)  % Note that the most-significant-bit of negative numbers is 1, and positive % numbers is 0.  %% Signed Two's-Complement Integer Number Circle. % Let's array them around a clock face with their corresponding binary and % decimal values. % % The reason for this ungainly looking definition of negative numbers is that % addition of all numbers, both positive and negative, is carried out as if they % were all positive, and then the n+1 carry bit is discarded.  The result % will be correct if there is no overflow.   numbercircle(q);  %% Signed Fixed-Point. % Signed fixed-point values are signed integers that are scaled by a % power of two.  We call the negative exponent of the power of two the % "fractionlength". % % If the signed integer s is defined as before, and the fractionlength is % f, then the value of the signed fixed-point number is % %    sf = s*2^-f % % For example, let's define a 3-bit signed fixed-point quantizer with a % fractionlength of 1, and enumerate its range. q = quantizer('fixed',[3 1]); [a,b] = range(q); sf = (a:eps(q):b)'  % Now, let's display those values in binary. b = num2bin(q,sf)  %% Signed Fixed-Point Number Circle. % Let's array them around a clock face with their corresponding binary and % decimal values. numbercircle(q);  %% Signed Fractional Fixed-Point. % Signed fractional fixed-point numbers are fixed-point numbers whos % fractionlength f is one less than the wordlength n, which produces a % scaling such that the range of numbers is between -1 and 1-2^-f, inclusive. % This is the most common form of fixed-point numbers because it has the nice % property that the product of two numbers less than one is a number less % than one, and so multiplication does not overflow.  The only exception is % the case when we are multiplying -1 by -1, because +1 is not an element of % this number system.  Some processors have a special multiplication % instruction for this situation, and some add an extra bit in the product to % guard against this overflow. % % Thus, the definition of signed fractional fixed-point is the same as % signed fixed-point, with the restriction that f=n-1, where n is the % wordlength in bits. % %    sf = s*2^-f % % For example, let's define a 3-bit signed fractional fixed-point % quantizer, which implies a fractionlength of 2.  q = quantizer('fixed',[3 2]); [a,b] = range(q); sf = (a:eps(q):b)'  % Now, let's display those values in binary. b = num2bin(q,sf)  %% Signed Fractional Fixed-Point Number Circle. % Let's array them around a clock face with their corresponding binary and % decimal values. numbercircle(q);   displayEndOfDemoMessage(mfilename) ##### SOURCE END ##### --></body></html>

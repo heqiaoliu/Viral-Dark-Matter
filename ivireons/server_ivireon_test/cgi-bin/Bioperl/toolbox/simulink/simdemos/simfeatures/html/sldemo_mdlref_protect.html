@@ -1,0 +1,121 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Model Reference Protected Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="sldemo_mdlref_protect.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"></div><div class="right">&nbsp;</div></div><div class="content"><h1>Model Reference Protected Models</h1><!--introduction--><p>This demo shows you how to create and use Model Reference Protected Models.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Demo Requirements</a></li><li><a href="#2">Open the Demo Model</a></li><li><a href="#4">Protect the Referenced Model</a></li><li><a href="#5">Determining the Variables Needed by a Protected Model</a></li><li><a href="#6">Use the Protected Model</a></li></ul></div><h2>Demo Requirements<a name="1"></a></h2><p>Real-Time Workshop&reg; must be installed before you can generate Model Reference Protected Models.  During this demo, Simulink&reg; and Real-Time Workshop may generate code in a Simulink project directory created in the current working directory.  If you do not want to (or cannot) generate files in this directory, you should first change to a suitable directory.</p><h2>Open the Demo Model<a name="2"></a></h2><p>Open the demo model <a href="matlab:open_system('sldemo_mdlref_bus')"><tt>sldemo_mdlref_bus</tt></a>:</p><img vspace="5" hspace="5" src="sldemo_mdlref_protect_01.png" alt=""> <p><b>Figure 1:</b> The demo model, <tt>sldemo_mdlref_bus</tt></p><h2>Protect the Referenced Model<a name="4"></a></h2><p>This model contains one Model block, <tt>CounterA</tt>.  To protect the model referenced by this block, use either of the following commands:</p><p><tt>[harnessHandle, neededVars] = Simulink.ModelReference.protect('sldemo_mdlref_counter_bus', 'Harness', true)</tt></p><p>or</p><p><tt>[harnessHandle, neededVars] = Simulink.ModelReference.protect('sldemo_mdlref_bus/CounterA', 'Harness', true)</tt></p><p>This command creates a Protected Model, <tt>sldemo_mdlref_counter_bus.mdlp</tt>, which can be used in Normal mode simulation without requiring the original model file.  Specifying the <tt>'Harness'</tt> parameter causes Simulink to create a <i>harness model</i>, a model that contains a Model block that references the Protected Model.  A handle to the harness model is returned as the first output by the <tt>protect</tt> function.</p><h2>Determining the Variables Needed by a Protected Model<a name="5"></a></h2><p>In order to run, a Protected Model may need some variables to be defined in the base workspace.  For example, the Protected Model <tt>sldemo_mdlref_counter_bus.mdlp</tt> needs the base workspace variables that specify the buses at the root input and output ports of the model.</p><p>You must include definitions of the necessary variables when you ship a Protected Model, or the model will be unusable. The second output of the <tt>protect</tt> function, <tt>neededVars</tt>, can help you determine which base workspace variables you must send.  The value of <tt>neededVars</tt> is a cell array that contains the names of the base workspace variables that the Protected Model needs.  The cell array, however, may also contain the names of some workspace variables that the model does not need.</p><p>Before you ship a Protected Model, edit <tt>neededVars</tt> and delete the names of any variables that the model does not need.  You can then save the needed workspace variables into a MAT file as follows:</p><p><tt>save('sldemo_mdlref_bus_vars', neededVars{:});</tt></p><h2>Use the Protected Model<a name="6"></a></h2><p>To use the Protected Model, set the ModelName parameter of a Model block to the name of the Protected Model file.  You can do this either through the Model block's parameter dialog or by using <tt>set_param</tt>:</p><p><tt>set_param('sldemo_mdlref_bus/CounterA', 'ModelName', 'sldemo_mdlref_counter_bus.mdlp')</tt></p><p>The Model block's icon changes to display a lock when it references a Protected Model:</p><img vspace="5" hspace="5" src="sldemo_mdlref_protect_02.png" alt=""> <p><b>Figure 2:</b> Referencing a Protected Model</p><p class="footer">Copyright 2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Model Reference Protected Models
+% This demo shows you how to create and use Model Reference Protected Models.
+
+% Copyright 2009 The MathWorks, Inc.
+% $Revision: 1.1.6.2 $  $Date: 2009/05/14 17:51:25 $
+
+%% Demo Requirements
+% Real-Time Workshop(R) must be installed before you can generate Model
+% Reference Protected Models.  During this demo, Simulink(R) and Real-Time
+% Workshop may generate code in a Simulink project directory created in the
+% current working directory.  If you do not want to (or cannot) generate files
+% in this directory, you should first change to a suitable directory.
+
+origval = slfeature('ModelReferenceProtectedModelSupport', 1);
+origdir = pwd;
+newdir  = tempname;
+c1 = onCleanup(@() sldemo_mdlref_util('sldemo_mdlref_protect', 'cleanup', origdir, newdir));
+
+addpath(origdir);
+mkdir(newdir);
+cd(newdir);
+
+
+%% Open the Demo Model
+% Open the demo model <matlab:open_system('sldemo_mdlref_bus')
+% |sldemo_mdlref_bus|>:
+open_system('sldemo_mdlref_bus')
+%% 
+% *Figure 1:* The demo model, |sldemo_mdlref_bus|
+
+%% Protect the Referenced Model
+% This model contains one Model block, |CounterA|.  To protect the model
+% referenced by this block, use either of the following commands:
+%
+% |[harnessHandle, neededVars] = Simulink.ModelReference.protect('sldemo_mdlref_counter_bus', 'Harness', true)|
+%
+% or
+%
+% |[harnessHandle, neededVars] = Simulink.ModelReference.protect('sldemo_mdlref_bus/CounterA', 'Harness', true)|
+%
+% This command creates a Protected Model, |sldemo_mdlref_counter_bus.mdlp|,
+% which can be used in Normal mode simulation without requiring the original
+% model file.  Specifying the |'Harness'| parameter causes Simulink to create a
+% _harness model_, a model that contains a Model block that references the
+% Protected Model.  A handle to the harness model is returned as the first
+% output by the |protect| function.
+cmd = 'Simulink.ModelReference.protect(''sldemo_mdlref_bus/CounterA'', ''Harness'', true)';
+[~, harnessHandle, neededVars] = evalc(cmd);
+set_param('sldemo_mdlref_bus/CounterA', 'ModelName', 'sldemo_mdlref_counter_bus.mdlp');
+save_system('sldemo_mdlref_bus', './sldemo_mdlref_bus.mdl');
+
+% Close the harness model, since there is no need to show it.
+close_system(harnessHandle, 0);
+
+%% Determining the Variables Needed by a Protected Model
+% In order to run, a Protected Model may need some variables to be defined in
+% the base workspace.  For example, the Protected Model
+% |sldemo_mdlref_counter_bus.mdlp| needs the base workspace variables that
+% specify the buses at the root input and output ports of the model.  
+%
+% You must include definitions of the necessary variables when you ship a
+% Protected Model, or the model will be unusable. The second output of the
+% |protect| function, |neededVars|, can help you determine which base workspace
+% variables you must send.  The value of |neededVars| is a cell array that
+% contains the names of the base workspace variables that the Protected Model
+% needs.  The cell array, however, may also contain the names of some workspace
+% variables that the model does not need.  
+%
+% Before you ship a Protected Model, edit |neededVars| and delete the names of
+% any variables that the model does not need.  You can then save the needed
+% workspace variables into a MAT file as follows:
+%
+% |save('sldemo_mdlref_bus_vars', neededVars{:});|
+save('sldemo_mdlref_bus_bars', neededVars{:});
+
+
+%% Use the Protected Model
+% To use the Protected Model, set the ModelName parameter of a Model block to
+% the name of the Protected Model file.  You can do this either through the
+% Model block's parameter dialog or by using |set_param|:
+%
+% |set_param('sldemo_mdlref_bus/CounterA', 'ModelName', 'sldemo_mdlref_counter_bus.mdlp')|
+
+
+
+% Need to close the system so the open_system call below will detect that a
+% model was just opened.  If this model is not newly opened by the open_system
+% call, the updated figure will not appear in the HTML for the demo.
+close_system('sldemo_mdlref_bus');
+
+%%
+% The Model block's icon changes to display a lock when it references a
+% Protected Model:
+open_system('sldemo_mdlref_bus')
+%% 
+% *Figure 2:* Referencing a Protected Model
+
+
+slfeature('ModelReferenceProtectedModelSupport', origval);
+close_system('sldemo_mdlref_bus', 0);
+close_system('sldemo_mdlref_counter_bus', 0);
+
+clear('c1', 'origval', 'origdir', 'newdir', 'cmd', 'harnessHandle', 'neededVars', 'LIMITBUS', 'COUNTERBUS');
+
+
+displayEndOfDemoMessage('sldemo_mdlref_protect.m')
+
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,391 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Dealing with Multi-Experiment Data and Merging Models</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-29"><meta name="DC.source" content="iddemo8.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit iddemo8">Open iddemo8.m in the Editor</a></div><div class="right"><a href="matlab:echodemo iddemo8">Run in the Command Window</a></div></div><div class="content"><h1>Dealing with Multi-Experiment Data and Merging Models</h1><!--introduction--><p>This demo shows how to deal with multiple experiments and merging models when working with System Identification Toolbox&#8482; for estimating and refining models.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#6">Performing Estimation Using Multi-Experiment Data</a></li><li><a href="#9">Merging Models After Estimation</a></li><li><a href="#12">Case Study: Concatenating Vs. Merging Independent Datasets</a></li><li><a href="#29">Conclusions</a></li><li><a href="#30">Additional Information</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>The analysis and estimation utilities in System Identification Toolbox let you work with multiple batches of data. Essentially, if you have performed multiple experiments and recorded several measurement datasets, you may "package" them up into a single IDDATA object and use them with any estimation routine.</p><p>In some cases, you may want to "split up" your (single) measurement dataset to remove portions where the data quality is not good. For example, portion of data may be unusable due to external disturbance or a sensor failure. In those cases, each good portion of data may be separated out and then combined into a single multi-experiment IDDATA object.</p><p>For example, let us look at the dataset iddemo8.mat:</p><pre class="codeinput">load <span class="string">iddemo8</span>
+</pre><p>The name of the data object is <tt>dat</tt>, and let us view it.</p><pre class="codeinput">dat
+plot(dat)
+</pre><pre class="codeoutput">
+Time domain data set with 1000 samples.
+Sampling interval: 1                    
+                                        
+Outputs      Unit (if specified)        
+   y1                                   
+                                        
+Inputs       Unit (if specified)        
+   u1                                   
+                                        
+</pre><img vspace="5" hspace="5" src="iddemo8_01.png" alt=""> <p>We see that there are some problems with the output around sample 250-280 and around samples 600 to 650. These might have been sensor failures.</p><p>Therefore split the data into three separate experiments and put then into a multi-experiment data object:</p><pre class="codeinput">d1 = dat(1:250);
+d2 = dat(281:600);
+d3 = dat(651:1000);
+d = merge(d1,d2,d3) <span class="comment">% merge lets you create multi-exp IDDATA object</span>
+</pre><pre class="codeoutput">
+time domain data set containing 3 experiments.
+
+Experiment   Samples      Sampling Interval     
+   Exp1         250            1                
+   Exp2         320            1                
+   Exp3         350            1                
+                                                
+Outputs      Unit (if specified)                
+   y1                                           
+                                                
+Inputs       Unit (if specified)                
+   u1                                           
+                                                
+</pre><p>The different experiments can be given other names, for example:</p><pre class="codeinput">d.exp = {<span class="string">'Period 1'</span>;<span class="string">'Day 2'</span>;<span class="string">'Phase 3'</span>}
+</pre><pre class="codeoutput">
+time domain data set containing 3 experiments.
+
+Experiment     Samples      Sampling Interval   
+   Period 1       250            1              
+   Day 2          320            1              
+   Phase 3        350            1              
+                                                
+Outputs        Unit (if specified)              
+   y1                                           
+                                                
+Inputs         Unit (if specified)              
+   u1                                           
+                                                
+</pre><p>To examine it, use plot, as in <tt>plot(d)</tt>.</p><h2>Performing Estimation Using Multi-Experiment Data<a name="6"></a></h2><p>As mentioned before, all model estimation routines accept multi-experiment data and take into account that they are recorded at different periods. Let us use the two first experiments for estimation and the third one for validation:</p><pre class="codeinput">de = getexp(d,[1,2]); <span class="comment">% subselection is done using  the command GETEXP using numbers</span>
+dv = getexp(d,<span class="string">'Phase 3'</span>); <span class="comment">% or names.</span>
+m1 = arx(de,[2 2 1]);
+m2 = n4sid(de,2);
+m3 = armax(de,[2 2 2 1]);
+compare(dv,m1,m2,m3)
+</pre><img vspace="5" hspace="5" src="iddemo8_02.png" alt=""> <p>Compare also accepts multiple experiments:</p><pre class="codeinput">pause <span class="string">off</span>
+compare(d,m1,m2,m3) <span class="comment">%generates three plots if pause is on; showing only the last one here</span>
+pause <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="iddemo8_03.png" alt=""> <p>Also, <tt>spa</tt>, <tt>etfe</tt>, <tt>resid</tt>, <tt>predict</tt>, <tt>sim</tt> operate in the same way for multi-experiment data, as they do for single experiment data.</p><h2>Merging Models After Estimation<a name="9"></a></h2><p>There is another way to deal with separate data sets: a model can be computed for each set, and then the models can  be merged:</p><pre class="codeinput">m4 = armax(getexp(de,1),[2 2 2 1]);
+m5 = armax(getexp(de,2),[2 2 2 1]);
+m6 = merge(m4,m5); <span class="comment">% m4 and m5 are merged into m6</span>
+</pre><p>This is conceptually the same as computing <tt>m</tt> from the merged set <tt>de</tt>, but it is not numerically the same. Working on <tt>de</tt> assumes that the signal-to-noise ratios are (about) the same in the different experiments, while merging separate models makes independent estimates of the noise levels. If the conditions are about the same for the different experiments, it is more efficient to estimate directly on the multi-experiment data.</p><p>We can check the models <tt>m3</tt> and <tt>m6</tt> that are both ARMAX models obtained on the same data in two different ways:</p><pre class="codeinput">[m3.a;m6.a]
+[m3.b;m6.b]
+[m3.c;m6.c]
+compare(dv,m3,m6)
+</pre><pre class="codeoutput">
+ans =
+
+    1.0000   -1.5036    0.7009
+    1.0000   -1.5024    0.7001
+
+
+ans =
+
+         0    1.0079    0.4972
+         0    1.0073    0.4988
+
+
+ans =
+
+    1.0000   -0.9745    0.1569
+    1.0000   -0.9753    0.1584
+
+</pre><img vspace="5" hspace="5" src="iddemo8_04.png" alt=""> <h2>Case Study: Concatenating Vs. Merging Independent Datasets<a name="12"></a></h2><p>We now turn to another situation. Let us consider two data sets generated by the system m0. The system is given by:</p><pre class="codeinput">m0
+</pre><pre class="codeoutput">State-space model:  x(t+Ts) = A x(t) + B u(t) + K e(t)
+                       y(t) = C x(t) + D u(t) + e(t)
+ 
+A = 
+                        x1           x2           x3
+           x1      0.52957       -0.476      0.12379
+           x2       -0.476    -0.097434      0.13542
+           x3      0.12379      0.13542     -0.82332
+ 
+ 
+B = 
+                        u1           u2
+           x1      -1.1465    -0.037633
+           x2       1.1909      0.32729
+           x3            0            0
+ 
+ 
+C = 
+                        x1           x2           x3
+           y1     -0.18671     -0.58832      -0.1364
+           y2      0.72579            0      0.11393
+ 
+ 
+D = 
+                        u1           u2
+           y1       1.0668            0
+           y2            0            0
+ 
+ 
+K = 
+                        y1           y2
+           x1            0            0
+           x2            0            0
+           x3            0            0
+ 
+ 
+x(0) = 
+                          
+           x1          101
+           x2         -100
+           x3          200
+ 
+This model was not estimated from data.
+Sampling interval: 1                   
+                                       
+</pre><p>The data sets that have been collected are <tt>z1</tt> and <tt>z2</tt>, obtained from m0 with different inputs, noise and initial conditions. These datasets are obtained from iddemo8.mat that was loaded earlier.</p><pre class="codeinput">pause <span class="string">off</span>
+</pre><p>First data set:</p><pre class="codeinput">plot(z1) <span class="comment">%generates a separate plot for each I/O pair if pause is on; showing only the last one here</span>
+</pre><img vspace="5" hspace="5" src="iddemo8_05.png" alt=""> <p>The second set:</p><pre class="codeinput">plot(z2) <span class="comment">%generates a separate plot for each I/O pair if pause is on; showing only the last one here</span>
+</pre><img vspace="5" hspace="5" src="iddemo8_06.png" alt=""> <p>If we just concatenate the data we obtained:</p><pre class="codeinput">zzl = [z1;z2]
+plot(zzl)
+
+pause <span class="string">on</span>
+</pre><pre class="codeoutput">
+Time domain data set with 400 samples.
+Sampling interval: 1                   
+                                       
+Outputs      Unit (if specified)       
+   y1                                  
+   y2                                  
+                                       
+Inputs       Unit (if specified)       
+   u1                                  
+   u2                                  
+                                       
+</pre><img vspace="5" hspace="5" src="iddemo8_07.png" alt=""> <p>A model amy be obtained by using <tt>pem</tt>:</p><pre class="codeinput">ml = pem(zzl,3,<span class="string">'nk'</span>,[0 1]); <span class="comment">% No delay from input # 1 and one from input # 2</span>
+</pre><p>Bode response from Input#1 to Output#1</p><pre class="codeinput">bode(m0(1,1),ml(1,1)), legend(<span class="string">'m0(1,1)'</span>,<span class="string">'ml(1,1)'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo8_08.png" alt=""> <p>Bode response from Input#2 to Output#1</p><pre class="codeinput">bode(m0(1,2),ml(1,2)), legend(<span class="string">'m0(1,2)'</span>,<span class="string">'ml(1,2)'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo8_09.png" alt=""> <p>Bode response from Input#1 to Output#2</p><pre class="codeinput">bode(m0(2,1),ml(2,1)), legend(<span class="string">'m0(2,1)'</span>,<span class="string">'ml(2,1)'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo8_10.png" alt=""> <p>Bode response from Input#2 to Output#2</p><pre class="codeinput">bode(m0(2,2),ml(2,2)), legend(<span class="string">'m0(2,2)'</span>,<span class="string">'ml(2,2)'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo8_11.png" alt=""> <p>This is not a very good model, as observed from the four Bode plots above.</p><p>Now, instead treat the two data sets as different experiments:</p><pre class="codeinput">zzm = merge(z1,z2)
+<span class="comment">% The model becomes</span>
+mm = pem(zzm,3,<span class="string">'nk'</span>,[0 1],<span class="string">'cov'</span>,<span class="string">'none'</span>,<span class="string">'display'</span>,<span class="string">'on'</span>);
+</pre><pre class="codeoutput">
+time domain data set containing 2 experiments.
+
+Experiment   Samples      Sampling Interval     
+   Exp1         200            1                
+   Exp2         200            1                
+                                                
+Outputs      Unit (if specified)                
+   y1                                           
+   y2                                           
+                                                
+Inputs       Unit (if specified)                
+   u1                                           
+   u2                                           
+                                                
+
+Criterion: Determinant minimization
+   Scheme: Nonlinear least squares with automatically chosen line search method
+------------------------------------------------------------------------------------------
+                            Norm of      First-order      Improvement (%)
+ Iteration       Cost       step         optimality     Expected   Achieved    Bisections
+------------------------------------------------------------------------------------------
+     0         1.1078          -      3.75e+003        4.72           -         -
+     1        1.05152      0.133            352        4.72        5.08         0
+     2        1.03713      0.105            138        1.36        1.37         0
+     3        1.03708    0.00154           38.7     0.00423      0.0044         0
+------------------------------------------------------------------------------------------
+</pre><pre>Let us compare the Bode plots of the true system (blue)
+the model from concatenated data (green) and the model from the
+merged data set (red):
+Bode response from Input#1 to Output#1:</pre><pre class="codeinput">bode(m0(1,1),<span class="string">'b'</span>,ml(1,1),<span class="string">'g'</span>,mm(1,1),<span class="string">'r'</span>), legend(<span class="string">'m0(1,1)'</span>,<span class="string">'ml(1,1)'</span>,<span class="string">'mm(1,1)'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo8_12.png" alt=""> <p>Bode response from Input#2 to Output#1:</p><pre class="codeinput">bode(m0(1,2),<span class="string">'b'</span>,ml(1,2),<span class="string">'g'</span>,mm(1,2),<span class="string">'r'</span>), legend(<span class="string">'m0(1,2)'</span>,<span class="string">'ml(1,2)'</span>,<span class="string">'mm(1,2)'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo8_13.png" alt=""> <p>Bode response from Input#1 to Output#2:</p><pre class="codeinput">bode(m0(2,1),<span class="string">'b'</span>,ml(2,1),<span class="string">'g'</span>,mm(2,1),<span class="string">'r'</span>), legend(<span class="string">'m0(2,1)'</span>,<span class="string">'ml(2,1)'</span>,<span class="string">'mm(2,1)'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo8_14.png" alt=""> <p>Bode response from Input#2 to Output#2:</p><pre class="codeinput">bode(m0(2,2),<span class="string">'b'</span>,ml(2,2),<span class="string">'g'</span>,mm(2,2),<span class="string">'r'</span>), legend(<span class="string">'m0(2,2)'</span>,<span class="string">'ml(2,2)'</span>,<span class="string">'mm(2,2)'</span>)
+</pre><img vspace="5" hspace="5" src="iddemo8_15.png" alt=""> <p>The merged data give a much better model, as observed from the plot above.</p><h2>Conclusions<a name="29"></a></h2><p>In this demo we saw how to use multiple data sets together for estimation of one model. This technique is useful when you have multiple datasets from independent experiment runs or when you segment data into multiple sets to remove bad segments. Multiple experiments can be packaged into a single IDDATA object, which is then usable for all estimation and analysis requirements. This technique works for both time and frequency domain data.</p><p>It is also possible to merge models after estimation. This technique can be used to "average out" independently estimated models. If the noise characteristics on multiple datasets are different, merging models after estimation works better than merging the datasets themselves before estimation.</p><h2>Additional Information<a name="30"></a></h2><p>For more information on identification of dynamic systems with System Identification Toolbox visit the <a href="http://www.mathworks.com/products/sysid/">System Identification Toolbox</a> product information page.</p><p class="footer">Copyright 1986-2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Dealing with Multi-Experiment Data and Merging Models
+% This demo shows how to deal with multiple experiments and merging models
+% when working with System Identification Toolbox(TM) for estimating and
+% refining models. 
+
+%   Copyright 1986-2010 The MathWorks, Inc.
+%   $Revision: 1.8.4.10 $ $Date: 2010/04/11 20:32:32 $
+
+%% Introduction
+% The analysis and estimation utilities in System Identification Toolbox
+% let you work with multiple batches of data. Essentially, if you have
+% performed multiple experiments and recorded several measurement datasets,
+% you may "package" them up into a single IDDATA object and use them with
+% any estimation routine. 
+%
+% In some cases, you may want to "split up" your (single) measurement
+% dataset to remove portions where the data quality is not good. For
+% example, portion of data may be unusable due to external disturbance or a
+% sensor failure. In those cases, each good portion of data may be
+% separated out and then combined into a single multi-experiment IDDATA
+% object. 
+%
+% For example, let us look at the dataset iddemo8.mat:
+load iddemo8
+%%
+% The name of the data object is |dat|, and let us view it.
+dat
+plot(dat)
+
+%%
+% We see that there are some problems with the output around
+% sample 250-280 and around samples 600 to 650. These might have been
+% sensor failures.
+%
+% Therefore split the data into three separate experiments and
+% put then into a multi-experiment data object:
+d1 = dat(1:250);
+d2 = dat(281:600);
+d3 = dat(651:1000);
+d = merge(d1,d2,d3) % merge lets you create multi-exp IDDATA object
+
+%%
+% The different experiments can be given other names, for example:
+d.exp = {'Period 1';'Day 2';'Phase 3'}
+%%
+% To examine it, use plot, as in |plot(d)|.
+
+%% Performing Estimation Using Multi-Experiment Data
+% As mentioned before, all model estimation routines accept
+% multi-experiment data and take into account that they are recorded at
+% different periods. Let us use the two first experiments for estimation
+% and the third one for validation:
+
+de = getexp(d,[1,2]); % subselection is done using  the command GETEXP using numbers
+dv = getexp(d,'Phase 3'); % or names.
+m1 = arx(de,[2 2 1]);
+m2 = n4sid(de,2);
+m3 = armax(de,[2 2 2 1]);
+compare(dv,m1,m2,m3)
+
+%%
+% Compare also accepts multiple experiments:
+pause off
+compare(d,m1,m2,m3) %generates three plots if pause is on; showing only the last one here
+pause on
+
+%% 
+% Also, |spa|, |etfe|, |resid|, |predict|, |sim| operate in the same way
+% for multi-experiment data, as they do for single experiment data. 
+
+
+%% Merging Models After Estimation
+% There is another way to deal with separate data sets: a model can be
+% computed for each set, and then the models can  be merged:
+m4 = armax(getexp(de,1),[2 2 2 1]);
+m5 = armax(getexp(de,2),[2 2 2 1]);
+m6 = merge(m4,m5); % m4 and m5 are merged into m6
+
+%%
+% This is conceptually the same as computing |m| from the merged set |de|,
+% but it is not numerically the same. Working on |de| assumes that the 
+% signal-to-noise ratios are (about) the same in the different experiments,
+% while merging separate models makes independent estimates of the noise
+% levels. If the conditions are about the same for the different
+% experiments, it is more efficient to estimate directly on the
+% multi-experiment data. 
+
+%%
+% We can check the models |m3| and |m6| that are both ARMAX models obtained
+% on the same data in two different ways:
+[m3.a;m6.a]
+[m3.b;m6.b]
+[m3.c;m6.c]
+compare(dv,m3,m6)
+
+%% Case Study: Concatenating Vs. Merging Independent Datasets
+% We now turn to another situation. Let us consider two data sets generated
+% by the system m0. The system is given by:
+m0
+
+%%
+% The data sets that have been collected are |z1| and |z2|, obtained from
+% m0 with different inputs, noise and initial conditions. These datasets
+% are obtained from iddemo8.mat that was loaded earlier.
+pause off
+%%
+% First data set:
+plot(z1) %generates a separate plot for each I/O pair if pause is on; showing only the last one here
+
+%%
+% The second set:
+plot(z2) %generates a separate plot for each I/O pair if pause is on; showing only the last one here
+
+%%
+% If we just concatenate the data we obtained:
+zzl = [z1;z2]
+plot(zzl)
+
+pause on
+
+%%
+% A model amy be obtained by using |pem|:
+ml = pem(zzl,3,'nk',[0 1]); % No delay from input # 1 and one from input # 2
+%% 
+% Bode response from Input#1 to Output#1
+bode(m0(1,1),ml(1,1)), legend('m0(1,1)','ml(1,1)')
+%%
+% Bode response from Input#2 to Output#1
+bode(m0(1,2),ml(1,2)), legend('m0(1,2)','ml(1,2)')
+%%
+% Bode response from Input#1 to Output#2
+bode(m0(2,1),ml(2,1)), legend('m0(2,1)','ml(2,1)')
+%%
+% Bode response from Input#2 to Output#2
+bode(m0(2,2),ml(2,2)), legend('m0(2,2)','ml(2,2)')
+
+%%
+% This is not a very good model, as observed from the four Bode plots
+% above.
+
+%%
+% Now, instead treat the two data sets as different experiments:
+zzm = merge(z1,z2)
+% The model becomes
+mm = pem(zzm,3,'nk',[0 1],'cov','none','display','on'); 
+
+%%
+%  Let us compare the Bode plots of the true system (blue)
+%  the model from concatenated data (green) and the model from the
+%  merged data set (red):
+% Bode response from Input#1 to Output#1:
+bode(m0(1,1),'b',ml(1,1),'g',mm(1,1),'r'), legend('m0(1,1)','ml(1,1)','mm(1,1)')
+
+%%
+% Bode response from Input#2 to Output#1:
+bode(m0(1,2),'b',ml(1,2),'g',mm(1,2),'r'), legend('m0(1,2)','ml(1,2)','mm(1,2)')
+
+%%
+% Bode response from Input#1 to Output#2:
+bode(m0(2,1),'b',ml(2,1),'g',mm(2,1),'r'), legend('m0(2,1)','ml(2,1)','mm(2,1)')
+
+%%
+% Bode response from Input#2 to Output#2:
+bode(m0(2,2),'b',ml(2,2),'g',mm(2,2),'r'), legend('m0(2,2)','ml(2,2)','mm(2,2)')
+
+%%
+% The merged data give a much better model, as observed from the plot
+% above.
+
+%% Conclusions
+% In this demo we saw how to use multiple data sets together for estimation
+% of one model. This technique is useful when you have multiple datasets
+% from independent experiment runs or when you segment data into multiple
+% sets to remove bad segments. Multiple experiments can be packaged into a
+% single IDDATA object, which is then usable for all estimation and
+% analysis requirements. This technique works for both time and frequency
+% domain data.
+%
+% It is also possible to merge models after estimation. This technique can
+% be used to "average out" independently estimated models. If the noise
+% characteristics on multiple datasets are different, merging models after
+% estimation works better than merging the datasets themselves before
+% estimation.
+
+%% Additional Information
+% For more information on identification of dynamic systems with System
+% Identification Toolbox visit the
+% <http://www.mathworks.com/products/sysid/ System Identification Toolbox>
+% product information page.
+
+displayEndOfDemoMessage(mfilename)
+##### SOURCE END #####
+--></body></html>

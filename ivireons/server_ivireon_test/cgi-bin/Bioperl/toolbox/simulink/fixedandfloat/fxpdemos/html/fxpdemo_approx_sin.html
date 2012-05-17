@@ -1,0 +1,192 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Fixed-Point Function Approximation</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="fxpdemo_approx_sin.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit fxpdemo_approx_sin">Open fxpdemo_approx_sin.m in the Editor</a></div><div class="right"><a href="matlab:echodemo fxpdemo_approx_sin">Run in the Command Window</a></div></div><div class="content"><h1>Fixed-Point Function Approximation</h1><!--introduction--><p>Fixed-point applications often need to approximate a function for which there is no fixed-point library function available.  Instead, an interpolated look up table is typically used to store an approximation of the function over a specified range.  These function approximation scripts are available to automate this task:</p><pre>fixpt_look1_func_approx.m
+fixpt_look1_func_plot.m</pre><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#2">Plotting the Approximation and Associated Error</a></li><li><a href="#4">Using the Approximation in a Simulink&reg; Model</a></li><li><a href="#5">Optimizing for Speed with Evenly Spaced Breakpoints</a></li><li><a href="#7">Optimizing for Speed:  Power-of-2 Spaced Breakpoints</a></li><li><a href="#9">Summary</a></li></ul></div><h2>Introduction<a name="1"></a></h2><p>The general goal of this demo is to find an approximation to the following ideal function:</p><pre>y = sin(2*pi*x)</pre><p>over an input range [xmin,xmax]. The approximation uses a lookup table approach and is implemented in fixed-point math. In this example, the input has data type ufix(16) and scaling 2^(-16).  The output has data type sfix(16) and scaling 2^(-14).  Rounding operations are towards Floor.</p><p>A specific goal is to have the approximation accurate to 8 bits to the right of the binary point.  In other words, the worst case error should be less than 2^(-8).</p><p>Many sets of lookup table data points would meet this goal.  Different implementations can be chosen depending on other goals such as memory usage and speed of computation.</p><p>The function fixpt_look1_func_approx() can be used to find a solution that meets the goal with a minimal number of data points.</p><pre class="codeinput">xeven = [1 2];
+yeven = [1 2];
+xpow2 = [1 2];
+ypow2 = [1 2];
+
+funcStr = <span class="string">'sin(2*pi*x)'</span>;
+
+xmin = 0;
+xmax = 0.25;
+
+xdt    = ufix(16);
+xscale = 2^(-16);
+
+ydt    = sfix(16);
+yscale = 2^(-14);
+
+errMax  = 2^(-8);
+nPtsMax = 21;
+
+rndMeth = <span class="string">'Floor'</span>;
+
+format <span class="string">long</span>
+[xuneven,yuneven] = fixpt_look1_func_approx(funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth,errMax,[]) <span class="comment">%#ok&lt;NOPTS&gt;</span>
+</pre><pre class="codeoutput">
+xuneven =
+
+                   0
+   0.062469482421875
+   0.102188110351563
+   0.136093139648438
+   0.167068481445313
+   0.196426391601563
+   0.224807739257813
+   0.250000000000000
+
+
+yuneven =
+
+                   0
+   0.382506273649438
+   0.598851963038727
+   0.754635494518213
+   0.867284980781863
+   0.943878806632912
+   0.987498645602542
+   1.000000000000000
+
+</pre><h2>Plotting the Approximation and Associated Error<a name="2"></a></h2><p>The function fixpt_look1_func_plot can be used to view this approximation.</p><pre class="codeinput">fixpt_look1_func_plot(xuneven,yuneven,funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth);
+</pre><img vspace="5" hspace="5" src="fxpdemo_approx_sin_01.png" alt=""> <p>The bottom of Figure 1 indicates that this approximation uses unevenly spaced breakpoints which requires a fairly data-intensive implementation.</p><h2>Using the Approximation in a Simulink&reg; Model<a name="4"></a></h2><p>This approximation can be placed directly in a Simulink&reg; Lookup Table (n-D) block. The model below uses not only the above approximation but also the next two implementation variants of the approximation that will be developed below.</p><pre class="codeinput">open_system(<span class="string">'fxpdemo_approx'</span>)
+</pre><img vspace="5" hspace="5" src="fxpdemo_approx_sin_02.png" alt=""> <h2>Optimizing for Speed with Evenly Spaced Breakpoints<a name="5"></a></h2><p>A more streamlined implementation can be obtained if the breakpoints are evenly spaced.</p><pre class="codeinput">[xeven,yeven] = fixpt_look1_func_approx(funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth,errMax,[],<span class="string">'even'</span>);
+fixpt_look1_func_plot(xeven,yeven,funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth);
+</pre><img vspace="5" hspace="5" src="fxpdemo_approx_sin_03.png" alt=""> <p>The bottom of Figure 2 indicates that more data points were required for the evenly spaced case to achieve the same worst case error limit.</p><h2>Optimizing for Speed:  Power-of-2 Spaced Breakpoints<a name="7"></a></h2><p>An even more streamlined implementation can be obtained if the breakpoints are required to be evenly spaced by a power of 2. This is because computations are performed using arithmetic shifts instead of multiplies.</p><pre class="codeinput">[xpow2,ypow2] = fixpt_look1_func_approx(funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth,errMax,[],<span class="string">'pow2'</span>);
+fixpt_look1_func_plot(xpow2,ypow2,funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth);
+</pre><img vspace="5" hspace="5" src="fxpdemo_approx_sin_04.png" alt=""> <p>The bottom of Figure 3 indicates that even more data points were required for the power of 2 spaced case to achieve the same worst case error limit.</p><h2>Summary<a name="9"></a></h2><p>The ideal function and the three approximations are used in the model fxpdemo_approx. If you have Real-Time Workshop&reg; installed, code can be generated for the above model.  If inline parameters is ON, the generated code will show the large efficiency differences in the implementation of unevenly spaced, evenly spaced, and power of 2 spacing.</p><pre class="codeinput">sim(<span class="string">'fxpdemo_approx'</span>)
+</pre><p class="footer">Copyright 1994-2009 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Fixed-Point Function Approximation
+%
+% Fixed-point applications often need to approximate a function for which 
+% there is no fixed-point library function available.  Instead, an interpolated
+% look up table is typically used to store an approximation of the function over
+% a specified range.  These function approximation scripts are available to 
+% automate this task:
+%
+%  fixpt_look1_func_approx.m
+%  fixpt_look1_func_plot.m
+%
+
+% Copyright 1994-2009 The MathWorks, Inc.
+% $Revision: 1.5.2.6 $ $Date: 2009/06/16 05:30:01 $
+
+%% Introduction
+%
+% The general goal of this demo is to find an approximation to the following 
+% ideal function:
+%
+%  y = sin(2*pi*x)
+%
+% over an input range [xmin,xmax]. The approximation uses a lookup table 
+% approach and is implemented in fixed-point math. In this example, the input 
+% has data type ufix(16) and scaling 2^(-16).  The output has data type 
+% sfix(16) and scaling 2^(-14).  Rounding operations are towards Floor.
+%
+% A specific goal is to have the approximation accurate to 8 bits to the right
+% of the binary point.  In other words, the worst case error should be less
+% than 2^(-8).
+% 
+% Many sets of lookup table data points would meet this goal.  Different 
+% implementations can be chosen depending on other goals such as memory usage 
+% and speed of computation.
+%
+% The function fixpt_look1_func_approx() can be used to find a solution that
+% meets the goal with a minimal number of data points.
+% 
+
+xeven = [1 2];
+yeven = [1 2];
+xpow2 = [1 2];
+ypow2 = [1 2];
+
+funcStr = 'sin(2*pi*x)';
+
+xmin = 0;
+xmax = 0.25;
+
+xdt    = ufix(16);
+xscale = 2^(-16);
+
+ydt    = sfix(16);
+yscale = 2^(-14);
+
+errMax  = 2^(-8);
+nPtsMax = 21;
+
+rndMeth = 'Floor';
+
+format long
+[xuneven,yuneven] = fixpt_look1_func_approx(funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth,errMax,[]) %#ok<NOPTS>
+
+%% Plotting the Approximation and Associated Error 
+%
+% The function fixpt_look1_func_plot can be used to view this approximation.
+%
+
+fixpt_look1_func_plot(xuneven,yuneven,funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth);
+
+%%
+% The bottom of Figure 1 indicates that this approximation uses unevenly 
+% spaced breakpoints which requires a fairly data-intensive implementation.
+%
+
+%% Using the Approximation in a Simulink(R) Model
+%
+% This approximation can be placed directly in a Simulink(R) Lookup Table (n-D) block.
+% The model below uses not only the above approximation but also the next
+% two implementation variants of the approximation that will be developed below.
+
+open_system('fxpdemo_approx')
+
+%% Optimizing for Speed with Evenly Spaced Breakpoints
+%
+% A more streamlined implementation can be obtained if the breakpoints
+% are evenly spaced.
+%
+
+[xeven,yeven] = fixpt_look1_func_approx(funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth,errMax,[],'even');
+fixpt_look1_func_plot(xeven,yeven,funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth);
+
+%%
+% The bottom of Figure 2 indicates that more data points were required
+% for the evenly spaced case to achieve the same worst case error limit.
+%
+%% Optimizing for Speed:  Power-of-2 Spaced Breakpoints
+%
+% An even more streamlined implementation can be obtained if the
+% breakpoints are required to be evenly spaced by a power of 2.
+% This is because computations are performed using arithmetic shifts instead 
+% of multiplies.
+
+[xpow2,ypow2] = fixpt_look1_func_approx(funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth,errMax,[],'pow2');
+fixpt_look1_func_plot(xpow2,ypow2,funcStr,xmin,xmax,xdt,xscale,ydt,yscale,rndMeth);
+
+%%
+%
+% The bottom of Figure 3 indicates that even more data points were required
+% for the power of 2 spaced case to achieve the same worst case error limit.
+%
+%% Summary
+%
+% The ideal function and the three approximations are used in the model
+% fxpdemo_approx. If you have Real-Time Workshop(R) installed, code can be generated 
+% for the above model.  If inline parameters is ON, the generated code will show
+% the large efficiency differences in the implementation of unevenly spaced, 
+% evenly spaced, and power of 2 spacing.
+
+sim('fxpdemo_approx')
+
+displayEndOfDemoMessage(mfilename)
+
+
+##### SOURCE END #####
+--></body></html>

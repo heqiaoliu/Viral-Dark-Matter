@@ -1,0 +1,57 @@
+function [success, msg] = setupFDesign(this, varargin)
+%SETUPFDESIGN   Setup the contained FDesign.
+
+%   Author(s): J. Schickler
+%   Copyright 2005-2006 The MathWorks, Inc.
+%   $Revision: 1.1.6.4 $  $Date: 2008/05/31 23:24:36 $
+
+success = true;
+msg     = '';
+
+hd = get(this, 'FDesign');
+
+spec = getSpecification(this, varargin{:});
+
+set(hd, 'Specification', spec);
+
+if nargin > 1 && ~isempty(varargin{1})
+    source = varargin{1};
+else
+    source = this;
+end
+
+try
+    specs = getSpecs(this, source);
+
+    if strncmpi(specs.FrequencyUnits, 'normalized', 10)
+        normalizefreq(hd);
+    else
+        normalizefreq(hd, false, specs.InputSampleRate);
+    end
+
+    switch spec
+        case 'fp,fst,ap,ast'
+            setspecs(hd, specs.Fpass, specs.Fstop, specs.Apass, ...
+                specs.Astop, specs.MagnitudeUnits);
+        case 'n,fc,ap,ast'
+            setspecs(hd, specs.Order, specs.F6dB, specs.Apass, ...
+                specs.Astop, specs.MagnitudeUnits);
+        case 'n,fp,ap,ast'
+            setspecs(hd, specs.Order, specs.Fpass, specs.Apass, ...
+                specs.Astop, specs.MagnitudeUnits);
+        case 'n,fp,fst'
+            setspecs(hd, specs.Order, specs.Fpass, specs.Fstop);
+        case 'n,fst,ap,ast'
+            setspecs(hd, specs.Order, specs.Fstop, specs.Apass, ...
+                specs.Astop,specs.MagnitudeUnits);
+        case 'n,fst,ast'
+            setspecs(hd, specs.Order, specs.Fstop, specs.Astop, specs.MagnitudeUnits);
+        otherwise
+            disp(sprintf('Finish %s', spec));
+    end
+catch e 
+    success = false;
+    msg     = cleanerrormsg(e.message);
+end
+
+% [EOF]

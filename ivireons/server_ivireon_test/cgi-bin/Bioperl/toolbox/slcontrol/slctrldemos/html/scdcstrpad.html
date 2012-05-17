@@ -1,0 +1,173 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Plotting Linear System Characteristics of a Chemical Reactor</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-06-30"><meta name="DC.source" content="scdcstrpad.m"><link rel="stylesheet" type="text/css" href="../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit scdcstrpad">Open scdcstrpad.m in the Editor</a></div><div class="right"><a href="matlab:echodemo scdcstrpad">Run in the Command Window</a></div></div><div class="content"><h1>Plotting Linear System Characteristics of a Chemical Reactor</h1><!--introduction--><p>The Simulink&reg; Control Design&#8482; software provides blocks that you can add to Simulink&reg; models to compute and plot linear systems during simulation. In this demo, a linear system of a continuous-stirred chemical reactor is computed and plotted on a Bode plot as the reactor transitions through different operating points.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Chemical Reactor Model</a></li><li><a href="#3">Plotting the Reactor Linear Response</a></li><li><a href="#6">Logging the Reactor Linear Response</a></li></ul></div><h2>Chemical Reactor Model<a name="1"></a></h2><p>Open the Simulink model of the chemical reactor:</p><pre class="codeinput">open_system(<span class="string">'scdcstr'</span>)
+</pre><img vspace="5" hspace="5" src="scdcstrpad_01.png" alt=""> <p>The reactor has three inputs and two outputs:</p><div><ul><li>The <tt>FeedCon0</tt>, <tt>FeedTemp0</tt> and <tt>Coolant Temp</tt> blocks model the inputs - feed concentration, feed temperature, and coolant temperature, respectively.</li></ul></div><div><ul><li>The <tt>T</tt> and <tt>CA</tt> ports of the <tt>CSTR</tt> block model the outputs - reactor temperature and residual concentration, respectively.</li></ul></div><p>This demo focuses on the response from coolant temperature, <tt>Coolant Temp</tt>, to residual concentration, <tt>CA</tt>, when the feed concentration and feed temperature are constant.</p><p>For more information on modeling reactors, see Seborg, D.E. et al., "Process Dynamics and Control", 2nd Ed., Wiley, pp.34-36.</p><h2>Plotting the Reactor Linear Response<a name="3"></a></h2><p>The reactor model contains a <tt>Bode Plot</tt> block from the Simulink Control Design Linear Analysis Plots library. The block is configured with:</p><div><ul><li>A linearization input at the coolant temperature <tt>Coolant Temp</tt>.</li></ul></div><div><ul><li>A linearization output at the residual concentration <tt>CA</tt>.</li></ul></div><p>The block is also configured to perform linearizations on the rising edges of an external trigger signal. The trigger signal is computed in the <tt>Linearization trigger signal</tt> block which produces a rising edge when the residual concentration is:</p><div><ul><li>At a steady state value of 2</li></ul></div><div><ul><li>In a narrow range around 5</li></ul></div><div><ul><li>At a steady state value of 9</li></ul></div><p>Double-click the <tt>Bode Plot</tt> block to view the block configuration.</p><p><img vspace="5" hspace="5" src="../html_extra/scdcstr/LinearizationTab.png" alt=""> </p><p>Clicking  <b>Show Plot</b> in the Block Parameters dialog box opens a Bode Plot window which shows the response of the computed linear system from <tt>Coolant Temp</tt> to <tt>CA</tt>. To compute the linear system and view its response, simulate the model using one of the following:</p><div><ul><li>Click the <tt>Start simulation</tt> button in the Bode Plot window.</li></ul></div><div><ul><li>Select <b>Simulation &gt; Start</b> in the Simulink model window.</li></ul></div><div><ul><li>Type the following command:</li></ul></div><pre class="codeinput">sim(<span class="string">'scdcstr'</span>)
+</pre><p><img vspace="5" hspace="5" src="../html_extra/scdcstr/BodePlot.png" alt=""> </p><p>The Bode plot shows the linearized reactor at three operating points corresponding to the trigger signals defined in the <tt>Linearization trigger signal</tt> block:</p><div><ul><li>At 5 sec,  the linearization is for a low residual concentration.</li></ul></div><div><ul><li>At 38 sec, the linearization is for a high residual concentration.</li></ul></div><div><ul><li>At 27 sec, the linearization is as the reactor transitions from a low to high residual concentration.</li></ul></div><p>The linearizations at low and high residual concentrations are similar but the linearization during the transition has a significantly different DC gain and phase characteristics. At low frequencies, the phase differs by 180 degrees, indicating the presence of either an unstable pole or zero.</p><h2>Logging the Reactor Linear Response<a name="6"></a></h2><p>The <b>Logging</b> tab in the <tt>Bode Plot</tt> block specifies that the computed linear systems be saved as a workspace variable.</p><p><img vspace="5" hspace="5" src="../html_extra/scdcstr/LoggingTab.png" alt=""> </p><p>The linear systems are logged in a structure with <tt>time</tt> and <tt>values</tt> fields.</p><pre class="codeinput">LinearReactor
+</pre><pre class="codeoutput">
+LinearReactor = 
+
+         time: [3x1 double]
+       values: [4-D ss]
+    blockName: 'scdcstr/Bode Plot'
+
+</pre><p>The <tt>values</tt> field stores the linear systems as an array of LTI state-space systems (see <a href="matlab:helpview([docroot,'/toolbox/control/control.map'],'concept_of_an_lti_array')">Arrays of LTI Models</a>) in Control System Toolbox documentation for more information).</p><p>You can retrieve the individual systems by indexing into the <tt>values</tt> field.</p><pre class="codeinput">P1 = LinearReactor.values(:,:,1);
+P2 = LinearReactor.values(:,:,2);
+P3 = LinearReactor.values(:,:,3);
+</pre><p>The Bode plot of the linear system at time 27 sec, when the reactor transitions from low to high residual concentration, indicates that the system could be unstable. Displaying the linear systems in pole-zero format confirms this:</p><pre class="codeinput">zpk(P1)
+zpk(P2)
+zpk(P3)
+</pre><pre class="codeoutput"> 
+Zero/pole/gain from input "Coolant Temp" to output "CSTR/2":
+       -0.1028
+----------------------
+(s^2 + 2.215s + 2.415)
+ 
+ 
+Zero/pole/gain from input "Coolant Temp" to output "CSTR/2":
+      -0.07514
+---------------------
+(s+0.7567) (s-0.3484)
+ 
+ 
+Zero/pole/gain from input "Coolant Temp" to output "CSTR/2":
+      -0.020462
+---------------------
+(s+0.8542) (s+0.7528)
+ 
+</pre><p>Close the Simulink model:</p><pre class="codeinput">bdclose(<span class="string">'scdcstr'</span>)
+clear(<span class="string">'LinearReactor'</span>,<span class="string">'P1'</span>,<span class="string">'P2'</span>,<span class="string">'P3'</span>)
+</pre><p class="footer">Copyright 2010 The MathWorks, Inc.<br>
+          Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!--
+##### SOURCE BEGIN #####
+%% Plotting Linear System Characteristics of a Chemical Reactor
+%
+% The Simulink(R) Control Design(TM) software provides blocks that you 
+% can add to Simulink(R) models to compute and plot linear systems  
+% during simulation. In this demo, a linear system of a continuous-stirred
+% chemical reactor is computed and plotted on a Bode plot as the reactor
+% transitions through different operating points.  
+ 
+% Copyright 2010 The MathWorks, Inc.
+% $Revision: 1.1.8.1 $ $Date: 2010/05/10 17:56:26 $
+
+%% Chemical Reactor Model
+%
+% Open the Simulink model of the chemical reactor:
+open_system('scdcstr')
+%%
+% The reactor has three inputs and two outputs:
+%
+% * The |FeedCon0|, |FeedTemp0| and |Coolant Temp| blocks model the 
+% inputs - feed concentration, feed temperature, and coolant temperature, respectively.
+%
+% * The |T| and |CA| ports of the |CSTR| block model the outputs - reactor temperature
+% and residual concentration, respectively.
+%
+% This demo focuses on the response from coolant
+% temperature, |Coolant Temp|, to residual concentration, |CA|, when the feed 
+% concentration and feed temperature are constant.
+%
+% For more information on modeling reactors, see Seborg, D.E. et al., "Process Dynamics and Control",
+% 2nd Ed., Wiley, pp.34-36.
+
+%% Plotting the Reactor Linear Response
+%
+% The reactor model contains a |Bode Plot| block from the Simulink Control 
+% Design Linear Analysis Plots library. The block is configured with:
+%
+% * A linearization input at the coolant temperature |Coolant Temp|.
+%
+% * A linearization output at the residual concentration |CA|.
+%
+% The block is also configured to perform linearizations on the rising edges of 
+% an external trigger signal. The trigger signal is computed in the
+% |Linearization trigger signal| block which produces a rising edge when 
+% the residual concentration is:
+% 
+% * At a steady state value of 2
+%
+% * In a narrow range around 5
+%
+% * At a steady state value of 9
+%
+% Double-click the |Bode Plot| block to view the block configuration.
+%
+% <<../html_extra/scdcstr/LinearizationTab.png>>
+
+%%
+% Clicking  *Show Plot* in the Block Parameters dialog box opens a Bode Plot 
+% window which shows the response of the computed linear system from |Coolant Temp|
+% to |CA|. To compute the linear system and view its response, simulate the model 
+% using one of the following:
+%
+% * Click the |Start simulation| button in the Bode Plot window.
+%
+% * Select *Simulation > Start* in the Simulink model window.
+%
+% * Type the following command: 
+%
+sim('scdcstr')
+
+%%
+% <<../html_extra/scdcstr/BodePlot.png>>
+%
+% The Bode plot shows the linearized reactor at three operating
+% points corresponding to the trigger signals defined in the |Linearization
+% trigger signal| block:
+%
+% * At 5 sec,  the linearization is for a low residual concentration.
+%
+% * At 38 sec, the linearization is for a high residual concentration.
+%
+% * At 27 sec, the linearization is as the reactor transitions from a low 
+% to high residual concentration. 
+%
+% The linearizations at low and high residual concentrations are similar but
+% the linearization during the transition has a significantly different DC gain 
+% and phase characteristics. At low frequencies, the phase differs by
+% 180 degrees, indicating the presence of either an unstable pole or zero.
+
+%% Logging the Reactor Linear Response
+%
+% The *Logging* tab in the |Bode Plot| block specifies that the computed linear
+% systems be saved as a workspace variable. 
+%
+% <<../html_extra/scdcstr/LoggingTab.png>>
+%
+% The linear systems are logged in a structure with 
+% |time| and |values| fields.
+
+LinearReactor
+
+%%
+% The |values| field stores the linear systems as an array of LTI state-space
+% systems (see <matlab:helpview([docroot,'/toolbox/control/control.map'],'concept_of_an_lti_array') Arrays of LTI Models>)
+% in Control System Toolbox documentation for more information). 
+%
+% You can retrieve the individual systems by indexing into the |values| field.
+P1 = LinearReactor.values(:,:,1);
+P2 = LinearReactor.values(:,:,2);
+P3 = LinearReactor.values(:,:,3);
+
+%%
+% The Bode plot of the linear system at time 27 sec, when the reactor 
+% transitions from low to high residual concentration, indicates that the system
+% could be unstable. Displaying the linear systems in pole-zero format confirms this:
+zpk(P1)
+zpk(P2)
+zpk(P3)
+
+%%
+% Close the Simulink model:
+bdclose('scdcstr')
+clear('LinearReactor','P1','P2','P3')
+displayEndOfDemoMessage(mfilename)
+
+##### SOURCE END #####
+--></body></html>

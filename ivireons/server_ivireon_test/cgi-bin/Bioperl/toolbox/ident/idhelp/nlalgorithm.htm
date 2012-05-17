@@ -1,0 +1,200 @@
+<html>
+
+<title>Help: Algorithm and Iteration Properties</title>
+
+<body>
+
+<center><h2>Algorithm and Iteration Properties</h2></center>
+
+<p>Algorithm properties refer to the set of properties that
+control the iterative estimation aspects of nonlinear models. On iterative
+estimations, the Trace table in the "Estimate" panel shows the progress of
+estimation by printing per-iteration information on Cost, Step Size, etc. These
+quantities are described below. Also described are the Algorithm options.</p>
+
+<center><h3><a name="iter_info">Iteration Information in Trace Table</a></h3></center>
+
+<p>The iteration table shows information on some quantities
+related to the <a href="nlitervsnoniter.htm">iterative estimation</a>
+algorithm. The following quantities are displayed:</p>
+
+<ol>
+ <li>Iteration number: iteration number is shown in column 1.
+     Number of iterations cannot exceed the Maximum Iterations specified under <a
+     href="#algo_options">Algorithm options</a>.</li>
+ <li>Cost: Cost is the quantity being minimized by the
+     estimation algorithm. Cost is a function of the prediction error matrix
+     (one column for each output) E. The formula for Cost is determined by the search "Criterion".
+     Criterion can be DET (determinant minimization) or TRACE (trace minimization).
+     When search criterion is DET, det(E'*E/N) is minimized, where N is number of data samples.
+     When search criterion is TRACE, trace(E'*E*W/N) is minimized, where W is the weighting 
+     to be assigned to individual outputs of the model (or data set). All search methods 
+     except 'lsqnonlin' can minimize either of these search criteria. LSQNONLIN can only
+     minimize the trace criterion. Note that for single-output models, the two search
+     criteria are equivalent and lead to same parameter values. For more information on 
+     search criterion and weighting, type "idprops idmodel algorithm" in MATLAB Command
+     Window.
+ </li>
+ <li>Step Size: The magnitude of change in the parameter set
+     used in an iteration.</li>
+ <li>Optimality: Optimality is short for "First Order
+     Optimality", which is a measure of the gradient of the search direction at
+     the current value of parameter set. It is equal to the Inf-norm of the
+     gradient vector.</li>
+ <li>Bisections: This quantity is meaningful for line-search
+     based least squares schemes - "Gauss Newton", "Adaptive Gauss Newton",
+     "Levenburg-Marquardt", and "Gradient Search". It shows the number of times
+     the search direction had to be bisected before the cost reduced in the
+     search direction. If the number of bisections is small, this is a good sign 
+     that the minimization is well conditioned. Bisections column is empty when 
+     Search Method = "Trust Region Reflective Newton (lsqnonlin)".</li>
+</ol>
+<hr>
+<center><h3><a name="algo_options">Algorithm Options</a></h3></center>
+
+<p>The algorithm properties dialog is opened by pressing the
+Algorithm Options... button on the "Estimate" tabbed panel of the Nonlinear Models
+window. These properties pertain to the <a href="nlitervsnoniter.htm">iterative
+estimation schemes</a> only. Note that not all estimation schemes are
+iterative. </p>
+
+<p>Algorithm options contain the following properties:</p>
+
+<p><b>Estimation_Focus</b>: One of 'Prediction' or
+'Simulation'. 'Prediction' means that the estimation algorithm minimizes the
+norm of y-ypred, while for 'simulation' the output error fit is minimized,
+meaning that when ypred is computed, y in the regressors in F are replaced by
+values simulated from the input only. (y: measured output, ypred: predicted
+value of output). </p>
+
+<p>Note: Estimation_Focus is available for Nonlinear ARX models
+only.</p>
+
+<p><b>Iterative_Wavenet</b>: This property controls
+iterative estimation of Wavelet Network used in Nonlinear ARX models with Focus
+= Prediction. This property is not offered for Hammerstein-Wiener models, where
+the estimation is always iterative. Assignable values are:</p>
+
+<ul>
+ <li>"Auto"- First estimation is non iterative, but
+     refinement of existing models (when Initial model is chosen in the Model
+     Type panel), is iterative.</li>
+ <li>"On" – Estimation is always iterative.</li>
+ <li>"Off" – Estimation is not iterative. </li>
+</ul>
+
+<p><b>Initial_State</b>: Choose whether to estimate initial states or hold them
+    to zero when estimating Hammerstein-Wiener models. The default is "zero". This option
+    is not available for Nonlinear ARX models.
+</p>
+
+<p><b>Maximum_Iterations</b>: Maximum number of iterations to perform
+by the estimation algorithm. Use a positive integer for this property (default:
+20).</p>
+
+<p><b>Maximum_Size</b>: The size (number of elements) of the
+largest matrix to be formed by the algorithm. If larger matrices are needed,
+loops will be used. Use this value for memory/speed trade-off. Note that the
+original data matrix of u and y must be smaller than Maximum_Size. Use a
+positive integer for this property (default: 250000).</p>
+
+<p><b>Robustification_Limit</b>: Also called LimitError, this
+quantity limits the influence of large residuals (robustification). Residuals
+(model errors) with a value larger than Robustification_Limit (estimated
+residual standard deviation) will carry a linear rather than a quadratic cost.
+Use a non-negative scalar for this property. Default is 0, which implies no
+robustification</p>
+
+<p><b>Search_Method</b>: The search method used by the
+iterative search algorithm. Assignable values:
+</p>
+
+<ul>
+ <li>Choose automatically (auto) - An automatic choice of a
+     search method (default) from the following: </li>
+ <li>Gauss-Newton (gn): Gauss Newton direction based line
+     search scheme</li>
+ <li>Adaptive Gauss-Newton method (gna) - Gauss-Newton direction with
+     an adaptive cut-off of singular values</li>
+ <li>Levenberg-Marquardt method (lm) – Traditional Levenberg-Marquardt
+     direction based linear search</li>
+ <li>Trust Region Reflective Newton (lsqnonlin) - Nonlinear
+     least-squares method, provided by Optimization
+     Toolbox&#8482;.
+     </li>
+ <li>Gradient Search (grad) – steepest descent direction based
+     line search.</li>
+</ul>
+
+<p>Note: 'lsqnonlin' requires Optimization Toolbox&#8482;.</p>
+
+<p><b>Search_Criterion</b>:  Minimization criterion for iterative search. Assignable values:
+</p>
+
+<ul>
+ <li> Determinant (default) - det(E'*E) is minimized (with some 
+      normalization), where E is the prediction error matrix. This leads to maximum 
+      likelihood estimate of parameter values under the assumption of residuals being Gaussian.</li>
+ <li> Trace - Weighted least squares: trace(E'*E*W) is minimized 
+      (with some normalization), where E is the matrix of prediction errors over the 
+      available time span. Weighting W is specified through the "Trace_Criterion_Weighting" 
+      Algorithm property.</li>
+</ul>
+
+<p><b>Tolerance</b>: Tolerance on relative change in Cost to
+determine when to terminate the iterative search. When the expected improvement
+is less than Tolerance (%), the iterations are terminated. Assign a positive
+scalar to this property (default: 1e-5).</p>
+
+<p><b>Trace_Criterion_Weighting</b>: Weighting W applied to trace minimization. When 
+      Search_Criterion = "Trace minimization", trace(E'*E*W)  is minimized. Weighting 
+      should be specified as a positive semi-definite matrix. It can be used to specify 
+      relative importance of outputs in multi-output models (or reliability of 
+      corresponding data). For such a use, specify a diagonal matrix for Weighting. 
+      Weighting is not useful in single-output models. By default, W is an identity matrix 
+      of size equal to number of model outputs (implying all outputs are to be given equal   
+      importance during estimation). Note that weighting does not apply to determinant 
+      minimization criterion.  
+
+<p><b>Advanced_Properties</b> - Advanced properties of estimation Algorithm: </p>
+
+<ul>
+ <li><b>GnPinvConst</b> - Singular values of the Jacobian
+     smaller than GnPinvConst*(size(J))*norm(J)*eps (where J is Jacobian
+     matrix) are discarded when the search direction is computed. Closer to 0
+     singular values are included if this value is decreased. Default value:
+     1e4.</li>
+ <li><b>MinParChange</b> - Smallest allowed parameter update
+     per iteration. Default: eps</li>
+ <li><b>StepReduction</b> - In the line search algorithm, the
+     suggested parameter update is reduced by the factor 'StepReduction' in
+     each try until either 'MaxBisections' tries have been carried out or a
+     lower value of the criterion function has been obtained. Default: 2.</li>
+ <li><b>MaxBisections</b> - The maximum number of
+     bisections performed by the line search algorithm along the search
+     direction. Default: 10.</li>
+ <li><b>LMStartValue</b> - The level of
+     "regularization" to start with when using the
+     Levenberg-Marquardt (LM) search method. Default: 0.001.</li>
+ <li><b>LMStep</b> - The level of LM
+     "regularization" to try next in order to get a lower value of
+     the criterion function. The level of "regularization" is
+     'LMStep' times the previous level. At the start of a new iteration the
+     level of "regularization" is computed as 1/'LMStep' times the previous
+     level. Assign a positive real scalar > 1. Default: 10. Applies to
+     Levenberg-Marquardt search method only.</li>
+ <li><b>RelImprovement</b> - The iterations are stopped if the
+     relative improvement of the criterion function is less than
+     'RelImprovement'. Assign a non-negative scalar. Default: 0. Applies to all
+     search methods except lsqnonlin.</li>
+ <li><b>MaxFunEvals</b> - The iterations are stopped if the
+     number of calls to the model file exceeds this value. Assign a suitably
+     large positive value. Default: Inf (which implies that this criterion is
+     not used to terminate iterations). </li>
+</ul>
+
+<p><a href="nlmodelestim.htm">Estimation of nonlinear models using System Identification Tool.</a></p>
+
+</body>
+
+</html>

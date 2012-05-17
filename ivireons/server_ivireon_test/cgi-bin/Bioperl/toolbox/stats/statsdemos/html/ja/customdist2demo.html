@@ -1,0 +1,123 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!-- This HTML was auto-generated from MATLAB code. To make changes, update the MATLAB code and republish this document.       --><title>カスタム一変量分布の近似 (第 2 部)</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="../http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2010-05-26"><meta name="DC.source" content="customdist2demo.m"><link rel="stylesheet" type="text/css" href="../../../../matlab/demos/private/style.css"></head><body><div class="header"><div class="left"><a href="matlab:edit customdist2demo">エディターで customdist2demo.m を開く</a></div><div class="right"><a href="matlab:echodemo customdist2demo">コマンド ウィンドウで実行</a></div></div><div class="content"><h1>カスタム一変量分布の近似 (第 2 部)</h1><!--introduction--><p>このデモでは、Statistics Toolbox™ の関数 <tt>mle</tt> の高度な使用例を示し、カスタム分布を一変量データと近似します。以下の例では、モデルと打ち切りデータの近似や、カスタム分布の近似における数値の詳細について説明します。<a href="customdist1demo.html">カスタム一変量分布の近似</a>のデモでは、他の例についても取り上げます。</p><!--/introduction--><h2>目次</h2><div><ul><li><a href="#1">カスタム分布と打ち切りデータの近似</a></li><li><a href="#9">カスタム分布の近似の数値問題</a></li><li><a href="#17">勾配の指定</a></li></ul></div><h2>カスタム分布と打ち切りデータの近似<a name="1"></a></h2><p>機械部品の故障時間のモデル化にはしばしば、極値分布を使用します。このようなケースでの実験は一定時間しか実行しない場合があります。いずれかの実験単位がその時間内に失敗した場合、データは右側打ち切りとなります。つまり、故障時間の正確な値は把握できず、特定の値より大きいことしか把握できません。</p><p>Statistics Toolbox には、極値分布を、打ち切られたデータを含むデータと近似する関数 <tt>evfit</tt> があります。ただし、この例の目的上、関数 <tt>evfit</tt> は取り上げず、関数 <tt>mle</tt> とカスタム分布を使用し、極値分布を使ってモデルを打ち切りデータと近似する方法について説明します。</p><p>打ち切りデータの値は正確に把握できないため、最尤推定がより困難になります。特に、対数尤度を計算するには PDF および CDF の両方が必要です。したがって、打ち切りデータを近似するには、これら両方の形式のための関数と共に関数 <tt>mle</tt> を指定する必要があります。Statistics Toolbox には関数 <tt>evpdf</tt> と関数 <tt>evcdf</tt> が含まれています。したがって、この例については、コードの記述作業は既に完了しています。</p><p>それでは、モデルとシミュレーション データを近似します。最初の手順は、打ち切られていない極値データを生成することです。</p><pre class="codeinput">rand(<span class="string">'state'</span>,0); randn(<span class="string">'state'</span>,0);
+n = 50;
+mu = 5;
+sigma = 2.5;
+x = evrnd(mu,sigma,n,1);
+</pre><p>次に、事前設定されたカットオフ値よりも大きいすべての値を、カットオフ値に置き換えることによって、打ち切ります。これは、第 2 種の打ち切りとして知られています。カットオフ値が 7 の場合、オリジナルのデータの約 10% が打ち切られます。</p><pre class="codeinput">c = (x &gt; 7);
+x(c) = 7;
+sum(c)/length(c)
+</pre><pre class="codeoutput">
+ans =
+
+    0.1000
+
+</pre><p>これらのデータのヒストグラム、たとえば棒グラフをプロットして、打ち切られた観測値を表現できます。</p><pre class="codeinput">[uncensCnts,binCtrs] = hist(x(~c));
+censCnts = hist(x(c),binCtrs);
+bar(binCtrs,[uncensCnts' censCnts'],<span class="string">'stacked'</span>);
+</pre><img vspace="5" hspace="5" src="../customdist2demo_01.png" alt=""> <p>打ち切りが行われても、打ち切られた観測値の割合は比較的小さいものです。そのため、モーメント法がパラメーター推定のための合理的な始点となります。打ち切られていないデータの観測平均値および標準偏差に対応する mu と sigma の値を計算します。</p><pre class="codeinput">sigma0 = sqrt(6)*std(x(~c))./pi
+mu0 = mean(x(~c))-psi(1).*sigma0
+</pre><pre class="codeoutput">
+sigma0 =
+
+    2.0109
+
+
+mu0 =
+
+    4.2485
+
+</pre><p>PDF および CDF 関数に対するデータ、x、およびハンドルを、関数 <tt>mle</tt> に引き渡すだけでなく、'censoring' パラメーターを使用して打ち切られたベクトル c を引き渡します。スケール パラメーターである SIGMA は正の数でなければならないため、パラメーターの下限を指定します。関数 <tt>mle</tt> によって、2 つの極値分布パラメーターである mu と sigma の最尤推定の他に信頼区間 (約 95%) が返されます。</p><pre class="codeinput">[paramEsts,paramCIs] = mle(x, <span class="string">'censoring'</span>,c, <span class="string">'pdf'</span>,@evpdf, <span class="string">'cdf'</span>,@evcdf, <span class="keyword">...</span>
+                           <span class="string">'start'</span>,[mu0 sigma0], <span class="string">'lower'</span>,[-Inf,0])
+</pre><pre class="codeoutput">
+paramEsts =
+
+    4.9001    2.4051
+
+
+paramCIs =
+
+    4.1831    1.8270
+    5.6171    2.9831
+
+</pre><h2>カスタム分布の近似の数値問題<a name="9"></a></h2><p>カスタム分布の近似には、パラメーターの初期推定が必要です。始点が前提としてどの程度優れているかを判断するのは困難です。前の例では、最尤推定とかけ離れた始点を選択していたら、観測値のいくつかは、その始点に対応する極値分布の裾部から大きくずれていたかもしれません。次の 2 つの事象のうち、いずれかが発生していた可能性があります。</p><p>まず、いずれか 1 つの PDF 値が小さくなりすぎ、倍精度演算で 0 に下位桁あふれしていた可能性があります。次に、いずれか 1 つの CDF 値が限りなく 1 に近づき、倍精度で端数が切り上げられた可能性があります (また、CDF 値が小さすぎて下位桁あふれが発生したが、結局問題にならなかった可能性もあります)。</p><p>これらの状況はいずれも、関数 <tt>mle</tt> が対数尤度を計算するときに問題の原因となることがあります。それは、これらの状況によって -Inf という対数尤度値が導き出され、通常は、<tt>mle</tt> の最適化アルゴリズムが、このような領域を回避することは期待できないからです。</p><p>最尤推定の概要を理解したうえで、別の始点ではどうなるかを見ていきましょう。</p><pre class="codeinput">start = [1 1];
+<span class="keyword"><pre> try</span>
+    [paramEsts,paramCIs] = mle(x, <span class="string">'censoring'</span>,c, <span class="string">'pdf'</span>,@evpdf, <span class="string">'cdf'</span>,@evcdf, <span class="keyword">...</span>
+                               <span class="string">'start'</span>,start, <span class="string">'lower'</span>,[-Inf,0])
+<span class="keyword">catch</span> ME
+    disp(ME.message)
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">The CDF function returned values greater than or equal to 1.
+</pre><p>この場合、2 番目の問題が発生しました。初期パラメーター推定において CDF 値のいくつかはちょうど 1 と計算されました。したがって対数尤度は無限です。<tt>mle</tt> の FunValCheck 制御パラメーターを「オフ」に設定してみましょう。そうすると、有限でない尤度値のチェック機能が無効になり、最善の成果を期待することになります。しかし、この数値問題を解決する正しい方法はその根元にあります。この場合、問題の解決は困難ではありません。</p><p>極値 CDF の形式は次のとおりです。</p><pre>  p = 1 - exp( -exp((x-mu)./sigma) )</pre><p>打ち切り観測値の対数尤度への寄与は、その生存関数 (SF) 値の対数、すなわち log(1-CDF) です。極値分布の場合、SF の対数は -exp((x-mu)./sigma) です。(log(1 - (1-exp(logSF))) を計算するのではなく、対数生存関数を直接使用して対数尤度を計算できる場合は、CDF での四捨五入の問題を回避することができます。それは、倍精度で 1 と見分けることができない CDF 値を持っている観測値は、非ゼロ値として容易に表現できる対数生存関数値を持っているためです。たとえば、CDF 値 (1 - 1e-20) は倍精度で 1 に丸められます。それは、倍精度 <tt>eps</tt> が約 2e-16 であるためです。</p><pre class="codeinput">SFval = 1e-20;
+CDFval = 1 - SFval
+</pre><pre class="codeoutput">
+CDFval =
+
+     1
+
+</pre><p>ただし、対応する生存関数値の対数、つまり log(1-CDF) は容易に表現されます。</p><pre class="codeinput">log(SFval)
+</pre><pre class="codeoutput">
+ans =
+
+  -46.0517
+
+</pre><p>PDF そのものではなく、対数 PDF を使用する場合にも同様の観測ができます。対数尤度に対する、打ち切られていない観測値の寄与は、その PDF 値の対数です。log(exp(logPDF)) を計算するのではなく、対数 PDF を直接使用すると、倍精度で PDF 値を 0 (ゼロ) と見分けることのできない下位桁あふれ問題を回避できます。ただし、対数 PDF は有限の負数として容易に表現可能です。たとえば、倍精度 <tt>realmin</tt> は約 2e-308 であるため、PDF 値 (1e-400) は倍精度で下位桁あふれします。</p><pre class="codeinput">logPDFval = -921;
+PDFval = exp(logPDFval)
+</pre><pre class="codeoutput">
+PDFval =
+
+     0
+
+</pre><p><tt>mle</tt> には、'logpdf' および 'logsf' パラメーターを通じて、(PDF や CDF ではなく) 対数 PDF および対数 SF を使用してカスタム分布を指定するための構文があります。PDF および CDF 関数とは異なり、既存の関数はありません。したがって、これらの値を計算する無名関数を作成します。</p><pre class="codeinput">evlogpdf = @(x,mu,sigma) ((x - mu) ./ sigma - exp((x - mu) ./ sigma)) - log(sigma);
+evlogsf = @(x,mu,sigma) -exp((x-mu)./sigma);
+</pre><p>同じ始点を使用して、極値分布の代替対数 PDF/対数 SF を指定することで、問題が解決可能になります。</p><pre class="codeinput">start = [1 1];
+[paramEsts,paramCIs] = mle(x, <span class="string">'censoring'</span>,c, <span class="string">'logpdf'</span>,evlogpdf, <span class="string">'logsf'</span>,evlogsf, <span class="keyword">...</span>
+                           <span class="string">'start'</span>,start, <span class="string">'lower'</span>,[-Inf,0])
+</pre><pre class="codeoutput">
+paramEsts =
+
+    4.9001    2.4051
+
+
+paramCIs =
+
+    4.1831    1.8270
+    5.6171    2.9831
+
+</pre><p>ただし、この方法によって必ずしも始点の貧弱さが緩和するわけではありません。始点は必ず慎重に選択するようにしてください。</p><h2>勾配の指定<a name="17"></a></h2><p>既定の設定では、関数 <tt>mle</tt> は、関数 <tt>fminsearch</tt> を使用してデータの対数尤度を最大化するパラメーター値を検出します。<tt>fminsearch</tt> は、導関数を使用しない最適化アルゴリズムを使用しますが、これが良い選択肢となることもあります。</p><p>ただし、問題によっては、対数尤度関数の導関数を使用する最適化アルゴリズムを選択すると、特に始点が最終的な回答とかけ離れている場合、最尤推定値に収束するか、最尤推定値に収束しないかに大きな差が出てきます。導関数を指定すると、収束を促進することもできます。</p><p>インストールした MATLAB&reg; に Optimization Toolbox™ が含まれている場合は、<tt>mle</tt> で関数 <tt>fmincon</tt> を使用できます。この関数は、導関数情報を使用できる最適化アルゴリズムを含んでいます。関数 <tt>fmincon</tt> でアルゴリズムを利用するには、対数尤度だけでなくその勾配を返すために記述されている対数尤度関数を使用して、カスタム分布を指定してください。対数尤度関数の勾配は、簡単にいうと、そのパラメーターに関連する部分導関数のベクトルです。</p><p>この手法では、対数尤度とその勾配の両方を計算するコードを記述するための追加準備が必要になります。この例については、別個のファイル <a href="matlab:edit('evnegloglike.m')"><tt>evnegloglike.m</tt></a> に、極値分布について対数尤度と勾配の両方を計算するコードが作成されています。</p><pre class="codeinput">type <span class="string">evnegloglike.m</span>
+</pre><pre class="codeoutput">
+function [nll,ngrad] = evnegloglike(params,x,cens,freq)
+%EVNEGLOGLIKE Negative log-likelihood for the extreme value distribution.
+
+%   Copyright 1984-2004 The MathWorks, Inc.
+%   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:29:29 $
+mu = params(1);
+sigma = params(2);
+nunc = sum(1-cens);
+z = (x - mu) ./ sigma;
+expz = exp(z);
+nll = sum(expz) - sum(z(~cens)) + nunc.*log(sigma);
+if nargout &gt; 1
+    ngrad = [-sum(expz)./sigma + nunc./sigma, ...
+             -sum(z.*expz)./sigma + sum(z(~cens))./sigma + nunc./sigma];
+end
+
+</pre><p>関数 <tt>evnegloglike</tt> は、対数尤度値と勾配値の両方について負数<i></i>を返します。それは、最尤推定 (MLE) によって、負の対数尤度が<i></i>最小化するためです。</p><p>勾配に基づく最適化アルゴリズムを使用して最尤推定を計算するために、ここでは、負の対数尤度を計算する関数に対してハンドルを渡すように指定する 'nloglf' パラメーターを使用します。また、最適化関数として <tt>fmincon</tt> を指定する 'optimfun' パラメーターを使用します。関数 <tt>mle</tt> は、<tt>evnegloglike</tt> が負の対数尤度とその勾配の両方を返すことができるかどうかを自動的に検出します。</p><pre class="codeinput">start = [1 1];
+[paramEsts,paramCIs] = mle(x, <span class="string">'censoring'</span>,c, <span class="string">'nloglf'</span>,@evnegloglike, <span class="keyword">...</span>
+                           <span class="string">'start'</span>,start, <span class="string">'lower'</span>,[-Inf,0], <span class="string">'optimfun'</span>,<span class="string">'fmincon'</span>)
+</pre><pre class="codeoutput">
+paramEsts =
+
+    4.9001    2.4051
+
+
+paramCIs =
+
+    4.1831    1.8270
+    5.6171    2.9831
+
+</pre><p class="footer">Copyright 2004-2008 The MathWorks, Inc.<br>Published with MATLAB&reg; 7.11</p><p class="footer" id="trademarks">MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.</p></div><!-- ##### SOURCE BEGIN ##### %% Fitting Custom Univariate Distributions, Part 2 % This demo shows some advanced examples of using the Statistics Toolbox(TM) % function |mle| to fit custom distributions to univariate data.  These % examples include fitting models to censored data, and illustration of % some of the numerical details of fitting with custom distributions.  The % <customdist1demo.html Fitting Custom Univariate Distributions> demo % covers other examples.  %   Copyright 2004-2008 The MathWorks, Inc. %   $Revision: 1.1.4.2.2.1 $  $Date: 2010/07/29 21:29:29 $   %% Fitting Custom Distributions with Censored Data % The extreme value distribution is often used to model failure times of % mechanical parts, and experiments in such cases are sometimes only run % for a fixed length of time.  If not all of the experimental units have % failed within that time, then the data are right-censored, that is, the % value of some failure times are not known exactly, but only known to be % larger than a certain value.  %% % The Statistics Toolbox includes the function |evfit|, which fits an extreme % value distribution to data, including data with censoring.  However, for % the purposes of this example, we will ignore |evfit|, and demonstrate how % to use |mle| and custom distributions to fit a model to censored data, % using the extreme value distribution.  %% % Because the values for the censored data are not known exactly, maximum % likelihood estimation becomes more difficult.  In particular, both the % PDF and the CDF are needed to compute the log-likelihood.  Therefore, you % must provide |mle| with functions for both of those in order to fit % censored data.  The Statistics Toolbox includes the functions |evpdf| and % |evcdf|, so for this example, the work of writing the code has already been % done.  %% % We'll fit the model to simulated data.  The first step is to generate some % uncensored extreme value data. rand('state',0); randn('state',0); n = 50; mu = 5; sigma = 2.5; x = evrnd(mu,sigma,n,1);  %% % Next, we censor any values that are larger than a predetermined cutoff, % by replacing those values with the cutoff value.  This is known as Type % II censoring, and with the cutoff at 7, about 10% of the original data % end up being censored. c = (x > 7); x(c) = 7; sum(c)/length(c)  %% % We can plot a histogram of these data, including a stacked bar to % represent the censored observations. [uncensCnts,binCtrs] = hist(x(~c)); censCnts = hist(x(c),binCtrs); bar(binCtrs,[uncensCnts' censCnts'],'stacked');  %% % Although there is censoring, the fraction of censored observations is % relatively small, and so the method of moments can provide a reasonable % starting point for the parameter estimates.  We compute the values of mu % and sigma that correspond to the observed mean and standard deviation of % the uncensored data. sigma0 = sqrt(6)*std(x(~c))./pi mu0 = mean(x(~c))-psi(1).*sigma0  %% % In addition to passing the data, x, and handles to the PDF and CDF % functions into |mle|, we also use the 'censoring' parameter to pass in the % censoring vector, c.  Because the scale parameter, sigma, must be % positive, we specify lower parameter bounds.  |mle| returns the maximum % likelihood estimates of the two extreme value distribution parameters, mu % and sigma, as well as approximate 95% confidence intervals. [paramEsts,paramCIs] = mle(x, 'censoring',c, 'pdf',@evpdf, 'cdf',@evcdf, ...                            'start',[mu0 sigma0], 'lower',[-Inf,0])   %% Some Numerical Issues in Fitting Custom Distributions % Fitting a custom distribution requires an initial guess for the % parameters, and it's often difficult to know how good or bad a starting % point is a priori.  In the previous example, if we had picked a starting % point that was farther away from the maximum likelihood estimates, some % of the observations could have been very far out in the tails of the % extreme value distribution corresponding to the starting point.  One of % two things might then have happened. % % First, one of the PDF values might have become so small that it % underflowed to zero in double precision arithmetic.  Second, one of the % CDF values might have become so close to 1 that it rounded up in double % precision.  (It's also possible that a CDF value might have become so % small as to underflow, but that turns out not to be a problem.) % % Either of these conditions causes problems when |mle| computes the % log-likelihood, because they lead to log-likelihood values of -Inf, and % the optimization algorithm in |mle| can not normally be expected to step % out of such regions.  %% % Knowing what the maximum likelihood estimates are, let's see what happens % with a different starting point. start = [1 1]; try     [paramEsts,paramCIs] = mle(x, 'censoring',c, 'pdf',@evpdf, 'cdf',@evcdf, ...                                'start',start, 'lower',[-Inf,0]) catch ME     disp(ME.message) end %% % In this case, the second problem has occurred:  Some of the CDF values at % the initial parameter guess are computed as exactly 1, and so the % log-likelihood is infinite.  We could try setting |mle|'s 'FunValCheck' % control parameter to 'off', which would disable checking for non-finite % likelihood values, and then hope for the best.  But the right way to solve % this numerical problem is at its root, and in this case it's not hard to % do. % % Notice that the extreme value CDF is of the form % %    p = 1 - exp( -exp((x-mu)./sigma) ) % % The contribution of the censored observations to the log-likelihood is % the log of their survival function (SF) values, i.e., log(1-CDF).  For % the extreme value distribution, the log of the SF is just % -exp((x-mu)./sigma).  If we could compute the log-likelihood using the % log SF directly, (instead of, in effect, computing log(1 - % (1-exp(logSF)))) we would avoid the rounding issues with the CDF.  That's % because observations whose CDF values are not distinguishable from 1 in % double precision have log SF values that are still easily representable % as non-zero values.  For example, a CDF value of (1 - 1e-20) rounds to 1 % in double precision, because double precision |eps| is about 2e-16. SFval = 1e-20; CDFval = 1 - SFval %% % However, the log of the corresponding SF value, i.e. log(1-CDF), is % easily represented. log(SFval) %% % A similar observation can be made about using the log PDF rather than the % PDF itself REPLACE_WITH_DASH_DASH the contribution of uncensored observations to the % log-likelihood is the log of their PDF values.  Using the log PDF % directly (instead of, in effect, computing log(exp(logPDF))) avoids % underflow problems where the PDF is not distinguishable from zero in % double precision, but the log PDF is still easily representable as a % finite negative number.  For example, a PDF value of 1e-400 underflows in % double precision, because double precision |realmin| is about 2e-308. logPDFval = -921; PDFval = exp(logPDFval)  %% % |mle| provides a syntax for specifying a custom distribution using the % log PDF and the log SF (rather than the PDF and CDF), via the 'logpdf' % and 'logsf' parameters.   Unlike the PDF and CDF functions, there are no % existing functions, so we'll create anonymous functions that compute % these values: evlogpdf = @(x,mu,sigma) ((x - mu) ./ sigma - exp((x - mu) ./ sigma)) - log(sigma); evlogsf = @(x,mu,sigma) -exp((x-mu)./sigma);  %% % Using the same starting point, the alternate logPDF/logSF specification % of the extreme value distribution makes the problem solvable: start = [1 1]; [paramEsts,paramCIs] = mle(x, 'censoring',c, 'logpdf',evlogpdf, 'logsf',evlogsf, ...                            'start',start, 'lower',[-Inf,0]) %% % However, this strategy cannot always mitigate a poor starting point, and % a careful choice of starting point is always recommended.   %% Supplying a Gradient % By default, |mle| uses the function |fminsearch| to find parameter values % that maximize the log-likelihood for the data.  |fminsearch| uses an % optimization algorithm that is derivative-free, and is often a good % choice. % % However, for some problems, choosing an optimization algorithm that uses % the derivatives of the log-likelihood function can make the difference % between converging to the maximum likelihood estimates or not, especially % when the starting point is far away from the final answer.  Providing the % derivatives can also sometimes speed up the convergence. % % If your MATLAB(R) installation includes the Optimization Toolbox(TM), |mle| allows % you to use the function |fmincon|, which includes optimization algorithms % that can use derivative information.  To take best advantage of the % algorithms in |fmincon|, you can specify a custom distribution using a % log-likelihood function, written to return not only the log-likelihood % itself, but its gradient as well.  The gradient of the log-likelihood % function is simply the vector of its partial derivatives with respect to % its parameters. % % This strategy requires extra preparation, to write code that computes % both the log-likelihood and its gradient.  For this example, we've the % created code to do that for the extreme value distribution as a separate % file <matlab:edit('evnegloglike.m') |evnegloglike.m|>. type evnegloglike.m  %% % Notice that the function |evnegloglike| returns the _negative_ of both % the log-likelihood values and of the gradient values, because MLE % _minimizes_ that negative log-likelihood.  %% % To compute the maximum likelihood estimates using a gradient-based % optimization algorithm, we use the 'nloglf' parameter, specifying that we % are providing a handle to a function that computes the negative % log-likelihood, and the 'optimfun' parameter, specifying |fmincon| as the % optimization function.  |mle| will automatically detect that % |evnegloglike| can return both the negative log-likelihood and its % gradient. start = [1 1]; [paramEsts,paramCIs] = mle(x, 'censoring',c, 'nloglf',@evnegloglike, ...                            'start',start, 'lower',[-Inf,0], 'optimfun','fmincon')   displayEndOfDemoMessage(mfilename)  ##### SOURCE END ##### --></body></html>
